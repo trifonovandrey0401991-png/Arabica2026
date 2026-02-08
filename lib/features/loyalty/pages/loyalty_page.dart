@@ -74,23 +74,6 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       return;
     }
 
-    // Сначала загружаем актуальные настройки акции с сервера
-    final settings = await LoyaltyService.fetchPromoSettings();
-
-    // Проверяем, изменились ли настройки - если да, очищаем локальный кэш
-    final cachedPointsRequired = prefs.getInt('loyalty_points_required');
-    final cachedDrinksToGive = prefs.getInt('loyalty_drinks_to_give');
-
-    if (cachedPointsRequired != null && cachedDrinksToGive != null) {
-      if (cachedPointsRequired != settings.pointsRequired ||
-          cachedDrinksToGive != settings.drinksToGive) {
-        // Настройки изменились - обновляем локальный кэш
-        await prefs.setInt('loyalty_points_required', settings.pointsRequired);
-        await prefs.setInt('loyalty_drinks_to_give', settings.drinksToGive);
-      }
-    }
-
-    // Не показываем кэшированные данные - сразу загружаем с сервера
     await _refresh(showSpinner: true);
   }
 
@@ -109,14 +92,17 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         });
       }
 
-      final info = await LoyaltyService.fetchByPhone(phone);
-      await LoyaltyStorage.save(info);
+      // Запускаем все запросы параллельно (вместо последовательно)
+      final infoFuture = LoyaltyService.fetchByPhone(phone);
+      final settingsFuture = LoyaltyGamificationService.fetchSettings();
+      final clientDataFuture = LoyaltyGamificationService.fetchClientData(phone);
+      final prizeFuture = LoyaltyGamificationService.fetchPendingPrize(phone);
 
-      // Загружаем данные геймификации
-      final gamificationSettings = await LoyaltyGamificationService.fetchSettings();
-      final gamificationData = await LoyaltyGamificationService.fetchClientData(phone);
-      // Загружаем pending приз
-      final pendingPrize = await LoyaltyGamificationService.fetchPendingPrize(phone);
+      final info = await infoFuture;
+      await LoyaltyStorage.save(info);
+      final gamificationSettings = await settingsFuture;
+      final gamificationData = await clientDataFuture;
+      final pendingPrize = await prizeFuture;
 
       if (mounted) {
         setState(() {
@@ -377,17 +363,16 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               color: Colors.white.withOpacity(0.9),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 72),
           // QR с значками вокруг
           if (earnedLevels.isNotEmpty)
             QrBadgesWidget(
               qrWidget: qrWidget,
               earnedLevels: earnedLevels,
-              qrSize: 204, // 180 + 2*12 padding
             )
           else
             qrWidget,
-          const SizedBox(height: 16),
+          const SizedBox(height: 72),
           Text(
             info.name,
             style: TextStyle(

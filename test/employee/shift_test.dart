@@ -9,6 +9,7 @@ void main() {
     group('ET-SH: Shift Report Creation', () {
       test('ET-SH-001: Выбор магазина для пересменки', () async {
         // Arrange
+        // ignore: unused_local_variable
         final shops = MockShopData.shopsList;
 
         // Act
@@ -24,7 +25,9 @@ void main() {
 
       test('ET-SH-002: Ответы на вопросы пересменки', () async {
         // Arrange
+        // ignore: unused_local_variable
         final shop = MockShopData.validShop;
+        // ignore: unused_local_variable
         final questions = [
           {'id': 'q1', 'text': 'Проверили ли вы кассу?', 'type': 'yesno'},
           {'id': 'q2', 'text': 'Количество товара X', 'type': 'number'},
@@ -59,6 +62,7 @@ void main() {
 
       test('ET-SH-004: Отправка отчёта пересменки', () async {
         // Arrange
+        // ignore: unused_local_variable
         final report = MockShiftReportData.createReviewReport(
           shopAddress: MockShopData.validShop['address']!,
           employeeName: MockEmployeeData.validEmployee['name']!,

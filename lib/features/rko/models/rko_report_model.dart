@@ -136,7 +136,7 @@ class RKOMetadataList {
 
   /// Получить уникальные магазины
   List<String> getUniqueShops() {
-    return items.map((rko) => rko.shopAddress).toSet().toList();
+    return items.map((rko) => rko.shopAddress).where((a) => a.trim().isNotEmpty).toSet().toList();
   }
 }
 

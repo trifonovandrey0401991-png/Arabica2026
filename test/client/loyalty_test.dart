@@ -332,8 +332,8 @@ void main() {
 
       test('CT-LOY-022: Кэширование настроек акции (5 минут)', () async {
         // Act
-        final settings1 = await mockLoyaltyService.getPromoSettings();
-        final settings2 = await mockLoyaltyService.getPromoSettings();
+        await mockLoyaltyService.getPromoSettings();
+        await mockLoyaltyService.getPromoSettings();
 
         // Assert
         expect(mockLoyaltyService.cacheHits, 1); // Second call hit cache
@@ -351,7 +351,7 @@ class MockLoyaltyService {
   int cacheHits = 0;
   Map<String, dynamic>? _cachedSettings;
 
-  Map<String, dynamic> _promoSettings = {
+  final Map<String, dynamic> _promoSettings = {
     'pointsRequired': 10,
     'drinksToGive': 1,
     'promoText': 'Каждый 11-й напиток бесплатно!',

@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * RKO API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 const multer = require('multer');
 
@@ -8,21 +14,34 @@ const RKO_REPORTS_DIR = `${DATA_DIR}/rko-reports`;
 const RKO_FILES_DIR = `${DATA_DIR}/rko-files`;
 const RKO_METADATA_FILE = `${DATA_DIR}/rko-reports/rko_metadata.json`;
 
-if (!fs.existsSync(RKO_REPORTS_DIR)) {
-  fs.mkdirSync(RKO_REPORTS_DIR, { recursive: true });
-}
-if (!fs.existsSync(RKO_FILES_DIR)) {
-  fs.mkdirSync(RKO_FILES_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
+// Ensure directories exist (async IIFE)
+(async () => {
+  if (!(await fileExists(RKO_REPORTS_DIR))) {
+    await fsp.mkdir(RKO_REPORTS_DIR, { recursive: true });
+  }
+  if (!(await fileExists(RKO_FILES_DIR))) {
+    await fsp.mkdir(RKO_FILES_DIR, { recursive: true });
+  }
+})();
+
 // Вспомогательная функция для чтения всех RKO из обоих источников
-function getAllRKOReports() {
+async function getAllRKOReports() {
   const reports = [];
 
   // 1. Читаем из rko_metadata.json (основной источник - старый формат)
-  if (fs.existsSync(RKO_METADATA_FILE)) {
+  if (await fileExists(RKO_METADATA_FILE)) {
     try {
-      const content = fs.readFileSync(RKO_METADATA_FILE, 'utf8');
+      const content = await fsp.readFile(RKO_METADATA_FILE, 'utf8');
       const metadata = JSON.parse(content);
       if (metadata.items && Array.isArray(metadata.items)) {
         for (const item of metadata.items) {
@@ -45,11 +64,11 @@ function getAllRKOReports() {
   }
 
   // 2. Читаем отдельные .json файлы (новый формат)
-  if (fs.existsSync(RKO_REPORTS_DIR)) {
-    const files = fs.readdirSync(RKO_REPORTS_DIR).filter(f => f.endsWith('.json') && f !== 'rko_metadata.json');
+  if (await fileExists(RKO_REPORTS_DIR)) {
+    const files = (await fsp.readdir(RKO_REPORTS_DIR)).filter(f => f.endsWith('.json') && f !== 'rko_metadata.json');
     for (const file of files) {
       try {
-        const content = fs.readFileSync(path.join(RKO_REPORTS_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(RKO_REPORTS_DIR, file), 'utf8');
         const report = JSON.parse(content);
         // Проверяем что это отчет, а не другие данные
         if (report.shopAddress && report.employeeName) {
@@ -100,7 +119,7 @@ function setupRkoAPI(app) {
       };
 
       const reportPath = path.join(RKO_REPORTS_DIR, `${report.id}.json`);
-      fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf8');
+      await fsp.writeFile(reportPath, JSON.stringify(report, null, 2), 'utf8');
 
       console.log(`✅ RKO uploaded: ${report.id}, shop: ${shopAddress}`);
       res.json({ success: true, report });
@@ -117,7 +136,7 @@ function setupRkoAPI(app) {
       console.log('GET /api/rko/list/shop:', shopAddress);
 
       // Получаем все RKO из всех источников
-      const allReports = getAllRKOReports();
+      const allReports = await getAllRKOReports();
 
       // Фильтруем по магазину
       const reports = allReports.filter(r => r.shopAddress === shopAddress);
@@ -165,7 +184,7 @@ function setupRkoAPI(app) {
       console.log('GET /api/rko/list/employee:', employeeName);
 
       // Получаем все RKO из всех источников
-      const allReports = getAllRKOReports();
+      const allReports = await getAllRKOReports();
 
       // Фильтруем по сотруднику (регистронезависимо)
       const reports = allReports.filter(r =>
@@ -190,24 +209,26 @@ function setupRkoAPI(app) {
 
       // 1. Ищем файл в папке RKO_FILES_DIR (новый формат)
       const filePath = path.join(RKO_FILES_DIR, fileName);
-      if (fs.existsSync(filePath)) {
+      if (await fileExists(filePath)) {
         return res.sendFile(filePath);
       }
 
       // 2. Ищем в employee структуре (старый формат)
       // Структура: /var/www/rko-reports/employee/{employeeName}/{year-month}/{filename}
       const employeeDir = path.join(RKO_REPORTS_DIR, 'employee');
-      if (fs.existsSync(employeeDir)) {
-        const employeeFolders = fs.readdirSync(employeeDir);
+      if (await fileExists(employeeDir)) {
+        const employeeFolders = await fsp.readdir(employeeDir);
         for (const empFolder of employeeFolders) {
           const empPath = path.join(employeeDir, empFolder);
-          if (fs.statSync(empPath).isDirectory()) {
-            const monthFolders = fs.readdirSync(empPath);
+          const empStat = await fsp.stat(empPath);
+          if (empStat.isDirectory()) {
+            const monthFolders = await fsp.readdir(empPath);
             for (const monthFolder of monthFolders) {
               const monthPath = path.join(empPath, monthFolder);
-              if (fs.statSync(monthPath).isDirectory()) {
+              const monthStat = await fsp.stat(monthPath);
+              if (monthStat.isDirectory()) {
                 const targetPath = path.join(monthPath, fileName);
-                if (fs.existsSync(targetPath)) {
+                if (await fileExists(targetPath)) {
                   console.log(`  Found file at: ${targetPath}`);
                   return res.sendFile(targetPath);
                 }
@@ -218,10 +239,10 @@ function setupRkoAPI(app) {
       }
 
       // 3. Ищем по originalName в метаданных
-      const allReports = getAllRKOReports();
+      const allReports = await getAllRKOReports();
       for (const report of allReports) {
         if (report.originalName === fileName || report.fileName === fileName) {
-          if (report.filePath && fs.existsSync(report.filePath)) {
+          if (report.filePath && (await fileExists(report.filePath))) {
             return res.sendFile(report.filePath);
           }
         }
@@ -241,12 +262,12 @@ function setupRkoAPI(app) {
       const { shopAddress, date } = req.query;
       const reports = [];
 
-      if (fs.existsSync(RKO_REPORTS_DIR)) {
-        const files = fs.readdirSync(RKO_REPORTS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(RKO_REPORTS_DIR)) {
+        const files = (await fsp.readdir(RKO_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(RKO_REPORTS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(RKO_REPORTS_DIR, file), 'utf8');
             const report = JSON.parse(content);
 
             if (shopAddress && report.shopAddress !== shopAddress) continue;
@@ -278,7 +299,7 @@ function setupRkoAPI(app) {
       report.createdAt = report.createdAt || new Date().toISOString();
       const filePath = path.join(RKO_REPORTS_DIR, `${report.id}.json`);
 
-      fs.writeFileSync(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
       res.json({ success: true, report });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -292,8 +313,9 @@ function setupRkoAPI(app) {
 
       const filePath = path.join(RKO_REPORTS_DIR, `${reportId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const data = await fsp.readFile(filePath, 'utf8');
+        const report = JSON.parse(data);
         res.json({ success: true, report });
       } else {
         res.status(404).json({ success: false, error: 'Report not found' });
@@ -311,14 +333,15 @@ function setupRkoAPI(app) {
 
       const filePath = path.join(RKO_REPORTS_DIR, `${reportId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Report not found' });
       }
 
-      const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const data = await fsp.readFile(filePath, 'utf8');
+      const report = JSON.parse(data);
       const updated = { ...report, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, report: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -332,8 +355,8 @@ function setupRkoAPI(app) {
 
       const filePath = path.join(RKO_REPORTS_DIR, `${reportId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Report not found' });

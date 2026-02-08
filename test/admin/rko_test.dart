@@ -444,7 +444,6 @@ class MockRkoService {
 
   Future<Map<String, dynamic>> list({int page = 1, int perPage = 10}) async {
     final start = (page - 1) * perPage;
-    final end = start + perPage;
     final items = _rkos.skip(start).take(perPage).toList();
 
     return {

@@ -9,7 +9,9 @@ void main() {
     group('CT-AUTH: Registration and Login', () {
       test('CT-AUTH-001: Регистрация нового клиента', () async {
         // Arrange
+        // ignore: unused_local_variable
         final phone = '79001111111';
+        // ignore: unused_local_variable
         final name = 'Тестовый Клиент';
 
         // Act
@@ -29,6 +31,7 @@ void main() {
 
       test('CT-AUTH-002: Повторный вход по телефону', () async {
         // Arrange
+        // ignore: unused_local_variable
         final existingPhone = MockClientData.validClient['phone'];
 
         // Act
@@ -62,6 +65,7 @@ void main() {
 
       test('CT-AUTH-004: Сотрудник без верификации → client', () async {
         // Arrange
+        // ignore: unused_local_variable
         final unverifiedPhone = MockEmployeeData.unverifiedEmployee['phone'];
 
         // Act

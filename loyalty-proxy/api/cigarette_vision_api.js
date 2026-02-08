@@ -1,9 +1,11 @@
 /**
  * Cigarette Vision API Module
  * API для работы с машинным зрением подсчёта сигарет
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 const cigaretteVision = require('../modules/cigarette-vision');
@@ -16,25 +18,35 @@ const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 // Кэш вопросов пересчёта
 let recountQuestionsCache = [];
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Загрузить вопросы пересчёта из директории
  */
-function loadRecountQuestions() {
+async function loadRecountQuestions() {
   try {
-    if (!fs.existsSync(RECOUNT_QUESTIONS_DIR)) {
+    if (!(await fileExists(RECOUNT_QUESTIONS_DIR))) {
       console.log('[Cigarette Vision API] Директория вопросов пересчёта не существует');
       recountQuestionsCache = [];
       return;
     }
 
-    const files = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    const files = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
     const questions = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
           const filePath = path.join(RECOUNT_QUESTIONS_DIR, file);
-          const data = fs.readFileSync(filePath, 'utf8');
+          const data = await fsp.readFile(filePath, 'utf8');
           const question = JSON.parse(data);
           questions.push(question);
         } catch (error) {
@@ -54,24 +66,24 @@ function loadRecountQuestions() {
 /**
  * Настройка API для машинного зрения сигарет
  */
-function setupCigaretteVisionAPI(app) {
+async function setupCigaretteVisionAPI(app) {
   console.log('[Cigarette Vision API] Инициализация...');
 
   // Инициализируем модуль
   cigaretteVision.init();
 
   // Загружаем вопросы пересчёта
-  loadRecountQuestions();
+  await loadRecountQuestions();
 
   // ============ ТОВАРЫ ============
 
   // Получить товары с информацией об обучении
-  app.get('/api/cigarette-vision/products', (req, res) => {
+  app.get('/api/cigarette-vision/products', async (req, res) => {
     try {
       const { productGroup } = req.query;
 
       // Перезагружаем вопросы для актуальности
-      loadRecountQuestions();
+      await loadRecountQuestions();
 
       const products = cigaretteVision.getProductsWithTrainingInfo(
         recountQuestionsCache,
@@ -86,9 +98,9 @@ function setupCigaretteVisionAPI(app) {
   });
 
   // Получить группы товаров
-  app.get('/api/cigarette-vision/products/groups', (req, res) => {
+  app.get('/api/cigarette-vision/products/groups', async (req, res) => {
     try {
-      loadRecountQuestions();
+      await loadRecountQuestions();
       const groups = cigaretteVision.getProductGroups(recountQuestionsCache);
       res.json({ success: true, groups });
     } catch (error) {
@@ -100,9 +112,9 @@ function setupCigaretteVisionAPI(app) {
   // ============ СТАТИСТИКА ============
 
   // Получить статистику обучения
-  app.get('/api/cigarette-vision/stats', (req, res) => {
+  app.get('/api/cigarette-vision/stats', async (req, res) => {
     try {
-      loadRecountQuestions();
+      await loadRecountQuestions();
       const stats = cigaretteVision.getTrainingStats(recountQuestionsCache);
       res.json(stats);
     } catch (error) {
@@ -195,11 +207,11 @@ function setupCigaretteVisionAPI(app) {
   // ============ ИЗОБРАЖЕНИЯ ============
 
   // Получить изображение образца
-  app.get('/api/cigarette-vision/images/:fileName', (req, res) => {
+  app.get('/api/cigarette-vision/images/:fileName', async (req, res) => {
     try {
       const imagePath = cigaretteVision.getImagePath(req.params.fileName);
 
-      if (fs.existsSync(imagePath)) {
+      if (await fileExists(imagePath)) {
         res.sendFile(imagePath);
       } else {
         res.status(404).json({ success: false, error: 'Изображение не найдено' });
@@ -522,12 +534,12 @@ function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача изображений counting
-  app.get('/api/cigarette-vision/counting-images/:fileName', (req, res) => {
+  app.get('/api/cigarette-vision/counting-images/:fileName', async (req, res) => {
     try {
       const paths = cigaretteVision.getTrainingPaths(cigaretteVision.TRAINING_TYPES.COUNTING);
       const imagePath = path.join(paths.imagesDir, req.params.fileName);
 
-      if (fs.existsSync(imagePath)) {
+      if (await fileExists(imagePath)) {
         res.sendFile(imagePath);
       } else {
         res.status(404).json({ success: false, error: 'Изображение не найдено' });
@@ -588,12 +600,12 @@ function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача изображений pending
-  app.get('/api/cigarette-vision/counting-pending-images/:fileName', (req, res) => {
+  app.get('/api/cigarette-vision/counting-pending-images/:fileName', async (req, res) => {
     try {
       const paths = cigaretteVision.getCountingPendingPaths();
       const imagePath = path.join(paths.imagesDir, req.params.fileName);
 
-      if (fs.existsSync(imagePath)) {
+      if (await fileExists(imagePath)) {
         res.sendFile(imagePath);
       } else {
         res.status(404).json({ success: false, error: 'Изображение не найдено' });
@@ -844,12 +856,12 @@ function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача проблемных фото (для просмотра)
-  app.get('/api/cigarette-vision/problem-samples/:productId/:fileName', (req, res) => {
+  app.get('/api/cigarette-vision/problem-samples/:productId/:fileName', async (req, res) => {
     try {
       const { productId, fileName } = req.params;
       const filePath = path.join(cigaretteVision.PROBLEM_SAMPLES_DIR, productId, fileName);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Файл не найден' });
       }
 

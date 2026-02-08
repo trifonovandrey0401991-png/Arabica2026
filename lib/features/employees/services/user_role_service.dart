@@ -147,8 +147,11 @@ class UserRoleService {
               } else if (mtRole == 'manager') {
                 finalRole = UserRole.manager;
                 primaryShopId = multitenantRole['primaryShopId'] as String?;
+                managedShopIds = (multitenantRole['managedShopIds'] as List?)
+                    ?.map((e) => e.toString())
+                    .toList() ?? [];
                 canSeeAllManagerShops = multitenantRole['canSeeAllManagerShops'] == true;
-                Logger.debug('🏪 Пользователь - MANAGER (заведующая)');
+                Logger.debug('🏪 Пользователь - MANAGER (заведующая), магазинов: ${managedShopIds.length}');
               } else {
                 // Используем роль из employees API
                 finalRole = isAdmin ? UserRole.admin : UserRole.employee;
@@ -258,11 +261,48 @@ class UserRoleService {
         Logger.debug('   Имя сотрудника (G): $employeeName');
       }
 
+      // Загружаем мультитенантные данные (managedShopIds, managedEmployees)
+      List<String> managedShopIds = [];
+      List<String> managedEmployees = [];
+      String? primaryShopId;
+      bool canSeeAllManagerShops = false;
+
+      if (role == UserRole.admin || role == UserRole.employee) {
+        final multitenantRole = await getMultitenantRole(normalizedPhone);
+        if (multitenantRole != null) {
+          final mtRole = multitenantRole['role'] as String?;
+          if (mtRole == 'developer') {
+            role = UserRole.developer;
+            Logger.debug('🔧 Роль повышена до DEVELOPER (из мультитенантности)');
+          } else if (mtRole == 'admin') {
+            role = UserRole.admin;
+            managedShopIds = (multitenantRole['managedShopIds'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ?? [];
+            managedEmployees = (multitenantRole['managedEmployees'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ?? [];
+          } else if (mtRole == 'manager') {
+            role = UserRole.manager;
+            primaryShopId = multitenantRole['primaryShopId'] as String?;
+            managedShopIds = (multitenantRole['managedShopIds'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ?? [];
+            canSeeAllManagerShops = multitenantRole['canSeeAllManagerShops'] == true;
+          }
+          Logger.debug('   Мультитенантность: магазины=${managedShopIds.length}, сотрудники=${managedEmployees.length}');
+        }
+      }
+
       return UserRoleData(
         role: role,
         displayName: displayName,
         phone: normalizedPhone,
         employeeName: role != UserRole.client ? employeeName : null,
+        managedShopIds: managedShopIds,
+        managedEmployees: managedEmployees,
+        primaryShopId: primaryShopId,
+        canSeeAllManagerShops: canSeeAllManagerShops,
       );
     } catch (e) {
       Logger.debug('❌ Ошибка получения роли: $e');
@@ -278,6 +318,7 @@ class UserRoleService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_role', roleData.role.name);
       await prefs.setString('user_display_name', roleData.displayName);
+      await prefs.setString('user_phone', roleData.phone); // Сохраняем телефон!
 
       if (roleData.employeeName != null) {
         await prefs.setString('user_employee_name', roleData.employeeName!);

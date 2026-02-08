@@ -132,18 +132,14 @@ class AuthService {
       final deviceId = await _deviceService.getDeviceId();
       final deviceName = await _deviceService.getDeviceName();
 
-      // Создаём хеш PIN-кода
-      final salt = SecureStorageService.generateSalt();
-      final pinHash = SecureStorageService.hashPin(pin, salt);
-
+      // Отправляем PIN напрямую - сервер сам создаст хеш
       final response = await http.post(
         Uri.parse('$_authApiUrl/register'),
         headers: ApiConstants.jsonHeaders,
         body: jsonEncode({
           'phone': normalizedPhone,
           'name': name,
-          'pinHash': pinHash,
-          'salt': salt,
+          'pin': pin,  // Сервер сам хеширует PIN
           'deviceId': deviceId,
           'deviceName': deviceName,
         }),
@@ -156,13 +152,19 @@ class AuthService {
         final session = AuthSession.fromJson(data['session'] as Map<String, dynamic>);
         await _storage.saveSession(session);
 
-        // Сохраняем credentials локально
-        final credentials = AuthCredentials(
-          pinHash: pinHash,
-          salt: salt,
-          createdAt: DateTime.now(),
-        );
-        await _storage.saveCredentials(credentials);
+        // Получаем pinHash и salt от сервера для локального хранения
+        final serverPinHash = data['pinHash'] as String?;
+        final serverSalt = data['salt'] as String?;
+
+        if (serverPinHash != null && serverSalt != null) {
+          // Сохраняем credentials локально
+          final credentials = AuthCredentials(
+            pinHash: serverPinHash,
+            salt: serverSalt,
+            createdAt: DateTime.now(),
+          );
+          await _storage.saveCredentials(credentials);
+        }
 
         return AuthResult.success(session: session);
       } else {
@@ -233,6 +235,69 @@ class AuthService {
 
   // ==================== ВХОД ====================
 
+  /// Вход на сервере с телефоном и PIN (для входа на новом устройстве)
+  ///
+  /// Используется когда пользователь уже зарегистрирован на сервере,
+  /// но на текущем устройстве нет локальных credentials.
+  Future<AuthResult> loginOnServer({
+    required String phone,
+    required String pin,
+  }) async {
+    try {
+      final normalizedPhone = _normalizePhone(phone);
+      final deviceId = await _deviceService.getDeviceId();
+      final deviceName = await _deviceService.getDeviceName();
+
+      final response = await http.post(
+        Uri.parse('$_authApiUrl/login'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'phone': normalizedPhone,
+          'pin': pin,
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // Создаём сессию из ответа сервера
+        final session = AuthSession(
+          sessionToken: data['sessionToken'] as String,
+          phone: normalizedPhone,
+          name: data['name'] as String?,
+          deviceId: deviceId,
+          deviceName: deviceName,
+          createdAt: DateTime.now(),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(data['expiresAt'] as int),
+          isVerified: true,
+        );
+        await _storage.saveSession(session);
+
+        // Создаём локальные credentials для будущего офлайн-входа
+        // Используем тот же PIN для создания локального хеша
+        await _storage.createCredentials(pin);
+
+        return AuthResult.success(session: session);
+      } else if (response.statusCode == 404) {
+        return AuthResult.failure('Пользователь не найден. Необходима регистрация.');
+      } else if (response.statusCode == 401) {
+        final remaining = data['attemptsRemaining'] as int?;
+        if (remaining != null) {
+          return AuthResult.failure('Неверный PIN-код. Осталось попыток: $remaining');
+        }
+        return AuthResult.failure(data['error'] as String? ?? 'Неверный PIN-код');
+      } else if (response.statusCode == 423) {
+        return AuthResult.failure(data['error'] as String? ?? 'Аккаунт заблокирован');
+      } else {
+        return AuthResult.failure(data['error'] as String? ?? 'Ошибка входа');
+      }
+    } catch (e) {
+      return AuthResult.failure('Ошибка соединения: $e');
+    }
+  }
+
   /// Вход с PIN-кодом (для повторного входа на том же устройстве)
   Future<AuthResult> loginWithPin(String pin) async {
     // Проверяем блокировку
@@ -273,7 +338,11 @@ class AuthService {
     // Проверяем и обновляем сессию
     final session = await _storage.getSession();
     if (session == null || session.isExpired) {
-      // Сессия истекла - нужна повторная верификация
+      // Сессия истекла - пробуем войти через сервер
+      if (session != null && session.phone.isNotEmpty) {
+        // Есть телефон - пробуем серверный вход
+        return await loginOnServer(phone: session.phone, pin: pin);
+      }
       return AuthResult.failure('Сессия истекла. Требуется повторная верификация.');
     }
 
@@ -413,35 +482,46 @@ class AuthService {
   }
 
   /// Сбрасывает PIN-код через OTP
+  ///
+  /// Отправляет raw PIN на сервер, сервер сам создаёт хеш.
+  /// Возвращает сессию при успехе.
   Future<AuthResult> resetPin(String phone, String newPin, String registrationToken) async {
     try {
       final normalizedPhone = _normalizePhone(phone);
-      final salt = SecureStorageService.generateSalt();
-      final pinHash = SecureStorageService.hashPin(newPin, salt);
+      final deviceId = await _deviceService.getDeviceId();
+      final deviceName = await _deviceService.getDeviceName();
 
       final response = await http.post(
         Uri.parse('$_authApiUrl/reset-pin'),
         headers: ApiConstants.jsonHeaders,
         body: jsonEncode({
           'phone': normalizedPhone,
-          'pinHash': pinHash,
-          'salt': salt,
+          'pin': newPin,  // Сервер сам хеширует PIN
           'registrationToken': registrationToken,
+          'deviceId': deviceId,
+          'deviceName': deviceName,
         }),
       ).timeout(ApiConstants.defaultTimeout);
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 && data['success'] == true) {
-        // Обновляем локальные credentials
-        final credentials = AuthCredentials(
-          pinHash: pinHash,
-          salt: salt,
-          createdAt: DateTime.now(),
-        );
-        await _storage.saveCredentials(credentials);
+        // Создаём локальные credentials для офлайн-входа
+        await _storage.createCredentials(newPin);
 
-        return AuthResult.success(message: 'PIN-код успешно сброшен');
+        // Создаём сессию из ответа сервера
+        final session = AuthSession(
+          sessionToken: data['sessionToken'] as String,
+          phone: normalizedPhone,
+          deviceId: deviceId,
+          deviceName: deviceName,
+          createdAt: DateTime.now(),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(data['expiresAt'] as int),
+          isVerified: true,
+        );
+        await _storage.saveSession(session);
+
+        return AuthResult.success(session: session, message: 'PIN-код успешно сброшен');
       } else {
         return AuthResult.failure(
           data['error'] as String? ?? 'Ошибка сброса PIN-кода',

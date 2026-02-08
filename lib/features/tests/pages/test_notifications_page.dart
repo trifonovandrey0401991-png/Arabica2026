@@ -875,7 +875,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                                         ? const Icon(Icons.close, color: Colors.white)
                                         : const Icon(Icons.pending, color: Colors.white),
                               ),
-                              title: Text('Заказ #${order.id.substring(order.id.length - 6)}'),
+                              title: Text('Заказ ${order.id.substring(order.id.length - 6)}'),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

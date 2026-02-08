@@ -7,9 +7,11 @@
  * - Начисление штрафов за пропуск
  * - Push-уведомления
  * - Очистка failed отчётов в 23:59
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Импортируем функции отправки push-уведомлений
@@ -43,6 +45,16 @@ const PENALTY_CATEGORY_NAME = 'Не отмечен на работе';
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
 const MOSCOW_OFFSET_HOURS = 3; // UTC+3 для московского времени
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================
 // Moscow Time Helper
 // ============================================
@@ -61,12 +73,12 @@ function getMoscowDateString() {
 // ============================================
 // Helper: Load JSON file safely
 // ============================================
-function loadJsonFile(filePath, defaultValue) {
-  if (!fs.existsSync(filePath)) {
+async function loadJsonFile(filePath, defaultValue) {
+  if (!(await fileExists(filePath))) {
     return defaultValue;
   }
   try {
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(data);
   } catch (e) {
     console.error(`[AttendanceScheduler] Error loading JSON from ${filePath}:`, e.message);
@@ -74,13 +86,13 @@ function loadJsonFile(filePath, defaultValue) {
   }
 }
 
-function saveJsonFile(filePath, data) {
+async function saveJsonFile(filePath, data) {
   try {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error(`[AttendanceScheduler] Error saving JSON to ${filePath}:`, e.message);
@@ -91,8 +103,8 @@ function saveJsonFile(filePath, data) {
 // ============================================
 // State Management
 // ============================================
-function loadState() {
-  return loadJsonFile(STATE_FILE, {
+async function loadState() {
+  return await loadJsonFile(STATE_FILE, {
     lastMorningGeneration: null,
     lastEveningGeneration: null,
     lastCleanup: null,
@@ -100,15 +112,15 @@ function loadState() {
   });
 }
 
-function saveState(state) {
+async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  saveJsonFile(STATE_FILE, state);
+  await saveJsonFile(STATE_FILE, state);
 }
 
 // ============================================
 // Settings Loading
 // ============================================
-function getAttendanceSettings() {
+async function getAttendanceSettings() {
   const defaults = {
     onTimePoints: 0.5,
     latePoints: -1,
@@ -120,7 +132,7 @@ function getAttendanceSettings() {
   };
 
   const settingsFile = path.join(POINTS_SETTINGS_DIR, 'attendance_points_settings.json');
-  const loaded = loadJsonFile(settingsFile, {});
+  const loaded = await loadJsonFile(settingsFile, {});
 
   // Объединяем загруженные настройки с defaults
   return {
@@ -138,9 +150,9 @@ function getAttendanceSettings() {
 // ============================================
 // Shops Loading
 // ============================================
-function getAllShops() {
+async function getAllShops() {
   const shopsFile = path.join(SHOPS_DIR, 'shops.json');
-  const data = loadJsonFile(shopsFile, { shops: [] });
+  const data = await loadJsonFile(shopsFile, { shops: [] });
   return data.shops || [];
 }
 
@@ -151,21 +163,21 @@ function getPendingReportsDir() {
   return ATTENDANCE_PENDING_DIR;
 }
 
-function loadTodayPendingReports() {
+async function loadTodayPendingReports() {
   const reportsDir = getPendingReportsDir();
   const reports = [];
   const today = getMoscowDateString();
 
-  if (!fs.existsSync(reportsDir)) {
+  if (!(await fileExists(reportsDir))) {
     return reports;
   }
 
   try {
-    const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
     for (const file of files) {
       try {
         const filePath = path.join(reportsDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
         // Фильтруем только сегодняшние отчёты
@@ -184,7 +196,7 @@ function loadTodayPendingReports() {
   return reports;
 }
 
-function savePendingReport(report) {
+async function savePendingReport(report) {
   const filePath = report._filePath;
   if (!filePath) {
     console.error('[AttendanceScheduler] No _filePath in report');
@@ -194,13 +206,13 @@ function savePendingReport(report) {
   const dataToSave = { ...report };
   delete dataToSave._filePath;
 
-  return saveJsonFile(filePath, dataToSave);
+  return await saveJsonFile(filePath, dataToSave);
 }
 
-function createPendingReport(shop, shiftType, deadline) {
+async function createPendingReport(shop, shiftType, deadline) {
   const reportsDir = getPendingReportsDir();
-  if (!fs.existsSync(reportsDir)) {
-    fs.mkdirSync(reportsDir, { recursive: true });
+  if (!(await fileExists(reportsDir))) {
+    await fsp.mkdir(reportsDir, { recursive: true });
   }
 
   const now = new Date();
@@ -223,7 +235,7 @@ function createPendingReport(shop, shiftType, deadline) {
     lateMinutes: null
   };
 
-  saveJsonFile(filePath, report);
+  await saveJsonFile(filePath, report);
   console.log(`[AttendanceScheduler] Created pending ${shiftType} attendance for ${shop.name} (${shop.address}), deadline: ${deadline.toISOString()}`);
   return report;
 }
@@ -231,17 +243,17 @@ function createPendingReport(shop, shiftType, deadline) {
 // ============================================
 // Check if Attendance was marked
 // ============================================
-function checkIfAttendanceMarked(shopAddress, shiftType, today) {
-  if (!fs.existsSync(ATTENDANCE_DIR)) {
+async function checkIfAttendanceMarked(shopAddress, shiftType, today) {
+  if (!(await fileExists(ATTENDANCE_DIR))) {
     return false;
   }
 
   try {
-    const files = fs.readdirSync(ATTENDANCE_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(ATTENDANCE_DIR)).filter(f => f.endsWith('.json'));
     for (const file of files) {
       try {
         const filePath = path.join(ATTENDANCE_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const record = JSON.parse(content);
 
         const recordDate = record.timestamp ? record.timestamp.split('T')[0] : null;
@@ -345,9 +357,9 @@ function getDeadlineTime(timeStr, startTimeStr = null) {
 // ============================================
 // 1. Generate Pending Reports
 // ============================================
-function generatePendingReports(shiftType) {
-  const settings = getAttendanceSettings();
-  const shops = getAllShops();
+async function generatePendingReports(shiftType) {
+  const settings = await getAttendanceSettings();
+  const shops = await getAllShops();
   const today = getMoscowDateString();
 
   if (shops.length === 0) {
@@ -355,7 +367,7 @@ function generatePendingReports(shiftType) {
     return 0;
   }
 
-  const pendingReports = loadTodayPendingReports();
+  const pendingReports = await loadTodayPendingReports();
   let created = 0;
 
   const deadlineTime = shiftType === 'morning'
@@ -380,14 +392,14 @@ function generatePendingReports(shiftType) {
     if (existsPending) continue;
 
     // Check if attendance was already marked today for this shop
-    const alreadyMarked = checkIfAttendanceMarked(shop.address, shiftType, today);
+    const alreadyMarked = await checkIfAttendanceMarked(shop.address, shiftType, today);
     if (alreadyMarked) {
       console.log(`[AttendanceScheduler] Attendance already marked for ${shop.name}, skipping`);
       continue;
     }
 
     // Create pending report
-    createPendingReport(shop, shiftType, deadline);
+    await createPendingReport(shop, shiftType, deadline);
     created++;
   }
 
@@ -401,7 +413,7 @@ function generatePendingReports(shiftType) {
 async function checkPendingDeadlines() {
   const now = new Date();
   const today = getMoscowDateString();
-  const reports = loadTodayPendingReports();
+  const reports = await loadTodayPendingReports();
   let failedCount = 0;
   const failedShops = [];
 
@@ -411,12 +423,12 @@ async function checkPendingDeadlines() {
     const deadline = new Date(report.deadline);
 
     // Check if attendance was marked in the meantime
-    const marked = checkIfAttendanceMarked(report.shopAddress, report.shiftType, today);
+    const marked = await checkIfAttendanceMarked(report.shopAddress, report.shiftType, today);
     if (marked) {
       // Mark as completed and remove pending
       console.log(`[AttendanceScheduler] Attendance marked for ${report.shopName}, removing pending`);
-      if (report._filePath && fs.existsSync(report._filePath)) {
-        fs.unlinkSync(report._filePath);
+      if (report._filePath && (await fileExists(report._filePath))) {
+        await fsp.unlink(report._filePath);
       }
       continue;
     }
@@ -425,7 +437,7 @@ async function checkPendingDeadlines() {
       // Deadline passed - mark as failed
       report.status = 'failed';
       report.failedAt = now.toISOString();
-      savePendingReport(report);
+      await savePendingReport(report);
       failedCount++;
 
       failedShops.push({
@@ -454,13 +466,13 @@ async function checkPendingDeadlines() {
 // 3. Assign Penalty from Work Schedule
 // ============================================
 async function assignPenaltyFromSchedule(report) {
-  const settings = getAttendanceSettings();
+  const settings = await getAttendanceSettings();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7); // YYYY-MM
 
   // Load work schedule for this month
   const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
-  const schedule = loadJsonFile(scheduleFile, { entries: [] });
+  const schedule = await loadJsonFile(scheduleFile, { entries: [] });
 
   if (!schedule.entries || schedule.entries.length === 0) {
     console.log(`[AttendanceScheduler] No work schedule found for ${monthKey}, cannot assign penalty`);
@@ -517,7 +529,7 @@ async function createPenalty({ employeeId, employeeName, shopAddress, points, re
 
   // Load existing penalties
   const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-  let penalties = loadJsonFile(penaltiesFile, []);
+  let penalties = await loadJsonFile(penaltiesFile, []);
 
   // Check for duplicate
   const exists = penalties.some(p => p.sourceId === sourceId);
@@ -527,7 +539,7 @@ async function createPenalty({ employeeId, employeeName, shopAddress, points, re
   }
 
   penalties.push(penalty);
-  saveJsonFile(penaltiesFile, penalties);
+  await saveJsonFile(penaltiesFile, penalties);
 
   console.log(`[AttendanceScheduler] Created penalty for ${employeeName}: ${points} points (${reason})`);
 
@@ -547,11 +559,11 @@ async function sendEmployeePenaltyNotification(employeeId, employeeName, points,
   // Найти телефон сотрудника по employeeId
   let employeePhone = null;
   try {
-    if (fs.existsSync(EMPLOYEES_DIR)) {
-      const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(EMPLOYEES_DIR)) {
+      const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const empData = JSON.parse(fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8'));
+          const empData = JSON.parse(await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8'));
           if (empData.id === employeeId && empData.phone) {
             employeePhone = empData.phone;
             break;
@@ -625,20 +637,20 @@ async function sendAdminFailedNotification(count, failedShops) {
 // ============================================
 // 6. Cleanup ALL Reports (at 23:59)
 // ============================================
-function cleanupFailedReports() {
+async function cleanupFailedReports() {
   // Удаляем ВСЕ файлы в папке pending (и failed, и оставшиеся pending)
   let removedCount = 0;
 
   try {
-    if (!fs.existsSync(ATTENDANCE_PENDING_DIR)) {
+    if (!(await fileExists(ATTENDANCE_PENDING_DIR))) {
       return 0;
     }
 
-    const files = fs.readdirSync(ATTENDANCE_PENDING_DIR);
+    const files = await fsp.readdir(ATTENDANCE_PENDING_DIR);
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
-          fs.unlinkSync(path.join(ATTENDANCE_PENDING_DIR, file));
+          await fsp.unlink(path.join(ATTENDANCE_PENDING_DIR, file));
           removedCount++;
         } catch (e) {
           console.error(`[AttendanceScheduler] Error removing file ${file}:`, e.message);
@@ -660,7 +672,7 @@ function cleanupFailedReports() {
     lastCleanup: new Date().toISOString(),
     lastCheck: new Date().toISOString()
   };
-  saveState(emptyState);
+  await saveState(emptyState);
   console.log('[AttendanceScheduler] State reset for new day');
 
   return removedCount;
@@ -672,8 +684,8 @@ function cleanupFailedReports() {
 async function runScheduledChecks() {
   const now = new Date();
   const moscow = getMoscowTime();
-  const settings = getAttendanceSettings();
-  const state = loadState();
+  const settings = await getAttendanceSettings();
+  const state = await loadState();
 
   console.log(`\n[${now.toISOString()}] AttendanceScheduler: Running checks... (Moscow time: ${moscow.toISOString()})`);
   console.log(`[AttendanceScheduler] Settings: morning ${settings.morningStartTime}-${settings.morningEndTime}, evening ${settings.eveningStartTime}-${settings.eveningEndTime}`);
@@ -683,7 +695,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastMorningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[AttendanceScheduler] Morning window active (${settings.morningStartTime} - ${settings.morningEndTime}), generating reports...`);
-      const created = generatePendingReports('morning');
+      const created = await generatePendingReports('morning');
       if (created > 0) {
         state.lastMorningGeneration = now.toISOString();
       }
@@ -695,7 +707,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastEveningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[AttendanceScheduler] Evening window active (${settings.eveningStartTime} - ${settings.eveningEndTime}), generating reports...`);
-      const created = generatePendingReports('evening');
+      const created = await generatePendingReports('evening');
       if (created > 0) {
         state.lastEveningGeneration = now.toISOString();
       }
@@ -714,20 +726,20 @@ async function runScheduledChecks() {
   if (moscowHours === 23 && moscowMinutes >= 59) {
     const lastCleanup = state.lastCleanup;
     if (!lastCleanup || !isSameDay(new Date(lastCleanup), now)) {
-      cleanupFailedReports();
+      await cleanupFailedReports();
       state.lastCleanup = now.toISOString();
     }
   }
 
-  saveState(state);
+  await saveState(state);
   console.log(`[AttendanceScheduler] Checks completed\n`);
 }
 
 // ============================================
 // 8. Scheduler Setup
 // ============================================
-function startAttendanceAutomationScheduler() {
-  const settings = getAttendanceSettings();
+async function startAttendanceAutomationScheduler() {
+  const settings = await getAttendanceSettings();
   const moscow = getMoscowTime();
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -741,48 +753,50 @@ function startAttendanceAutomationScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(() => {
-    runScheduledChecks();
+  setInterval(async () => {
+    await runScheduledChecks();
   }, CHECK_INTERVAL_MS);
 
   // First check after 6 seconds (slightly offset from other schedulers)
-  setTimeout(() => {
-    runScheduledChecks();
+  setTimeout(async () => {
+    await runScheduledChecks();
   }, 6000);
 }
 
 // ============================================
 // 9. API Helper: Get Pending/Failed Reports
 // ============================================
-function getPendingReports() {
-  return loadTodayPendingReports().filter(r => r.status === 'pending');
+async function getPendingReports() {
+  const reports = await loadTodayPendingReports();
+  return reports.filter(r => r.status === 'pending');
 }
 
-function getFailedReports() {
-  return loadTodayPendingReports().filter(r => r.status === 'failed');
+async function getFailedReports() {
+  const reports = await loadTodayPendingReports();
+  return reports.filter(r => r.status === 'failed');
 }
 
 /**
  * Check if shop has pending attendance report (can mark attendance)
  */
-function canMarkAttendance(shopAddress) {
-  const pendingReports = getPendingReports();
+async function canMarkAttendance(shopAddress) {
+  const pendingReports = await getPendingReports();
   return pendingReports.some(r => r.shopAddress === shopAddress);
 }
 
 /**
  * Mark pending report as completed (when attendance is submitted)
  */
-function markPendingAsCompleted(shopAddress, shiftType) {
-  const reports = loadTodayPendingReports();
+async function markPendingAsCompleted(shopAddress, shiftType) {
+  const reports = await loadTodayPendingReports();
   const report = reports.find(r =>
     r.shopAddress === shopAddress &&
     r.shiftType === shiftType &&
     r.status === 'pending'
   );
 
-  if (report && report._filePath && fs.existsSync(report._filePath)) {
-    fs.unlinkSync(report._filePath);
+  if (report && report._filePath && (await fileExists(report._filePath))) {
+    await fsp.unlink(report._filePath);
     console.log(`[AttendanceScheduler] Removed pending report for ${shopAddress} (${shiftType})`);
     return true;
   }

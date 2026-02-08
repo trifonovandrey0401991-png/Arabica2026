@@ -2,12 +2,14 @@
  * PRODUCT QUESTIONS NOTIFICATIONS API
  * Система push-уведомлений для вопросов о товаре
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Типы уведомлений:
  * - product_question_created - Новый вопрос от клиента
  * - product_question_answered - Сотрудник ответил на вопрос
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Константы
@@ -15,6 +17,16 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ==================== УТИЛИТЫ ====================
 
@@ -26,42 +38,42 @@ function getFirebaseAdmin() {
   try {
     const { admin, firebaseInitialized } = require('../firebase-admin-config');
     if (!firebaseInitialized) {
-      console.log('⚠️  Firebase не инициализирован');
+      console.log('Firebase not initialized');
       return null;
     }
     return admin;
   } catch (e) {
-    console.error('❌ Ошибка загрузки Firebase:', e.message);
+    console.error('Firebase load error:', e.message);
     return null;
   }
 }
 
 /**
  * Получить список всех сотрудников (для broadcast)
- * @returns {Array} Массив сотрудников
+ * @returns {Promise<Array>} Массив сотрудников
  */
-function getAllEmployees() {
+async function getAllEmployees() {
   const employees = [];
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) {
-      console.log('⚠️  Папка сотрудников не существует');
+    if (!(await fileExists(EMPLOYEES_DIR))) {
+      console.log('Employees directory does not exist');
       return employees;
     }
 
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const employee = JSON.parse(content);
         employees.push(employee);
       } catch (e) {
-        console.error(`❌ Ошибка чтения файла ${file}:`, e.message);
+        console.error(`Error reading file ${file}:`, e.message);
       }
     }
   } catch (e) {
-    console.error('❌ Ошибка получения списка сотрудников:', e.message);
+    console.error('Error getting employees list:', e.message);
   }
 
   return employees;
@@ -70,21 +82,22 @@ function getAllEmployees() {
 /**
  * Получить FCM токен по телефону
  * @param {string} phone - Номер телефона
- * @returns {string|null} FCM токен или null
+ * @returns {Promise<string|null>} FCM токен или null
  */
-function getFcmTokenByPhone(phone) {
+async function getFcmTokenByPhone(phone) {
   try {
     const normalizedPhone = phone.replace(/[\s+]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!(await fileExists(tokenFile))) {
       return null;
     }
 
-    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const content = await fsp.readFile(tokenFile, 'utf8');
+    const tokenData = JSON.parse(content);
     return tokenData.token || null;
   } catch (e) {
-    console.error(`❌ Ошибка получения токена для ${phone}:`, e.message);
+    console.error(`Error getting token for ${phone}:`, e.message);
     return null;
   }
 }
@@ -100,13 +113,13 @@ function getFcmTokenByPhone(phone) {
 async function sendPushToPhone(phone, title, body, data = {}) {
   const admin = getFirebaseAdmin();
   if (!admin) {
-    console.log('⚠️  Firebase не доступен, уведомление не отправлено');
+    console.log('Firebase not available, notification not sent');
     return false;
   }
 
-  const token = getFcmTokenByPhone(phone);
+  const token = await getFcmTokenByPhone(phone);
   if (!token) {
-    console.log(`⚠️  FCM токен не найден для ${phone}`);
+    console.log(`FCM token not found for ${phone}`);
     return false;
   }
 
@@ -130,10 +143,10 @@ async function sendPushToPhone(phone, title, body, data = {}) {
       },
     });
 
-    console.log(`✅ Push отправлен: ${phone.substring(0, 5)}***`);
+    console.log(`Push sent: ${phone.substring(0, 5)}***`);
     return true;
   } catch (e) {
-    console.error(`❌ Ошибка отправки push на ${phone}:`, e.message);
+    console.error(`Push error for ${phone}:`, e.message);
     return false;
   }
 }
@@ -151,7 +164,7 @@ async function sendPushToMultiple(employees, title, body, data = {}) {
 
   for (const employee of employees) {
     if (!employee.phone) {
-      console.log(`⚠️  У сотрудника ${employee.name || employee.id} нет телефона`);
+      console.log(`Employee ${employee.name || employee.id} has no phone`);
       continue;
     }
 
@@ -159,7 +172,7 @@ async function sendPushToMultiple(employees, title, body, data = {}) {
     if (success) successCount++;
   }
 
-  console.log(`✅ Отправлено ${successCount}/${employees.length} уведомлений`);
+  console.log(`Sent ${successCount}/${employees.length} notifications`);
   return successCount;
 }
 
@@ -173,16 +186,16 @@ async function sendPushToMultiple(employees, title, body, data = {}) {
  * @returns {Promise<void>}
  */
 async function notifyQuestionCreated(question) {
-  console.log('📨 Отправка уведомлений о новом вопросе...');
+  console.log('Sending notifications about new question...');
 
-  const employees = getAllEmployees();
+  const employees = await getAllEmployees();
   if (employees.length === 0) {
-    console.log('⚠️  Нет получателей для уведомления');
+    console.log('No recipients for notification');
     return;
   }
 
   // Определить данные из вопроса или сообщения
-  const clientName = question.clientName || question.senderName || 'Клиент';
+  const clientName = question.clientName || question.senderName || 'Client';
   const questionText = question.questionText || question.text || '';
   const questionId = question.id || '';
   const shopAddress = question.shopAddress || question.originalShopAddress || '';
@@ -192,8 +205,8 @@ async function notifyQuestionCreated(question) {
     ? questionText.substring(0, 50) + '...'
     : questionText;
 
-  const title = 'Новый вопрос о товаре';
-  const body = `${clientName} спрашивает: "${shortText}"`;
+  const title = 'New product question';
+  const body = `${clientName} asks: "${shortText}"`;
 
   const data = {
     type: 'product_question_created',
@@ -202,7 +215,7 @@ async function notifyQuestionCreated(question) {
     action: 'view_question',
   };
 
-  console.log(`📨 Broadcast: отправка ${employees.length} сотрудникам`);
+  console.log(`Broadcast: sending to ${employees.length} employees`);
   await sendPushToMultiple(employees, title, body, data);
 }
 
@@ -215,16 +228,16 @@ async function notifyQuestionCreated(question) {
  * @returns {Promise<void>}
  */
 async function notifyQuestionAnswered(question, answer) {
-  console.log('📨 Отправка уведомления клиенту об ответе...');
+  console.log('Sending notification to client about answer...');
 
   const clientPhone = question.clientPhone;
   if (!clientPhone) {
-    console.log('⚠️  Нет телефона клиента для уведомления');
+    console.log('No client phone for notification');
     return;
   }
 
   // Определить данные из ответа
-  const shopName = answer.shopAddress || 'Сотрудник';
+  const shopName = answer.shopAddress || 'Employee';
   const answerText = answer.text || '';
 
   // Обрезать текст ответа если он длинный
@@ -232,7 +245,7 @@ async function notifyQuestionAnswered(question, answer) {
     ? answerText.substring(0, 50) + '...'
     : answerText;
 
-  const title = 'Ответ на ваш вопрос';
+  const title = 'Answer to your question';
   const body = `${shopName}: ${shortText}`;
 
   const data = {
@@ -252,24 +265,24 @@ async function notifyQuestionAnswered(question, answer) {
  * @returns {Promise<void>}
  */
 async function notifyPersonalDialogClientMessage(dialog, message) {
-  console.log('📨 Отправка уведомлений ВСЕМ сотрудникам о сообщении в персональном диалоге...');
+  console.log('Sending notifications to ALL employees about personal dialog message...');
 
   // Получить всех сотрудников (broadcast - любой может ответить)
-  const allEmployees = getAllEmployees();
+  const allEmployees = await getAllEmployees();
   if (allEmployees.length === 0) {
-    console.log('⚠️  Нет сотрудников для уведомления');
+    console.log('No employees for notification');
     return;
   }
 
   const shopAddress = dialog.shopAddress;
-  const clientName = message.senderName || dialog.clientName || 'Клиент';
+  const clientName = message.senderName || dialog.clientName || 'Client';
   const messageText = message.text || '';
 
   const shortText = messageText.length > 50
     ? messageText.substring(0, 50) + '...'
     : messageText;
 
-  const title = 'Сообщение в поиске товара';
+  const title = 'Message in product search';
   const body = `${shopAddress}: ${clientName} - "${shortText}"`;
 
   const data = {
@@ -279,7 +292,7 @@ async function notifyPersonalDialogClientMessage(dialog, message) {
     action: 'view_personal_dialog',
   };
 
-  console.log(`📨 Broadcast: отправка ${allEmployees.length} сотрудникам`);
+  console.log(`Broadcast: sending to ${allEmployees.length} employees`);
   await sendPushToMultiple(allEmployees, title, body, data);
 }
 
@@ -290,22 +303,22 @@ async function notifyPersonalDialogClientMessage(dialog, message) {
  * @returns {Promise<void>}
  */
 async function notifyPersonalDialogEmployeeMessage(dialog, message) {
-  console.log('📨 Отправка уведомления клиенту о сообщении в персональном диалоге...');
+  console.log('Sending notification to client about personal dialog message...');
 
   const clientPhone = dialog.clientPhone;
   if (!clientPhone) {
-    console.log('⚠️  Нет телефона клиента для уведомления');
+    console.log('No client phone for notification');
     return;
   }
 
-  const shopName = message.shopAddress || dialog.shopAddress || 'Магазин';
+  const shopName = message.shopAddress || dialog.shopAddress || 'Shop';
   const messageText = message.text || '';
 
   const shortText = messageText.length > 50
     ? messageText.substring(0, 50) + '...'
     : messageText;
 
-  const title = 'Ответ от магазина';
+  const title = 'Response from shop';
   const body = `${shopName}: ${shortText}`;
 
   const data = {

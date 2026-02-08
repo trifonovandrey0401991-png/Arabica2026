@@ -17,10 +17,11 @@ class ShiftQuestionsManagementPage extends StatefulWidget {
 }
 
 class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementPage> {
-  // Цвета для современного дизайна
-  static const _primaryColor = Color(0xFF004D40);
-  static const _gradientStart = Color(0xFF00695C);
-  static const _gradientEnd = Color(0xFF004D40);
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   List<ShiftQuestion> _questions = [];
   List<ShiftQuestion> _filteredQuestions = [];
@@ -161,15 +162,8 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _emeraldDark,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
-              ),
-            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -223,15 +217,15 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
+                        color: Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[200]!),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: Text(
                         question.question,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[700],
+                          color: Colors.white.withOpacity(0.7),
                           height: 1.4,
                         ),
                         textAlign: TextAlign.center,
@@ -242,7 +236,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       'Это действие невозможно отменить',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[500],
+                        color: Colors.white.withOpacity(0.5),
                       ),
                     ),
                   ],
@@ -261,14 +255,14 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          side: BorderSide(color: Colors.grey[300]!),
+                          side: BorderSide(color: Colors.white.withOpacity(0.2)),
                         ),
                         child: Text(
                           'Отмена',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
+                            color: Colors.white.withOpacity(0.7),
                           ),
                         ),
                       ),
@@ -366,9 +360,9 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: _emeraldDark,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -381,12 +375,12 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    color: _gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.filter_list,
-                    color: Color(0xFF004D40),
+                    color: _gold,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -395,6 +389,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 const Spacer(),
@@ -407,7 +402,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       });
                       Navigator.pop(context);
                     },
-                    child: const Text('Сбросить'),
+                    child: Text('Сбросить', style: TextStyle(color: _gold)),
                   ),
               ],
             ),
@@ -459,7 +454,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: isSelected ? color.withOpacity(0.12) : Colors.grey[50],
+        color: isSelected ? color.withOpacity(0.15) : Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -475,7 +470,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected ? color : Colors.grey[300]!,
+                color: isSelected ? color : Colors.white.withOpacity(0.1),
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -495,7 +490,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? color : Colors.grey[800],
+                    color: isSelected ? color : Colors.white.withOpacity(0.8),
                   ),
                 ),
                 const Spacer(),
@@ -529,12 +524,12 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+        color: Colors.white.withOpacity(0.04),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
       child: Row(
         children: [
-          Icon(Icons.filter_alt, size: 18, color: Colors.grey[600]),
+          Icon(Icons.filter_alt, size: 18, color: Colors.white.withOpacity(0.5)),
           const SizedBox(width: 8),
           Expanded(
             child: SingleChildScrollView(
@@ -572,7 +567,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             '${_filteredQuestions.length} из ${_questions.length}',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: Colors.white.withOpacity(0.5),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -590,10 +585,10 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color?.withOpacity(0.15) ?? const Color(0xFF004D40).withOpacity(0.15),
+        color: color?.withOpacity(0.15) ?? _gold.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color?.withOpacity(0.3) ?? const Color(0xFF004D40).withOpacity(0.3),
+          color: color?.withOpacity(0.3) ?? _gold.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -604,7 +599,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: color ?? const Color(0xFF004D40),
+              color: color ?? _gold,
             ),
           ),
           const SizedBox(width: 6),
@@ -613,7 +608,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             child: Icon(
               Icons.close,
               size: 16,
-              color: color ?? const Color(0xFF004D40),
+              color: color ?? _gold,
             ),
           ),
         ],
@@ -647,44 +642,31 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       case 'text':
         return const Color(0xFF2E7D32);
       default:
-        return const Color(0xFF004D40);
+        return _gold;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _night,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_gradientStart, _gradientEnd],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // Кастомный AppBar с градиентом
+              // Custom AppBar
               _buildCustomAppBar(),
               // Контент
               Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
-                    child: _buildContent(),
-                  ),
-                ),
+                child: _buildContent(),
               ),
             ],
           ),
@@ -692,13 +674,13 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddQuestionDialog,
-        backgroundColor: _primaryColor,
-        elevation: 4,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
+        backgroundColor: _gold,
+        elevation: 0,
+        icon: Icon(Icons.add_rounded, color: _night),
+        label: Text(
           'Добавить',
           style: TextStyle(
-            color: Colors.white,
+            color: _night,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -716,11 +698,12 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               // Кнопка назад
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                  icon: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.8), size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -734,14 +717,14 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       'Вопросы сдачи смены',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       '${_questions.length} вопросов',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withOpacity(0.6),
                         fontSize: 13,
                       ),
                     ),
@@ -768,19 +751,20 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
           Container(
             height: 50,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
               controller: _searchController,
               style: const TextStyle(color: Colors.white, fontSize: 15),
               decoration: InputDecoration(
                 hintText: 'Поиск по вопросам...',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.7)),
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.5)),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.close, color: Colors.white.withOpacity(0.7), size: 20),
+                        icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 20),
                         onPressed: () {
                           _searchController.clear();
                           setState(() {
@@ -793,7 +777,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
-              cursorColor: Colors.white,
+              cursorColor: _gold,
               onChanged: (value) {
                 setState(() {
                   _searchQuery = value;
@@ -821,11 +805,12 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: IconButton(
-            icon: Icon(icon, color: Colors.white, size: 20),
+            icon: Icon(icon, color: Colors.white.withOpacity(0.8), size: 20),
             onPressed: onPressed,
             tooltip: tooltip,
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
@@ -839,9 +824,9 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: Colors.orange,
+                color: _gold,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.5),
+                border: Border.all(color: _emeraldDark, width: 1.5),
               ),
             ),
           ),
@@ -913,9 +898,9 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.15),
+          color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(20),
-          border: isSelected ? Border.all(color: color, width: 2) : null,
+          border: isSelected ? Border.all(color: _gold, width: 1.5) : Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -923,7 +908,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             Icon(
               icon,
               size: 16,
-              color: isSelected ? color : Colors.white.withOpacity(0.9),
+              color: isSelected ? _gold : Colors.white.withOpacity(0.7),
             ),
             const SizedBox(width: 6),
             Text(
@@ -931,7 +916,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? color : Colors.white,
+                color: isSelected ? _gold : Colors.white.withOpacity(0.8),
               ),
             ),
           ],
@@ -960,18 +945,12 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryColor.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                valueColor: AlwaysStoppedAnimation<Color>(_gold),
                 strokeWidth: 3,
               ),
             ),
@@ -979,7 +958,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             Text(
               'Загрузка вопросов...',
               style: TextStyle(
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
                 fontSize: 14,
               ),
             ),
@@ -1025,20 +1004,14 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
           Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: _primaryColor.withOpacity(0.1),
-                  blurRadius: 30,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
               Icons.question_answer_outlined,
               size: 56,
-              color: _primaryColor.withOpacity(0.6),
+              color: _gold.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 24),
@@ -1047,7 +1020,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: _primaryColor,
+              color: _gold,
             ),
           ),
           const SizedBox(height: 8),
@@ -1057,7 +1030,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               'Нажмите кнопку "Добавить"\nчтобы создать первый вопрос',
               style: TextStyle(
                 fontSize: 15,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
@@ -1076,20 +1049,14 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
               Icons.search_off_rounded,
               size: 48,
-              color: Colors.grey[400],
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
           const SizedBox(height: 20),
@@ -1098,7 +1065,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
+              color: Colors.white.withOpacity(0.8),
             ),
           ),
           const SizedBox(height: 8),
@@ -1106,7 +1073,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             'Попробуйте изменить параметры поиска',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: Colors.white.withOpacity(0.5),
             ),
           ),
           const SizedBox(height: 20),
@@ -1122,7 +1089,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             icon: const Icon(Icons.refresh),
             label: const Text('Сбросить фильтры'),
             style: TextButton.styleFrom(
-              foregroundColor: _primaryColor,
+              foregroundColor: _gold,
             ),
           ),
         ],
@@ -1136,26 +1103,15 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: typeColor.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           onTap: () => _showEditQuestionDialog(question),
           splashColor: typeColor.withOpacity(0.08),
           child: Column(
@@ -1177,13 +1133,6 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: typeColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                       ),
                       child: Center(
                         child: Text(
@@ -1206,10 +1155,10 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: typeColor.withOpacity(0.1),
+                              color: typeColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: typeColor.withOpacity(0.2),
+                                color: typeColor.withOpacity(0.3),
                               ),
                             ),
                             child: Row(
@@ -1236,10 +1185,10 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                           // Текст вопроса
                           Text(
                             question.question,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF1A1A1A),
+                              color: Colors.white.withOpacity(0.9),
                               height: 1.4,
                             ),
                           ),
@@ -1252,7 +1201,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       children: [
                         _buildCardActionButton(
                           icon: Icons.edit_rounded,
-                          color: _primaryColor,
+                          color: _gold,
                           onTap: () => _showEditQuestionDialog(question),
                         ),
                         const SizedBox(height: 6),
@@ -1272,10 +1221,10 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: Colors.white.withOpacity(0.03),
                     borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
                     ),
                   ),
                   child: Row(
@@ -1320,7 +1269,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 18, color: color),
@@ -1393,6 +1342,12 @@ class ShiftQuestionFormDialog extends StatefulWidget {
 }
 
 class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
+  // Dark emerald palette (dialog)
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   final _formKey = GlobalKey<FormState>();
   final _questionController = TextEditingController();
   String? _selectedAnswerType; // 'photo', 'yesno', 'number', 'text'
@@ -1421,14 +1376,14 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       } else {
         _selectedAnswerType = 'text';
       }
-      
+
       // Загружаем выбранные магазины и эталонные фото
       if (widget.question!.shops == null) {
         _isForAllShops = true;
       } else {
         _selectedShopAddresses = widget.question!.shops!.toSet();
       }
-      
+
       if (widget.question!.referencePhotos != null) {
         _referencePhotoUrls = Map<String, String>.from(widget.question!.referencePhotos!);
       }
@@ -1440,7 +1395,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
     }
     _loadShops();
   }
-  
+
   Future<void> _loadShops() async {
     try {
       setState(() => _isLoadingShops = true);
@@ -1461,7 +1416,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       }
     }
   }
-  
+
   Future<void> _pickReferencePhoto(String shopAddress) async {
     try {
       final ImagePicker picker = ImagePicker();
@@ -1502,7 +1457,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       }
     }
   }
-  
+
   Future<void> _uploadReferencePhoto(String questionId, String shopAddress, File photoFile) async {
     try {
       setState(() => _isUploadingPhotos = true);
@@ -1621,7 +1576,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
 
       // Определяем shops: null если для всех, иначе список выбранных адресов
       List<String>? shops = _isForAllShops ? null : _selectedShopAddresses.toList();
-      
+
       // Для нового вопроса сначала создаем вопрос, затем загружаем фото
       ShiftQuestion? result;
       if (widget.question != null) {
@@ -1635,7 +1590,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           referencePhotos: _referencePhotoUrls.isNotEmpty ? _referencePhotoUrls : null,
           isAiCheck: _selectedAnswerType == 'photo' ? _isAiCheck : false,
         );
-        
+
         // Загружаем новые эталонные фото, если есть
         if (result != null && _selectedAnswerType == 'photo') {
           for (final entry in _referencePhotoFiles.entries) {
@@ -1659,7 +1614,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           referencePhotos: null, // Фото загрузим отдельно
           isAiCheck: _selectedAnswerType == 'photo' ? _isAiCheck : false,
         );
-        
+
         // Загружаем эталонные фото для нового вопроса
         if (result != null && _selectedAnswerType == 'photo') {
           final Map<String, String> uploadedPhotos = {};
@@ -1675,7 +1630,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
               }
             }
           }
-          
+
           // Обновляем вопрос с загруженными фото
           if (uploadedPhotos.isNotEmpty) {
             final updatedResult = await ShiftQuestionService.updateQuestion(
@@ -1732,15 +1687,8 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _emeraldDark,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1750,7 +1698,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                  colors: [_emerald, _emeraldDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -1765,12 +1713,12 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: _gold.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
                       isEditing ? Icons.edit_note : Icons.add_circle_outline,
-                      color: Colors.white,
+                      color: _gold,
                       size: 28,
                     ),
                   ),
@@ -1792,7 +1740,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           isEditing ? 'Измените параметры вопроса' : 'Заполните все поля',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -1802,7 +1750,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                     icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: () => Navigator.pop(context),
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.15),
+                      backgroundColor: Colors.white.withOpacity(0.1),
                     ),
                   ),
                 ],
@@ -1821,32 +1769,41 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                       _buildSectionHeader(
                         icon: Icons.help_outline,
                         title: 'Текст вопроса',
-                        color: const Color(0xFF004D40),
+                        color: _gold,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _questionController,
                         decoration: InputDecoration(
                           hintText: 'Введите текст вопроса...',
-                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                           filled: true,
-                          fillColor: Colors.grey[50],
+                          fillColor: Colors.white.withOpacity(0.06),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: Color(0xFF004D40), width: 2),
+                            borderSide: const BorderSide(color: _gold, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Colors.red, width: 1),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Colors.red, width: 2),
                           ),
                           contentPadding: const EdgeInsets.all(16),
                         ),
                         maxLines: 3,
-                        style: const TextStyle(fontSize: 16, height: 1.4),
+                        style: TextStyle(fontSize: 16, height: 1.4, color: Colors.white.withOpacity(0.9)),
+                        cursorColor: _gold,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Пожалуйста, введите текст вопроса';
@@ -1914,11 +1871,11 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                       ),
                       const SizedBox(height: 12),
                       if (_isLoadingShops)
-                        const Center(
+                        Center(
                           child: Padding(
-                            padding: EdgeInsets.all(20),
+                            padding: const EdgeInsets.all(20),
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                              valueColor: AlwaysStoppedAnimation<Color>(_gold),
                             ),
                           ),
                         )
@@ -1926,20 +1883,20 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                         // Переключатель "Все магазины"
                         Container(
                           decoration: BoxDecoration(
-                            color: _isForAllShops ? const Color(0xFF004D40).withOpacity(0.1) : Colors.grey[50],
+                            color: _isForAllShops ? _gold.withOpacity(0.1) : Colors.white.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: _isForAllShops ? const Color(0xFF004D40).withOpacity(0.3) : Colors.grey[300]!,
+                              color: _isForAllShops ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
                             ),
                           ),
                           child: CheckboxListTile(
-                            title: const Text(
+                            title: Text(
                               'Задавать всем магазинам',
-                              style: TextStyle(fontWeight: FontWeight.w600),
+                              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)),
                             ),
                             subtitle: Text(
                               'Вопрос будет задан на всех точках',
-                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                              style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
                             ),
                             value: _isForAllShops,
                             onChanged: (value) {
@@ -1951,7 +1908,8 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               });
                             },
                             controlAffinity: ListTileControlAffinity.leading,
-                            activeColor: const Color(0xFF004D40),
+                            activeColor: _gold,
+                            checkColor: _night,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -1962,7 +1920,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           Container(
                             constraints: const BoxConstraints(maxHeight: 200),
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey[300]!),
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: ClipRRect(
@@ -1975,9 +1933,9 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                   final isSelected = _selectedShopAddresses.contains(shop.address);
                                   return Container(
                                     decoration: BoxDecoration(
-                                      color: isSelected ? const Color(0xFF004D40).withOpacity(0.05) : Colors.white,
+                                      color: isSelected ? _gold.withOpacity(0.08) : Colors.transparent,
                                       border: Border(
-                                        bottom: BorderSide(color: Colors.grey[200]!),
+                                        bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
                                       ),
                                     ),
                                     child: CheckboxListTile(
@@ -1985,11 +1943,12 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                         shop.name,
                                         style: TextStyle(
                                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                          color: Colors.white.withOpacity(0.9),
                                         ),
                                       ),
                                       subtitle: Text(
                                         shop.address,
-                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
                                       ),
                                       value: isSelected,
                                       onChanged: (value) {
@@ -2004,7 +1963,8 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                         });
                                       },
                                       controlAffinity: ListTileControlAffinity.leading,
-                                      activeColor: const Color(0xFF004D40),
+                                      activeColor: _gold,
+                                      checkColor: _night,
                                     ),
                                   );
                                 },
@@ -2018,7 +1978,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                 'Выбрано: ${_selectedShopAddresses.length} магазин(ов)',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey[600],
+                                  color: Colors.white.withOpacity(0.5),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -2031,12 +1991,12 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                             decoration: BoxDecoration(
                               color: _isAiCheck
                                   ? const Color(0xFFF59E0B).withOpacity(0.1)
-                                  : Colors.grey[100],
+                                  : Colors.white.withOpacity(0.06),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: _isAiCheck
                                     ? const Color(0xFFF59E0B)
-                                    : Colors.grey[300]!,
+                                    : Colors.white.withOpacity(0.1),
                                 width: 1,
                               ),
                             ),
@@ -2045,22 +2005,23 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               onChanged: (value) {
                                 setState(() => _isAiCheck = value ?? false);
                               },
-                              title: const Text(
+                              title: Text(
                                 'Проверка ИИ',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 15,
+                                  color: Colors.white.withOpacity(0.9),
                                 ),
                               ),
                               subtitle: Text(
                                 'ИИ будет проверять товары на фото этого вопроса при пересменке',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: Colors.white.withOpacity(0.5),
                                 ),
                               ),
                               activeColor: const Color(0xFFF59E0B),
-                              checkColor: Colors.white,
+                              checkColor: _night,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -2068,7 +2029,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                 Icons.psychology,
                                 color: _isAiCheck
                                     ? const Color(0xFFF59E0B)
-                                    : Colors.grey[400],
+                                    : Colors.white.withOpacity(0.4),
                               ),
                             ),
                           ),
@@ -2085,7 +2046,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           const SizedBox(height: 8),
                           Text(
                             'Добавьте образцы, чтобы сотрудники знали, как должно выглядеть фото',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                            style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
                           ),
                           const SizedBox(height: 12),
                           if (_isForAllShops)
@@ -2114,13 +2075,13 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: Colors.white.withOpacity(0.04),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),
                 ),
                 border: Border(
-                  top: BorderSide(color: Colors.grey[200]!),
+                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
                 ),
               ),
               child: Row(
@@ -2133,14 +2094,14 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        side: BorderSide(color: Colors.grey[400]!),
+                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Text(
                         'Отмена',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
+                          color: Colors.white.withOpacity(0.7),
                         ),
                       ),
                     ),
@@ -2151,21 +2112,21 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveQuestion,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
-                        foregroundColor: Colors.white,
+                        backgroundColor: _gold,
+                        foregroundColor: _night,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        elevation: 2,
+                        elevation: 0,
                       ),
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 22,
                               width: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(_night),
                               ),
                             )
                           : Row(
@@ -2206,7 +2167,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 20, color: color),
@@ -2231,7 +2192,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
     Color? color,
   }) {
     final isSelected = _selectedAnswerType == value;
-    final cardColor = color ?? const Color(0xFF004D40);
+    final cardColor = color ?? _gold;
 
     return GestureDetector(
       onTap: () {
@@ -2243,21 +2204,12 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? cardColor.withOpacity(0.12) : Colors.grey[50],
+          color: isSelected ? cardColor.withOpacity(0.15) : Colors.white.withOpacity(0.06),
           border: Border.all(
-            color: isSelected ? cardColor : Colors.grey[300]!,
+            color: isSelected ? cardColor : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: cardColor.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
         ),
         child: Column(
           children: [
@@ -2265,12 +2217,12 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isSelected ? cardColor.withOpacity(0.15) : Colors.grey[100],
+                color: isSelected ? cardColor.withOpacity(0.2) : Colors.white.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: isSelected ? cardColor : Colors.grey[500],
+                color: isSelected ? cardColor : Colors.white.withOpacity(0.5),
                 size: 28,
               ),
             ),
@@ -2278,7 +2230,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? cardColor : Colors.grey[700],
+                color: isSelected ? cardColor : Colors.white.withOpacity(0.7),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 fontSize: 13,
               ),
@@ -2300,7 +2252,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       ),
     );
   }
-  
+
   Widget _buildReferencePhotoSection(String shopAddress, String shopName) {
     final hasPhoto = _referencePhotoUrls.containsKey(shopAddress) ||
                      _referencePhotoFiles.containsKey(shopAddress);
@@ -2310,16 +2262,9 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -2332,7 +2277,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(Icons.store, size: 18, color: Colors.orange[700]),
@@ -2341,9 +2286,10 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                 Expanded(
                   child: Text(
                     shopName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                 ),
@@ -2351,7 +2297,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -2364,7 +2310,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Colors.green[700],
+                            color: Colors.green[600],
                           ),
                         ),
                       ],
@@ -2382,7 +2328,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -2414,7 +2360,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                                 loadingProgress.expectedTotalBytes!
                                             : null,
                                         strokeWidth: 2,
-                                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                                        valueColor: const AlwaysStoppedAnimation<Color>(_gold),
                                       ),
                                     );
                                   },
@@ -2424,7 +2370,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                     );
                                   },
                                 )
-                              : Center(child: Icon(Icons.image, size: 40, color: Colors.grey[400])),
+                              : Center(child: Icon(Icons.image, size: 40, color: Colors.white.withOpacity(0.3))),
                     ),
                   ),
                   // Кнопки поверх фото
@@ -2464,10 +2410,10 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                   height: 100,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: Colors.white.withOpacity(0.04),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.grey[300]!,
+                      color: Colors.white.withOpacity(0.1),
                       style: BorderStyle.solid,
                     ),
                   ),
@@ -2477,14 +2423,14 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                       Icon(
                         Icons.add_photo_alternate_outlined,
                         size: 36,
-                        color: Colors.grey[400],
+                        color: Colors.white.withOpacity(0.3),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Добавить эталонное фото',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey[600],
+                          color: Colors.white.withOpacity(0.5),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -2506,7 +2452,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
     bool isDestructive = false,
   }) {
     return Material(
-      color: isDestructive ? Colors.red[50] : Colors.white,
+      color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : _emeraldDark.withOpacity(0.9),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onPressed,
@@ -2515,18 +2461,11 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: Icon(
             icon,
             size: 18,
-            color: isDestructive ? Colors.red[600] : Colors.grey[700],
+            color: isDestructive ? Colors.red[300] : Colors.white.withOpacity(0.8),
           ),
         ),
       ),
@@ -2556,4 +2495,3 @@ class _XFileWrapper implements File {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
-

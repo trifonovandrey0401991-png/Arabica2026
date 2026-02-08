@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/pending_code_model.dart';
-import '../models/master_product_model.dart';
 import '../services/master_catalog_service.dart';
 import '../../../core/utils/logger.dart';
 

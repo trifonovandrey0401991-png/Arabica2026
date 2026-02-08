@@ -1,23 +1,54 @@
-const fs = require('fs');
+/**
+ * Suppliers API
+ * CRUD операции для поставщиков
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
-const SUPPLIERS_DIR = '/var/www/suppliers';
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const SUPPLIERS_DIR = path.join(DATA_DIR, 'suppliers');
 
-if (!fs.existsSync(SUPPLIERS_DIR)) {
-  fs.mkdirSync(SUPPLIERS_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
+// Initialize directory on module load
+(async () => {
+  try {
+    await fsp.mkdir(SUPPLIERS_DIR, { recursive: true });
+  } catch (e) {
+    console.error('Failed to create suppliers directory:', e);
+  }
+})();
+
 function setupSuppliersAPI(app) {
-  app.get('/api/suppliers', (req, res) => {
+  app.get('/api/suppliers', async (req, res) => {
     try {
       console.log('GET /api/suppliers');
       const suppliers = [];
-      const files = fs.readdirSync(SUPPLIERS_DIR).filter(f => f.endsWith('.json'));
 
-      for (const file of files) {
+      let files = [];
+      try {
+        files = await fsp.readdir(SUPPLIERS_DIR);
+      } catch {
+        files = [];
+      }
+
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      for (const file of jsonFiles) {
         try {
           const filePath = path.join(SUPPLIERS_DIR, file);
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           suppliers.push(JSON.parse(content));
         } catch (e) {
           console.error('Ошибка чтения файла ' + file + ':', e);
@@ -32,17 +63,18 @@ function setupSuppliersAPI(app) {
     }
   });
 
-  app.get('/api/suppliers/:id', (req, res) => {
+  app.get('/api/suppliers/:id', async (req, res) => {
     try {
       const id = req.params.id;
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const supplierFile = path.join(SUPPLIERS_DIR, sanitizedId + '.json');
 
-      if (!fs.existsSync(supplierFile)) {
+      if (!(await fileExists(supplierFile))) {
         return res.status(404).json({ success: false, error: 'Поставщик не найден' });
       }
 
-      const supplier = JSON.parse(fs.readFileSync(supplierFile, 'utf8'));
+      const content = await fsp.readFile(supplierFile, 'utf8');
+      const supplier = JSON.parse(content);
       res.json({ success: true, supplier });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -63,6 +95,8 @@ function setupSuppliersAPI(app) {
         return res.status(400).json({ success: false, error: 'Тип оплаты должен быть "Нал" или "БезНал"' });
       }
 
+      await fsp.mkdir(SUPPLIERS_DIR, { recursive: true });
+
       const id = req.body.id || 'supplier_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const supplierFile = path.join(SUPPLIERS_DIR, sanitizedId + '.json');
@@ -79,7 +113,7 @@ function setupSuppliersAPI(app) {
         updatedAt: new Date().toISOString(),
       };
 
-      fs.writeFileSync(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
+      await fsp.writeFile(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
       console.log('Поставщик создан:', supplierFile);
       res.json({ success: true, supplier });
     } catch (error) {
@@ -93,7 +127,7 @@ function setupSuppliersAPI(app) {
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const supplierFile = path.join(SUPPLIERS_DIR, sanitizedId + '.json');
 
-      if (!fs.existsSync(supplierFile)) {
+      if (!(await fileExists(supplierFile))) {
         return res.status(404).json({ success: false, error: 'Поставщик не найден' });
       }
 
@@ -107,7 +141,8 @@ function setupSuppliersAPI(app) {
         return res.status(400).json({ success: false, error: 'Тип оплаты должен быть "Нал" или "БезНал"' });
       }
 
-      const oldSupplier = JSON.parse(fs.readFileSync(supplierFile, 'utf8'));
+      const oldContent = await fsp.readFile(supplierFile, 'utf8');
+      const oldSupplier = JSON.parse(oldContent);
 
       const supplier = {
         id: sanitizedId,
@@ -121,24 +156,24 @@ function setupSuppliersAPI(app) {
         updatedAt: new Date().toISOString(),
       };
 
-      fs.writeFileSync(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
+      await fsp.writeFile(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
       res.json({ success: true, supplier });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.delete('/api/suppliers/:id', (req, res) => {
+  app.delete('/api/suppliers/:id', async (req, res) => {
     try {
       const id = req.params.id;
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const supplierFile = path.join(SUPPLIERS_DIR, sanitizedId + '.json');
 
-      if (!fs.existsSync(supplierFile)) {
+      if (!(await fileExists(supplierFile))) {
         return res.status(404).json({ success: false, error: 'Поставщик не найден' });
       }
 
-      fs.unlinkSync(supplierFile);
+      await fsp.unlink(supplierFile);
       res.json({ success: true, message: 'Поставщик удален' });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });

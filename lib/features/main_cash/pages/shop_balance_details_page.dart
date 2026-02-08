@@ -23,6 +23,12 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
   ShopCashBalance? _balance;
   bool _isLoading = true;
 
+  // Dark Emerald palette
+  static const _emerald = Color(0xFF1A4D4D);
+  static const _emeraldDark = Color(0xFF0D2E2E);
+  static const _night = Color(0xFF051515);
+  static const _gold = Color(0xFFD4AF37);
+
   @override
   void initState() {
     super.initState();
@@ -68,47 +74,125 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.shopAddress,
-          style: const TextStyle(fontSize: 16),
-          overflow: TextOverflow.ellipsis,
-        ),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadBalance,
-            tooltip: 'Обновить',
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          tabs: const [
-            Tab(text: 'Баланс', icon: Icon(Icons.account_balance_wallet)),
-            Tab(text: 'Оборот', icon: Icon(Icons.calendar_today)),
-          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom header row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back,
+                          color: Colors.white.withOpacity(0.9),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.shopAddress,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: _loadBalance,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.refresh,
+                          color: Colors.white.withOpacity(0.9),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // TabBar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: _gold,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(text: 'Баланс', icon: Icon(Icons.account_balance_wallet)),
+                    Tab(text: 'Оборот', icon: Icon(Icons.calendar_today)),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: _gold),
+                      )
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildBalanceTab(),
+                          TurnoverCalendarWidget(shopAddress: widget.shopAddress),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildBalanceTab(),
-                TurnoverCalendarWidget(shopAddress: widget.shopAddress),
-              ],
-            ),
     );
   }
 
   Widget _buildBalanceTab() {
     if (_balance == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Нет данных о балансе',
-          style: TextStyle(fontSize: 18, color: Colors.grey),
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.white.withOpacity(0.5),
+          ),
         ),
       );
     }
@@ -118,12 +202,12 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
       child: Column(
         children: [
           const SizedBox(height: 40),
-          const Text(
+          Text(
             'Текущий баланс кассы',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF004D40),
+              color: _gold,
             ),
           ),
           const SizedBox(height: 40),
@@ -144,18 +228,19 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
           ),
 
           const SizedBox(height: 16),
-          const Divider(thickness: 2),
+          Divider(thickness: 2, color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 16),
 
           // Итого
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Итого:',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
               Text(
@@ -165,7 +250,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                   fontWeight: FontWeight.bold,
                   color: _balance!.totalBalance < 0
                       ? Colors.red
-                      : const Color(0xFF004D40),
+                      : _gold,
                 ),
               ),
             ],
@@ -177,23 +262,25 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.06),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Детали',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
                   ),
                 ),
                 const SizedBox(height: 12),
                 _buildDetailRow('Поступления ООО:', _balance!.oooTotalIncome),
                 _buildDetailRow('Выемки ООО:', -_balance!.oooTotalWithdrawals),
-                const Divider(),
+                Divider(color: Colors.white.withOpacity(0.1)),
                 _buildDetailRow('Поступления ИП:', _balance!.ipTotalIncome),
                 _buildDetailRow('Выемки ИП:', -_balance!.ipTotalWithdrawals),
               ],
@@ -221,8 +308,9 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             const SizedBox(width: 12),
             Text(
               '$label:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
+                color: Colors.white.withOpacity(0.9),
               ),
             ),
           ],
@@ -232,7 +320,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: amount < 0 ? Colors.red : null,
+            color: amount < 0 ? Colors.red : Colors.white.withOpacity(0.9),
           ),
         ),
       ],
@@ -247,7 +335,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
         children: [
           Text(
             label,
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: Colors.white.withOpacity(0.5)),
           ),
           Text(
             '${_formatFullAmount(amount)} руб',

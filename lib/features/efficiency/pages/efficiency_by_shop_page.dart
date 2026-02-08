@@ -14,6 +14,12 @@ class EfficiencyByShopPage extends StatefulWidget {
 }
 
 class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
+  // --- palette ---
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = true;
   EfficiencyData? _data;
   String? _error;
@@ -54,24 +60,58 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('По магазинам'),
-        backgroundColor: EfficiencyUtils.primaryColor,
-        actions: [
-          MonthPickerButton(
-            selectedMonth: _selectedMonth,
-            selectedYear: _selectedYear,
-            onMonthSelected: (selection) {
-              setState(() {
-                _selectedYear = selection['year']!;
-                _selectedMonth = selection['month']!;
-              });
-              _loadData();
-            },
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emeraldDark, _night],
+            stops: [0.0, 0.3],
           ),
-        ],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // --- custom app bar ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'По магазинам',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    MonthPickerButton(
+                      selectedMonth: _selectedMonth,
+                      selectedYear: _selectedYear,
+                      onMonthSelected: (selection) {
+                        setState(() {
+                          _selectedYear = selection['year']!;
+                          _selectedMonth = selection['month']!;
+                        });
+                        _loadData();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              // --- body ---
+              Expanded(child: _buildBody()),
+            ],
+          ),
+        ),
       ),
-      body: _buildBody(),
     );
   }
 
@@ -95,6 +135,8 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     }
 
     return RefreshIndicator(
+      color: _gold,
+      backgroundColor: _emerald,
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -116,92 +158,104 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
   Widget _buildShopCard(EfficiencySummary summary) {
     final isPositive = summary.totalPoints >= 0;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ShopEfficiencyDetailPage(
-                summary: summary,
-                monthName: EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
-              ),
-            ),
-          );
-        },
+      decoration: BoxDecoration(
+        color: _emeraldDark,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      summary.entityName,
+        border: Border.all(color: _emerald.withOpacity(0.3)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ShopEfficiencyDetailPage(
+                  summary: summary,
+                  monthName: EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        summary.entityName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isPositive
+                            ? Colors.green.withOpacity(0.15)
+                            : Colors.red.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        summary.formattedTotal,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isPositive
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFEF5350),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      '+${summary.earnedPoints.toStringAsFixed(1)}',
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Color(0xFF4CAF50),
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isPositive ? Colors.green[50] : Colors.red[50],
-                      borderRadius: BorderRadius.circular(20),
+                    Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3))),
+                    Text(
+                      '-${summary.lostPoints.toStringAsFixed(1)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFFEF5350),
+                      ),
                     ),
-                    child: Text(
-                      summary.formattedTotal,
+                    const Spacer(),
+                    Text(
+                      '${summary.recordsCount} записей',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isPositive ? Colors.green[700] : Colors.red[700],
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.4),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(
-                    '+${summary.earnedPoints.toStringAsFixed(1)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.green[600],
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.chevron_right,
+                      color: Colors.white.withOpacity(0.3),
+                      size: 20,
                     ),
-                  ),
-                  const Text(' / ', style: TextStyle(color: Colors.grey)),
-                  Text(
-                    '-${summary.lostPoints.toStringAsFixed(1)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.red[600],
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${summary.recordsCount} записей',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey[400],
-                    size: 20,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              EfficiencyProgressBar(summary: summary),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                EfficiencyProgressBar(summary: summary),
+              ],
+            ),
           ),
         ),
       ),

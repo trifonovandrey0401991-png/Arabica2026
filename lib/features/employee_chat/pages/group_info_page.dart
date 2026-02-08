@@ -6,7 +6,7 @@ import '../services/employee_chat_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../../employees/services/employee_service.dart';
 
-/// Страница информации о группе
+/// Страница информации о группе — dark emerald стиль
 class GroupInfoPage extends StatefulWidget {
   final EmployeeChat chat;
   final String currentUserPhone;
@@ -22,6 +22,11 @@ class GroupInfoPage extends StatefulWidget {
 }
 
 class _GroupInfoPageState extends State<GroupInfoPage> {
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   late EmployeeChat _chat;
   final _nameController = TextEditingController();
   bool _isEditing = false;
@@ -62,7 +67,12 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           _isEditing = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Название обновлено')),
+          SnackBar(
+            content: const Text('Название обновлено'),
+            backgroundColor: _emerald,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
       }
     } catch (e) {
@@ -89,11 +99,9 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     setState(() => _isLoading = true);
     try {
-      // Загружаем фото
       final imageUrl = await EmployeeChatService.uploadGroupPhoto(File(pickedFile.path));
       if (imageUrl == null) throw Exception('Ошибка загрузки фото');
 
-      // Обновляем группу
       final updated = await EmployeeChatService.updateGroup(
         groupId: _chat.id,
         requesterPhone: widget.currentUserPhone,
@@ -103,7 +111,12 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       if (updated != null && mounted) {
         setState(() => _chat = updated);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Фото обновлено')),
+          SnackBar(
+            content: const Text('Фото обновлено'),
+            backgroundColor: _emerald,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
       }
     } catch (e) {
@@ -118,10 +131,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   }
 
   Future<void> _addMembers() async {
-    // Открываем диалог выбора участников
     final result = await showModalBottomSheet<List<String>>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => _AddMembersSheet(
         existingParticipants: _chat.participants,
       ),
@@ -138,13 +151,17 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       );
 
       if (success && mounted) {
-        // Обновляем информацию о группе
         final updated = await EmployeeChatService.getGroupInfo(_chat.id);
         if (updated != null) {
           setState(() => _chat = updated);
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Добавлено участников: ${result.length}')),
+          SnackBar(
+            content: Text('Добавлено участников: ${result.length}'),
+            backgroundColor: _emerald,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
       }
     } catch (e) {
@@ -162,12 +179,17 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить участника?'),
-        content: Text('Удалить ${_chat.getParticipantName(phone)} из группы?'),
+        backgroundColor: _night.withOpacity(0.98),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Удалить участника?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+        content: Text(
+          'Удалить ${_chat.getParticipantName(phone)} из группы?',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -194,7 +216,12 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           setState(() => _chat = updated);
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Участник удалён')),
+          SnackBar(
+            content: const Text('Участник удалён'),
+            backgroundColor: _emerald,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         );
       }
     } catch (e) {
@@ -212,12 +239,17 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выйти из группы?'),
-        content: const Text('Вы уверены, что хотите покинуть эту группу?'),
+        backgroundColor: _night.withOpacity(0.98),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Выйти из группы?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+        content: Text(
+          'Вы уверены, что хотите покинуть эту группу?',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -238,7 +270,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       );
 
       if (success && mounted) {
-        Navigator.pop(context, 'left'); // Сигнал что вышли из группы
+        Navigator.pop(context, 'left');
       }
     } catch (e) {
       if (mounted) {
@@ -255,15 +287,17 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить группу?'),
-        content: const Text(
-          'Группа будет удалена для всех участников. '
-          'Это действие нельзя отменить.',
+        backgroundColor: _night.withOpacity(0.98),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Удалить группу?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+        content: Text(
+          'Группа будет удалена для всех участников. Это действие нельзя отменить.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -284,7 +318,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       );
 
       if (success && mounted) {
-        Navigator.pop(context, 'deleted'); // Сигнал что группа удалена
+        Navigator.pop(context, 'deleted');
       }
     } catch (e) {
       if (mounted) {
@@ -300,29 +334,64 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('О группе'),
-        backgroundColor: const Color(0xFF004D40),
-        foregroundColor: Colors.white,
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white.withOpacity(0.8), size: 22),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'О группе',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : ListView(
+                        children: [
+                          _buildHeader(),
+                          Divider(color: Colors.white.withOpacity(0.08)),
+                          _buildParticipantsSection(),
+                          Divider(color: Colors.white.withOpacity(0.08)),
+                          _buildActionsSection(),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              children: [
-                // Шапка с аватаром и названием
-                _buildHeader(),
-
-                const Divider(),
-
-                // Участники
-                _buildParticipantsSection(),
-
-                const Divider(),
-
-                // Действия
-                _buildActionsSection(),
-              ],
-            ),
     );
   }
 
@@ -336,14 +405,22 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             onTap: _isCreator ? _changePhoto : null,
             child: Stack(
               children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: _chat.imageUrl != null
-                      ? NetworkImage(_chat.imageUrl!)
-                      : null,
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                    image: _chat.imageUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(_chat.imageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
                   child: _chat.imageUrl == null
-                      ? const Icon(Icons.group, size: 50, color: Colors.grey)
+                      ? Icon(Icons.group, size: 50, color: Colors.white.withOpacity(0.4))
                       : null,
                 ),
                 if (_isCreator)
@@ -351,44 +428,50 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                     bottom: 0,
                     right: 0,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF004D40),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _emerald,
                         shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        size: 16,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
                     ),
                   ),
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Название
           if (_isEditing)
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _nameController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Название группы',
-                      border: OutlineInputBorder(),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    ),
+                    child: TextField(
+                      controller: _nameController,
+                      autofocus: true,
+                      style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                      cursorColor: Colors.white,
+                      decoration: InputDecoration(
+                        hintText: 'Название группы',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.check, color: Color(0xFF004D40)),
+                  icon: Icon(Icons.check, color: Colors.green[400]),
                   onPressed: _updateGroupName,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.grey),
+                  icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5)),
                   onPressed: () {
                     _nameController.text = _chat.name;
                     setState(() => _isEditing = false);
@@ -402,30 +485,28 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
               children: [
                 Text(
                   _chat.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.95),
                   ),
                 ),
                 if (_isCreator)
                   IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
+                    icon: Icon(Icons.edit, size: 20, color: Colors.white.withOpacity(0.5)),
                     onPressed: () => setState(() => _isEditing = true),
                   ),
               ],
             ),
-
           const SizedBox(height: 8),
-
           Text(
             '${_chat.participantsCount} участников',
-            style: TextStyle(color: Colors.grey[600]),
+            style: TextStyle(color: Colors.white.withOpacity(0.5)),
           ),
-
           if (_chat.creatorName != null)
             Text(
               'Создатель: ${_chat.creatorName}',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
             ),
         ],
       ),
@@ -443,16 +524,32 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             children: [
               Text(
                 'Участники (${_chat.participantsCount})',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
               if (_isCreator)
-                TextButton.icon(
-                  onPressed: _addMembers,
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Добавить'),
+                GestureDetector(
+                  onTap: _addMembers,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _emerald.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _emerald.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_add, size: 16, color: Colors.white.withOpacity(0.8)),
+                        const SizedBox(width: 6),
+                        Text('Добавить',
+                            style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.8))),
+                      ],
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -468,31 +565,36 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final isMe = phone.replaceAll(RegExp(r'[\s+]'), '') ==
         widget.currentUserPhone.replaceAll(RegExp(r'[\s+]'), '');
 
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: isCreator ? const Color(0xFF004D40) : Colors.grey[300],
-        child: Icon(
-          isCreator ? Icons.star : Icons.person,
-          color: isCreator ? Colors.white : Colors.grey[600],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: isCreator ? _emerald : Colors.white.withOpacity(0.08),
+          child: Icon(
+            isCreator ? Icons.star : Icons.person,
+            color: isCreator ? Colors.white : Colors.white.withOpacity(0.5),
+          ),
         ),
+        title: Row(
+          children: [
+            Text(name, style: TextStyle(color: Colors.white.withOpacity(0.9))),
+            if (isMe)
+              Text(' (Вы)',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+          ],
+        ),
+        subtitle: isCreator
+            ? Text('Создатель', style: TextStyle(color: Colors.white.withOpacity(0.4)))
+            : null,
+        trailing: _isCreator && !isCreator
+            ? IconButton(
+                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                onPressed: () => _removeMember(phone),
+              )
+            : null,
       ),
-      title: Row(
-        children: [
-          Text(name),
-          if (isMe)
-            const Text(
-              ' (Вы)',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-        ],
-      ),
-      subtitle: isCreator ? const Text('Создатель') : null,
-      trailing: _isCreator && !isCreator
-          ? IconButton(
-              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-              onPressed: () => _removeMember(phone),
-            )
-          : null,
     );
   }
 
@@ -502,7 +604,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         if (!_isCreator)
           ListTile(
             leading: const Icon(Icons.exit_to_app, color: Colors.orange),
-            title: const Text('Выйти из группы'),
+            title: Text('Выйти из группы',
+                style: TextStyle(color: Colors.white.withOpacity(0.9))),
             onTap: _leaveGroup,
           ),
         if (_isCreator)
@@ -516,7 +619,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   }
 }
 
-/// Шит для добавления участников
+/// Шит для добавления участников — dark emerald стиль
 class _AddMembersSheet extends StatefulWidget {
   final List<String> existingParticipants;
 
@@ -527,6 +630,9 @@ class _AddMembersSheet extends StatefulWidget {
 }
 
 class _AddMembersSheetState extends State<_AddMembersSheet> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _night = Color(0xFF051515);
+
   final _searchController = TextEditingController();
   final List<String> _selected = [];
   List<Employee> _employees = [];
@@ -577,52 +683,86 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      decoration: BoxDecoration(
+        color: _night.withOpacity(0.98),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
       child: Column(
         children: [
-          // Заголовок
+          // Handle
           Container(
-            padding: const EdgeInsets.all(16),
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Добавить участников',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
                 ),
-                TextButton(
-                  onPressed: _selected.isEmpty
-                      ? null
-                      : () => Navigator.pop(context, _selected),
-                  child: Text('Добавить (${_selected.length})'),
+                GestureDetector(
+                  onTap: _selected.isEmpty ? null : () => Navigator.pop(context, _selected),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _selected.isEmpty ? Colors.grey[700] : _emerald,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Добавить (${_selected.length})',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(_selected.isEmpty ? 0.4 : 0.9),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-
-          // Поиск
+          // Search
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-              decoration: const InputDecoration(
-                hintText: 'Поиск...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                cursorColor: Colors.white,
+                decoration: InputDecoration(
+                  hintText: 'Поиск...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.4)),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
               ),
             ),
           ),
-
           const SizedBox(height: 8),
-
-          // Список
+          // List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
                 : _buildList(),
           ),
         ],
@@ -644,16 +784,20 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
     }).toList();
 
     if (filteredEmployees.isEmpty && filteredClients.isEmpty) {
-      return const Center(child: Text('Нет доступных участников'));
+      return Center(
+        child: Text('Нет доступных участников',
+            style: TextStyle(color: Colors.white.withOpacity(0.4))),
+      );
     }
 
     return ListView(
       children: [
         if (filteredEmployees.isNotEmpty) ...[
           Container(
-            color: Colors.grey[100],
+            color: Colors.white.withOpacity(0.04),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Text('Сотрудники', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('Сотрудники',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.7))),
           ),
           ...filteredEmployees.map((e) {
             final phone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
@@ -669,17 +813,25 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   }
                 });
               },
-              title: Text(e.name ?? e.phone ?? ''),
-              subtitle: Text(e.position ?? ''),
-              secondary: const CircleAvatar(child: Icon(Icons.badge)),
+              title: Text(e.name ?? e.phone ?? '',
+                  style: TextStyle(color: Colors.white.withOpacity(0.9))),
+              subtitle: Text(e.position ?? '',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4))),
+              secondary: CircleAvatar(
+                backgroundColor: _emerald,
+                child: Icon(Icons.badge, color: Colors.white.withOpacity(0.8)),
+              ),
+              activeColor: _emerald,
+              checkColor: Colors.white,
             );
           }),
         ],
         if (filteredClients.isNotEmpty) ...[
           Container(
-            color: Colors.grey[100],
+            color: Colors.white.withOpacity(0.04),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Text('Клиенты', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('Клиенты',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[400])),
           ),
           ...filteredClients.map((c) {
             final phone = c.phone.replaceAll(RegExp(r'[\s+]'), '');
@@ -695,12 +847,16 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   }
                 });
               },
-              title: Text(c.displayName),
-              subtitle: Text('Баллы: ${c.points}'),
-              secondary: const CircleAvatar(
-                backgroundColor: Colors.green,
-                child: Icon(Icons.person, color: Colors.white),
+              title: Text(c.displayName,
+                  style: TextStyle(color: Colors.white.withOpacity(0.9))),
+              subtitle: Text('Баллы: ${c.points}',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4))),
+              secondary: CircleAvatar(
+                backgroundColor: Colors.green.withOpacity(0.3),
+                child: Icon(Icons.person, color: Colors.white.withOpacity(0.8)),
               ),
+              activeColor: _emerald,
+              checkColor: Colors.white,
             );
           }),
         ],

@@ -22,6 +22,11 @@ class RecurringTaskResponsePage extends StatefulWidget {
 }
 
 class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   final _textController = TextEditingController();
   final List<File> _photos = [];
   bool _isSubmitting = false;
@@ -100,9 +105,11 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Задача выполнена!', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Задача выполнена!', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.green.shade800,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         Navigator.pop(context, true);
@@ -112,7 +119,9 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e', style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red.shade900,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -132,6 +141,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
           height: 100,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
             image: DecorationImage(
               image: FileImage(_photos[index]),
               fit: BoxFit.cover,
@@ -170,262 +180,350 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
         instance.responseType == TaskResponseType.photoAndText;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Выполнение задачи'),
-        backgroundColor: const Color(0xFF004D40),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Информация о задаче
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.repeat, color: Color(0xFF004D40)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Циклическая',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.blue[800],
-                            ),
-                          ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                      ],
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      instance.title,
-                      style: const TextStyle(
-                        fontSize: 18,
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Выполнение задачи',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    if (instance.description.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        instance.description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Выполнить до: ${dateFormat.format(instance.deadline)}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          instance.isExpired
-                              ? Icons.warning
-                              : Icons.info_outline,
-                          size: 16,
-                          color: instance.isExpired ? Colors.red : Colors.grey[600],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          instance.isExpired
-                              ? 'Просрочено!'
-                              : 'Требуется: ${instance.responseType.displayName}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: instance.isExpired ? Colors.red : Colors.grey[700],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 24),
-
-            // Фото (если нужно)
-            if (needsPhoto) ...[
-              const Text(
-                'Фото *',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (_photos.isNotEmpty) ...[
-                SizedBox(
-                  height: 100,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _photos.length,
-                    itemBuilder: (context, index) => _buildPhotoPreview(index),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickPhoto,
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Камера'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickFromGallery,
-                      icon: const Icon(Icons.photo_library),
-                      label: const Text('Галерея'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Текст (если нужно)
-            if (needsText) ...[
-              Text(
-                'Комментарий ${needsPhoto ? "" : "*"}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _textController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Опишите выполнение задачи...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Информация о баллах
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green[800], size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'После нажатия "Выполнено" задача будет сразу закрыта без проверки',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.green[900],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Кнопка выполнения
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _canSubmit && !_isSubmitting && !instance.isExpired
-                    ? _completeTask
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'ВЫПОЛНЕНО',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-            ),
-
-            if (instance.isExpired)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red[200]!),
-                  ),
-                  child: Row(
+              // Body content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.error, color: Colors.red[800], size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Задача просрочена. Вы получили -3 балла.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.red[900],
+                      // Информация о задаче
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.repeat, color: _gold),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _gold.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Циклическая',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: _gold,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                instance.title,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                              if (instance.description.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  instance.description,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.6),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time, size: 16, color: Colors.white.withOpacity(0.5)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Выполнить до: ${dateFormat.format(instance.deadline)}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    instance.isExpired
+                                        ? Icons.warning
+                                        : Icons.info_outline,
+                                    size: 16,
+                                    color: instance.isExpired ? Colors.red[400] : Colors.white.withOpacity(0.5),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    instance.isExpired
+                                        ? 'Просрочено!'
+                                        : 'Требуется: ${instance.responseType.displayName}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: instance.isExpired ? Colors.red[400] : Colors.white.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ),
+
+                      const SizedBox(height: 24),
+
+                      // Фото (если нужно)
+                      if (needsPhoto) ...[
+                        Text(
+                          'Фото *',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_photos.isNotEmpty) ...[
+                          SizedBox(
+                            height: 100,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _photos.length,
+                              itemBuilder: (context, index) => _buildPhotoPreview(index),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _pickPhoto,
+                                icon: Icon(Icons.camera_alt, color: _gold),
+                                label: Text('Камера', style: TextStyle(color: _gold)),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: _gold),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _pickFromGallery,
+                                icon: Icon(Icons.photo_library, color: _gold),
+                                label: Text('Галерея', style: TextStyle(color: _gold)),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: _gold),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Текст (если нужно)
+                      if (needsText) ...[
+                        Text(
+                          'Комментарий ${needsPhoto ? "" : "*"}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _textController,
+                          maxLines: 4,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Опишите выполнение задачи...',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.06),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: _gold.withOpacity(0.6)),
+                            ),
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Информация о баллах
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green[400], size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'После нажатия "Выполнено" задача будет сразу закрыта без проверки',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.green[300],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Кнопка выполнения
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _canSubmit && !_isSubmitting && !instance.isExpired
+                              ? _completeTask
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _gold,
+                            foregroundColor: _night,
+                            disabledBackgroundColor: _gold.withOpacity(0.3),
+                            disabledForegroundColor: _night.withOpacity(0.5),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _isSubmitting
+                              ? SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(_night),
+                                  ),
+                                )
+                              : const Text(
+                                  'ВЫПОЛНЕНО',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+
+                      if (instance.isExpired)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error, color: Colors.red[400], size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Задача просрочена. Вы получили -3 балла.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.red[300],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );

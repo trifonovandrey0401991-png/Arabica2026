@@ -9,6 +9,7 @@ import 'dart:async';
 /// - Автоматический переход между полями
 /// - Таймер повторной отправки
 /// - Автоматическая вставка из буфера обмена
+/// - Поддержка светлой и тёмной темы
 class OtpInputWidget extends StatefulWidget {
   /// Длина кода (обычно 6)
   final int codeLength;
@@ -37,6 +38,12 @@ class OtpInputWidget extends StatefulWidget {
   /// Время до повторной отправки (секунды)
   final int resendTimeout;
 
+  /// Использовать светлую тему (белый текст на тёмном фоне)
+  final bool lightTheme;
+
+  /// Цвет акцента
+  final Color? accentColor;
+
   const OtpInputWidget({
     super.key,
     this.codeLength = 6,
@@ -48,6 +55,8 @@ class OtpInputWidget extends StatefulWidget {
     this.title,
     this.subtitle,
     this.resendTimeout = 60,
+    this.lightTheme = false,
+    this.accentColor,
   });
 
   @override
@@ -59,6 +68,14 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
   late List<FocusNode> _focusNodes;
   Timer? _resendTimer;
   int _remainingSeconds = 0;
+
+  // Брендовые цвета
+  static const Color _primaryColor = Color(0xFF1A4D4D);
+  static const Color _accentGold = Color(0xFFD4AF37);
+
+  Color get _activeColor => widget.accentColor ?? (widget.lightTheme ? _accentGold : _primaryColor);
+  Color get _textColor => widget.lightTheme ? Colors.white : Colors.black87;
+  Color get _subtitleColor => widget.lightTheme ? Colors.white70 : Colors.grey[600]!;
 
   @override
   void initState() {
@@ -192,9 +209,11 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
         if (widget.title != null) ...[
           Text(
             widget.title!,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _textColor,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -204,9 +223,10 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
         if (widget.subtitle != null) ...[
           Text(
             widget.subtitle!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+            style: TextStyle(
+              fontSize: 14,
+              color: _subtitleColor,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -224,13 +244,21 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
         // Ошибка
         if (widget.showError && widget.errorMessage != null) ...[
           const SizedBox(height: 16),
-          Text(
-            widget.errorMessage!,
-            style: const TextStyle(
-              color: Colors.red,
-              fontSize: 14,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            textAlign: TextAlign.center,
+            child: Text(
+              widget.errorMessage!,
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
 
@@ -242,13 +270,19 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
               ? Text(
                   'Отправить повторно через $_remainingSeconds сек',
                   style: TextStyle(
-                    color: Colors.grey[600],
+                    color: _subtitleColor,
                     fontSize: 14,
                   ),
                 )
               : TextButton(
                   onPressed: _handleResend,
-                  child: const Text('Отправить код повторно'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _activeColor,
+                  ),
+                  child: const Text(
+                    'Отправить код повторно',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
                 ),
         ],
       ],
@@ -256,6 +290,14 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
   }
 
   Widget _buildCodeField(int index) {
+    final borderColor = widget.showError
+        ? Colors.red
+        : (widget.lightTheme
+            ? Colors.white.withOpacity(0.3)
+            : Colors.grey[300]!);
+
+    final focusBorderColor = widget.showError ? Colors.red : _activeColor;
+
     return Container(
       width: 45,
       height: 55,
@@ -269,36 +311,33 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
           keyboardType: TextInputType.number,
           textAlign: TextAlign.center,
           maxLength: 1,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
+            color: widget.lightTheme ? Colors.black87 : Colors.black87,
           ),
           decoration: InputDecoration(
             counterText: '',
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: widget.showError ? Colors.red : Colors.grey[300]!,
-              ),
+              borderSide: BorderSide(color: borderColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: widget.showError
-                    ? Colors.red
-                    : Theme.of(context).primaryColor,
+                color: focusBorderColor,
                 width: 2,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: widget.showError ? Colors.red : Colors.grey[300]!,
-              ),
+              borderSide: BorderSide(color: borderColor),
             ),
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: widget.lightTheme
+                ? Colors.white.withOpacity(0.95)
+                : Colors.grey[50],
           ),
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,

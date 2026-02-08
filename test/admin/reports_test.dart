@@ -2,7 +2,6 @@
 // Priority: P0 (Critical)
 
 import 'package:flutter_test/flutter_test.dart';
-import '../mocks/mock_services.dart';
 
 void main() {
   group('Admin Reports Tests', () {
@@ -24,7 +23,9 @@ void main() {
 
       test('AT-REP-002: Оценка отчёта пересменки', () async {
         // Arrange
+        // ignore: unused_local_variable
         final reportId = 'shift_123';
+        // ignore: unused_local_variable
         final rating = 8; // 1-10
 
         // Act
@@ -41,7 +42,9 @@ void main() {
 
       test('AT-REP-003: Отклонение отчёта', () async {
         // Arrange
+        // ignore: unused_local_variable
         final reportId = 'shift_123';
+        // ignore: unused_local_variable
         final reason = 'Некорректные данные';
 
         // Act
@@ -83,7 +86,9 @@ void main() {
 
       test('AT-REP-007: Подтверждение конверта', () async {
         // Arrange
+        // ignore: unused_local_variable
         final envelopeId = 'env_123';
+        // ignore: unused_local_variable
         final rating = 9; // оценка качества фото
 
         // Act
@@ -124,6 +129,7 @@ void main() {
     group('AT-REP: Efficiency Reports', () {
       test('AT-REP-013: Эффективность всех сотрудников', () async {
         // Arrange
+        // ignore: unused_local_variable
         final month = '2026-01';
 
         // Act

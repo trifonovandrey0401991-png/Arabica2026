@@ -3,10 +3,10 @@ import '../services/employee_chat_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 
-/// Страница управления участниками чата магазина
+/// Страница управления участниками чата магазина — dark emerald стиль
 class ShopChatMembersPage extends StatefulWidget {
   final String shopAddress;
-  final String userPhone; // Телефон админа для авторизации
+  final String userPhone;
 
   const ShopChatMembersPage({
     super.key,
@@ -19,6 +19,11 @@ class ShopChatMembersPage extends StatefulWidget {
 }
 
 class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   List<ShopChatMember> _members = [];
   List<Employee> _allEmployees = [];
   bool _isLoading = true;
@@ -52,13 +57,14 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
           SnackBar(
             content: Text('Ошибка загрузки: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
     }
   }
 
-  /// Получить сотрудников, которые ещё не добавлены в чат
   List<Employee> get _availableEmployees {
     final memberPhones = _members.map((m) => m.phone).toSet();
     return _allEmployees
@@ -71,9 +77,11 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
 
     if (available.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Все сотрудники уже добавлены в чат'),
+        SnackBar(
+          content: const Text('Все сотрудники уже добавлены в чат'),
           backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
@@ -85,7 +93,10 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Добавить сотрудников'),
+          backgroundColor: _night.withOpacity(0.98),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Добавить сотрудников',
+              style: TextStyle(color: Colors.white.withOpacity(0.9))),
           content: SizedBox(
             width: double.maxFinite,
             height: 400,
@@ -97,8 +108,12 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
 
                 return CheckboxListTile(
                   value: isSelected,
-                  title: Text(employee.name),
-                  subtitle: Text(employee.phone ?? ''),
+                  title: Text(employee.name,
+                      style: TextStyle(color: Colors.white.withOpacity(0.9))),
+                  subtitle: Text(employee.phone ?? '',
+                      style: TextStyle(color: Colors.white.withOpacity(0.4))),
+                  activeColor: _emerald,
+                  checkColor: Colors.white,
                   onChanged: (value) {
                     setDialogState(() {
                       if (value == true && employee.phone != null) {
@@ -115,7 +130,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
             ),
             ElevatedButton(
               onPressed: selectedPhones.isEmpty
@@ -125,7 +140,8 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                       await _addMembers(selectedPhones.toList());
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF004D40),
+                backgroundColor: _emerald,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Text('Добавить (${selectedPhones.length})'),
             ),
@@ -146,14 +162,18 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
         SnackBar(
           content: Text('Добавлено ${phones.length} сотрудников'),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       _loadData();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ошибка добавления сотрудников'),
+        SnackBar(
+          content: const Text('Ошибка добавления сотрудников'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -163,16 +183,23 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить участника?'),
-        content: Text('Удалить ${member.name} из чата магазина?'),
+        backgroundColor: _night.withOpacity(0.98),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Удалить участника?',
+            style: TextStyle(color: Colors.white.withOpacity(0.9))),
+        content: Text('Удалить ${member.name} из чата магазина?',
+            style: TextStyle(color: Colors.white.withOpacity(0.7))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             child: const Text('Удалить'),
           ),
         ],
@@ -191,14 +218,18 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
           SnackBar(
             content: Text('${member.name} удалён из чата'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         _loadData();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ошибка удаления'),
+          SnackBar(
+            content: const Text('Ошибка удаления'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -208,93 +239,203 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Участники чата'),
-            Text(
-              widget.shopAddress,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Обновить',
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _members.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.group_off,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Нет участников',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Добавьте сотрудников в чат магазина',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: ListView.builder(
-                    itemCount: _members.length,
-                    itemBuilder: (context, index) {
-                      final member = _members[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.orange[100],
-                          child: Text(
-                            member.name.isNotEmpty
-                                ? member.name[0].toUpperCase()
-                                : '?',
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white.withOpacity(0.8), size: 22),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            'Участники чата',
                             style: TextStyle(
-                              color: Colors.orange[800],
-                              fontWeight: FontWeight.bold,
+                              color: Colors.white.withOpacity(0.95),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
-                        ),
-                        title: Text(member.name),
-                        subtitle: Text(member.phone),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.remove_circle, color: Colors.red),
-                          onPressed: () => _removeMember(member),
-                          tooltip: 'Удалить',
-                        ),
-                      );
-                    },
-                  ),
+                          Text(
+                            widget.shopAddress,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 12,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.refresh_rounded,
+                          color: Colors.white.withOpacity(0.7), size: 22),
+                      onPressed: _loadData,
+                    ),
+                  ],
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddMembersDialog,
-        backgroundColor: const Color(0xFF004D40),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Добавить'),
+              ),
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : _members.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  child: Icon(Icons.group_off, size: 32,
+                                      color: Colors.white.withOpacity(0.4)),
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  'Нет участников',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Добавьте сотрудников в чат магазина',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white.withOpacity(0.4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadData,
+                            color: Colors.white,
+                            backgroundColor: _emerald,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                              itemCount: _members.length,
+                              itemBuilder: (context, index) {
+                                final member = _members[index];
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.04),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            member.name.isNotEmpty
+                                                ? member.name[0].toUpperCase()
+                                                : '?',
+                                            style: TextStyle(
+                                              color: Colors.orange[300],
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              member.name,
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.95),
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Text(
+                                              member.phone,
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.4),
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                        onPressed: () => _removeMember(member),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+              ),
+            ],
+          ),
+        ),
       ),
+      floatingActionButton: GestureDetector(
+        onTap: _showAddMembersDialog,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: _emerald,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.person_add, color: Colors.white.withOpacity(0.9), size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Добавить',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

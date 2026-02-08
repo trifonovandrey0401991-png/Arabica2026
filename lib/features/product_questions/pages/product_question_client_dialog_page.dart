@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_personal_dialog_page.dart';
-import 'product_question_dialog_page.dart';
 
 /// Страница чата клиента по поиску товара (единый чат со всеми магазинами)
 class ProductQuestionClientDialogPage extends StatefulWidget {

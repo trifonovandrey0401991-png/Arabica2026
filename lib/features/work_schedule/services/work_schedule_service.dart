@@ -291,7 +291,7 @@ class WorkScheduleService {
     List<WorkScheduleEntry> entries,
   ) async {
     final result = <String, Map<ShiftType, ShiftTimeInfo>>{};
-    final uniqueShops = entries.map((e) => e.shopAddress).toSet();
+    final uniqueShops = entries.map((e) => e.shopAddress).where((a) => a.trim().isNotEmpty).toSet();
 
     for (final shopAddress in uniqueShops) {
       result[shopAddress] = {};

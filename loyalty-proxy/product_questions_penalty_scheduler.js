@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Product Questions Penalty Scheduler
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Directories
@@ -17,14 +23,25 @@ const PENALTY_POINTS = -1;
 const CATEGORY_CODE = 'product_question_penalty';
 const CATEGORY_NAME = 'Неотвеченный вопрос о товаре';
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================
 // Dynamic Timeout from Settings
 // ============================================
-function getTimeoutMinutes() {
+async function getTimeoutMinutes() {
   const settingsFile = path.join(POINTS_SETTINGS_DIR, 'product_search_points_settings.json');
-  if (fs.existsSync(settingsFile)) {
+  if (await fileExists(settingsFile)) {
     try {
-      const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+      const data = await fsp.readFile(settingsFile, 'utf8');
+      const settings = JSON.parse(data);
       return settings.answerTimeoutMinutes || 30;
     } catch (e) {
       console.error('Error loading timeout settings:', e.message);
@@ -36,12 +53,12 @@ function getTimeoutMinutes() {
 // ============================================
 // Helper: Load JSON file safely
 // ============================================
-function loadJsonFile(filePath, defaultValue) {
-  if (!fs.existsSync(filePath)) {
+async function loadJsonFile(filePath, defaultValue) {
+  if (!(await fileExists(filePath))) {
     return defaultValue;
   }
   try {
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(data);
   } catch (e) {
     console.error(`Error loading JSON from ${filePath}:`, e.message);
@@ -52,19 +69,19 @@ function loadJsonFile(filePath, defaultValue) {
 // ============================================
 // 1. State Management
 // ============================================
-function loadState() {
+async function loadState() {
   const defaultState = {
     lastCheckTime: null,
     processedQuestions: [],
     processedDialogs: []
   };
 
-  if (!fs.existsSync(STATE_FILE)) {
+  if (!(await fileExists(STATE_FILE))) {
     return defaultState;
   }
 
   try {
-    const data = fs.readFileSync(STATE_FILE, 'utf8');
+    const data = await fsp.readFile(STATE_FILE, 'utf8');
     return JSON.parse(data);
   } catch (e) {
     console.error('Error loading penalty state:', e.message);
@@ -72,17 +89,17 @@ function loadState() {
   }
 }
 
-function saveState(state) {
+async function saveState(state) {
   try {
-    if (!fs.existsSync(PENALTY_STATE_DIR)) {
-      fs.mkdirSync(PENALTY_STATE_DIR, { recursive: true });
+    if (!(await fileExists(PENALTY_STATE_DIR))) {
+      await fsp.mkdir(PENALTY_STATE_DIR, { recursive: true });
     }
 
     // Cleanup: keep only last 1000 IDs to prevent unbounded growth
     state.processedQuestions = state.processedQuestions.slice(-1000);
     state.processedDialogs = state.processedDialogs.slice(-1000);
 
-    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
+    await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
   } catch (e) {
     console.error('Error saving penalty state:', e.message);
   }
@@ -111,13 +128,13 @@ function getShiftTypeByTime(date) {
 // ============================================
 // 3. Employee Lookup from Work Schedule
 // ============================================
-function getEmployeesFromSchedule(shopAddress, timestamp) {
+async function getEmployeesFromSchedule(shopAddress, timestamp) {
   const employees = [];
   const monthKey = timestamp.toISOString().slice(0, 7); // YYYY-MM
   const dateStr = timestamp.toISOString().split('T')[0]; // YYYY-MM-DD
 
   const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
-  const schedule = loadJsonFile(scheduleFile, null);
+  const schedule = await loadJsonFile(scheduleFile, null);
 
   if (!schedule || !schedule.entries) {
     console.log(`  No work schedule found for ${monthKey}`);
@@ -144,26 +161,27 @@ function getEmployeesFromSchedule(shopAddress, timestamp) {
 // ============================================
 // 4. Unread Questions Detection
 // ============================================
-function findUnreadQuestions(now, state) {
+async function findUnreadQuestions(now, state) {
   const unreadQuestions = [];
 
-  if (!fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+  if (!(await fileExists(PRODUCT_QUESTIONS_DIR))) {
     return unreadQuestions;
   }
 
-  const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+  const files = (await fsp.readdir(PRODUCT_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
+  const timeoutMinutes = await getTimeoutMinutes();
 
   for (const file of files) {
     try {
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, file);
-      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const data = await fsp.readFile(filePath, 'utf8');
+      const question = JSON.parse(data);
 
       // Skip if already processed
       if (state.processedQuestions.includes(question.id)) continue;
 
       const questionTime = new Date(question.timestamp);
       const elapsedMinutes = (now - questionTime) / (1000 * 60);
-      const timeoutMinutes = getTimeoutMinutes();
 
       // Check if timeout exceeded
       if (elapsedMinutes < timeoutMinutes) continue;
@@ -184,19 +202,21 @@ function findUnreadQuestions(now, state) {
 // ============================================
 // 5. Unread Dialogs Detection
 // ============================================
-function findUnreadDialogs(now, state) {
+async function findUnreadDialogs(now, state) {
   const unreadDialogs = [];
 
-  if (!fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+  if (!(await fileExists(PRODUCT_QUESTION_DIALOGS_DIR))) {
     return unreadDialogs;
   }
 
-  const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+  const files = (await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR)).filter(f => f.endsWith('.json'));
+  const timeoutMinutes = await getTimeoutMinutes();
 
   for (const file of files) {
     try {
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, file);
-      const dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const data = await fsp.readFile(filePath, 'utf8');
+      const dialog = JSON.parse(data);
 
       // Skip if already processed
       if (state.processedDialogs.includes(dialog.id)) continue;
@@ -213,7 +233,6 @@ function findUnreadDialogs(now, state) {
 
       const messageTime = new Date(firstUnreadClientMsg.timestamp);
       const elapsedMinutes = (now - messageTime) / (1000 * 60);
-      const timeoutMinutes = getTimeoutMinutes();
 
       if (elapsedMinutes >= timeoutMinutes) {
         unreadDialogs.push(dialog);
@@ -229,11 +248,11 @@ function findUnreadDialogs(now, state) {
 // ============================================
 // 6. Penalty Creation
 // ============================================
-function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType, sourceId) {
-  const employees = getEmployeesFromSchedule(shopAddress, new Date(questionTimestamp));
+async function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType, sourceId) {
+  const employees = await getEmployeesFromSchedule(shopAddress, new Date(questionTimestamp));
   const penalties = [];
   const now = new Date();
-  const timeoutMinutes = getTimeoutMinutes();
+  const timeoutMinutes = await getTimeoutMinutes();
 
   if (employees.length === 0) {
     console.log(`  No employees found on schedule for ${shopAddress} at ${questionTimestamp}`);
@@ -268,7 +287,7 @@ function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType, sour
 // ============================================
 // 7. Penalty Saving
 // ============================================
-function savePenalties(penalties) {
+async function savePenalties(penalties) {
   const penaltiesByMonth = {};
 
   // Group by month
@@ -284,15 +303,15 @@ function savePenalties(penalties) {
   for (const monthKey in penaltiesByMonth) {
     try {
       const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-      let existingPenalties = loadJsonFile(filePath, []);
+      let existingPenalties = await loadJsonFile(filePath, []);
 
       existingPenalties = existingPenalties.concat(penaltiesByMonth[monthKey]);
 
-      if (!fs.existsSync(EFFICIENCY_PENALTIES_DIR)) {
-        fs.mkdirSync(EFFICIENCY_PENALTIES_DIR, { recursive: true });
+      if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
+        await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
       }
 
-      fs.writeFileSync(filePath, JSON.stringify(existingPenalties, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(existingPenalties, null, 2), 'utf8');
       console.log(`  Saved ${penaltiesByMonth[monthKey].length} penalties to ${monthKey}.json`);
     } catch (e) {
       console.error(`  Error saving penalties for ${monthKey}:`, e.message);
@@ -303,23 +322,23 @@ function savePenalties(penalties) {
 // ============================================
 // 8. Main Checker Function
 // ============================================
-function checkUnreadQuestionsAndDialogs() {
+async function checkUnreadQuestionsAndDialogs() {
   try {
     console.log(`\n[${new Date().toISOString()}] Checking unread product questions and dialogs...`);
 
     const now = new Date();
-    const state = loadState();
+    const state = await loadState();
     const newPenalties = [];
 
     // 1. Check product questions
-    const unreadQuestions = findUnreadQuestions(now, state);
+    const unreadQuestions = await findUnreadQuestions(now, state);
     console.log(`  Found ${unreadQuestions.length} unread questions`);
 
     for (const question of unreadQuestions) {
       if (question.shops) {
         for (const shop of question.shops) {
           if (!shop.isAnswered) {
-            const penalties = createPenaltiesForShop(
+            const penalties = await createPenaltiesForShop(
               shop.shopAddress,
               question.timestamp,
               'question',
@@ -333,12 +352,12 @@ function checkUnreadQuestionsAndDialogs() {
     }
 
     // 2. Check personal dialogs
-    const unreadDialogs = findUnreadDialogs(now, state);
+    const unreadDialogs = await findUnreadDialogs(now, state);
     console.log(`  Found ${unreadDialogs.length} unread dialogs`);
 
     for (const dialog of unreadDialogs) {
       if (dialog.hasUnreadFromClient && dialog.messages && dialog.messages.length > 0) {
-        const penalties = createPenaltiesForShop(
+        const penalties = await createPenaltiesForShop(
           dialog.shopAddress,
           dialog.messages[0].timestamp,
           'dialog',
@@ -351,11 +370,11 @@ function checkUnreadQuestionsAndDialogs() {
 
     // 3. Save penalties and update state
     if (newPenalties.length > 0) {
-      savePenalties(newPenalties);
+      await savePenalties(newPenalties);
     }
 
     state.lastCheckTime = now.toISOString();
-    saveState(state);
+    await saveState(state);
 
     console.log(`  ✓ Created ${newPenalties.length} penalties for unread questions/dialogs\n`);
   } catch (error) {
@@ -366,8 +385,8 @@ function checkUnreadQuestionsAndDialogs() {
 // ============================================
 // 9. Scheduler Setup
 // ============================================
-function startScheduler() {
-  const timeoutMinutes = getTimeoutMinutes();
+async function startScheduler() {
+  const timeoutMinutes = await getTimeoutMinutes();
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Product Questions Penalty Scheduler started');
   console.log(`  - Checking every 5 minutes`);
@@ -376,18 +395,18 @@ function startScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Check every 5 minutes
-  setInterval(() => {
-    checkUnreadQuestionsAndDialogs();
+  setInterval(async () => {
+    await checkUnreadQuestionsAndDialogs();
   }, 5 * 60 * 1000);
 
   // First check after 1 second
-  setTimeout(() => {
-    checkUnreadQuestionsAndDialogs();
+  setTimeout(async () => {
+    await checkUnreadQuestionsAndDialogs();
   }, 1000);
 }
 
 function setupProductQuestionsPenaltyScheduler() {
-  startScheduler();
+  startScheduler().catch(e => console.error('Failed to start product questions penalty scheduler:', e));
 }
 
 module.exports = { setupProductQuestionsPenaltyScheduler };

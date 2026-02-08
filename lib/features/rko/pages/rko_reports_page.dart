@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../services/rko_reports_service.dart';
 import 'rko_employee_reports_page.dart';
 import 'rko_shop_reports_page.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
 
@@ -28,8 +30,11 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   String _employeeSearchQuery = '';
   String _shopSearchQuery = '';
 
-  // Градиентные цвета для страницы
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00695C)];
+  // Dark Emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -61,13 +66,21 @@ class _RKOReportsPageState extends State<RKOReportsPage>
       // Загружаем данные параллельно
       final results = await Future.wait([
         EmployeesPage.loadEmployeesForNotifications(),
-        Shop.loadShopsFromServer(),
+        ShopService.getShopsForCurrentUser(),
         RKOReportsService.getPendingRKOsForCurrentUser(),
         RKOReportsService.getFailedRKOsForCurrentUser(),
       ]);
 
+      final allEmployees = results[0] as List<Employee>;
+
+      // Фильтруем сотрудников по мультитенантности
+      final filteredEmployees = await MultitenancyFilterService.filterByEmployeePhone<Employee>(
+        allEmployees,
+        (emp) => emp.phone ?? '',
+      );
+
       setState(() {
-        _employees = results[0] as List<Employee>;
+        _employees = filteredEmployees;
         _shops = results[1] as List<Shop>;
         _pendingRKOs = results[2] as List<dynamic>;
         _failedRKOs = results[3] as List<dynamic>;
@@ -86,12 +99,14 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: _gradientColors,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
@@ -105,7 +120,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
               Expanded(
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
+                        child: CircularProgressIndicator(color: _gold),
                       )
                     : TabBarView(
                         controller: _tabController,
@@ -137,8 +152,9 @@ class _RKOReportsPageState extends State<RKOReportsPage>
           // Кнопка назад
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -162,7 +178,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 Text(
                   'Сотрудников: ${_employees.length}, Магазинов: ${_shops.length}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 13,
                   ),
                 ),
@@ -172,8 +188,9 @@ class _RKOReportsPageState extends State<RKOReportsPage>
           // Кнопка обновления
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: const Icon(Icons.refresh, color: Colors.white),
@@ -237,10 +254,10 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                       end: Alignment.bottomRight,
                     )
                   : null,
-              color: isSelected ? null : Colors.white.withOpacity(0.1),
+              color: isSelected ? null : Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isSelected ? accentColor : Colors.white30,
+                color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -305,10 +322,10 @@ class _RKOReportsPageState extends State<RKOReportsPage>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: Colors.white.withOpacity(0.06),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 40, color: color),
+              child: Icon(icon, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
             const SizedBox(height: 20),
             Text(
@@ -324,7 +341,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             Text(
               subtitle,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withOpacity(0.5),
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
@@ -347,20 +364,17 @@ class _RKOReportsPageState extends State<RKOReportsPage>
           padding: const EdgeInsets.all(12),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
+              style: const TextStyle(color: Colors.white),
+              cursorColor: _gold,
               decoration: InputDecoration(
                 hintText: 'Поиск сотрудника...',
-                prefixIcon: Icon(Icons.search, color: _gradientColors[0]),
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                prefixIcon: const Icon(Icons.search, color: _gold),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
@@ -407,21 +421,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           onTap: () {
             final normalizedName = employee.name.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
             Navigator.push(
@@ -448,13 +456,6 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
                   ),
                   child: const Icon(
                     Icons.person_rounded,
@@ -470,9 +471,10 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     children: [
                       Text(
                         employee.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -483,7 +485,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                           employee.position!,
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[600],
+                            color: Colors.white.withOpacity(0.5),
                           ),
                         ),
                       ],
@@ -494,12 +496,12 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: Colors.blue,
+                    color: _gold,
                     size: 16,
                   ),
                 ),
@@ -523,20 +525,17 @@ class _RKOReportsPageState extends State<RKOReportsPage>
           padding: const EdgeInsets.all(12),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
+              style: const TextStyle(color: Colors.white),
+              cursorColor: _gold,
               decoration: InputDecoration(
                 hintText: 'Поиск магазина...',
-                prefixIcon: Icon(Icons.search, color: _gradientColors[0]),
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                prefixIcon: const Icon(Icons.search, color: _gold),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
@@ -583,21 +582,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           onTap: () {
             Navigator.push(
               context,
@@ -623,13 +616,6 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.orange.withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
                   ),
                   child: const Icon(
                     Icons.store_rounded,
@@ -642,9 +628,10 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 Expanded(
                   child: Text(
                     shop.address,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -654,12 +641,12 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: Colors.orange,
+                    color: _gold,
                     size: 16,
                   ),
                 ),
@@ -721,15 +708,9 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.amber.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -761,9 +742,10 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -773,7 +755,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     subtitle,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey[600],
+                      color: Colors.white.withOpacity(0.5),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -826,15 +808,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.1),
+                  color: _gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '$amount руб.',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber[800],
+                    color: _gold,
                   ),
                 ),
               ),
@@ -878,20 +860,9 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.red.shade50, Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.withOpacity(0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -923,9 +894,10 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 children: [
                   Text(
                     employeeName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -935,7 +907,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     shopAddress,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey[600],
+                      color: Colors.white.withOpacity(0.5),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

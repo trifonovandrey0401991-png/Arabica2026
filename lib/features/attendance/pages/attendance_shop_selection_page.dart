@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../services/attendance_service.dart';
 
 class AttendanceShopSelectionPage extends StatefulWidget {
@@ -30,7 +31,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
 
   Future<void> _loadShops() async {
     try {
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await ShopService.getShopsForCurrentUser();
       setState(() {
         _shops = shops;
         _isLoading = false;

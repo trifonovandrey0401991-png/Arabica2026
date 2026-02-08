@@ -15,6 +15,11 @@ class EnvelopeReportsListPage extends StatefulWidget {
 
 class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     with SingleTickerProviderStateMixin {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   late TabController _tabController;
   String? _selectedShop;
   String? _selectedEmployee;
@@ -134,7 +139,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   }
 
   List<String> get _uniqueShops {
-    return _allReports.map((r) => r.shopAddress).toSet().toList()..sort();
+    return _allReports.map((r) => r.shopAddress).where((a) => a.trim().isNotEmpty).toSet().toList()..sort();
   }
 
   List<String> get _uniqueEmployees {
@@ -158,166 +163,268 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отчеты (Конверты)'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Обновить',
-          ),
-        ],
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: Column(
-          children: [
-            // Tab buttons (2 rows)
-            Container(
-              color: Colors.white.withOpacity(0.1),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Column(
-                children: [
-                  // Первый ряд
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(child: _buildTabButton(0, 'В Очереди', _queueReports.length)),
-                      Expanded(child: _buildTabButton(1, 'Не Сданы', _notSubmittedReports.length)),
-                      Expanded(child: _buildTabButton(2, 'Ожидают', _awaitingReports.length)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Второй ряд
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(child: _buildTabButton(3, 'Подтверждены', _confirmedReports.length)),
-                      Expanded(child: _buildTabButton(4, 'Отклонены', _rejectedReports.length)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Фильтры
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.white.withOpacity(0.1),
-              child: Column(
-                children: [
-                  // Фильтр по магазину
-                  DropdownButtonFormField<String>(
-                    value: _selectedShop,
-                    decoration: InputDecoration(
-                      labelText: 'Магазин',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
                     ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('Все магазины'),
-                      ),
-                      ..._uniqueShops.map((shop) => DropdownMenuItem(
-                        value: shop,
-                        child: Text(shop, overflow: TextOverflow.ellipsis),
-                      )),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedShop = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  // Фильтр по сотруднику
-                  DropdownButtonFormField<String>(
-                    value: _selectedEmployee,
-                    decoration: InputDecoration(
-                      labelText: 'Сотрудник',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('Все сотрудники'),
-                      ),
-                      ..._uniqueEmployees.map((emp) => DropdownMenuItem(
-                        value: emp,
-                        child: Text(emp),
-                      )),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedEmployee = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  // Фильтр по дате
-                  InkWell(
-                    onTap: () => _selectDate(context),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Дата',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.calendar_today),
-                      ),
+                    const SizedBox(width: 12),
+                    const Expanded(
                       child: Text(
-                        _selectedDate == null
-                            ? 'Все даты'
-                            : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
+                        'Отчеты (Конверты)',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                  if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedShop = null;
-                            _selectedEmployee = null;
-                            _selectedDate = null;
-                          });
-                        },
-                        child: const Text('Сбросить фильтры'),
+                    GestureDetector(
+                      onTap: _loadData,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            // TabBarView с отчетами
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                  : TabBarView(
-                      controller: _tabController,
+              // Tab buttons (2 rows)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Первый ряд
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildPendingReportsList(_queueReports, 'В очереди отчетов нет'),
-                        _buildPendingReportsList(_notSubmittedReports, 'Несданных отчетов нет'),
-                        _buildReportsList(_awaitingReports, 'Ожидающих отчетов нет'),
-                        _buildReportsList(_confirmedReports, 'Подтвержденных отчетов нет'),
-                        _buildReportsList(_rejectedReports, 'Отклоненных отчетов нет'),
+                        Expanded(child: _buildTabButton(0, 'В Очереди', _queueReports.length)),
+                        Expanded(child: _buildTabButton(1, 'Не Сданы', _notSubmittedReports.length)),
+                        Expanded(child: _buildTabButton(2, 'Ожидают', _awaitingReports.length)),
                       ],
                     ),
-            ),
+                    const SizedBox(height: 8),
+                    // Второй ряд
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(child: _buildTabButton(3, 'Подтверждены', _confirmedReports.length)),
+                        Expanded(child: _buildTabButton(4, 'Отклонены', _rejectedReports.length)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Фильтры
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Фильтр по магазину
+                    _buildDarkDropdown<String>(
+                      value: _selectedShop,
+                      hint: 'Все магазины',
+                      icon: Icons.store,
+                      items: _uniqueShops.map((shop) => DropdownMenuItem(
+                        value: shop,
+                        child: Text(shop, overflow: TextOverflow.ellipsis),
+                      )).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedShop = value);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    // Фильтр по сотруднику
+                    _buildDarkDropdown<String>(
+                      value: _selectedEmployee,
+                      hint: 'Все сотрудники',
+                      icon: Icons.person,
+                      items: _uniqueEmployees.map((emp) => DropdownMenuItem(
+                        value: emp,
+                        child: Text(emp),
+                      )).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedEmployee = value);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    // Фильтр по дате + кнопка сброса
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _selectDate(context),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_today, size: 18, color: _gold),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _selectedDate == null
+                                        ? 'Все даты'
+                                        : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.7),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedShop = null;
+                                _selectedEmployee = null;
+                                _selectedDate = null;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                              ),
+                              child: const Icon(Icons.clear, color: Colors.red, size: 18),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // TabBarView с отчетами
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildPendingReportsList(_queueReports, 'В очереди отчетов нет'),
+                          _buildPendingReportsList(_notSubmittedReports, 'Несданных отчетов нет'),
+                          _buildReportsList(_awaitingReports, 'Ожидающих отчетов нет'),
+                          _buildReportsList(_confirmedReports, 'Подтвержденных отчетов нет'),
+                          _buildReportsList(_rejectedReports, 'Отклоненных отчетов нет'),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDarkDropdown<T>({
+    required T? value,
+    required String hint,
+    required IconData icon,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          dropdownColor: _emeraldDark,
+          icon: Icon(Icons.arrow_drop_down, color: _gold),
+          hint: Row(
+            children: [
+              Icon(icon, size: 18, color: _gold),
+              const SizedBox(width: 8),
+              Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)),
+            ],
+          ),
+          selectedItemBuilder: (context) => [
+            ...items.map((item) => Row(
+              children: [
+                Icon(icon, size: 18, color: _gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DefaultTextStyle(
+                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                    child: item.child ?? const SizedBox(),
+                  ),
+                ),
+              ],
+            )),
           ],
+          items: [
+            DropdownMenuItem<T>(
+              value: null,
+              child: Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.5))),
+            ),
+            ...items,
+          ],
+          onChanged: onChanged,
+          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
         ),
       ),
     );
@@ -327,55 +434,57 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     final isSelected = _tabController.index == index;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: ElevatedButton(
-        onPressed: () {
+      child: GestureDetector(
+        onTap: () {
           setState(() {
             _tabController.animateTo(index);
           });
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
-          foregroundColor: isSelected ? const Color(0xFF004D40) : Colors.white,
-          elevation: isSelected ? 4 : 0,
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 13,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
+          decoration: BoxDecoration(
+            color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             ),
-            if (count > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF004D40) : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
                 child: Text(
-                  '$count',
+                  label,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF004D40),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                    color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              if (count > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isSelected ? _gold : Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: isSelected ? _night : Colors.white.withOpacity(0.7),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -384,20 +493,40 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   Widget _buildReportsList(List<EnvelopeReport> reports, String emptyMessage) {
     if (reports.isEmpty) {
       return Center(
-        child: Text(
-          emptyMessage,
-          style: const TextStyle(color: Colors.white, fontSize: 18),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.mail_outline, size: 40, color: Colors.white.withOpacity(0.3)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              emptyMessage,
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+            ),
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: reports.length,
-      itemBuilder: (context, index) {
-        final report = reports[index];
-        return _buildReportCard(report);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: reports.length,
+        itemBuilder: (context, index) {
+          final report = reports[index];
+          return _buildReportCard(report);
+        },
+      ),
     );
   }
 
@@ -405,88 +534,133 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     final isExpired = report.isExpired;
     final isConfirmed = report.status == 'confirmed';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: isConfirmed
-              ? Colors.green
-              : isExpired
-                  ? Colors.red
-                  : const Color(0xFF004D40),
-          child: Icon(
-            isConfirmed ? Icons.check : Icons.mail,
-            color: Colors.white,
-          ),
-        ),
-        title: Text(
-          report.shopAddress,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Сотрудник: ${report.employeeName}'),
-            Text(
-              '${report.createdAt.day}.${report.createdAt.month}.${report.createdAt.year} '
-              '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')} '
-              '• ${report.shiftTypeText}',
-            ),
-            Row(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EnvelopeReportViewPage(report: report),
+              ),
+            ).then((_) => _loadData());
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               children: [
-                Text(
-                  'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF004D40),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isConfirmed
+                        ? Colors.green.withOpacity(0.2)
+                        : isExpired
+                            ? Colors.red.withOpacity(0.2)
+                            : _emerald,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isConfirmed ? Icons.check : Icons.mail,
+                    color: isConfirmed
+                        ? Colors.green
+                        : isExpired
+                            ? Colors.red
+                            : Colors.white,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 8),
-                if (isConfirmed)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Подтвержден',
+                      Text(
+                        report.shopAddress,
                         style: TextStyle(
-                          color: Colors.green,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                       ),
-                    ],
-                  )
-                else if (isExpired)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.warning, color: Colors.red, size: 16),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Просрочен',
+                      const SizedBox(height: 4),
+                      Text(
+                        'Сотрудник: ${report.employeeName}',
                         style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.5),
                         ),
+                      ),
+                      Text(
+                        '${report.createdAt.day}.${report.createdAt.month}.${report.createdAt.year} '
+                        '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')} '
+                        '• ${report.shiftTypeText}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.4),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _gold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (isConfirmed)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Подтвержден',
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else if (isExpired)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.warning, color: Colors.red, size: 14),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Просрочен',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
                       ),
                     ],
                   ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
               ],
             ),
-          ],
+          ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EnvelopeReportViewPage(report: report),
-            ),
-          ).then((_) => _loadData());
-        },
       ),
     );
   }
@@ -494,44 +668,80 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   Widget _buildPendingReportCard(PendingEnvelopeReport report) {
     final isFailed = report.status == 'failed';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: isFailed ? Colors.red : Colors.orange,
-          child: Icon(
-            isFailed ? Icons.cancel : Icons.access_time,
-            color: Colors.white,
-          ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isFailed ? Colors.red.withOpacity(0.3) : Colors.orange.withOpacity(0.3),
         ),
-        title: Text(
-          report.shopAddress,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
           children: [
-            Text('Смена: ${report.shiftTypeText}'),
-            Text(
-              'Дата: ${report.date} • Дедлайн: ${report.deadline}',
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isFailed ? Colors.red.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                isFailed ? Icons.cancel : Icons.access_time,
+                color: isFailed ? Colors.red : Colors.orange,
+                size: 22,
+              ),
             ),
-            Row(
-              children: [
-                Icon(
-                  isFailed ? Icons.warning : Icons.schedule,
-                  color: isFailed ? Colors.red : Colors.orange,
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  report.statusText,
-                  style: TextStyle(
-                    color: isFailed ? Colors.red : Colors.orange,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    report.shopAddress,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Смена: ${report.shiftTypeText}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                  Text(
+                    'Дата: ${report.date} • Дедлайн: ${report.deadline}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        isFailed ? Icons.warning : Icons.schedule,
+                        color: isFailed ? Colors.red : Colors.orange,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        report.statusText,
+                        style: TextStyle(
+                          color: isFailed ? Colors.red : Colors.orange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -542,20 +752,40 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   Widget _buildPendingReportsList(List<PendingEnvelopeReport> reports, String emptyMessage) {
     if (reports.isEmpty) {
       return Center(
-        child: Text(
-          emptyMessage,
-          style: const TextStyle(color: Colors.white, fontSize: 18),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.mail_outline, size: 40, color: Colors.white.withOpacity(0.3)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              emptyMessage,
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+            ),
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: reports.length,
-      itemBuilder: (context, index) {
-        final report = reports[index];
-        return _buildPendingReportCard(report);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: reports.length,
+        itemBuilder: (context, index) {
+          final report = reports[index];
+          return _buildPendingReportCard(report);
+        },
+      ),
     );
   }
 }

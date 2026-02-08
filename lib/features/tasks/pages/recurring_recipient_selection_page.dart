@@ -37,6 +37,11 @@ class RecurringRecipientSelectionPage extends StatefulWidget {
 }
 
 class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSelectionPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   RecipientGroup _selectedGroup = RecipientGroup.all;
   List<Employee> _allEmployees = [];
   Set<String> _selectedIds = {};
@@ -121,160 +126,212 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
     final totalSelected = _selectedIds.length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Получатели'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          if (!_isLoading)
-            TextButton(
-              onPressed: _filteredEmployees.length == filteredCount ? _deselectAll : _selectAll,
-              child: Text(
-                _filteredEmployees.length == filteredCount ? 'Снять все' : 'Выбрать все',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Группы
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: RecipientGroup.values.map((group) {
-                final isSelected = _selectedGroup == group;
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: group != RecipientGroup.values.last ? 8 : 0,
-                    ),
-                    child: ChoiceChip(
-                      label: Text(
-                        group.displayName,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isSelected ? Colors.white : Colors.black87,
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: Column(
+          children: [
+            // Custom AppBar
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 20,
                         ),
                       ),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() => _selectedGroup = group);
-                        }
-                      },
-                      selectedColor: const Color(0xFF004D40),
-                      backgroundColor: Colors.grey[200],
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // Список сотрудников
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredEmployees.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Нет сотрудников в этой группе',
-                          style: TextStyle(color: Colors.grey[600]),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Получатели',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: _filteredEmployees.length,
-                        itemBuilder: (context, index) {
-                          final employee = _filteredEmployees[index];
-                          final isSelected = _selectedIds.contains(employee.id);
-                          final isManager = employee.isAdmin == true;
+                      ),
+                    ),
+                    if (!_isLoading)
+                      TextButton(
+                        onPressed: _filteredEmployees.length == filteredCount ? _deselectAll : _selectAll,
+                        child: Text(
+                          _filteredEmployees.length == filteredCount ? 'Снять все' : 'Выбрать все',
+                          style: TextStyle(color: _gold),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
 
-                          return CheckboxListTile(
-                            value: isSelected,
-                            onChanged: (_) => _toggleEmployee(employee),
-                            title: Text(employee.name),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  isManager ? 'Заведующий' : 'Сотрудник',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                if (employee.phone != null && employee.phone!.isNotEmpty)
+            // Группы
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: RecipientGroup.values.map((group) {
+                  final isSelected = _selectedGroup == group;
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: group != RecipientGroup.values.last ? 8 : 0,
+                      ),
+                      child: ChoiceChip(
+                        label: Text(
+                          group.displayName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => _selectedGroup = group);
+                          }
+                        },
+                        selectedColor: _gold,
+                        backgroundColor: Colors.white.withOpacity(0.06),
+                        side: isSelected
+                            ? BorderSide.none
+                            : BorderSide(color: Colors.white.withOpacity(0.1)),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            Divider(height: 1, color: Colors.white.withOpacity(0.1)),
+
+            // Список сотрудников
+            Expanded(
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator(color: _gold))
+                  : _filteredEmployees.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Нет сотрудников в этой группе',
+                            style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _filteredEmployees.length,
+                          itemBuilder: (context, index) {
+                            final employee = _filteredEmployees[index];
+                            final isSelected = _selectedIds.contains(employee.id);
+                            final isManager = employee.isAdmin == true;
+
+                            return CheckboxListTile(
+                              value: isSelected,
+                              onChanged: (_) => _toggleEmployee(employee),
+                              activeColor: _gold,
+                              checkColor: _night,
+                              title: Text(
+                                employee.name,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    employee.phone!,
+                                    isManager ? 'Заведующий' : 'Сотрудник',
                                     style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                      color: Colors.white.withOpacity(0.5),
                                     ),
                                   ),
-                              ],
-                            ),
-                            isThreeLine: employee.phone != null && employee.phone!.isNotEmpty,
-                            secondary: CircleAvatar(
-                              backgroundColor: isManager
-                                  ? Colors.purple[100]
-                                  : Colors.blue[100],
-                              child: Icon(
-                                isManager
-                                    ? Icons.star
-                                    : Icons.person,
-                                color: isManager
-                                    ? Colors.purple
-                                    : Colors.blue,
+                                  if (employee.phone != null && employee.phone!.isNotEmpty)
+                                    Text(
+                                      employee.phone!,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ),
-                            activeColor: const Color(0xFF004D40),
-                          );
-                        },
-                      ),
-          ),
-
-          // Кнопка подтверждения
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+                              isThreeLine: employee.phone != null && employee.phone!.isNotEmpty,
+                              secondary: CircleAvatar(
+                                backgroundColor: isManager
+                                    ? _gold.withOpacity(0.15)
+                                    : _emerald.withOpacity(0.3),
+                                child: Icon(
+                                  isManager
+                                      ? Icons.star
+                                      : Icons.person,
+                                  color: isManager
+                                      ? _gold
+                                      : Colors.white.withOpacity(0.7),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
             ),
-            child: SafeArea(
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: totalSelected > 0 ? _confirm : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+
+            // Кнопка подтверждения
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _emeraldDark,
+                border: Border(
+                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                ),
+              ),
+              child: SafeArea(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: totalSelected > 0 ? _confirm : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _gold,
+                      foregroundColor: _night,
+                      disabledBackgroundColor: _gold.withOpacity(0.3),
+                      disabledForegroundColor: Colors.white.withOpacity(0.3),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    totalSelected > 0
-                        ? 'ВЫБРАТЬ ($totalSelected человек)'
-                        : 'ВЫБЕРИТЕ ПОЛУЧАТЕЛЕЙ',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    child: Text(
+                      totalSelected > 0
+                          ? 'ВЫБРАТЬ ($totalSelected человек)'
+                          : 'ВЫБЕРИТЕ ПОЛУЧАТЕЛЕЙ',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

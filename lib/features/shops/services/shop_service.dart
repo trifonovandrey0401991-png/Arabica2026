@@ -178,6 +178,16 @@ class ShopService {
           Logger.debug('   Manager с доступом ко всем магазинам управляющего');
           return allShops;
         }
+        // Поддержка множественных магазинов (managedShopIds)
+        if (roleData.managedShopIds.isNotEmpty) {
+          final filtered = allShops.where((shop) =>
+            roleData.managedShopIds.contains(shop.id) ||
+            roleData.managedShopIds.contains(shop.address)
+          ).toList();
+          Logger.debug('   Manager - ${filtered.length} из ${allShops.length} магазинов (по managedShopIds)');
+          return filtered;
+        }
+        // Обратная совместимость — один primaryShopId
         if (roleData.primaryShopId != null) {
           final filtered = allShops.where((shop) =>
             shop.id == roleData.primaryShopId ||

@@ -7,6 +7,7 @@ import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
 import 'shift_handover_report_view_page.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../../efficiency/models/points_settings_model.dart';
 import '../../efficiency/services/points_settings_service.dart';
 
@@ -61,6 +62,12 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   // Состояние раскрытия групп (ключ = уникальный идентификатор группы)
   final Map<String, bool> _expandedGroups = {};
 
+  // Dark emerald color palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   @override
   void initState() {
     super.initState();
@@ -93,10 +100,10 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
       final addresses = <String>{};
       for (var report in serverReports) {
-        addresses.add(report.shopAddress);
+        if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
       }
       for (var report in localReports) {
-        addresses.add(report.shopAddress);
+        if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
       }
 
       final addressList = addresses.toList()..sort();
@@ -297,9 +304,9 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
     // Загружаем магазины из API
     try {
-      final shops = await Shop.loadShopsFromServer();
+      final shops = await ShopService.getShopsForCurrentUser();
       _allShops = shops;
-      Logger.success('Загружено магазинов: ${shops.length}');
+      Logger.success('Загружено магазинов (с учётом роли): ${shops.length}');
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
     }
@@ -423,18 +430,16 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     }
   }
 
-  // Градиентные цвета для страницы
-  static const _gradientColors = [Color(0xFF00695C), Color(0xFF004D40)];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: _gradientColors,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
@@ -481,11 +486,12 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           // Кнопка назад
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -516,8 +522,9 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           // Кнопка обновления
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: const Icon(Icons.refresh, color: Colors.white),
@@ -589,10 +596,10 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                       end: Alignment.bottomRight,
                     )
                   : null,
-              color: isSelected ? null : Colors.white.withOpacity(0.1),
+              color: isSelected ? null : Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isSelected ? accentColor : Colors.white30,
+                color: isSelected ? accentColor : Colors.white.withOpacity(0.15),
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -664,9 +671,9 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white24),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         children: [
@@ -733,38 +740,40 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: Icon(Icons.arrow_drop_down, color: _gradientColors[1]),
+          dropdownColor: _emeraldDark,
+          icon: const Icon(Icons.arrow_drop_down, color: _gold),
           hint: Row(
             children: [
-              Icon(icon, size: 18, color: Colors.grey),
+              Icon(icon, size: 18, color: Colors.white.withOpacity(0.5)),
               const SizedBox(width: 8),
-              Text(hint, style: const TextStyle(fontSize: 13)),
+              Text(hint, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5))),
             ],
           ),
           selectedItemBuilder: (context) {
             return [
               Row(
                 children: [
-                  Icon(icon, size: 18, color: _gradientColors[1]),
+                  Icon(icon, size: 18, color: _gold),
                   const SizedBox(width: 8),
-                  const Expanded(child: Text('Все', style: TextStyle(fontSize: 13))),
+                  const Expanded(child: Text('Все', style: TextStyle(fontSize: 13, color: Colors.white))),
                 ],
               ),
               ...items.map((item) => Row(
                 children: [
-                  Icon(icon, size: 18, color: _gradientColors[1]),
+                  Icon(icon, size: 18, color: _gold),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       item,
-                      style: const TextStyle(fontSize: 13),
+                      style: const TextStyle(fontSize: 13, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -773,8 +782,8 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             ];
           },
           items: [
-            DropdownMenuItem<String>(value: null, child: Text('Все $hint')),
-            ...items.map((item) => DropdownMenuItem(value: item, child: Text(item))),
+            DropdownMenuItem<String>(value: null, child: Text('Все $hint', style: const TextStyle(color: Colors.white))),
+            ...items.map((item) => DropdownMenuItem(value: item, child: Text(item, style: const TextStyle(color: Colors.white)))),
           ],
           onChanged: onChanged,
         ),
@@ -790,19 +799,20 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.calendar_today, size: 18, color: _gradientColors[1]),
+            const Icon(Icons.calendar_today, size: 18, color: _gold),
             const SizedBox(width: 8),
             Text(
               _selectedDate == null
                   ? 'Дата'
                   : '${_selectedDate!.day}.${_selectedDate!.month}',
-              style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: 13, color: Colors.white),
             ),
           ],
         ),
@@ -842,7 +852,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle_outline, size: 64, color: Colors.white70),
+            Icon(Icons.check_circle_outline, size: 64, color: Colors.white.withOpacity(0.3)),
             const SizedBox(height: 16),
             const Text(
               'Все сдачи смен в срок пройдены!',
@@ -868,18 +878,18 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white30),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Colors.white70, size: 20),
+                Icon(Icons.info_outline, color: Colors.white.withOpacity(0.5), size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Дедлайны: утро до ${settings.morningEndTime}, вечер до ${settings.eveningEndTime}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
                   ),
                 ),
               ],
@@ -889,55 +899,72 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
         final pending = _pendingHandovers[index - 1];
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: pending.shiftType == 'morning'
-                  ? Colors.orange
-                  : Colors.indigo,
-              child: Icon(
-                pending.shiftType == 'morning' ? Icons.wb_sunny : Icons.nights_stay,
-                color: Colors.white,
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: pending.shiftType == 'morning'
+                    ? Colors.orange.withOpacity(0.8)
+                    : Colors.indigo.withOpacity(0.8),
+                child: Icon(
+                  pending.shiftType == 'morning' ? Icons.wb_sunny : Icons.nights_stay,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            title: Text(
-              pending.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: pending.shiftType == 'morning'
-                        ? Colors.orange.shade100
-                        : Colors.indigo.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    pending.shiftName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: pending.shiftType == 'morning'
-                          ? Colors.orange.shade800
-                          : Colors.indigo.shade800,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      pending.shopAddress,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: pending.shiftType == 'morning'
+                                ? Colors.orange.withOpacity(0.2)
+                                : Colors.indigo.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            pending.shiftName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: pending.shiftType == 'morning'
+                                  ? Colors.orange.shade300
+                                  : Colors.indigo.shade200,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'до ${pending.shiftType == 'morning' ? settings.morningEndTime : settings.eveningEndTime}',
+                          style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'до ${pending.shiftType == 'morning' ? settings.morningEndTime : settings.eveningEndTime}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-            trailing: Icon(
-              Icons.schedule,
-              color: pending.shiftType == 'morning' ? Colors.orange : Colors.indigo,
-              size: 28,
-            ),
+              ),
+              Icon(
+                Icons.schedule,
+                color: pending.shiftType == 'morning' ? Colors.orange.withOpacity(0.7) : Colors.indigo.withOpacity(0.7),
+                size: 28,
+              ),
+            ],
           ),
         );
       },
@@ -953,7 +980,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.thumb_up, size: 64, color: Colors.white70),
+            Icon(Icons.thumb_up, size: 64, color: Colors.white.withOpacity(0.3)),
             const SizedBox(height: 16),
             const Text(
               'Нет просроченных сдач смен!',
@@ -979,9 +1006,9 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.2),
+              color: Colors.red.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.withOpacity(0.5)),
+              border: Border.all(color: Colors.red.withOpacity(0.4)),
             ),
             child: Row(
               children: [
@@ -1009,70 +1036,86 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
         final pending = _overdueHandovers[index - 1];
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          color: Colors.red.shade50,
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.red,
-              child: Icon(
-                pending.shiftType == 'morning' ? Icons.wb_sunny : Icons.nights_stay,
-                color: Colors.white,
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.red.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: Colors.red,
+                child: Icon(
+                  Icons.warning_amber,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            title: Text(
-              pending.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    pending.shiftName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade800,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      pending.shopAddress,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            pending.shiftName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade300,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Просрочено',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Просрочено',
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, color: Colors.red, size: 24),
+                  Text(
+                    '${settings.missedPenalty}',
                     style: const TextStyle(
-                      fontSize: 10,
+                      color: Colors.red,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      fontSize: 12,
                     ),
                   ),
-                ),
-              ],
-            ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error, color: Colors.red, size: 24),
-                Text(
-                  '${settings.missedPenalty}',
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
         );
       },
@@ -1099,20 +1142,20 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     if (reports.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.thumb_up, size: 64, color: Colors.white70),
-            SizedBox(height: 16),
-            Text(
+            Icon(Icons.thumb_up, size: 64, color: Colors.white.withOpacity(0.3)),
+            const SizedBox(height: 16),
+            const Text(
               'Нет не подтверждённых отчётов',
               style: TextStyle(color: Colors.white, fontSize: 18),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Все отчёты были проверены вовремя',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
             ),
           ],
         ),
@@ -1128,50 +1171,15 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         final waitingHours = now.difference(report.createdAt).inHours;
         final isFromExpiredList = report.isExpired || report.expiredAt != null;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          color: Colors.red.shade50,
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isFromExpiredList ? Colors.red : Colors.orange,
-              child: Icon(
-                isFromExpiredList ? Icons.cancel : Icons.access_time,
-                color: Colors.white,
-              ),
-            ),
-            title: Text(
-              report.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Сотрудник: ${report.employeeName}'),
-                Text(
-                  'Сдан: ${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}.${report.createdAt.year} '
-                  '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                ),
-                if (isFromExpiredList && report.expiredAt != null)
-                  Text(
-                    'Просрочен: ${report.expiredAt!.day.toString().padLeft(2, '0')}.${report.expiredAt!.month.toString().padLeft(2, '0')}.${report.expiredAt!.year}',
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                  )
-                else
-                  Text(
-                    'Ожидает: $waitingHours ч. (более 5 часов)',
-                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-                  ),
-                Text('Вопросов: ${report.answers.length}'),
-              ],
-            ),
-            trailing: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.visibility, color: Colors.grey),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward_ios),
-              ],
-            ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.red.withOpacity(0.3)),
+          ),
+          child: InkWell(
             onTap: () {
               Navigator.push(
                 context,
@@ -1183,6 +1191,54 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 ),
               );
             },
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: isFromExpiredList ? Colors.red.withOpacity(0.8) : Colors.orange.withOpacity(0.8),
+                  child: Icon(
+                    isFromExpiredList ? Icons.cancel : Icons.access_time,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.shopAddress,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text('Сотрудник: ${report.employeeName}', style: TextStyle(color: Colors.white.withOpacity(0.7))),
+                      Text(
+                        'Сдан: ${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}.${report.createdAt.year} '
+                        '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                      ),
+                      if (isFromExpiredList && report.expiredAt != null)
+                        Text(
+                          'Просрочен: ${report.expiredAt!.day.toString().padLeft(2, '0')}.${report.expiredAt!.month.toString().padLeft(2, '0')}.${report.expiredAt!.year}',
+                          style: TextStyle(color: Colors.red.shade300, fontWeight: FontWeight.bold),
+                        )
+                      else
+                        Text(
+                          'Ожидает: $waitingHours ч. (более 5 часов)',
+                          style: TextStyle(color: Colors.orange.shade300, fontWeight: FontWeight.bold),
+                        ),
+                      Text('Вопросов: ${report.answers.length}', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.visibility, color: Colors.white.withOpacity(0.4)),
+                    const SizedBox(width: 8),
+                    Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.4)),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1221,19 +1277,19 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             size: 24,
           );
         } else if (status == 'not_verified') {
-          statusIcon = const Row(
+          statusIcon = Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.cancel,
                 color: Colors.red,
                 size: 24,
               ),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Text(
                 'не проверено',
                 style: TextStyle(
-                  color: Colors.red,
+                  color: Colors.red.shade300,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1248,85 +1304,15 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           );
         }
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: report.isConfirmed ? Colors.green : const Color(0xFF004D40),
-              child: Icon(
-                report.isConfirmed ? Icons.check : Icons.assignment_turned_in,
-                color: Colors.white,
-              ),
-            ),
-            title: Text(
-              report.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Сотрудник: ${report.employeeName}'),
-                Text(
-                  '${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}.${report.createdAt.year} '
-                  '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                ),
-                Text('Вопросов: ${report.answers.length}'),
-                if (report.isConfirmed && report.confirmedAt != null) ...[
-                  Row(
-                    children: [
-                      const Text(
-                        'Подтверждено: ',
-                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '${report.confirmedAt!.day.toString().padLeft(2, '0')}.${report.confirmedAt!.month.toString().padLeft(2, '0')}.${report.confirmedAt!.year} '
-                        '${report.confirmedAt!.hour.toString().padLeft(2, '0')}:${report.confirmedAt!.minute.toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Colors.green),
-                      ),
-                    ],
-                  ),
-                  if (report.rating != null)
-                    Row(
-                      children: [
-                        const Text('Оценка: ', style: TextStyle(fontSize: 13)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _getRatingColor(report.rating!),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${report.rating}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        if (report.confirmedByAdmin != null) ...[
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Проверил: ${report.confirmedByAdmin}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                ],
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                statusIcon,
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_ios),
-              ],
-            ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: InkWell(
             onTap: () async {
               final allReports = await ShiftHandoverReport.loadAllLocal();
 
@@ -1349,6 +1335,90 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 _loadData();
               });
             },
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: report.isConfirmed ? Colors.green.withOpacity(0.8) : _emerald,
+                  child: Icon(
+                    report.isConfirmed ? Icons.check : Icons.assignment_turned_in,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.shopAddress,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text('Сотрудник: ${report.employeeName}', style: TextStyle(color: Colors.white.withOpacity(0.7))),
+                      Text(
+                        '${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}.${report.createdAt.year} '
+                        '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                      ),
+                      Text('Вопросов: ${report.answers.length}', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                      if (report.isConfirmed && report.confirmedAt != null) ...[
+                        Row(
+                          children: [
+                            const Text(
+                              'Подтверждено: ',
+                              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              '${report.confirmedAt!.day.toString().padLeft(2, '0')}.${report.confirmedAt!.month.toString().padLeft(2, '0')}.${report.confirmedAt!.year} '
+                              '${report.confirmedAt!.hour.toString().padLeft(2, '0')}:${report.confirmedAt!.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(color: Colors.green),
+                            ),
+                          ],
+                        ),
+                        if (report.rating != null)
+                          Row(
+                            children: [
+                              Text('Оценка: ', style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.7))),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _getRatingColor(report.rating!),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${report.rating}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              if (report.confirmedByAdmin != null) ...[
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Проверил: ${report.confirmedByAdmin}',
+                                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    statusIcon,
+                    const SizedBox(width: 8),
+                    Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.4)),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1609,7 +1679,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             Icon(
               isConfirmed ? Icons.check_circle_outline : Icons.cancel_outlined,
               size: 64,
-              color: Colors.white70,
+              color: Colors.white.withOpacity(0.3),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1693,19 +1763,12 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isExpanded ? color.withOpacity(0.15) : Colors.white,
+          color: isExpanded ? color.withOpacity(0.15) : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isExpanded ? color : color.withOpacity(0.3),
             width: isExpanded ? 2 : 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -1722,7 +1785,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 18),
@@ -1734,7 +1797,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: isExpanded ? color : Colors.black87,
+                  color: isExpanded ? color : Colors.white.withOpacity(0.85),
                 ),
               ),
             ),
@@ -1785,18 +1848,11 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isConfirmed ? Colors.green.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+            color: isConfirmed ? Colors.green.withOpacity(0.15) : Colors.white.withOpacity(0.1),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -1804,12 +1860,12 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isConfirmed ? Colors.green.withOpacity(0.1) : const Color(0xFF004D40).withOpacity(0.1),
+                color: isConfirmed ? Colors.green.withOpacity(0.15) : _emerald.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 isConfirmed ? Icons.check : Icons.assignment_turned_in,
-                color: isConfirmed ? Colors.green : const Color(0xFF004D40),
+                color: isConfirmed ? Colors.green : _gold,
                 size: 22,
               ),
             ),
@@ -1823,6 +1879,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      color: Colors.white,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1830,18 +1887,18 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.person, size: 14, color: Colors.grey[600]),
+                      Icon(Icons.person, size: 14, color: Colors.white.withOpacity(0.4)),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           report.employeeName,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
                       ),
                     ],
                   ),
@@ -1849,7 +1906,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Text('Оценка: ', style: TextStyle(fontSize: 12)),
+                        Text('Оценка: ', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7))),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
@@ -1869,7 +1926,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                           const Spacer(),
                           Text(
                             report.confirmedByAdmin!,
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.35)),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -1879,7 +1936,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
           ],
         ),
       ),

@@ -291,8 +291,8 @@ class RecountService {
   }) async {
     try {
       final queryParams = <String, String>{};
-      if (shopAddress != null) queryParams['shop'] = shopAddress;
-      if (employeeName != null) queryParams['employee'] = employeeName;
+      if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
+      if (employeeName != null) queryParams['employeeName'] = employeeName;
       if (date != null) queryParams['date'] = date.toIso8601String();
 
       Logger.debug('📥 Загрузка отчетов пересчета...');

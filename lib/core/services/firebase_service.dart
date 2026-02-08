@@ -18,6 +18,7 @@ import '../../features/orders/pages/orders_page.dart';
 import '../../features/work_schedule/pages/my_schedule_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/tasks/pages/my_tasks_page.dart';
+import '../../features/employee_chat/pages/employee_chats_list_page.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
@@ -32,6 +33,9 @@ class FirebaseService {
 
   static bool _initialized = false;
   static BuildContext? _globalContext;
+
+  /// Цвет уведомлений (основной цвет бренда Арабика)
+  static const Color _notificationColor = Color(0xFF004D40);
 
   /// Флаг для предотвращения повторного показа диалога блокировки
   static bool _verificationRevokedDialogShown = false;
@@ -432,55 +436,82 @@ class FirebaseService {
 
     AndroidNotificationDetails androidDetails;
     if (type == 'new_order' || type == 'order_status') {
-      androidDetails = const AndroidNotificationDetails(
+      androidDetails = AndroidNotificationDetails(
         'orders_channel',
         'Заказы',
         channelDescription: 'Уведомления о заказах клиентов',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else if (type != null && type.startsWith('shift_transfer')) {
       // Канал для замен смены
-      androidDetails = const AndroidNotificationDetails(
+      androidDetails = AndroidNotificationDetails(
         'shift_transfers_channel',
         'Замены смен',
         channelDescription: 'Уведомления о заменах смены',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else if (type == 'product_question_created' || type == 'product_question_answered') {
       // Канал для вопросов о товаре
-      androidDetails = const AndroidNotificationDetails(
+      androidDetails = AndroidNotificationDetails(
         'product_questions_channel',
         'Поиск товара',
         channelDescription: 'Уведомления о вопросах и ответах по поиску товара',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else if (type != null && (type.startsWith('new_task') ||
                type.startsWith('task_') ||
                type.startsWith('new_recurring_task') ||
                type.startsWith('recurring_task_'))) {
       // Канал для задач
-      androidDetails = const AndroidNotificationDetails(
+      androidDetails = AndroidNotificationDetails(
         'tasks_channel',
         'Задачи',
         channelDescription: 'Уведомления о задачах',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
+    } else if (type == 'employee_chat') {
+      androidDetails = AndroidNotificationDetails(
+        'employee_chat_channel',
+        'Чат сотрудников',
+        channelDescription: 'Уведомления о новых сообщениях в чате',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else {
-      androidDetails = const AndroidNotificationDetails(
+      androidDetails = AndroidNotificationDetails(
         'reviews_channel',
         'Отзывы',
         channelDescription: 'Уведомления о новых ответах на отзывы',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     }
 
@@ -691,6 +722,16 @@ class FirebaseService {
       Navigator.of(_globalContext!).push(
         MaterialPageRoute(
           builder: (context) => const MyTasksPage(), // Note: можно добавить TaskReportsPage для админов
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомлений чата сотрудников
+    if (type == 'employee_chat') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const EmployeeChatsListPage(),
         ),
       );
       return;

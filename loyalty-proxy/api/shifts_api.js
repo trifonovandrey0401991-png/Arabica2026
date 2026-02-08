@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Shifts API - Shift Reports and Shift Handover
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -9,9 +15,24 @@ const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
 const SHIFT_HANDOVER_QUESTIONS_DIR = `${DATA_DIR}/shift-handover-questions`;
 const PENDING_SHIFT_DIR = `${DATA_DIR}/pending-shift-reports`;
 
-[SHIFT_REPORTS_DIR, SHIFT_QUESTIONS_DIR, SHIFT_HANDOVER_REPORTS_DIR, SHIFT_HANDOVER_QUESTIONS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist (async IIFE)
+(async () => {
+  for (const dir of [SHIFT_REPORTS_DIR, SHIFT_QUESTIONS_DIR, SHIFT_HANDOVER_REPORTS_DIR, SHIFT_HANDOVER_QUESTIONS_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+})();
 
 // Helper to sanitize string for file ID
 function sanitizeForId(str) {
@@ -19,7 +40,7 @@ function sanitizeForId(str) {
 }
 
 // Mark pending shift as completed when shift report is created
-function markPendingShiftCompleted(shopAddress, employeeName) {
+async function markPendingShiftCompleted(shopAddress, employeeName) {
   try {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -34,13 +55,13 @@ function markPendingShiftCompleted(shopAddress, employeeName) {
 
     console.log(`🔍 Looking for pending file: ${pendingFile}`);
 
-    if (fs.existsSync(pendingFile)) {
-      const pending = JSON.parse(fs.readFileSync(pendingFile, 'utf8'));
+    if (await fileExists(pendingFile)) {
+      const pending = JSON.parse(await fsp.readFile(pendingFile, 'utf8'));
       pending.status = 'completed';
       pending.completedBy = employeeName;
       pending.completedAt = now.toISOString();
 
-      fs.writeFileSync(pendingFile, JSON.stringify(pending, null, 2), 'utf8');
+      await fsp.writeFile(pendingFile, JSON.stringify(pending, null, 2), 'utf8');
       console.log(`✅ Marked pending shift as completed: ${pendingId}`);
       return true;
     } else {
@@ -61,12 +82,12 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       console.log('GET /api/shift-reports');
       const reports = [];
 
-      if (fs.existsSync(SHIFT_REPORTS_DIR)) {
-        const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(SHIFT_REPORTS_DIR)) {
+        const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
             const report = JSON.parse(content);
 
             if (req.query.employeeName && report.employeeName !== req.query.employeeName) continue;
@@ -99,11 +120,11 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const filePath = path.join(SHIFT_REPORTS_DIR, `${sanitizedId}.json`);
 
       report.savedAt = new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
 
       // ✅ AUTO-MARK PENDING SHIFT AS COMPLETED
       if (report.shopAddress && report.employeeName) {
-        markPendingShiftCompleted(report.shopAddress, report.employeeName);
+        await markPendingShiftCompleted(report.shopAddress, report.employeeName);
       }
 
       res.json({ success: true, report });
@@ -119,8 +140,8 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_REPORTS_DIR, `${sanitizedId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
         res.json({ success: true, report });
       } else {
         res.status(404).json({ success: false, error: 'Report not found' });
@@ -140,14 +161,14 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_REPORTS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Report not found' });
       }
 
-      const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       const updated = { ...report, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       console.log('✅ Shift report updated:', reportId);
       res.json({ success: true, report: updated });
     } catch (error) {
@@ -162,11 +183,11 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_REPORTS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Report not found' });
       }
 
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -180,12 +201,12 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       console.log('GET /api/shift-questions');
       const questions = [];
 
-      if (fs.existsSync(SHIFT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(SHIFT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(SHIFT_QUESTIONS_DIR)) {
+        const files = (await fsp.readdir(SHIFT_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(SHIFT_QUESTIONS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(SHIFT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(content);
 
             if (req.query.shopAddress && question.shopAddresses) {
@@ -212,8 +233,8 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const question = JSON.parse(await fsp.readFile(filePath, 'utf8'));
         res.json({ success: true, question });
       } else {
         res.status(404).json({ success: false, error: 'Question not found' });
@@ -235,7 +256,7 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
       question.createdAt = new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
 
       res.json({ success: true, question });
     } catch (error) {
@@ -251,15 +272,15 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const existing = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       const updated = { ...existing, ...updateData, id: questionId };
       updated.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, question: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -279,7 +300,7 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const photoFileName = `shift_ref_${sanitizedId}_${Date.now()}.jpg`;
       const photoPath = path.join(`${DATA_DIR}/shift-photos`, photoFileName);
 
-      fs.renameSync(req.file.path, photoPath);
+      await fsp.rename(req.file.path, photoPath);
 
       const photoUrl = `https://arabica26.ru/shift-photos/${photoFileName}`;
       res.json({ success: true, photoUrl });
@@ -294,11 +315,11 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -312,12 +333,12 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       console.log('GET /api/shift-handover-reports');
       const reports = [];
 
-      if (fs.existsSync(SHIFT_HANDOVER_REPORTS_DIR)) {
-        const files = fs.readdirSync(SHIFT_HANDOVER_REPORTS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
+        const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(SHIFT_HANDOVER_REPORTS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(SHIFT_HANDOVER_REPORTS_DIR, file), 'utf8');
             const report = JSON.parse(content);
 
             if (req.query.employeeName && report.employeeName !== req.query.employeeName) continue;
@@ -343,8 +364,8 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${sanitizedId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
         res.json({ success: true, report });
       } else {
         res.status(404).json({ success: false, error: 'Report not found' });
@@ -366,7 +387,7 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${sanitizedId}.json`);
 
       report.createdAt = report.createdAt || new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
 
       res.json({ success: true, report });
     } catch (error) {
@@ -380,11 +401,11 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Report not found' });
       }
 
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -401,14 +422,14 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Report not found' });
       }
 
-      const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       const updated = { ...report, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       console.log('✅ Shift handover report updated:', id);
       res.json({ success: true, report: updated });
     } catch (error) {
@@ -424,12 +445,12 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       console.log('GET /api/shift-handover-questions');
       const questions = [];
 
-      if (fs.existsSync(SHIFT_HANDOVER_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(SHIFT_HANDOVER_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(SHIFT_HANDOVER_QUESTIONS_DIR)) {
+        const files = (await fsp.readdir(SHIFT_HANDOVER_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(SHIFT_HANDOVER_QUESTIONS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(SHIFT_HANDOVER_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(content);
 
             if (req.query.shopAddress && question.shopAddresses) {
@@ -457,8 +478,8 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const question = JSON.parse(await fsp.readFile(filePath, 'utf8'));
         res.json({ success: true, question });
       } else {
         res.status(404).json({ success: false, error: 'Question not found' });
@@ -480,7 +501,7 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
       question.createdAt = new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
 
       res.json({ success: true, question });
     } catch (error) {
@@ -496,15 +517,15 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const existing = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       const updated = { ...existing, ...updateData, id: questionId };
       updated.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, question: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -532,11 +553,11 @@ function setupShiftsAPI(app, upload, uploadShiftHandoverPhoto) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });

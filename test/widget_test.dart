@@ -7,8 +7,6 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:arabica_app/main.dart';
-
 void main() {
   // Skipped: Full app widget test requires extensive mocking of Firebase,
   // SharedPreferences, network, etc. Unit tests in test/ folders cover

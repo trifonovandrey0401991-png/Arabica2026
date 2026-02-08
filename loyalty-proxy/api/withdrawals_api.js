@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Withdrawals API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 const admin = require('firebase-admin');
 
@@ -9,27 +15,37 @@ const MAIN_CASH_DIR = `${DATA_DIR}/main_cash`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Убедиться что директория существует
-function ensureDirectoryExists(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+async function ensureDirectoryExists(dir) {
+  if (!(await fileExists(dir))) {
+    await fsp.mkdir(dir, { recursive: true, mode: 0o755 });
   }
 }
 
 // Загрузить всех сотрудников
-function loadAllEmployees() {
-  if (!fs.existsSync(EMPLOYEES_DIR)) {
+async function loadAllEmployees() {
+  if (!(await fileExists(EMPLOYEES_DIR))) {
     return [];
   }
 
-  const files = fs.readdirSync(EMPLOYEES_DIR);
+  const files = await fsp.readdir(EMPLOYEES_DIR);
   const employees = [];
 
   for (const file of files) {
     if (file.endsWith('.json')) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
-        const data = fs.readFileSync(filePath, 'utf8');
+        const data = await fsp.readFile(filePath, 'utf8');
         const employee = JSON.parse(data);
         employees.push(employee);
       } catch (err) {
@@ -42,16 +58,17 @@ function loadAllEmployees() {
 }
 
 // Получить FCM токен пользователя по телефону
-function getFCMTokenByPhone(phone) {
+async function getFCMTokenByPhone(phone) {
   try {
     const normalizedPhone = phone.replace(/[\s+]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!(await fileExists(tokenFile))) {
       return null;
     }
 
-    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const data = await fsp.readFile(tokenFile, 'utf8');
+    const tokenData = JSON.parse(data);
     return tokenData.token || null;
   } catch (err) {
     console.error(`Ошибка получения токена для ${phone}:`, err.message);
@@ -60,15 +77,15 @@ function getFCMTokenByPhone(phone) {
 }
 
 // Получить FCM токены пользователей
-function getFCMTokensForUsers(phones) {
-  if (!fs.existsSync(FCM_TOKENS_DIR)) {
+async function getFCMTokensForUsers(phones) {
+  if (!(await fileExists(FCM_TOKENS_DIR))) {
     console.log('⚠️  Папка FCM токенов не существует');
     return [];
   }
 
   const tokens = [];
   for (const phone of phones) {
-    const token = getFCMTokenByPhone(phone);
+    const token = await getFCMTokenByPhone(phone);
     if (token) {
       tokens.push(token);
     }
@@ -81,7 +98,7 @@ function getFCMTokensForUsers(phones) {
 async function sendWithdrawalNotifications(withdrawal) {
   try {
     // 1. Загрузить всех сотрудников
-    const employees = loadAllEmployees();
+    const employees = await loadAllEmployees();
 
     // 2. Отфильтровать админов
     const admins = employees.filter(e => e.isAdmin === true);
@@ -93,7 +110,7 @@ async function sendWithdrawalNotifications(withdrawal) {
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = getFCMTokensForUsers(adminPhones);
+    const tokens = await getFCMTokensForUsers(adminPhones);
 
     if (tokens.length === 0) {
       console.log('Нет FCM токенов для админов');
@@ -135,7 +152,7 @@ async function sendWithdrawalNotifications(withdrawal) {
 async function sendWithdrawalConfirmationNotifications(withdrawal) {
   try {
     // 1. Загрузить всех сотрудников
-    const employees = loadAllEmployees();
+    const employees = await loadAllEmployees();
 
     // 2. Отфильтровать админов
     const admins = employees.filter(e => e.isAdmin === true);
@@ -147,7 +164,7 @@ async function sendWithdrawalConfirmationNotifications(withdrawal) {
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = getFCMTokensForUsers(adminPhones);
+    const tokens = await getFCMTokensForUsers(adminPhones);
 
     if (tokens.length === 0) {
       console.log('Нет FCM токенов для админов');
@@ -186,7 +203,7 @@ async function sendWithdrawalConfirmationNotifications(withdrawal) {
 }
 
 // Обновить баланс главной кассы
-function updateMainCashBalance(shopAddress, type, amount) {
+async function updateMainCashBalance(shopAddress, type, amount) {
   try {
     // Нормализовать адрес для имени файла
     const fileName = shopAddress.replace(/[^a-zA-Z0-9а-яА-Я]/g, '_') + '.json';
@@ -201,8 +218,8 @@ function updateMainCashBalance(shopAddress, type, amount) {
     };
 
     // Загрузить существующий баланс если есть
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const data = await fsp.readFile(filePath, 'utf8');
       balance = JSON.parse(data);
     }
 
@@ -218,8 +235,8 @@ function updateMainCashBalance(shopAddress, type, amount) {
     balance.lastUpdated = new Date().toISOString();
 
     // Сохранить обновлённый баланс
-    ensureDirectoryExists(MAIN_CASH_DIR);
-    fs.writeFileSync(filePath, JSON.stringify(balance, null, 2), 'utf8');
+    await ensureDirectoryExists(MAIN_CASH_DIR);
+    await fsp.writeFile(filePath, JSON.stringify(balance, null, 2), 'utf8');
 
     console.log(`Обновлён баланс ${shopAddress}: ${type}Balance -= ${amount}`);
   } catch (err) {
@@ -230,20 +247,20 @@ function updateMainCashBalance(shopAddress, type, amount) {
 
 function registerWithdrawalsAPI(app) {
   // GET /api/withdrawals - получить все выемки с опциональными фильтрами
-  app.get('/api/withdrawals', (req, res) => {
+  app.get('/api/withdrawals', async (req, res) => {
     try {
-      ensureDirectoryExists(WITHDRAWALS_DIR);
+      await ensureDirectoryExists(WITHDRAWALS_DIR);
 
       const { shopAddress, type, fromDate, toDate } = req.query;
 
-      const files = fs.readdirSync(WITHDRAWALS_DIR);
+      const files = await fsp.readdir(WITHDRAWALS_DIR);
       let withdrawals = [];
 
       for (const file of files) {
         if (file.endsWith('.json')) {
           try {
             const filePath = path.join(WITHDRAWALS_DIR, file);
-            const data = fs.readFileSync(filePath, 'utf8');
+            const data = await fsp.readFile(filePath, 'utf8');
             const withdrawal = JSON.parse(data);
             withdrawals.push(withdrawal);
           } catch (err) {
@@ -335,12 +352,12 @@ function registerWithdrawalsAPI(app) {
       };
 
       // Сохранить в файл
-      ensureDirectoryExists(WITHDRAWALS_DIR);
+      await ensureDirectoryExists(WITHDRAWALS_DIR);
       const filePath = path.join(WITHDRAWALS_DIR, `${withdrawal.id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
       // Обновить баланс главной кассы
-      updateMainCashBalance(shopAddress, type, totalAmount);
+      await updateMainCashBalance(shopAddress, type, totalAmount);
 
       // Отправить push-уведомления админам
       await sendWithdrawalNotifications(withdrawal);
@@ -358,12 +375,12 @@ function registerWithdrawalsAPI(app) {
       const { id } = req.params;
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Выемка не найдена' });
       }
 
       // Загрузить выемку
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = await fsp.readFile(filePath, 'utf8');
       const withdrawal = JSON.parse(data);
 
       // Проверить что уже не подтверждена
@@ -376,7 +393,7 @@ function registerWithdrawalsAPI(app) {
       withdrawal.confirmedAt = new Date().toISOString();
 
       // Сохранить обновлённую выемку
-      fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
       // Отправить push-уведомления админам о подтверждении
       await sendWithdrawalConfirmationNotifications(withdrawal);
@@ -389,16 +406,16 @@ function registerWithdrawalsAPI(app) {
   });
 
   // DELETE /api/withdrawals/:id - удалить выемку
-  app.delete('/api/withdrawals/:id', (req, res) => {
+  app.delete('/api/withdrawals/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Выемка не найдена' });
       }
 
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
 
       res.json({ success: true, message: 'Выемка удалена' });
     } catch (err) {

@@ -321,6 +321,7 @@ void main() {
 
       test('CT-JOB-018: Фильтрация по статусу', () async {
         // Arrange
+        // ignore: unused_local_variable
         final app1 = await mockJobService.submitApplication({
           'name': 'Pending',
           'phone': '79001313131',

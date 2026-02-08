@@ -25,6 +25,11 @@ class EmployeeEfficiencyDetailPage extends StatefulWidget {
 
 class _EmployeeEfficiencyDetailPageState
     extends State<EmployeeEfficiencyDetailPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   EmployeeReferralPoints? _referralPoints;
   bool _isLoadingReferrals = true;
 
@@ -68,23 +73,27 @@ class _EmployeeEfficiencyDetailPageState
   void _showExportMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: _emeraldDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.text_snippet),
-              title: const Text('Копировать как текст'),
-              subtitle: const Text('Форматированный отчёт'),
+              leading: Icon(Icons.text_snippet, color: _gold),
+              title: const Text('Копировать как текст', style: TextStyle(color: Colors.white)),
+              subtitle: Text('Форматированный отчёт', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
                 Navigator.pop(context);
                 _exportAsText(context);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.table_chart),
-              title: const Text('Копировать как CSV'),
-              subtitle: const Text('Для Excel/Google Sheets'),
+              leading: Icon(Icons.table_chart, color: _gold),
+              title: const Text('Копировать как CSV', style: TextStyle(color: Colors.white)),
+              subtitle: Text('Для Excel/Google Sheets', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
                 Navigator.pop(context);
                 _exportAsCsv(context);
@@ -104,9 +113,10 @@ class _EmployeeEfficiencyDetailPageState
     );
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Отчёт скопирован в буфер обмена'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: const Text('Отчёт скопирован в буфер обмена'),
+        backgroundColor: _emerald,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -119,9 +129,10 @@ class _EmployeeEfficiencyDetailPageState
     );
     Clipboard.setData(ClipboardData(text: csv));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('CSV скопирован в буфер обмена'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: const Text('CSV скопирован в буфер обмена'),
+        backgroundColor: _emerald,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -129,37 +140,74 @@ class _EmployeeEfficiencyDetailPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.summary.entityName, overflow: TextOverflow.ellipsis),
-        backgroundColor: EfficiencyUtils.primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.ios_share),
-            tooltip: 'Экспорт',
-            onPressed: () => _showExportMenu(context),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emeraldDark, _night],
+            stops: [0.0, 0.3],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            EfficiencyDetailTotalCard(
-              summary: widget.summary,
-              monthName: widget.monthName,
-            ),
-            const SizedBox(height: 16),
-            EfficiencyDetailCategoriesCard(summary: widget.summary),
-            const SizedBox(height: 16),
-            _buildReferralPointsSection(),
-            _buildShopsCard(),
-            const SizedBox(height: 16),
-            EfficiencyDetailRecentRecordsCard(
-              summary: widget.summary,
-              showEmployeeName: false, // Для сотрудника показываем адреса магазинов
-            ),
-          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom Row AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Expanded(
+                      child: Text(
+                        widget.summary.entityName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.ios_share, color: _gold, size: 22),
+                      tooltip: 'Экспорт',
+                      onPressed: () => _showExportMenu(context),
+                    ),
+                  ],
+                ),
+              ),
+              // Body
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      EfficiencyDetailTotalCard(
+                        summary: widget.summary,
+                        monthName: widget.monthName,
+                      ),
+                      const SizedBox(height: 16),
+                      EfficiencyDetailCategoriesCard(summary: widget.summary),
+                      const SizedBox(height: 16),
+                      _buildReferralPointsSection(),
+                      _buildShopsCard(),
+                      const SizedBox(height: 16),
+                      EfficiencyDetailRecentRecordsCard(
+                        summary: widget.summary,
+                        showEmployeeName: false, // Для сотрудника показываем адреса магазинов
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -190,25 +238,27 @@ class _EmployeeEfficiencyDetailPageState
     final sortedShops = pointsByShop.entries.toList()
       ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'По магазинам',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: EfficiencyUtils.primaryColor,
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'По магазинам',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: _gold,
             ),
-            const SizedBox(height: 12),
-            ...sortedShops.map((entry) => _buildShopRow(entry.key, entry.value)),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          ...sortedShops.map((entry) => _buildShopRow(entry.key, entry.value)),
+        ],
       ),
     );
   }
@@ -227,20 +277,20 @@ class _EmployeeEfficiencyDetailPageState
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: EfficiencyUtils.secondaryColor,
+              color: _emerald.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.store,
               size: 20,
-              color: EfficiencyUtils.primaryColor,
+              color: _gold,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               shopAddress,
-              style: const TextStyle(fontSize: 15),
+              style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.9)),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -249,7 +299,7 @@ class _EmployeeEfficiencyDetailPageState
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: isPositive ? Colors.green[700] : Colors.red[700],
+              color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
             ),
           ),
         ],
@@ -298,66 +348,70 @@ class _EmployeeEfficiencyDetailPageState
     required int referralsCount,
     required bool isPreviousMonth,
   }) {
-    return Card(
+    return Container(
       margin: EdgeInsets.only(bottom: isPreviousMonth ? 0 : 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.person_add_alt_outlined,
-                color: Colors.teal,
-              ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _emerald.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: isPreviousMonth ? Colors.grey[600] : Colors.black,
-                    ),
+            child: Icon(
+              Icons.person_add_alt_outlined,
+              color: _gold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: isPreviousMonth
+                        ? Colors.white.withOpacity(0.5)
+                        : Colors.white,
                   ),
-                  Text(
-                    '$referralsCount ${_getReferralsLabel(referralsCount)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                ),
+                Text(
+                  '$referralsCount ${_getReferralsLabel(referralsCount)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.5),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Text(
-              '+$points',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal,
-              ),
+          ),
+          Text(
+            '+$points',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: _gold,
             ),
-            const SizedBox(width: 4),
-            Text(
-              'балл${_getPointsEnding(points)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'балл${_getPointsEnding(points)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.5),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

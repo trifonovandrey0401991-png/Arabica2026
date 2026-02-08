@@ -2,6 +2,8 @@
  * SHIFT TRANSFERS NOTIFICATIONS API
  * Система push-уведомлений для замен смены
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Типы уведомлений:
  * - shift_transfer_created - Новый запрос на замену смены
  * - shift_transfer_accepted - Сотрудник принял запрос
@@ -11,12 +13,22 @@
  * - shift_transfer_declined - Админ отклонил замену
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Константы
 const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
 const EMPLOYEES_DIR = '/var/www/employees';
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ==================== УТИЛИТЫ ====================
 
@@ -41,13 +53,13 @@ function getFirebaseAdmin() {
 /**
  * Получить данные сотрудника по ID
  * @param {string} employeeId - ID сотрудника
- * @returns {Object|null} Данные сотрудника или null
+ * @returns {Promise<Object|null>} Данные сотрудника или null
  */
-function getEmployeeById(employeeId) {
+async function getEmployeeById(employeeId) {
   try {
     const employeeFile = path.join(EMPLOYEES_DIR, `${employeeId}.json`);
-    if (fs.existsSync(employeeFile)) {
-      const content = fs.readFileSync(employeeFile, 'utf8');
+    if (await fileExists(employeeFile)) {
+      const content = await fsp.readFile(employeeFile, 'utf8');
       return JSON.parse(content);
     }
   } catch (e) {
@@ -59,22 +71,22 @@ function getEmployeeById(employeeId) {
 /**
  * Получить список всех сотрудников (для broadcast)
  * @param {string} excludeEmployeeId - ID сотрудника, которого нужно исключить
- * @returns {Array} Массив сотрудников
+ * @returns {Promise<Array>} Массив сотрудников
  */
-function getAllEmployees(excludeEmployeeId = null) {
+async function getAllEmployees(excludeEmployeeId = null) {
   const employees = [];
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) {
+    if (!(await fileExists(EMPLOYEES_DIR))) {
       console.log('⚠️  Папка сотрудников не существует');
       return employees;
     }
 
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const employee = JSON.parse(content);
 
         // Исключаем указанного сотрудника
@@ -96,22 +108,22 @@ function getAllEmployees(excludeEmployeeId = null) {
 
 /**
  * Получить список всех администраторов
- * @returns {Array} Массив администраторов
+ * @returns {Promise<Array>} Массив администраторов
  */
-function getAllAdmins() {
+async function getAllAdmins() {
   const admins = [];
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) {
+    if (!(await fileExists(EMPLOYEES_DIR))) {
       console.log('⚠️  Папка сотрудников не существует');
       return admins;
     }
 
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const employee = JSON.parse(content);
 
         // Только администраторы
@@ -133,18 +145,19 @@ function getAllAdmins() {
 /**
  * Получить FCM токен сотрудника по телефону
  * @param {string} phone - Номер телефона
- * @returns {string|null} FCM токен или null
+ * @returns {Promise<string|null>} FCM токен или null
  */
-function getFcmTokenByPhone(phone) {
+async function getFcmTokenByPhone(phone) {
   try {
     const normalizedPhone = phone.replace(/[\s+]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!(await fileExists(tokenFile))) {
       return null;
     }
 
-    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const content = await fsp.readFile(tokenFile, 'utf8');
+    const tokenData = JSON.parse(content);
     return tokenData.token || null;
   } catch (e) {
     console.error(`❌ Ошибка получения токена для ${phone}:`, e.message);
@@ -167,7 +180,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
     return false;
   }
 
-  const token = getFcmTokenByPhone(phone);
+  const token = await getFcmTokenByPhone(phone);
   if (!token) {
     console.log(`⚠️  FCM токен не найден для ${phone}`);
     return false;
@@ -281,7 +294,7 @@ async function notifyTransferCreated(transfer) {
 
   // Если указан конкретный сотрудник
   if (transfer.toEmployeeId) {
-    const targetEmployee = getEmployeeById(transfer.toEmployeeId);
+    const targetEmployee = await getEmployeeById(transfer.toEmployeeId);
     if (targetEmployee) {
       recipients = [targetEmployee];
       console.log(`📨 Отправка конкретному сотруднику: ${targetEmployee.name}`);
@@ -291,7 +304,7 @@ async function notifyTransferCreated(transfer) {
   }
   // Broadcast - всем сотрудникам (кроме отправителя)
   else {
-    recipients = getAllEmployees(transfer.fromEmployeeId);
+    recipients = await getAllEmployees(transfer.fromEmployeeId);
     console.log(`📨 Broadcast: отправка ${recipients.length} сотрудникам`);
   }
 
@@ -320,7 +333,7 @@ async function notifyTransferAccepted(transfer, acceptedByEmployeeId, acceptedBy
   let sentCount = 0;
 
   // 1. Уведомление отправителю
-  const fromEmployee = getEmployeeById(transfer.fromEmployeeId);
+  const fromEmployee = await getEmployeeById(transfer.fromEmployeeId);
   if (fromEmployee && fromEmployee.phone) {
     const title = 'Ваш запрос принят';
     const body = `${employeeName} согласился взять вашу смену`;
@@ -335,7 +348,7 @@ async function notifyTransferAccepted(transfer, acceptedByEmployeeId, acceptedBy
   }
 
   // 2. Уведомление всем админам
-  const admins = getAllAdmins();
+  const admins = await getAllAdmins();
   if (admins.length > 0) {
     const title = 'Замена смены требует одобрения';
     const dateText = formatDate(transfer.shiftDate);
@@ -363,7 +376,7 @@ async function notifyTransferAccepted(transfer, acceptedByEmployeeId, acceptedBy
 async function notifyTransferRejected(transfer, rejectedByEmployeeId, rejectedByEmployeeName) {
   console.log(`❌ Уведомление об отклонении запроса: ${transfer.id}`);
 
-  const fromEmployee = getEmployeeById(transfer.fromEmployeeId);
+  const fromEmployee = await getEmployeeById(transfer.fromEmployeeId);
   if (!fromEmployee || !fromEmployee.phone) {
     console.log('⚠️  Отправитель не найден или нет телефона');
     return 0;
@@ -410,7 +423,7 @@ async function notifyTransferApproved(transfer, approvedEmployee) {
   const approvedEmployeeId = approvedEmployee?.employeeId || transfer.acceptedByEmployeeId;
 
   // 1. Уведомить отправителя
-  const fromEmployee = getEmployeeById(transfer.fromEmployeeId);
+  const fromEmployee = await getEmployeeById(transfer.fromEmployeeId);
   if (fromEmployee && fromEmployee.phone) {
     const body = `Ваша замена смены на ${dateText} одобрена администратором`;
     const success = await sendPushToPhone(fromEmployee.phone, title, body, data);
@@ -418,7 +431,7 @@ async function notifyTransferApproved(transfer, approvedEmployee) {
   }
 
   // 2. Уведомить одобренного сотрудника
-  const acceptedEmployee = getEmployeeById(approvedEmployeeId);
+  const acceptedEmployee = await getEmployeeById(approvedEmployeeId);
   if (acceptedEmployee && acceptedEmployee.phone) {
     const body = `Вам назначена смена ${formatShiftType(transfer.shiftType)} на ${dateText} в ${transfer.shopName}`;
     const success = await sendPushToPhone(acceptedEmployee.phone, title, body, data);
@@ -447,7 +460,7 @@ async function notifyTransferDeclined(transfer) {
   let sentCount = 0;
 
   // 1. Уведомить отправителя
-  const fromEmployee = getEmployeeById(transfer.fromEmployeeId);
+  const fromEmployee = await getEmployeeById(transfer.fromEmployeeId);
   if (fromEmployee && fromEmployee.phone) {
     const success = await sendPushToPhone(fromEmployee.phone, title, body, data);
     if (success) sentCount++;
@@ -455,7 +468,7 @@ async function notifyTransferDeclined(transfer) {
 
   // 2. Уведомить принявшего (если есть)
   if (transfer.acceptedByEmployeeId) {
-    const acceptedEmployee = getEmployeeById(transfer.acceptedByEmployeeId);
+    const acceptedEmployee = await getEmployeeById(transfer.acceptedByEmployeeId);
     if (acceptedEmployee && acceptedEmployee.phone) {
       const success = await sendPushToPhone(acceptedEmployee.phone, title, body, data);
       if (success) sentCount++;
@@ -490,7 +503,7 @@ async function notifyOthersDeclined(transfer, declinedEmployees) {
   let sentCount = 0;
 
   for (const declined of declinedEmployees) {
-    const employee = getEmployeeById(declined.employeeId);
+    const employee = await getEmployeeById(declined.employeeId);
     if (employee && employee.phone) {
       const success = await sendPushToPhone(employee.phone, title, body, data);
       if (success) sentCount++;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import 'review_text_input_page.dart';
 
 /// Страница выбора магазина для отзыва
@@ -40,7 +41,7 @@ class ReviewShopSelectionPage extends StatelessWidget {
           ),
         ),
         child: FutureBuilder<List<Shop>>(
-          future: Shop.loadShopsFromGoogleSheets(),
+          future: ShopService.getShopsForCurrentUser(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(

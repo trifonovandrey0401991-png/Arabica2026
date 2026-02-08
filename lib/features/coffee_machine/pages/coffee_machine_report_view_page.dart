@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../models/coffee_machine_report_model.dart';
 import '../services/coffee_machine_report_service.dart';
 import '../../../core/constants/api_constants.dart';
@@ -23,6 +25,14 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
   bool _isConfirming = false;
   int _selectedRating = 0;
+  final Set<String> _trainedReadings = {}; // templateIds уже обученных
+
+  /// Получить полный URL фото (если уже полный — вернуть как есть)
+  String _photoUrl(String? url) {
+    if (url == null) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return '${ApiConstants.serverUrl}$url';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -178,13 +188,21 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
   }
 
   Widget _buildReadingCard(CoffeeMachineReading reading) {
+    final isTrained = _trainedReadings.contains(reading.templateId);
+    final canTrain = reading.photoUrl != null &&
+        (reading.wasManuallyEdited || reading.selectedRegion != null);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(
+          color: canTrain
+              ? Colors.orange.withOpacity(0.3)
+              : Colors.white.withOpacity(0.1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,21 +223,116 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               ),
             ],
           ),
-          if (reading.wasManuallyEdited && reading.aiReadNumber != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              'ИИ распознал: ${reading.aiReadNumber} (исправлено вручную)',
-              style: TextStyle(color: Colors.orange.withOpacity(0.7), fontSize: 11),
+          if (reading.wasManuallyEdited) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.edit, color: Colors.orange, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    reading.aiReadNumber != null
+                        ? 'Исправлено вручную (ИИ: ${reading.aiReadNumber})'
+                        : 'Введено вручную',
+                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           ],
+          if (reading.selectedRegion != null && !reading.wasManuallyEdited) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.crop_free, color: Colors.blue, size: 14),
+                  SizedBox(width: 4),
+                  Text('Область выделена сотрудником', style: TextStyle(color: Colors.blue, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+          // Фото с красным квадратом (selectedRegion)
           if (reading.photoUrl != null) ...[
             const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                '${ApiConstants.serverUrl}${reading.photoUrl}',
-                height: 150,
-                width: double.infinity,
+              child: reading.selectedRegion != null
+                  ? _buildPhotoWithRegion(reading.photoUrl!, reading.selectedRegion!)
+                  : Image.network(
+                      _photoUrl(reading.photoUrl),
+                      height: 150,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 80,
+                        color: Colors.white.withOpacity(0.04),
+                        child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
+                      ),
+                    ),
+            ),
+          ],
+          // Кнопка "Обучить ИИ" — если есть что обучать
+          if (canTrain && !isTrained) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _trainOcr(reading),
+                icon: const Icon(Icons.school, color: _gold, size: 18),
+                label: const Text('Обучить ИИ', style: TextStyle(color: _gold, fontSize: 13)),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: _gold.withOpacity(0.4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+          ],
+          if (isTrained) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 16),
+                SizedBox(width: 4),
+                Text('Обучено', style: TextStyle(color: Colors.green, fontSize: 12)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Фото с красным квадратом выделенной области
+  Widget _buildPhotoWithRegion(String photoUrl, Map<String, double> region) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        const height = 150.0;
+        return SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            children: [
+              Image.network(
+                _photoUrl(photoUrl),
+                height: height,
+                width: width,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   height: 80,
@@ -227,11 +340,74 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                   child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
                 ),
               ),
-            ),
-          ],
-        ],
-      ),
+              // Красный квадрат
+              Positioned(
+                left: (region['x'] ?? 0) * width,
+                top: (region['y'] ?? 0) * height,
+                width: (region['width'] ?? 0) * width,
+                height: (region['height'] ?? 0) * height,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.red, width: 2.5),
+                    color: Colors.red.withOpacity(0.1),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  /// Обучить ИИ на этом фото
+  Future<void> _trainOcr(CoffeeMachineReading reading) async {
+    try {
+      // Получить имя админа
+      String adminName = 'Администратор';
+      final prefs = await SharedPreferences.getInstance();
+      adminName = prefs.getString('user_employee_name') ??
+          prefs.getString('user_display_name') ??
+          prefs.getString('user_name') ??
+          'Администратор';
+
+      final body = jsonEncode({
+        'photoUrl': reading.photoUrl,
+        'correctNumber': reading.confirmedNumber,
+        'selectedRegion': reading.selectedRegion,
+        'preset': '', // будет определён по шаблону на сервере
+        'machineName': reading.machineName,
+        'shopAddress': widget.report.shopAddress,
+        'trainedBy': adminName,
+      });
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/coffee-machine/training'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() => _trainedReadings.add(reading.templateId));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Фото отправлено на обучение'), backgroundColor: Colors.green),
+          );
+          return;
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка обучения'), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Widget _buildComputerSection(CoffeeMachineReport report) {
@@ -265,7 +441,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                '${ApiConstants.serverUrl}${report.computerPhotoUrl}',
+                _photoUrl(report.computerPhotoUrl),
                 height: 150,
                 width: double.infinity,
                 fit: BoxFit.cover,

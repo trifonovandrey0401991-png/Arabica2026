@@ -1,30 +1,47 @@
 /**
  * Shop Settings API - Настройки магазинов для РКО
  * Включает интервалы смен, аббревиатуры, ИНН, руководителя
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
-const SETTINGS_DIR = '/var/www/shop-settings';
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const SETTINGS_DIR = path.join(DATA_DIR, 'shop-settings');
 
-// Убедиться что директория существует
-function ensureDir() {
-  if (!fs.existsSync(SETTINGS_DIR)) {
-    fs.mkdirSync(SETTINGS_DIR, { recursive: true });
+// Проверка существования файла (async)
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 
-// Получить имя файла по адресу магазина
-function getSettingsFile(shopAddress) {
-  ensureDir();
+// Убедиться что директория существует (async)
+async function ensureDir() {
+  await fsp.mkdir(SETTINGS_DIR, { recursive: true });
+}
+
+// Получить имя файла по адресу магазина (async)
+async function getSettingsFile(shopAddress) {
+  await ensureDir();
 
   // Сначала ищем файл по содержимому shopAddress (самый надёжный способ)
-  const files = fs.readdirSync(SETTINGS_DIR);
+  let files = [];
+  try {
+    files = await fsp.readdir(SETTINGS_DIR);
+  } catch {
+    files = [];
+  }
+
   for (const file of files) {
     if (!file.endsWith('.json')) continue;
     try {
-      const content = fs.readFileSync(path.join(SETTINGS_DIR, file), 'utf8');
+      const content = await fsp.readFile(path.join(SETTINGS_DIR, file), 'utf8');
       const data = JSON.parse(content);
       if (data.shopAddress === shopAddress) {
         return path.join(SETTINGS_DIR, file);
@@ -46,18 +63,18 @@ function setup(app) {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('GET /api/shop-settings:', shopAddress);
 
-      ensureDir();
+      await ensureDir();
 
-      const settingsFile = getSettingsFile(shopAddress);
+      const settingsFile = await getSettingsFile(shopAddress);
 
-      if (!fs.existsSync(settingsFile)) {
+      if (!(await fileExists(settingsFile))) {
         return res.json({
           success: true,
           settings: null
         });
       }
 
-      const content = fs.readFileSync(settingsFile, 'utf8');
+      const content = await fsp.readFile(settingsFile, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -76,7 +93,7 @@ function setup(app) {
       console.log('POST /api/shop-settings');
       console.log('   Тело запроса:', JSON.stringify(req.body, null, 2));
 
-      ensureDir();
+      await ensureDir();
 
       const shopAddress = req.body.shopAddress;
       if (!shopAddress) {
@@ -87,14 +104,14 @@ function setup(app) {
         });
       }
 
-      const settingsFile = getSettingsFile(shopAddress);
+      const settingsFile = await getSettingsFile(shopAddress);
       console.log('   Файл настроек:', settingsFile);
 
       // Если файл существует, сохраняем некоторые поля из старого файла
       let existingSettings = {};
-      if (fs.existsSync(settingsFile)) {
+      if (await fileExists(settingsFile)) {
         try {
-          const oldContent = fs.readFileSync(settingsFile, 'utf8');
+          const oldContent = await fsp.readFile(settingsFile, 'utf8');
           existingSettings = JSON.parse(oldContent);
           console.log('   Загружены существующие настройки');
         } catch (e) {
@@ -125,7 +142,7 @@ function setup(app) {
         createdAt: existingSettings.createdAt || new Date().toISOString(),
       };
 
-      fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
       console.log('   Настройки магазина сохранены:', settingsFile);
 
       res.json({
@@ -147,16 +164,16 @@ function setup(app) {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('GET /api/shop-settings/:shopAddress/document-number:', shopAddress);
 
-      const settingsFile = getSettingsFile(shopAddress);
+      const settingsFile = await getSettingsFile(shopAddress);
 
-      if (!fs.existsSync(settingsFile)) {
+      if (!(await fileExists(settingsFile))) {
         return res.json({
           success: true,
           documentNumber: 1
         });
       }
 
-      const content = fs.readFileSync(settingsFile, 'utf8');
+      const content = await fsp.readFile(settingsFile, 'utf8');
       const settings = JSON.parse(content);
 
       let nextNumber = (settings.lastDocumentNumber || 0) + 1;
@@ -184,13 +201,13 @@ function setup(app) {
       const { documentNumber } = req.body;
       console.log('POST /api/shop-settings/:shopAddress/document-number:', shopAddress, documentNumber);
 
-      ensureDir();
+      await ensureDir();
 
-      const settingsFile = getSettingsFile(shopAddress);
+      const settingsFile = await getSettingsFile(shopAddress);
 
       let settings = {};
-      if (fs.existsSync(settingsFile)) {
-        const content = fs.readFileSync(settingsFile, 'utf8');
+      if (await fileExists(settingsFile)) {
+        const content = await fsp.readFile(settingsFile, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.shopAddress = shopAddress;
@@ -200,7 +217,7 @@ function setup(app) {
       settings.lastDocumentNumber = documentNumber || 0;
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
       console.log('Номер документа обновлен:', settingsFile);
 
       res.json({

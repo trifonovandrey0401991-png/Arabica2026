@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
 import 'kpi_shop_day_detail_dialog.dart';
@@ -22,6 +23,11 @@ class KPIShopCalendarPage extends StatefulWidget {
 
 class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     with SingleTickerProviderStateMixin {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   late TabController _tabController;
 
   // Состояние для вкладки "Магазин" (календарь)
@@ -62,7 +68,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
   Future<void> _loadShops() async {
     try {
       setState(() => _isLoading = true);
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await ShopService.getShopsForCurrentUser();
       if (mounted) {
         setState(() {
           _shops = shops;
@@ -84,69 +90,103 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
       context: context,
       builder: (context) => Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Выберите магазин'),
-          backgroundColor: const Color(0xFF004D40),
-        ),
         body: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF004D40),
-            image: DecorationImage(
-              image: AssetImage('assets/images/arabica_background.png'),
-              fit: BoxFit.cover,
-              opacity: 0.6,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [_emerald, _emeraldDark, _night],
+              stops: [0.0, 0.3, 1.0],
             ),
           ),
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _shops.length,
-            itemBuilder: (context, index) {
-              final shop = _shops[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Material(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => Navigator.pop(context, shop),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.5),
-                          width: 2,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Custom AppBar for dialog
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          const ShopIcon(size: 56),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              shop.address,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.chevron_right,
-                            color: Colors.white70,
-                            size: 28,
-                          ),
-                        ],
+                      const SizedBox(width: 16),
+                      const Text(
+                        'Выберите магазин',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              );
-            },
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _shops.length,
+                    itemBuilder: (context, index) {
+                      final shop = _shops[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Material(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => Navigator.pop(context, shop),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 2,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const ShopIcon(size: 56),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      shop.address,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.white70,
+                                    size: 28,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -395,7 +435,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     // Бордер для выбранного/сегодня
     Border? border;
     if (isSelected) {
-      border = Border.all(color: const Color(0xFF004D40), width: 3);
+      border = Border.all(color: _emerald, width: 3);
     } else if (isToday) {
       border = Border.all(color: Colors.blue, width: 2);
     }
@@ -442,8 +482,8 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
               )
             : Container(
                 color: isSelected
-                    ? const Color(0xFF004D40)
-                    : (isToday ? Colors.blue.withOpacity(0.2) : Colors.white),
+                    ? _emerald
+                    : (isToday ? Colors.blue.withOpacity(0.2) : Colors.transparent),
                 child: Center(
                   child: Text(
                     '${date.day}',
@@ -480,8 +520,8 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                 icon: const Icon(Icons.store),
                 label: const Text('Выбрать магазин'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF004D40),
+                  backgroundColor: _emerald,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -735,57 +775,113 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('KPI - Магазины'),
-        backgroundColor: const Color(0xFF004D40),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          tabs: const [
-            Tab(text: 'Все магазины'),
-            Tab(text: 'Магазин'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // Очищаем локальный кэш
-              _dayDataCache.clear();
-              // Очищаем кэш в KPIService для выбранного магазина
-              if (_selectedShop != null) {
-                KPIService.clearCacheForShop(_selectedShop!.address);
-              }
-              KPIService.clearCache();
-              // Перезагружаем данные
-              if (_tabController.index == 1 && _selectedShop != null) {
-                _loadMonthData();
-              } else {
-                setState(() {});
-              }
-            },
-          ),
-        ],
-      ),
+      backgroundColor: _night,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF004D40), Color(0xFF00695C)],
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            // Вкладка 1: Список всех магазинов
-            const KPIShopsListPage(),
-            // Вкладка 2: Календарь
-            _buildCalendarView(),
-          ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'KPI - Магазины',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        // Очищаем локальный кэш
+                        _dayDataCache.clear();
+                        // Очищаем кэш в KPIService для выбранного магазина
+                        if (_selectedShop != null) {
+                          KPIService.clearCacheForShop(_selectedShop!.address);
+                        }
+                        KPIService.clearCache();
+                        // Перезагружаем данные
+                        if (_tabController.index == 1 && _selectedShop != null) {
+                          _loadMonthData();
+                        } else {
+                          setState(() {});
+                        }
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // TabBar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: _gold,
+                  indicatorWeight: 3,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(text: 'Все магазины'),
+                    Tab(text: 'Магазин'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Content
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Вкладка 1: Список всех магазинов
+                    const KPIShopsListPage(),
+                    // Вкладка 2: Календарь
+                    _buildCalendarView(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

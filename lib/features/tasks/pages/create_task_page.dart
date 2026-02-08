@@ -32,11 +32,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final List<File> _attachments = [];
   bool _isSubmitting = false;
 
-  // Цвета темы
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00796B);
-  static const _cardColor = Color(0xFF00574B);
-  static const _backgroundColor = Color(0xFF003D33);
+  // Цвета темы — dark emerald
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -65,9 +65,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: _accentColor,
-              onPrimary: Colors.white,
-              surface: _cardColor,
+              primary: _gold,
+              onPrimary: Colors.black,
+              surface: _emeraldDark,
               onSurface: Colors.white,
             ),
           ),
@@ -84,9 +84,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.dark(
-                primary: _accentColor,
-                onPrimary: Colors.white,
-                surface: _cardColor,
+                primary: _gold,
+                onPrimary: Colors.black,
+                surface: _emeraldDark,
                 onSurface: Colors.white,
               ),
             ),
@@ -198,7 +198,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 ),
               ],
             ),
-            backgroundColor: Colors.green[700],
+            backgroundColor: _emeraldDark,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -214,7 +214,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 Text('Ошибка при создании задачи', style: TextStyle(color: Colors.white)),
               ],
             ),
-            backgroundColor: Colors.red[700],
+            backgroundColor: Colors.red[900],
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -230,99 +230,143 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _backgroundColor,
-      appBar: AppBar(
-        title: const Text('Новая задача', style: TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: _primaryColor,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Карточка основной информации
-                    _buildCard(
-                      icon: Icons.edit_note,
-                      title: 'Основная информация',
-                      child: Column(
-                        children: [
-                          _buildTextField(
-                            controller: _titleController,
-                            label: 'Заголовок задачи',
-                            hint: 'Например: Проверить витрину',
-                            icon: Icons.title,
-                            required: true,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Введите заголовок';
-                              }
-                              return null;
-                            },
-                            onChanged: (_) => setState(() {}),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 0.7],
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // Custom AppBar
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
-                          const SizedBox(height: 16),
-                          _buildTextField(
-                            controller: _descriptionController,
-                            label: 'Описание',
-                            hint: 'Подробное описание задачи...',
-                            icon: Icons.description,
-                            maxLines: 3,
+                          child: const Icon(
+                            Icons.arrow_back_ios_new,
+                            color: Colors.white,
+                            size: 18,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Карточка типа ответа
-                    _buildCard(
-                      icon: Icons.question_answer,
-                      title: 'Тип ответа',
-                      child: _buildResponseTypeSelector(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Карточка дедлайна
-                    _buildCard(
-                      icon: Icons.schedule,
-                      title: 'Дедлайн',
-                      child: _buildDeadlinePicker(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Карточка вложений
-                    _buildCard(
-                      icon: Icons.attach_file,
-                      title: 'Прикрепленные файлы',
-                      subtitle: _attachments.isNotEmpty ? '${_attachments.length} фото' : null,
-                      child: _buildAttachmentsSection(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Карточка получателей
-                    _buildCard(
-                      icon: Icons.people,
-                      title: 'Получатели',
-                      subtitle: _recipients.isNotEmpty ? 'Выбрано: ${_recipients.length}' : null,
-                      isRequired: true,
-                      hasError: _recipients.isEmpty,
-                      child: _buildRecipientsSection(),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                      const Expanded(
+                        child: Text(
+                          'Новая задача',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 42),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // Кнопка создания
-            _buildSubmitButton(),
-          ],
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Карточка основной информации
+                      _buildCard(
+                        icon: Icons.edit_note,
+                        title: 'Основная информация',
+                        child: Column(
+                          children: [
+                            _buildTextField(
+                              controller: _titleController,
+                              label: 'Заголовок задачи',
+                              hint: 'Например: Проверить витрину',
+                              icon: Icons.title,
+                              required: true,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Введите заголовок';
+                                }
+                                return null;
+                              },
+                              onChanged: (_) => setState(() {}),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _descriptionController,
+                              label: 'Описание',
+                              hint: 'Подробное описание задачи...',
+                              icon: Icons.description,
+                              maxLines: 3,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Карточка типа ответа
+                      _buildCard(
+                        icon: Icons.question_answer,
+                        title: 'Тип ответа',
+                        child: _buildResponseTypeSelector(),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Карточка дедлайна
+                      _buildCard(
+                        icon: Icons.schedule,
+                        title: 'Дедлайн',
+                        child: _buildDeadlinePicker(),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Карточка вложений
+                      _buildCard(
+                        icon: Icons.attach_file,
+                        title: 'Прикрепленные файлы',
+                        subtitle: _attachments.isNotEmpty ? '${_attachments.length} фото' : null,
+                        child: _buildAttachmentsSection(),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Карточка получателей
+                      _buildCard(
+                        icon: Icons.people,
+                        title: 'Получатели',
+                        subtitle: _recipients.isNotEmpty ? 'Выбрано: ${_recipients.length}' : null,
+                        isRequired: true,
+                        hasError: _recipients.isEmpty,
+                        child: _buildRecipientsSection(),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Кнопка создания
+              _buildSubmitButton(),
+            ],
+          ),
         ),
       ),
     );
@@ -338,18 +382,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: hasError
-            ? Border.all(color: Colors.red.withOpacity(0.5), width: 1)
-            : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: hasError
+              ? Colors.red.withOpacity(0.5)
+              : Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,10 +402,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _accentColor.withOpacity(0.3),
+                    color: _gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: Colors.white70, size: 20),
+                  child: Icon(icon, color: _gold, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -387,7 +427,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             Text(
                               '*',
                               style: TextStyle(
-                                color: hasError ? Colors.red : Colors.amber,
+                                color: hasError ? Colors.red : _gold,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -444,21 +484,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         labelText: required ? '$label *' : label,
         hintText: hint,
         labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
         prefixIcon: Icon(icon, color: Colors.white54),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
+        fillColor: Colors.white.withOpacity(0.06),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _accentColor, width: 2),
+          borderSide: const BorderSide(color: _gold, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -487,10 +527,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
-                  color: isSelected ? _accentColor : Colors.white.withOpacity(0.1),
+                  color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? _accentColor : Colors.white.withOpacity(0.2),
+                    color: isSelected ? _gold : Colors.white.withOpacity(0.1),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -498,14 +538,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   children: [
                     Icon(
                       _getResponseTypeIcon(type),
-                      color: isSelected ? Colors.white : Colors.white60,
+                      color: isSelected ? _gold : Colors.white60,
                       size: 24,
                     ),
                     const SizedBox(height: 6),
                     Text(
                       type.displayName,
                       style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
+                        color: isSelected ? _gold : Colors.white70,
                         fontSize: 12,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
@@ -557,21 +597,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: _accentColor.withOpacity(0.3),
+                color: _gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.event,
-                color: Colors.white,
+                color: _gold,
                 size: 24,
               ),
             ),
@@ -602,7 +642,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -663,7 +703,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           height: 100,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
             image: DecorationImage(
               image: FileImage(_attachments[index]),
               fit: BoxFit.cover,
@@ -710,14 +750,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _accentColor.withOpacity(0.5)),
+          border: Border.all(color: _gold.withOpacity(0.4)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: _accentColor, size: 20),
+            Icon(icon, color: _gold, size: 20),
             const SizedBox(width: 8),
             Text(
               label,
@@ -741,12 +781,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _recipients.isEmpty
                     ? Colors.red.withOpacity(0.5)
-                    : Colors.white.withOpacity(0.2),
+                    : Colors.white.withOpacity(0.1),
               ),
             ),
             child: Row(
@@ -756,12 +796,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   decoration: BoxDecoration(
                     color: _recipients.isEmpty
                         ? Colors.red.withOpacity(0.2)
-                        : _accentColor.withOpacity(0.3),
+                        : _gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     _recipients.isEmpty ? Icons.person_add : Icons.group,
-                    color: _recipients.isEmpty ? Colors.red[300] : Colors.white,
+                    color: _recipients.isEmpty ? Colors.red[300] : _gold,
                     size: 24,
                   ),
                 ),
@@ -787,7 +827,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -810,9 +850,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             children: _recipients.map((r) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: _accentColor.withOpacity(0.3),
+                color: _gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _accentColor.withOpacity(0.5)),
+                border: Border.all(color: _gold.withOpacity(0.4)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -860,14 +900,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: _emeraldDark,
+        border: Border(
+          top: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
       ),
       child: SafeArea(
         child: SizedBox(
@@ -875,9 +911,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           child: ElevatedButton(
             onPressed: _isFormValid && !_isSubmitting ? _createTask : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isFormValid ? _accentColor : Colors.grey[700],
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.grey[700],
+              backgroundColor: _isFormValid ? _gold : Colors.grey[800],
+              foregroundColor: _isFormValid ? _night : Colors.white54,
+              disabledBackgroundColor: Colors.grey[800],
               disabledForegroundColor: Colors.white54,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(

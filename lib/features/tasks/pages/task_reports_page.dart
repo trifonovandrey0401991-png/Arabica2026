@@ -3,6 +3,9 @@ import '../models/task_model.dart';
 import '../services/task_service.dart';
 import 'task_detail_page.dart';
 import 'task_analytics_page.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../employees/services/employee_service.dart';
+import '../../employees/models/user_role_model.dart';
 
 /// Страница отчетов по задачам (для админа)
 /// 4 вкладки: Ожидают, Выполнено, Отказано, Не выполнено в срок
@@ -14,6 +17,11 @@ class TaskReportsPage extends StatefulWidget {
 }
 
 class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProviderStateMixin {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   late TabController _tabController;
   List<TaskAssignment> _allAssignments = [];
   bool _isLoading = true;
@@ -68,7 +76,28 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
     });
 
     try {
-      final assignments = await TaskService.getAllAssignments();
+      var assignments = await TaskService.getAllAssignments();
+
+      // Фильтрация по мультитенантности — управляющий видит только задачи своих сотрудников
+      final roleData = await UserRoleService.loadUserRole();
+      if (roleData != null && roleData.role == UserRole.admin && roleData.managedEmployees.isNotEmpty) {
+        final employees = await EmployeeService.getEmployees();
+        final managedPhones = roleData.managedEmployees.map(
+          (p) => p.replaceAll(RegExp(r'[\s\+]'), ''),
+        ).toSet();
+
+        // Строим Set разрешённых ID сотрудников
+        final allowedIds = <String>{};
+        for (final emp in employees) {
+          final phone = emp.phone?.replaceAll(RegExp(r'[\s\+]'), '') ?? '';
+          if (phone.isNotEmpty && managedPhones.contains(phone)) {
+            allowedIds.add(emp.id);
+          }
+        }
+
+        assignments = assignments.where((a) => allowedIds.contains(a.assigneeId)).toList();
+      }
+
       setState(() {
         _allAssignments = assignments;
         _isLoading = false;
@@ -93,101 +122,184 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отчет по задачам'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.analytics),
-            tooltip: 'Аналитика',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const TaskAnalyticsPage(),
-              ),
-            ),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: [
-            const Tab(text: 'Ожидают'),
-            const Tab(text: 'Выполнено'),
-            const Tab(text: 'Отказано'),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Не в срок'),
-                  if (_unviewedExpiredCount > 0) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar Row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    // Back button
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Title
+                    const Expanded(
                       child: Text(
-                        '$_unviewedExpiredCount',
-                        style: const TextStyle(
+                        'Отчёты по задачам',
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Ошибка: $_error'),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadAssignments,
-                        child: const Text('Повторить'),
+                    // Analytics button
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TaskAnalyticsPage(),
+                        ),
                       ),
-                    ],
-                  ),
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Ожидают (pending + submitted)
-                    _buildAssignmentsList(
-                      _filterByStatuses([TaskStatus.pending, TaskStatus.submitted]),
-                      emptyMessage: 'Нет задач в ожидании',
-                    ),
-                    // Выполнено (approved)
-                    _buildAssignmentsList(
-                      _filterByStatuses([TaskStatus.approved]),
-                      emptyMessage: 'Нет выполненных задач',
-                    ),
-                    // Отказано (rejected + declined)
-                    _buildAssignmentsList(
-                      _filterByStatuses([TaskStatus.rejected, TaskStatus.declined]),
-                      emptyMessage: 'Нет отказанных задач',
-                    ),
-                    // Не выполнено в срок (expired)
-                    _buildAssignmentsList(
-                      _filterByStatuses([TaskStatus.expired]),
-                      emptyMessage: 'Нет просроченных задач',
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.analytics, color: Colors.white, size: 20),
+                      ),
                     ),
                   ],
                 ),
+              ),
+
+              // TabBar in dark container
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  indicatorColor: _gold,
+                  indicatorWeight: 3,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  dividerColor: Colors.transparent,
+                  tabAlignment: TabAlignment.start,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
+                  tabs: [
+                    const Tab(text: 'Ожидают'),
+                    const Tab(text: 'Выполнено'),
+                    const Tab(text: 'Отказано'),
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Не в срок'),
+                          if (_unviewedExpiredCount > 0) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '$_unviewedExpiredCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Body content
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : _error != null
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Ошибка: $_error',
+                                  style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _loadAssignments,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _emerald,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Повторить'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : TabBarView(
+                            controller: _tabController,
+                            children: [
+                              // Ожидают (pending + submitted)
+                              _buildAssignmentsList(
+                                _filterByStatuses([TaskStatus.pending, TaskStatus.submitted]),
+                                emptyMessage: 'Нет задач в ожидании',
+                              ),
+                              // Выполнено (approved)
+                              _buildAssignmentsList(
+                                _filterByStatuses([TaskStatus.approved]),
+                                emptyMessage: 'Нет выполненных задач',
+                              ),
+                              // Отказано (rejected + declined)
+                              _buildAssignmentsList(
+                                _filterByStatuses([TaskStatus.rejected, TaskStatus.declined]),
+                                emptyMessage: 'Нет отказанных задач',
+                              ),
+                              // Не выполнено в срок (expired)
+                              _buildAssignmentsList(
+                                _filterByStatuses([TaskStatus.expired]),
+                                emptyMessage: 'Нет просроченных задач',
+                              ),
+                            ],
+                          ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -197,11 +309,19 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.inbox, size: 40, color: Colors.white.withOpacity(0.3)),
+            ),
             const SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
             ),
           ],
         ),
@@ -210,6 +330,8 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
 
     return RefreshIndicator(
       onRefresh: _loadAssignments,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: assignments.length,
@@ -225,152 +347,164 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
     final task = assignment.task;
     final statusInfo = _getStatusInfo(assignment.status);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      child: InkWell(
-        onTap: () async {
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TaskDetailPage(assignment: assignment),
-            ),
-          );
-          if (result == true) {
-            _loadAssignments();
-          }
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок и статус
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      task?.title ?? 'Задача',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusInfo.color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(statusInfo.icon, size: 14, color: statusInfo.color),
-                        const SizedBox(width: 4),
-                        Text(
-                          statusInfo.label,
-                          style: TextStyle(
-                            color: statusInfo.color,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            final result = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TaskDetailPage(assignment: assignment),
+              ),
+            );
+            if (result == true) {
+              _loadAssignments();
+            }
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Заголовок и статус
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        task?.title ?? 'Задача',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white.withOpacity(0.9),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Исполнитель
-              Row(
-                children: [
-                  const Icon(Icons.person, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    assignment.assigneeName,
-                    style: TextStyle(color: Colors.grey[700]),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-
-              // Дедлайн
-              Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: _isOverdue(assignment.deadline) ? Colors.red : Colors.grey,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'До: ${_formatDateTime(assignment.deadline)}',
-                    style: TextStyle(
-                      color: _isOverdue(assignment.deadline) ? Colors.red : Colors.grey[700],
-                    ),
-                  ),
-                ],
-              ),
-
-              // Информация о типе ответа
-              if (task != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      _getResponseTypeIcon(task.responseType),
-                      size: 16,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _getResponseTypeText(task.responseType),
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Время ответа (если есть)
-              if (assignment.respondedAt != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.reply, size: 16, color: Colors.blue),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Ответ: ${_formatDateTime(assignment.respondedAt!)}',
-                      style: const TextStyle(color: Colors.blue, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Время проверки (если есть)
-              if (assignment.reviewedAt != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      assignment.status == TaskStatus.approved ? Icons.check_circle : Icons.cancel,
-                      size: 16,
-                      color: assignment.status == TaskStatus.approved ? Colors.green : Colors.red,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Проверено: ${_formatDateTime(assignment.reviewedAt!)}',
-                      style: TextStyle(
-                        color: assignment.status == TaskStatus.approved ? Colors.green : Colors.red,
-                        fontSize: 12,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusInfo.color.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusInfo.icon, size: 14, color: statusInfo.color),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusInfo.label,
+                            style: TextStyle(
+                              color: statusInfo.color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+
+                // Divider
+                Divider(color: Colors.white.withOpacity(0.1), height: 1),
+                const SizedBox(height: 8),
+
+                // Исполнитель
+                Row(
+                  children: [
+                    Icon(Icons.person, size: 16, color: Colors.white.withOpacity(0.3)),
+                    const SizedBox(width: 4),
+                    Text(
+                      assignment.assigneeName,
+                      style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+
+                // Дедлайн
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: _isOverdue(assignment.deadline) ? Colors.red[300] : Colors.white.withOpacity(0.3),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'До: ${_formatDateTime(assignment.deadline)}',
+                      style: TextStyle(
+                        color: _isOverdue(assignment.deadline) ? Colors.red[300] : Colors.white.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Информация о типе ответа
+                if (task != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        _getResponseTypeIcon(task.responseType),
+                        size: 16,
+                        color: Colors.white.withOpacity(0.3),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _getResponseTypeText(task.responseType),
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Время ответа (если есть)
+                if (assignment.respondedAt != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.reply, size: 16, color: Colors.blue[300]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Ответ: ${_formatDateTime(assignment.respondedAt!)}',
+                        style: TextStyle(color: Colors.blue[300], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Время проверки (если есть)
+                if (assignment.reviewedAt != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        assignment.status == TaskStatus.approved ? Icons.check_circle : Icons.cancel,
+                        size: 16,
+                        color: assignment.status == TaskStatus.approved ? Colors.green[300] : Colors.red[300],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Проверено: ${_formatDateTime(assignment.reviewedAt!)}',
+                        style: TextStyle(
+                          color: assignment.status == TaskStatus.approved ? Colors.green[300] : Colors.red[300],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

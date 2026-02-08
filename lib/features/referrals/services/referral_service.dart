@@ -1,6 +1,8 @@
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../employees/services/employee_service.dart';
 import '../models/referral_stats_model.dart';
 
 /// Сервис для работы с реферальной системой.
@@ -77,6 +79,46 @@ class ReferralService {
       return null;
     } catch (e) {
       Logger.error('Ошибка получения статистики', e);
+      return null;
+    }
+  }
+
+  /// Получить статистику всех сотрудников с фильтрацией по мультитенантности
+  ///
+  /// Для admin - только управляемые сотрудники (по managedEmployees)
+  /// Для developer - все сотрудники
+  static Future<Map<String, dynamic>?> getAllStatsForCurrentUser() async {
+    try {
+      final statsResult = await getAllStats();
+      if (statsResult == null) return null;
+
+      final allEmployeeStats = statsResult['employeeStats'] as List<EmployeeReferralStats>? ?? [];
+
+      // Загружаем сотрудников для маппинга employeeId -> phone
+      final employees = await EmployeeService.getEmployees();
+      final Map<String, String> idToPhone = {};
+      for (final emp in employees) {
+        if (emp.phone != null && emp.phone!.isNotEmpty) {
+          idToPhone[emp.id] = emp.phone!;
+        }
+      }
+
+      // Фильтруем через MultitenancyFilterService
+      final filteredStats = await MultitenancyFilterService.filterByEmployeePhone<EmployeeReferralStats>(
+        allEmployeeStats,
+        (stats) => idToPhone[stats.employeeId] ?? '',
+      );
+
+      // Пересчитываем totalClients для отфильтрованных сотрудников
+      final filteredTotal = filteredStats.fold<int>(0, (sum, s) => sum + s.total);
+
+      return {
+        'totalClients': filteredTotal,
+        'unassignedCount': statsResult['unassignedCount'] ?? 0,
+        'employeeStats': filteredStats,
+      };
+    } catch (e) {
+      Logger.error('Ошибка получения отфильтрованной статистики', e);
       return null;
     }
   }

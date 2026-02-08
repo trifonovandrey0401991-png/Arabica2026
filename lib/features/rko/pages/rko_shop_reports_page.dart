@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
 import '../../../core/utils/logger.dart';
@@ -103,7 +104,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     });
 
     try {
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await ShopService.getShopsForCurrentUser();
       setState(() {
         _shops = shops;
         _isLoading = false;

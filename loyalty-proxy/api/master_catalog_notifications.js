@@ -2,11 +2,13 @@
  * MASTER CATALOG NOTIFICATIONS
  * Push-уведомления для мастер-каталога товаров
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Типы уведомлений:
  * - new_pending_code - Обнаружен новый код товара
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Константы
@@ -14,6 +16,16 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ==================== УТИЛИТЫ ====================
 
@@ -25,33 +37,33 @@ function getFirebaseAdmin() {
   try {
     const { admin, firebaseInitialized } = require('../firebase-admin-config');
     if (!firebaseInitialized) {
-      console.log('[Master Catalog Notifications] Firebase не инициализирован');
+      console.log('[Master Catalog Notifications] Firebase not initialized');
       return null;
     }
     return admin;
   } catch (e) {
-    console.error('[Master Catalog Notifications] Ошибка загрузки Firebase:', e.message);
+    console.error('[Master Catalog Notifications] Firebase load error:', e.message);
     return null;
   }
 }
 
 /**
  * Получить список всех администраторов
- * @returns {Array} Массив администраторов
+ * @returns {Promise<Array>} Массив администраторов
  */
-function getAllAdmins() {
+async function getAllAdmins() {
   const admins = [];
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) {
+    if (!(await fileExists(EMPLOYEES_DIR))) {
       return admins;
     }
 
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter((f) => f.endsWith('.json'));
+    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter((f) => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const employee = JSON.parse(content);
 
         // Только администраторы
@@ -63,7 +75,7 @@ function getAllAdmins() {
       }
     }
   } catch (e) {
-    console.error('[Master Catalog Notifications] Ошибка получения админов:', e.message);
+    console.error('[Master Catalog Notifications] Error getting admins:', e.message);
   }
 
   return admins;
@@ -72,18 +84,19 @@ function getAllAdmins() {
 /**
  * Получить FCM токен сотрудника по телефону
  * @param {string} phone - Номер телефона
- * @returns {string|null} FCM токен или null
+ * @returns {Promise<string|null>} FCM токен или null
  */
-function getFcmTokenByPhone(phone) {
+async function getFcmTokenByPhone(phone) {
   try {
     const normalizedPhone = phone.replace(/[\s+]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!(await fileExists(tokenFile))) {
       return null;
     }
 
-    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const content = await fsp.readFile(tokenFile, 'utf8');
+    const tokenData = JSON.parse(content);
     return tokenData.token || null;
   } catch (e) {
     return null;
@@ -104,7 +117,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
     return false;
   }
 
-  const token = getFcmTokenByPhone(phone);
+  const token = await getFcmTokenByPhone(phone);
   if (!token) {
     return false;
   }
@@ -131,7 +144,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
 
     return true;
   } catch (e) {
-    console.error(`[Master Catalog Notifications] Ошибка push на ${phone}:`, e.message);
+    console.error(`[Master Catalog Notifications] Push error for ${phone}:`, e.message);
     return false;
   }
 }
@@ -149,25 +162,25 @@ async function notifyAdminsAboutNewCodes(newCodes, shopName) {
     return 0;
   }
 
-  console.log(`[Master Catalog Notifications] Отправка уведомлений о ${newCodes.length} новых кодах`);
+  console.log(`[Master Catalog Notifications] Sending notifications for ${newCodes.length} new codes`);
 
-  const admins = getAllAdmins();
+  const admins = await getAllAdmins();
   if (admins.length === 0) {
-    console.log('[Master Catalog Notifications] Админы не найдены');
+    console.log('[Master Catalog Notifications] No admins found');
     return 0;
   }
 
   // Формируем текст уведомления
-  const title = 'Новые товары';
+  const title = 'New Products';
   let body;
 
   if (newCodes.length === 1) {
-    body = `Обнаружен новый код: ${newCodes[0].name || newCodes[0].kod}`;
+    body = `New code detected: ${newCodes[0].name || newCodes[0].kod}`;
   } else if (newCodes.length <= 3) {
     const names = newCodes.map((c) => c.name || c.kod).join(', ');
-    body = `Обнаружены новые товары: ${names}`;
+    body = `New products detected: ${names}`;
   } else {
-    body = `Обнаружено ${newCodes.length} новых товаров от магазина ${shopName}`;
+    body = `${newCodes.length} new products from shop ${shopName}`;
   }
 
   const data = {
@@ -185,11 +198,11 @@ async function notifyAdminsAboutNewCodes(newCodes, shopName) {
     const success = await sendPushToPhone(admin.phone, title, body, data);
     if (success) {
       successCount++;
-      console.log(`[Master Catalog Notifications] Push отправлен админу: ${admin.name}`);
+      console.log(`[Master Catalog Notifications] Push sent to admin: ${admin.name}`);
     }
   }
 
-  console.log(`[Master Catalog Notifications] Отправлено ${successCount}/${admins.length} уведомлений`);
+  console.log(`[Master Catalog Notifications] Sent ${successCount}/${admins.length} notifications`);
   return successCount;
 }
 

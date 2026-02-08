@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../models/withdrawal_model.dart';
 import '../models/withdrawal_expense_model.dart';
 import '../services/main_cash_service.dart';
 import '../services/withdrawal_service.dart';
 import '../../employees/services/employee_service.dart';
+import '../../employees/services/user_role_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import 'shop_balance_details_page.dart';
 import 'withdrawal_shop_selection_page.dart';
 import 'revenue_analytics_page.dart';
+import 'store_managers_page.dart';
 
 /// Главная страница отчета по кассе
 class MainCashPage extends StatefulWidget {
@@ -21,10 +24,16 @@ class MainCashPage extends StatefulWidget {
 }
 
 class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderStateMixin {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   late TabController _tabController;
   List<ShopCashBalance> _balances = [];
   List<Withdrawal> _withdrawals = [];
   bool _isLoading = true;
+  bool _isDeveloper = false;
   String? _selectedShopFilter;
   int _withdrawalTabIndex = 0; // 0 = Все, 1 = Подтвержденные
 
@@ -32,7 +41,17 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _checkRole();
     _loadData();
+  }
+
+  Future<void> _checkRole() async {
+    final roleData = await UserRoleService.loadUserRole();
+    if (mounted && roleData != null) {
+      setState(() {
+        _isDeveloper = roleData.isDeveloper;
+      });
+    }
   }
 
   @override
@@ -51,7 +70,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       final balances = await MainCashService.getShopBalances();
       Logger.debug('✅ Загружено балансов: ${balances.length}');
 
-      final withdrawals = await WithdrawalService.getWithdrawals();
+      final allWithdrawals = await WithdrawalService.getWithdrawals();
+      // Фильтрация по мультитенантности — управляющий видит только выемки своих магазинов
+      final withdrawals = await MultitenancyFilterService.filterByShopAddress(
+        allWithdrawals,
+        (w) => w.shopAddress,
+      );
       Logger.debug('✅ Загружено выемок: ${withdrawals.length}');
 
       // Логирование для отладки
@@ -639,110 +663,192 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Главная Касса'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Обновить',
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Container(
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Главная Касса',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (_isDeveloper) ...[
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const StoreManagersPage(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: const Icon(Icons.people, color: Colors.white, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    GestureDetector(
+                      onTap: _loadData,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: const Color(0xFF004D40),
-              indicatorWeight: 3,
-              labelColor: const Color(0xFF004D40),
-              unselectedLabelColor: Colors.grey[500],
-              labelStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.3,
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+
+              // TabBar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: _gold,
+                  indicatorWeight: 3,
+                  labelColor: _gold,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  labelStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerHeight: 0,
+                  tabs: [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.account_balance_wallet, size: 18),
+                          SizedBox(width: 6),
+                          Text('Касса'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.upload, size: 18),
+                          SizedBox(width: 6),
+                          Text('Выемки'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.bar_chart, size: 18),
+                          SizedBox(width: 6),
+                          Text('Аналитика'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.account_balance_wallet, size: 20),
-                      SizedBox(width: 8),
-                      Text('Касса'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.upload, size: 20),
-                      SizedBox(width: 8),
-                      Text('Выемки'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.bar_chart, size: 20),
-                      SizedBox(width: 8),
-                      Text('Аналитика'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              const SizedBox(height: 8),
+
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildCashTab(),
+                          _buildWithdrawalsTab(),
+                          const RevenueAnalyticsPage(),
+                        ],
+                      ),
+              ),
+            ],
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildCashTab(),
-                _buildWithdrawalsTab(),
-                const RevenueAnalyticsPage(),
-              ],
-            ),
     );
   }
 
   Widget _buildCashTab() {
     if (_balances.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.inbox, size: 40, color: Colors.white.withOpacity(0.3)),
+            ),
+            const SizedBox(height: 16),
             Text(
               'Нет данных о кассе',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Данные появятся после сдачи смен',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.3)),
             ),
           ],
         ),
@@ -753,21 +859,26 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       children: [
         // Заголовок таблицы
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: const Color(0xFF00796B),
-          child: const Row(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: _emerald.withOpacity(0.5),
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+          ),
+          child: Row(
             children: [
               Expanded(
                 child: Text(
                   'Магазин',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
                 ),
               ),
               SizedBox(
                 width: 60,
                 child: Text(
                   'ООО',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
                   textAlign: TextAlign.right,
                 ),
               ),
@@ -775,7 +886,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 width: 60,
                 child: Text(
                   'ИП',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
                   textAlign: TextAlign.right,
                 ),
               ),
@@ -783,11 +894,11 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 width: 80,
                 child: Text(
                   'Итого',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
                   textAlign: TextAlign.right,
                 ),
               ),
-              SizedBox(width: 28), // место для стрелки
+              const SizedBox(width: 28), // место для стрелки
             ],
           ),
         ),
@@ -805,44 +916,77 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: const Color(0xFF00695C),
+          decoration: BoxDecoration(
+            color: _emerald.withOpacity(0.6),
+            border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+          ),
           child: Row(
             children: [
               // Кнопка Выемка
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _navigateToWithdrawal,
-                  icon: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 18),
-                  label: const Text('Выемка', style: TextStyle(color: Colors.white, fontSize: 12)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
+                child: GestureDetector(
+                  onTap: _navigateToWithdrawal,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _emeraldDark,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.remove_circle_outline, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        const Text('Выемка', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               // Кнопка Внести
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _showDepositDialog,
-                  icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 18),
-                  label: const Text('Внести', style: TextStyle(color: Colors.white, fontSize: 12)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
+                child: GestureDetector(
+                  onTap: _showDepositDialog,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.green[700],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.add_circle_outline, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        const Text('Внести', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               // Кнопка Перенести
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _showTransferDialog,
-                  icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 18),
-                  label: const Text('Перенос', style: TextStyle(color: Colors.white, fontSize: 12)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
+                child: GestureDetector(
+                  onTap: _showTransferDialog,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[700],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.swap_horiz, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        const Text('Перенос', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -851,16 +995,21 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         ),
         // Итого по всем магазинам
         Container(
-          padding: const EdgeInsets.all(16),
-          color: const Color(0xFF004D40),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _emeraldDark,
+            border: Border(
+              top: BorderSide(color: _gold.withOpacity(0.3)),
+            ),
+          ),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'ИТОГО:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: _gold,
                     fontSize: 14,
                   ),
                 ),
@@ -893,9 +1042,9 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 width: 80,
                 child: Text(
                   _formatAmount(_balances.fold(0.0, (sum, b) => sum + b.totalBalance)),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: _gold,
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.right,
@@ -910,72 +1059,75 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   }
 
   Widget _buildExpandableBalanceRow(ShopCashBalance balance) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ShopBalanceDetailsPage(
-              shopAddress: balance.shopAddress,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ShopBalanceDetailsPage(
+                shopAddress: balance.shopAddress,
+              ),
             ),
+          ).then((_) => _loadData());
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06))),
           ),
-        ).then((_) => _loadData());
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          color: Color(0xFF009688),
-          border: Border(bottom: BorderSide(color: Color(0xFF00796B))),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                balance.shopAddress,
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: Colors.white),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            SizedBox(
-              width: 60,
-              child: Text(
-                _formatAmount(balance.oooBalance),
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: balance.oooBalance < 0 ? Colors.red[200] : Colors.white,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  balance.shopAddress,
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: Colors.white.withOpacity(0.8)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-            SizedBox(
-              width: 60,
-              child: Text(
-                _formatAmount(balance.ipBalance),
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: balance.ipBalance < 0 ? Colors.red[200] : Colors.white,
+              SizedBox(
+                width: 60,
+                child: Text(
+                  _formatAmount(balance.oooBalance),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: balance.oooBalance < 0 ? Colors.red[300] : Colors.white.withOpacity(0.7),
+                  ),
                 ),
               ),
-            ),
-            SizedBox(
-              width: 80,
-              child: Text(
-                _formatAmount(balance.totalBalance),
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: balance.totalBalance < 0 ? Colors.red[200] : Colors.white,
+              SizedBox(
+                width: 60,
+                child: Text(
+                  _formatAmount(balance.ipBalance),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: balance.ipBalance < 0 ? Colors.red[300] : Colors.white.withOpacity(0.7),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, size: 20, color: Colors.white70),
-          ],
+              SizedBox(
+                width: 80,
+                child: Text(
+                  _formatAmount(balance.totalBalance),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: balance.totalBalance < 0 ? Colors.red[300] : _gold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 20, color: Colors.white.withOpacity(0.3)),
+            ],
+          ),
         ),
       ),
     );
@@ -986,44 +1138,28 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       children: [
         // Подвкладки: Все / Подтвержденные
         Container(
-          margin: const EdgeInsets.all(16),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Row(
             children: [
               Expanded(
-                child: InkWell(
+                child: GestureDetector(
                   onTap: () => setState(() => _withdrawalTabIndex = 0),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    bottomLeft: Radius.circular(12),
-                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: _withdrawalTabIndex == 0 ? const Color(0xFF004D40) : Colors.transparent,
+                      color: _withdrawalTabIndex == 0 ? _gold.withOpacity(0.2) : Colors.transparent,
                       borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
+                        topLeft: Radius.circular(11),
+                        bottomLeft: Radius.circular(11),
                       ),
-                      boxShadow: _withdrawalTabIndex == 0
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF004D40).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [],
+                      border: _withdrawalTabIndex == 0
+                          ? Border.all(color: _gold.withOpacity(0.3))
+                          : null,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1031,7 +1167,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         Icon(
                           Icons.list_alt,
                           size: 18,
-                          color: _withdrawalTabIndex == 0 ? Colors.white : Colors.grey[600],
+                          color: _withdrawalTabIndex == 0 ? _gold : Colors.white.withOpacity(0.4),
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -1040,8 +1176,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: _withdrawalTabIndex == 0 ? FontWeight.bold : FontWeight.w500,
-                            color: _withdrawalTabIndex == 0 ? Colors.white : Colors.grey[600],
-                            letterSpacing: 0.2,
+                            color: _withdrawalTabIndex == 0 ? _gold : Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -1049,31 +1184,20 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   ),
                 ),
               ),
-              const SizedBox(width: 2),
               Expanded(
-                child: InkWell(
+                child: GestureDetector(
                   onTap: () => setState(() => _withdrawalTabIndex = 1),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(12),
-                    bottomRight: Radius.circular(12),
-                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: _withdrawalTabIndex == 1 ? const Color(0xFF004D40) : Colors.transparent,
+                      color: _withdrawalTabIndex == 1 ? _gold.withOpacity(0.2) : Colors.transparent,
                       borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
+                        topRight: Radius.circular(11),
+                        bottomRight: Radius.circular(11),
                       ),
-                      boxShadow: _withdrawalTabIndex == 1
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF004D40).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [],
+                      border: _withdrawalTabIndex == 1
+                          ? Border.all(color: _gold.withOpacity(0.3))
+                          : null,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1081,7 +1205,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         Icon(
                           Icons.check_circle,
                           size: 18,
-                          color: _withdrawalTabIndex == 1 ? Colors.white : Colors.grey[600],
+                          color: _withdrawalTabIndex == 1 ? _gold : Colors.white.withOpacity(0.4),
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -1090,8 +1214,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: _withdrawalTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
-                            color: _withdrawalTabIndex == 1 ? Colors.white : Colors.grey[600],
-                            letterSpacing: 0.2,
+                            color: _withdrawalTabIndex == 1 ? _gold : Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -1102,147 +1225,74 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             ],
           ),
         ),
-        // Фильтр по магазину + кнопка обновления
+        // Фильтр по магазину
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedShopFilter,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: 'Фильтр по магазину',
-                      labelStyle: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.store,
-                        color: const Color(0xFF004D40),
-                        size: 20,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-                    dropdownColor: Colors.white,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                    items: [
-                      DropdownMenuItem<String>(
-                        value: null,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.select_all,
-                              size: 18,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Text(
-                                'Все магазины',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ..._shopAddresses.map((address) => DropdownMenuItem(
-                            value: address,
-                            child: Text(
-                              address,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          )),
-                    ],
-                    onChanged: (value) {
-                      setState(() => _selectedShopFilter = value);
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF004D40)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF004D40).withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedShopFilter,
+                isExpanded: true,
+                dropdownColor: _emeraldDark,
+                icon: Icon(Icons.arrow_drop_down, color: _gold),
+                hint: Row(
+                  children: [
+                    Icon(Icons.store, size: 18, color: _gold),
+                    const SizedBox(width: 8),
+                    Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)),
                   ],
                 ),
-                child: IconButton(
-                  onPressed: _isLoading ? null : _loadData,
-                  icon: _isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: const Color(0xFF004D40),
-                          ),
-                        )
-                      : const Icon(
-                          Icons.refresh,
-                          color: Color(0xFF004D40),
-                        ),
-                  tooltip: 'Обновить',
-                  padding: const EdgeInsets.all(12),
-                  constraints: const BoxConstraints(),
-                ),
+                items: [
+                  DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                  ),
+                  ..._shopAddresses.map((address) => DropdownMenuItem(
+                    value: address,
+                    child: Text(address, overflow: TextOverflow.ellipsis),
+                  )),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedShopFilter = value);
+                },
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
               ),
-            ],
+            ),
           ),
         ),
         // Список выемок
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator(color: _gold))
               : _filteredWithdrawals.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.upload, size: 64, color: Colors.grey),
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.06),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.upload, size: 40, color: Colors.white.withOpacity(0.3)),
+                          ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'Выемок пока нет',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                            style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Всего загружено: ${_withdrawals.length}',
-                            style: const TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _loadData,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Обновить'),
+                            style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.3)),
                           ),
                         ],
                       ),
@@ -1263,8 +1313,6 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   Widget _buildWithdrawalCard(Withdrawal withdrawal) {
     // Определить цвет границы и фона для отмененных выемок
     final isCancelled = withdrawal.isCancelled;
-    final borderColor = isCancelled ? Colors.red[200]! : Colors.grey[200]!;
-    final cardColor = isCancelled ? Colors.red[50] : null;
 
     // Определить цвет и иконку в зависимости от категории
     Color getCategoryColor() {
@@ -1296,16 +1344,24 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     final categoryColor = getCategoryColor();
     final categoryIcon = getCategoryIcon();
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      elevation: 1,
-      color: cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: borderColor, width: isCancelled ? 2 : 1),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isCancelled ? Colors.red.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+          width: isCancelled ? 2 : 1,
+        ),
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          expansionTileTheme: ExpansionTileThemeData(
+            iconColor: Colors.white.withOpacity(0.4),
+            collapsedIconColor: Colors.white.withOpacity(0.4),
+          ),
+        ),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -1315,13 +1371,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: categoryColor.withOpacity(0.1),
+                  color: categoryColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   categoryIcon,
                   size: 20,
-                  color: isCancelled ? Colors.red[700] : categoryColor,
+                  color: categoryColor,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1339,7 +1395,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           Text(
                             'ОТМЕНЕНО',
                             style: TextStyle(
-                              color: Colors.red[700],
+                              color: Colors.red[300],
                               fontWeight: FontWeight.bold,
                               fontSize: 10,
                             ),
@@ -1348,13 +1404,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: categoryColor.withOpacity(0.1),
+                            color: categoryColor.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             withdrawal.categoryDisplayName,
                             style: TextStyle(
-                              color: isCancelled ? Colors.grey : categoryColor,
+                              color: isCancelled ? Colors.white.withOpacity(0.3) : categoryColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 8,
                               decoration: isCancelled ? TextDecoration.lineThrough : null,
@@ -1367,8 +1423,8 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                             withdrawal.typeDisplayName,
                             style: TextStyle(
                               color: isCancelled
-                                  ? Colors.grey
-                                  : (withdrawal.type == 'ooo' ? Colors.blue : Colors.orange),
+                                  ? Colors.white.withOpacity(0.3)
+                                  : (withdrawal.type == 'ooo' ? Colors.blue[300] : Colors.orange[300]),
                               fontWeight: FontWeight.bold,
                               fontSize: 10,
                               decoration: isCancelled ? TextDecoration.lineThrough : null,
@@ -1377,7 +1433,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         Text(
                           withdrawal.formattedDateTime,
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: Colors.white.withOpacity(0.3),
                             fontSize: 9,
                           ),
                         ),
@@ -1385,17 +1441,17 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           Icon(
                             Icons.check_circle,
                             size: 12,
-                            color: Colors.green[600],
+                            color: Colors.green[400],
                           ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       withdrawal.shopAddress,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: Colors.black87,
+                        color: Colors.white.withOpacity(0.8),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1404,7 +1460,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     Text(
                       '${withdrawal.employeeName} • ${withdrawal.expenses.length} расход${_getExpenseEnding(withdrawal.expenses.length)}',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: Colors.white.withOpacity(0.4),
                         fontSize: 11,
                       ),
                       maxLines: 1,
@@ -1419,10 +1475,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 children: [
                   Text(
                     '${withdrawal.totalAmount.toStringAsFixed(0)} руб',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF004D40),
+                      color: _gold,
                     ),
                   ),
                 ],
@@ -1433,16 +1489,16 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(height: 1),
+                Divider(height: 1, color: Colors.white.withOpacity(0.1)),
                 const SizedBox(height: 12),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Text(
                     'Детализация расходов:',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: Colors.black87,
+                      color: Colors.white.withOpacity(0.7),
                     ),
                   ),
                 ),
@@ -1454,9 +1510,9 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     margin: const EdgeInsets.only(bottom: 6),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: Colors.white.withOpacity(0.04),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[200]!),
+                      border: Border.all(color: Colors.white.withOpacity(0.06)),
                     ),
                     child: Row(
                       children: [
@@ -1465,16 +1521,16 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF004D40).withOpacity(0.1),
+                            color: _emerald.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Center(
                             child: Text(
                               '${index + 1}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
-                                color: Color(0xFF004D40),
+                                color: Colors.white.withOpacity(0.7),
                               ),
                             ),
                           ),
@@ -1487,9 +1543,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                             children: [
                               Text(
                                 expense.displayName,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
+                                  color: Colors.white.withOpacity(0.8),
                                 ),
                               ),
                               if (expense.comment.isNotEmpty) ...[
@@ -1497,7 +1554,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                                 Text(
                                   expense.comment,
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: Colors.white.withOpacity(0.4),
                                     fontSize: 10,
                                   ),
                                   maxLines: 1,
@@ -1510,16 +1567,16 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         // Сумма
                         Text(
                           '${expense.amount.toStringAsFixed(0)} руб',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
-                            color: Color(0xFF004D40),
+                            color: _gold,
                           ),
                         ),
                       ],
                     ),
                   );
-                }).toList(),
+                }),
                 if (withdrawal.adminName != null && withdrawal.adminName!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Padding(
@@ -1528,7 +1585,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                       'Создал: ${withdrawal.adminName}',
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey[600],
+                        color: Colors.white.withOpacity(0.3),
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -1537,7 +1594,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 // Кнопка подтверждения
                 if (!withdrawal.confirmed) ...[
                   const SizedBox(height: 12),
-                  const Divider(height: 1),
+                  Divider(height: 1, color: Colors.white.withOpacity(0.1)),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -1550,7 +1607,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[600],
+                        backgroundColor: Colors.green[700],
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -1574,7 +1631,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red[700],
+                        foregroundColor: Colors.red[300],
                         side: BorderSide(color: Colors.red[300]!),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -1589,21 +1646,21 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
+                      color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red[200]!),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.cancel, color: Colors.red[700], size: 18),
+                            Icon(Icons.cancel, color: Colors.red[300], size: 18),
                             const SizedBox(width: 8),
                             Text(
                               'ВЫЕМКА ОТМЕНЕНА',
                               style: TextStyle(
-                                color: Colors.red[700],
+                                color: Colors.red[300],
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
@@ -1615,7 +1672,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           Text(
                             'Причина: ${withdrawal.cancelReason}',
                             style: TextStyle(
-                              color: Colors.red[600],
+                              color: Colors.red[200],
                               fontSize: 11,
                             ),
                           ),
@@ -1625,7 +1682,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           Text(
                             'Отменил: ${withdrawal.cancelledBy}',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: Colors.white.withOpacity(0.4),
                               fontSize: 10,
                               fontStyle: FontStyle.italic,
                             ),
@@ -1636,7 +1693,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           Text(
                             'Дата отмены: ${_formatDate(withdrawal.cancelledAt!)}',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: Colors.white.withOpacity(0.4),
                               fontSize: 10,
                               fontStyle: FontStyle.italic,
                             ),

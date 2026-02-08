@@ -48,10 +48,6 @@ class RemoteNotification {
 /// Заглушка FirebaseService для веб-платформы
 /// Firebase Messaging не поддерживается на веб-платформе
 class FirebaseService {
-  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotifications = 
-      FlutterLocalNotificationsPlugin();
-
   static bool _initialized = false;
   static BuildContext? _globalContext;
 

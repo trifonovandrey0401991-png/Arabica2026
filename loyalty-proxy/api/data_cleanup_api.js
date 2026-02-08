@@ -1,7 +1,23 @@
-const fs = require('fs');
+/**
+ * Data Cleanup API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 const { execSync } = require('child_process');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 
 // Категории данных, которые можно очищать
@@ -163,19 +179,19 @@ const CLEANUP_CATEGORIES = [
 ];
 
 // Получить размер директории рекурсивно
-function getDirectorySize(dirPath) {
+async function getDirectorySize(dirPath) {
   let totalSize = 0;
 
   try {
-    if (!fs.existsSync(dirPath)) return 0;
+    if (!(await fileExists(dirPath))) return 0;
 
-    const items = fs.readdirSync(dirPath);
+    const items = await fsp.readdir(dirPath);
     for (const item of items) {
       const itemPath = path.join(dirPath, item);
-      const stat = fs.statSync(itemPath);
+      const stat = await fsp.stat(itemPath);
 
       if (stat.isDirectory()) {
-        totalSize += getDirectorySize(itemPath);
+        totalSize += await getDirectorySize(itemPath);
       } else {
         totalSize += stat.size;
       }
@@ -188,19 +204,19 @@ function getDirectorySize(dirPath) {
 }
 
 // Получить количество файлов в директории
-function getFileCount(dirPath) {
+async function getFileCount(dirPath) {
   try {
-    if (!fs.existsSync(dirPath)) return 0;
+    if (!(await fileExists(dirPath))) return 0;
 
     let count = 0;
-    const items = fs.readdirSync(dirPath);
+    const items = await fsp.readdir(dirPath);
 
     for (const item of items) {
       const itemPath = path.join(dirPath, item);
-      const stat = fs.statSync(itemPath);
+      const stat = await fsp.stat(itemPath);
 
       if (stat.isDirectory()) {
-        count += getFileCount(itemPath);
+        count += await getFileCount(itemPath);
       } else if (item.endsWith('.json') || item.endsWith('.jpg') || item.endsWith('.png')) {
         count++;
       }
@@ -214,21 +230,21 @@ function getFileCount(dirPath) {
 }
 
 // Получить даты самого старого и нового файла
-function getDateRange(dirPath, dateField) {
+async function getDateRange(dirPath, dateField) {
   let oldestDate = null;
   let newestDate = null;
 
   try {
-    if (!fs.existsSync(dirPath)) return { oldestDate, newestDate };
+    if (!(await fileExists(dirPath))) return { oldestDate, newestDate };
 
-    const items = fs.readdirSync(dirPath);
+    const items = await fsp.readdir(dirPath);
 
     for (const item of items) {
       const itemPath = path.join(dirPath, item);
-      const stat = fs.statSync(itemPath);
+      const stat = await fsp.stat(itemPath);
 
       if (stat.isDirectory()) {
-        const subRange = getDateRange(itemPath, dateField);
+        const subRange = await getDateRange(itemPath, dateField);
         if (subRange.oldestDate) {
           if (!oldestDate || subRange.oldestDate < oldestDate) {
             oldestDate = subRange.oldestDate;
@@ -241,7 +257,7 @@ function getDateRange(dirPath, dateField) {
         }
       } else if (item.endsWith('.json')) {
         try {
-          const content = fs.readFileSync(itemPath, 'utf8');
+          const content = await fsp.readFile(itemPath, 'utf8');
           const data = JSON.parse(content);
           const dateValue = data[dateField];
 
@@ -270,24 +286,24 @@ function getDateRange(dirPath, dateField) {
 }
 
 // Получить файлы для удаления до определённой даты
-function getFilesToDelete(dirPath, dateField, beforeDate, isPhotos = false) {
+async function getFilesToDelete(dirPath, dateField, beforeDate, isPhotos = false) {
   const filesToDelete = [];
 
   try {
-    if (!fs.existsSync(dirPath)) return filesToDelete;
+    if (!(await fileExists(dirPath))) return filesToDelete;
 
-    const items = fs.readdirSync(dirPath);
+    const items = await fsp.readdir(dirPath);
 
     for (const item of items) {
       const itemPath = path.join(dirPath, item);
-      const stat = fs.statSync(itemPath);
+      const stat = await fsp.stat(itemPath);
 
       if (stat.isDirectory()) {
-        const subFiles = getFilesToDelete(itemPath, dateField, beforeDate, isPhotos);
+        const subFiles = await getFilesToDelete(itemPath, dateField, beforeDate, isPhotos);
         filesToDelete.push(...subFiles);
       } else if (item.endsWith('.json')) {
         try {
-          const content = fs.readFileSync(itemPath, 'utf8');
+          const content = await fsp.readFile(itemPath, 'utf8');
           const data = JSON.parse(content);
           const dateValue = data[dateField];
 
@@ -315,15 +331,15 @@ function getFilesToDelete(dirPath, dateField, beforeDate, isPhotos = false) {
 }
 
 // Удалить файлы
-function deleteFiles(filePaths) {
+async function deleteFiles(filePaths) {
   let deletedCount = 0;
   let freedBytes = 0;
 
   for (const filePath of filePaths) {
     try {
-      const stat = fs.statSync(filePath);
+      const stat = await fsp.stat(filePath);
       freedBytes += stat.size;
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
       deletedCount++;
     } catch (err) {
       console.error(`Error deleting ${filePath}:`, err.message);
@@ -334,23 +350,23 @@ function deleteFiles(filePaths) {
 }
 
 // Удалить пустые директории
-function removeEmptyDirectories(dirPath) {
+async function removeEmptyDirectories(dirPath) {
   try {
-    if (!fs.existsSync(dirPath)) return;
+    if (!(await fileExists(dirPath))) return;
 
-    const items = fs.readdirSync(dirPath);
+    const items = await fsp.readdir(dirPath);
 
     for (const item of items) {
       const itemPath = path.join(dirPath, item);
-      const stat = fs.statSync(itemPath);
+      const stat = await fsp.stat(itemPath);
 
       if (stat.isDirectory()) {
-        removeEmptyDirectories(itemPath);
+        await removeEmptyDirectories(itemPath);
 
         // Check if directory is now empty
-        const remaining = fs.readdirSync(itemPath);
+        const remaining = await fsp.readdir(itemPath);
         if (remaining.length === 0) {
-          fs.rmdirSync(itemPath);
+          await fsp.rmdir(itemPath);
         }
       }
     }
@@ -413,22 +429,23 @@ function setupDataCleanupAPI(app) {
   });
 
   // GET /api/admin/data-stats - статистика по категориям данных
-  app.get('/api/admin/data-stats', (req, res) => {
+  app.get('/api/admin/data-stats', async (req, res) => {
     try {
-      const categories = CLEANUP_CATEGORIES.map(cat => {
-        const size = getDirectorySize(cat.directory);
-        const count = getFileCount(cat.directory);
-        const { oldestDate, newestDate } = getDateRange(cat.directory, cat.dateField);
+      const categories = [];
+      for (const cat of CLEANUP_CATEGORIES) {
+        const size = await getDirectorySize(cat.directory);
+        const count = await getFileCount(cat.directory);
+        const { oldestDate, newestDate } = await getDateRange(cat.directory, cat.dateField);
 
-        return {
+        categories.push({
           id: cat.id,
           name: cat.name,
           count,
           sizeBytes: size,
           oldestDate: oldestDate ? oldestDate.toISOString().split('T')[0] : null,
           newestDate: newestDate ? newestDate.toISOString().split('T')[0] : null
-        };
-      });
+        });
+      }
 
       // Filter out categories with no data
       const nonEmptyCategories = categories.filter(c => c.count > 0 || c.sizeBytes > 0);
@@ -447,7 +464,7 @@ function setupDataCleanupAPI(app) {
   });
 
   // GET /api/admin/cleanup-preview - предварительный просмотр удаления
-  app.get('/api/admin/cleanup-preview', (req, res) => {
+  app.get('/api/admin/cleanup-preview', async (req, res) => {
     try {
       const { category, beforeDate } = req.query;
 
@@ -474,13 +491,13 @@ function setupDataCleanupAPI(app) {
         });
       }
 
-      const filesToDelete = getFilesToDelete(cat.directory, cat.dateField, date, cat.isPhotos);
+      const filesToDelete = await getFilesToDelete(cat.directory, cat.dateField, date, cat.isPhotos);
 
       // Calculate total size
       let totalSize = 0;
       for (const filePath of filesToDelete) {
         try {
-          const stat = fs.statSync(filePath);
+          const stat = await fsp.stat(filePath);
           totalSize += stat.size;
         } catch (e) {
           // Skip
@@ -502,7 +519,7 @@ function setupDataCleanupAPI(app) {
   });
 
   // POST /api/admin/cleanup - выполнить очистку
-  app.post('/api/admin/cleanup', (req, res) => {
+  app.post('/api/admin/cleanup', async (req, res) => {
     try {
       const { category, beforeDate } = req.body;
 
@@ -531,11 +548,11 @@ function setupDataCleanupAPI(app) {
 
       console.log(`[Cleanup] Starting cleanup for ${category} before ${beforeDate}`);
 
-      const filesToDelete = getFilesToDelete(cat.directory, cat.dateField, date, cat.isPhotos);
-      const { deletedCount, freedBytes } = deleteFiles(filesToDelete);
+      const filesToDelete = await getFilesToDelete(cat.directory, cat.dateField, date, cat.isPhotos);
+      const { deletedCount, freedBytes } = await deleteFiles(filesToDelete);
 
       // Clean up empty directories
-      removeEmptyDirectories(cat.directory);
+      await removeEmptyDirectories(cat.directory);
 
       console.log(`[Cleanup] Deleted ${deletedCount} files, freed ${freedBytes} bytes`);
 

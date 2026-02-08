@@ -7,9 +7,11 @@
  * - Переход awaiting_review → rejected по таймауту adminReviewTimeout
  * - Push-уведомления админу
  * - Очистка failed отчётов в 23:59
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Импортируем функции отправки push-уведомлений
@@ -44,6 +46,16 @@ const PENALTY_CATEGORY_NAME = 'Сдача смены - пропуск';
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
 const MOSCOW_OFFSET_HOURS = 3; // UTC+3 для московского времени
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================
 // Moscow Time Helper
 // ============================================
@@ -61,12 +73,12 @@ function getMoscowDateString() {
 // ============================================
 // Helper: Load JSON file safely
 // ============================================
-function loadJsonFile(filePath, defaultValue) {
-  if (!fs.existsSync(filePath)) {
+async function loadJsonFile(filePath, defaultValue) {
+  if (!(await fileExists(filePath))) {
     return defaultValue;
   }
   try {
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(data);
   } catch (e) {
     console.error(`[ShiftHandoverScheduler] Error loading JSON from ${filePath}:`, e.message);
@@ -74,13 +86,13 @@ function loadJsonFile(filePath, defaultValue) {
   }
 }
 
-function saveJsonFile(filePath, data) {
+async function saveJsonFile(filePath, data) {
   try {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error(`[ShiftHandoverScheduler] Error saving JSON to ${filePath}:`, e.message);
@@ -91,8 +103,8 @@ function saveJsonFile(filePath, data) {
 // ============================================
 // State Management
 // ============================================
-function loadState() {
-  return loadJsonFile(STATE_FILE, {
+async function loadState() {
+  return await loadJsonFile(STATE_FILE, {
     lastMorningGeneration: null,
     lastEveningGeneration: null,
     lastAdminTimeoutCheck: null,
@@ -101,15 +113,15 @@ function loadState() {
   });
 }
 
-function saveState(state) {
+async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  saveJsonFile(STATE_FILE, state);
+  await saveJsonFile(STATE_FILE, state);
 }
 
 // ============================================
 // Settings Loading
 // ============================================
-function getShiftHandoverSettings() {
+async function getShiftHandoverSettings() {
   const defaults = {
     minPoints: -3,
     zeroThreshold: 7,
@@ -123,7 +135,7 @@ function getShiftHandoverSettings() {
   };
 
   const settingsFile = path.join(POINTS_SETTINGS_DIR, 'shift_handover_points_settings.json');
-  const loaded = loadJsonFile(settingsFile, {});
+  const loaded = await loadJsonFile(settingsFile, {});
 
   return {
     ...defaults,
@@ -140,32 +152,32 @@ function getShiftHandoverSettings() {
 // ============================================
 // Shops Loading
 // ============================================
-function getAllShops() {
+async function getAllShops() {
   const shopsFile = path.join(SHOPS_DIR, 'shops.json');
-  const data = loadJsonFile(shopsFile, { shops: [] });
+  const data = await loadJsonFile(shopsFile, { shops: [] });
   return data.shops || [];
 }
 
 // ============================================
 // Pending Reports Management
 // ============================================
-function ensureDirectoryExists(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+async function ensureDirectoryExists(dir) {
+  if (!(await fileExists(dir))) {
+    await fsp.mkdir(dir, { recursive: true });
   }
 }
 
-function loadTodayPendingReports() {
-  ensureDirectoryExists(SHIFT_HANDOVER_PENDING_DIR);
+async function loadTodayPendingReports() {
+  await ensureDirectoryExists(SHIFT_HANDOVER_PENDING_DIR);
   const reports = [];
   const today = getMoscowDateString();
 
   try {
-    const files = fs.readdirSync(SHIFT_HANDOVER_PENDING_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(SHIFT_HANDOVER_PENDING_DIR)).filter(f => f.endsWith('.json'));
     for (const file of files) {
       try {
         const filePath = path.join(SHIFT_HANDOVER_PENDING_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
         // Фильтруем только сегодняшние отчёты
@@ -184,7 +196,7 @@ function loadTodayPendingReports() {
   return reports;
 }
 
-function savePendingReport(report) {
+async function savePendingReport(report) {
   const filePath = report._filePath;
   if (!filePath) {
     console.error('[ShiftHandoverScheduler] No _filePath in report');
@@ -194,11 +206,11 @@ function savePendingReport(report) {
   const dataToSave = { ...report };
   delete dataToSave._filePath;
 
-  return saveJsonFile(filePath, dataToSave);
+  return await saveJsonFile(filePath, dataToSave);
 }
 
-function createPendingReport(shop, shiftType, deadline) {
-  ensureDirectoryExists(SHIFT_HANDOVER_PENDING_DIR);
+async function createPendingReport(shop, shiftType, deadline) {
+  await ensureDirectoryExists(SHIFT_HANDOVER_PENDING_DIR);
 
   const now = new Date();
   const today = getMoscowDateString();
@@ -220,7 +232,7 @@ function createPendingReport(shop, shiftType, deadline) {
     failedAt: null
   };
 
-  saveJsonFile(filePath, report);
+  await saveJsonFile(filePath, report);
   console.log(`[ShiftHandoverScheduler] Created pending ${shiftType} shift handover for ${shop.name}, deadline: ${deadline}`);
   return report;
 }
@@ -228,16 +240,16 @@ function createPendingReport(shop, shiftType, deadline) {
 // ============================================
 // Check if Shift Handover was submitted
 // ============================================
-function checkIfShiftHandoverSubmitted(shopAddress, shiftType, today) {
-  ensureDirectoryExists(SHIFT_HANDOVER_REPORTS_DIR);
+async function checkIfShiftHandoverSubmitted(shopAddress, shiftType, today) {
+  await ensureDirectoryExists(SHIFT_HANDOVER_REPORTS_DIR);
 
   try {
-    const files = fs.readdirSync(SHIFT_HANDOVER_REPORTS_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
         const reportDate = report.createdAt ? report.createdAt.split('T')[0] : null;
@@ -304,9 +316,9 @@ function getDeadlineTimeStr(timeStr) {
 // ============================================
 // 1. Generate Pending Reports
 // ============================================
-function generatePendingReports(shiftType) {
-  const settings = getShiftHandoverSettings();
-  const shops = getAllShops();
+async function generatePendingReports(shiftType) {
+  const settings = await getShiftHandoverSettings();
+  const shops = await getAllShops();
   const today = getMoscowDateString();
 
   if (shops.length === 0) {
@@ -314,7 +326,7 @@ function generatePendingReports(shiftType) {
     return 0;
   }
 
-  const pendingReports = loadTodayPendingReports();
+  const pendingReports = await loadTodayPendingReports();
   let created = 0;
 
   const deadlineTime = shiftType === 'morning'
@@ -334,14 +346,14 @@ function generatePendingReports(shiftType) {
     if (existsPending) continue;
 
     // Check if already submitted today
-    const alreadySubmitted = checkIfShiftHandoverSubmitted(shop.address, shiftType, today);
+    const alreadySubmitted = await checkIfShiftHandoverSubmitted(shop.address, shiftType, today);
     if (alreadySubmitted) {
       console.log(`[ShiftHandoverScheduler] Shift handover already submitted for ${shop.name} (${shiftType}), skipping`);
       continue;
     }
 
     // Create pending report
-    createPendingReport(shop, shiftType, deadlineTime);
+    await createPendingReport(shop, shiftType, deadlineTime);
     created++;
   }
 
@@ -355,7 +367,7 @@ function generatePendingReports(shiftType) {
 async function checkPendingDeadlines() {
   const moscow = getMoscowTime();
   const today = getMoscowDateString();
-  const reports = loadTodayPendingReports();
+  const reports = await loadTodayPendingReports();
   let failedCount = 0;
   const failedShops = [];
 
@@ -367,11 +379,11 @@ async function checkPendingDeadlines() {
     if (report.status !== 'pending') continue;
 
     // Check if submitted in the meantime
-    const submitted = checkIfShiftHandoverSubmitted(report.shopAddress, report.shiftType, today);
+    const submitted = await checkIfShiftHandoverSubmitted(report.shopAddress, report.shiftType, today);
     if (submitted) {
       console.log(`[ShiftHandoverScheduler] Shift handover submitted for ${report.shopName}, removing pending`);
-      if (report._filePath && fs.existsSync(report._filePath)) {
-        fs.unlinkSync(report._filePath);
+      if (report._filePath && (await fileExists(report._filePath))) {
+        await fsp.unlink(report._filePath);
       }
       continue;
     }
@@ -384,7 +396,7 @@ async function checkPendingDeadlines() {
       // Deadline passed - mark as failed
       report.status = 'failed';
       report.failedAt = new Date().toISOString();
-      savePendingReport(report);
+      await savePendingReport(report);
       failedCount++;
 
       failedShops.push({
@@ -412,21 +424,21 @@ async function checkPendingDeadlines() {
 // 3. Check Admin Review Timeout (awaiting_review → rejected)
 // ============================================
 async function checkAdminReviewTimeout() {
-  const settings = getShiftHandoverSettings();
+  const settings = await getShiftHandoverSettings();
   const timeoutHours = settings.adminReviewTimeout;
   const now = new Date();
   let rejectedCount = 0;
   const rejectedReports = [];
 
-  ensureDirectoryExists(SHIFT_HANDOVER_REPORTS_DIR);
+  await ensureDirectoryExists(SHIFT_HANDOVER_REPORTS_DIR);
 
   try {
-    const files = fs.readdirSync(SHIFT_HANDOVER_REPORTS_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
         // Только отчёты со статусом pending (ожидают проверки)
@@ -442,7 +454,7 @@ async function checkAdminReviewTimeout() {
           report.expiredAt = now.toISOString();
           report.rejectionReason = `Таймаут проверки (${timeoutHours} ч)`;
 
-          saveJsonFile(filePath, report);
+          await saveJsonFile(filePath, report);
           rejectedCount++;
 
           rejectedReports.push({
@@ -472,16 +484,16 @@ async function checkAdminReviewTimeout() {
 // ============================================
 // 4. Cleanup Failed Reports (at 23:59)
 // ============================================
-function cleanupFailedReports() {
+async function cleanupFailedReports() {
   let removedCount = 0;
 
   try {
-    if (fs.existsSync(SHIFT_HANDOVER_PENDING_DIR)) {
-      const files = fs.readdirSync(SHIFT_HANDOVER_PENDING_DIR);
+    if (await fileExists(SHIFT_HANDOVER_PENDING_DIR)) {
+      const files = await fsp.readdir(SHIFT_HANDOVER_PENDING_DIR);
       for (const file of files) {
         if (file.endsWith('.json')) {
           try {
-            fs.unlinkSync(path.join(SHIFT_HANDOVER_PENDING_DIR, file));
+            await fsp.unlink(path.join(SHIFT_HANDOVER_PENDING_DIR, file));
             removedCount++;
           } catch (e) {
             console.error(`[ShiftHandoverScheduler] Error removing file ${file}:`, e.message);
@@ -505,7 +517,7 @@ function cleanupFailedReports() {
     lastCleanup: new Date().toISOString(),
     lastCheck: new Date().toISOString()
   };
-  saveState(emptyState);
+  await saveState(emptyState);
   console.log('[ShiftHandoverScheduler] State reset for new day');
 
   return removedCount;
@@ -515,13 +527,13 @@ function cleanupFailedReports() {
 // 5. Assign Penalty from Work Schedule
 // ============================================
 async function assignPenaltyFromSchedule(report) {
-  const settings = getShiftHandoverSettings();
+  const settings = await getShiftHandoverSettings();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7); // YYYY-MM
 
   // Load work schedule for this month
   const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
-  const schedule = loadJsonFile(scheduleFile, { entries: [] });
+  const schedule = await loadJsonFile(scheduleFile, { entries: [] });
 
   if (!schedule.entries || schedule.entries.length === 0) {
     console.log(`[ShiftHandoverScheduler] No work schedule found for ${monthKey}, cannot assign penalty`);
@@ -542,7 +554,7 @@ async function assignPenaltyFromSchedule(report) {
   }
 
   // Create penalty
-  const penalty = createPenalty({
+  const penalty = await createPenalty({
     employeeId: entry.employeeId,
     employeeName: entry.employeeName,
     employeePhone: entry.phone || entry.employeePhone,
@@ -563,7 +575,7 @@ async function assignPenaltyFromSchedule(report) {
 // ============================================
 // 6. Create Penalty
 // ============================================
-function createPenalty({ employeeId, employeeName, employeePhone, shopAddress, points, reason, sourceId }) {
+async function createPenalty({ employeeId, employeeName, employeePhone, shopAddress, points, reason, sourceId }) {
   const now = new Date();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7);
@@ -587,11 +599,11 @@ function createPenalty({ employeeId, employeeName, employeePhone, shopAddress, p
   };
 
   // Ensure directory exists
-  ensureDirectoryExists(EFFICIENCY_PENALTIES_DIR);
+  await ensureDirectoryExists(EFFICIENCY_PENALTIES_DIR);
 
   // Load existing penalties
   const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-  let penalties = loadJsonFile(penaltiesFile, []);
+  let penalties = await loadJsonFile(penaltiesFile, []);
 
   // Check for duplicate
   const exists = penalties.some(p => p.sourceId === sourceId);
@@ -601,7 +613,7 @@ function createPenalty({ employeeId, employeeName, employeePhone, shopAddress, p
   }
 
   penalties.push(penalty);
-  saveJsonFile(penaltiesFile, penalties);
+  await saveJsonFile(penaltiesFile, penalties);
 
   console.log(`[ShiftHandoverScheduler] Created penalty for ${employeeName}: ${points} points (${reason})`);
   return penalty;
@@ -705,8 +717,8 @@ async function sendAdminNewReportNotification(report) {
 async function runScheduledChecks() {
   const now = new Date();
   const moscow = getMoscowTime();
-  const settings = getShiftHandoverSettings();
-  const state = loadState();
+  const settings = await getShiftHandoverSettings();
+  const state = await loadState();
 
   console.log(`\n[${now.toISOString()}] ShiftHandoverScheduler: Running checks... (Moscow: ${moscow.toISOString()})`);
   console.log(`[ShiftHandoverScheduler] Settings: morning ${settings.morningStartTime}-${settings.morningEndTime}, evening ${settings.eveningStartTime}-${settings.eveningEndTime}, adminTimeout: ${settings.adminReviewTimeout}h`);
@@ -716,7 +728,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastMorningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[ShiftHandoverScheduler] Morning window active, generating reports...`);
-      const created = generatePendingReports('morning');
+      const created = await generatePendingReports('morning');
       if (created > 0) {
         state.lastMorningGeneration = now.toISOString();
       }
@@ -728,7 +740,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastEveningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[ShiftHandoverScheduler] Evening window active, generating reports...`);
-      const created = generatePendingReports('evening');
+      const created = await generatePendingReports('evening');
       if (created > 0) {
         state.lastEveningGeneration = now.toISOString();
       }
@@ -753,20 +765,20 @@ async function runScheduledChecks() {
   if (moscowHours === 23 && moscowMinutes >= 59) {
     const lastCleanup = state.lastCleanup;
     if (!lastCleanup || !isSameDay(new Date(lastCleanup), now)) {
-      cleanupFailedReports();
+      await cleanupFailedReports();
       state.lastCleanup = now.toISOString();
     }
   }
 
-  saveState(state);
+  await saveState(state);
   console.log(`[ShiftHandoverScheduler] Checks completed\n`);
 }
 
 // ============================================
 // 7. Scheduler Setup
 // ============================================
-function startShiftHandoverAutomationScheduler() {
-  const settings = getShiftHandoverSettings();
+async function startShiftHandoverAutomationScheduler() {
+  const settings = await getShiftHandoverSettings();
   const moscow = getMoscowTime();
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -780,38 +792,38 @@ function startShiftHandoverAutomationScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(() => {
-    runScheduledChecks();
+  setInterval(async () => {
+    await runScheduledChecks();
   }, CHECK_INTERVAL_MS);
 
   // First check after 6 seconds (offset from other schedulers)
-  setTimeout(() => {
-    runScheduledChecks();
+  setTimeout(async () => {
+    await runScheduledChecks();
   }, 6000);
 }
 
 // ============================================
 // 8. API Helpers
 // ============================================
-function getPendingReports() {
-  return loadTodayPendingReports().filter(r => r.status === 'pending');
+async function getPendingReports() {
+  return (await loadTodayPendingReports()).filter(r => r.status === 'pending');
 }
 
-function getFailedReports() {
-  return loadTodayPendingReports().filter(r => r.status === 'failed');
+async function getFailedReports() {
+  return (await loadTodayPendingReports()).filter(r => r.status === 'failed');
 }
 
 // Отметить pending как выполненный (вызывается когда сотрудник сдаёт смену)
-function markPendingAsCompleted(shopAddress, shiftType, employeeName) {
-  const reports = loadTodayPendingReports();
+async function markPendingAsCompleted(shopAddress, shiftType, employeeName) {
+  const reports = await loadTodayPendingReports();
 
   for (const report of reports) {
     if (report.shopAddress === shopAddress &&
         report.shiftType === shiftType &&
         report.status === 'pending') {
       // Удаляем pending файл
-      if (report._filePath && fs.existsSync(report._filePath)) {
-        fs.unlinkSync(report._filePath);
+      if (report._filePath && (await fileExists(report._filePath))) {
+        await fsp.unlink(report._filePath);
         console.log(`[ShiftHandoverScheduler] Marked pending as completed: ${shopAddress} (${shiftType}) by ${employeeName}`);
         return true;
       }

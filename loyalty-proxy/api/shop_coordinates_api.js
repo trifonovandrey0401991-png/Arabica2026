@@ -1,11 +1,38 @@
-const fs = require('fs');
+/**
+ * Shop Coordinates API
+ * Manages shop location coordinates for proximity checks
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
-const SHOP_COORDINATES_DIR = '/var/www/shop-coordinates';
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const SHOP_COORDINATES_DIR = path.join(DATA_DIR, 'shop-coordinates');
 
-if (!fs.existsSync(SHOP_COORDINATES_DIR)) {
-  fs.mkdirSync(SHOP_COORDINATES_DIR, { recursive: true });
+// Async helper functions
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+async function ensureDir() {
+  await fsp.mkdir(SHOP_COORDINATES_DIR, { recursive: true });
+}
+
+// Initialize directory on module load (async IIFE)
+(async () => {
+  try {
+    await ensureDir();
+  } catch (e) {
+    console.error('Failed to create shop-coordinates directory:', e);
+  }
+})();
 
 function setupShopCoordinatesAPI(app) {
   // ===== GET ALL SHOP COORDINATES =====
@@ -14,12 +41,13 @@ function setupShopCoordinatesAPI(app) {
       console.log('GET /api/shop-coordinates');
       const coordinates = [];
 
-      if (fs.existsSync(SHOP_COORDINATES_DIR)) {
-        const files = fs.readdirSync(SHOP_COORDINATES_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(SHOP_COORDINATES_DIR)) {
+        const files = await fsp.readdir(SHOP_COORDINATES_DIR);
+        const jsonFiles = files.filter(f => f.endsWith('.json'));
 
-        for (const file of files) {
+        for (const file of jsonFiles) {
           try {
-            const content = fs.readFileSync(path.join(SHOP_COORDINATES_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(SHOP_COORDINATES_DIR, file), 'utf8');
             coordinates.push(JSON.parse(content));
           } catch (e) {
             console.error(`Error reading ${file}:`, e);
@@ -42,8 +70,9 @@ function setupShopCoordinatesAPI(app) {
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const filePath = path.join(SHOP_COORDINATES_DIR, `${sanitizedAddress}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const coords = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        const coords = JSON.parse(content);
         res.json({ success: true, coordinates: coords });
       } else {
         res.json({ success: true, coordinates: null });
@@ -63,11 +92,13 @@ function setupShopCoordinatesAPI(app) {
         return res.status(400).json({ success: false, error: 'shopAddress is required' });
       }
 
+      await ensureDir();
+
       const sanitizedAddress = coords.shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const filePath = path.join(SHOP_COORDINATES_DIR, `${sanitizedAddress}.json`);
 
       coords.updatedAt = new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(coords, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(coords, null, 2), 'utf8');
 
       res.json({ success: true, coordinates: coords });
     } catch (error) {
@@ -82,16 +113,19 @@ function setupShopCoordinatesAPI(app) {
       const updates = req.body;
       console.log('PUT /api/shop-coordinates:', shopAddress);
 
+      await ensureDir();
+
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const filePath = path.join(SHOP_COORDINATES_DIR, `${sanitizedAddress}.json`);
 
       let coords = { shopAddress };
-      if (fs.existsSync(filePath)) {
-        coords = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        coords = JSON.parse(content);
       }
 
       const updated = { ...coords, ...updates, updatedAt: new Date().toISOString() };
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
 
       res.json({ success: true, coordinates: updated });
     } catch (error) {
@@ -108,8 +142,8 @@ function setupShopCoordinatesAPI(app) {
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const filePath = path.join(SHOP_COORDINATES_DIR, `${sanitizedAddress}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Coordinates not found' });
@@ -135,11 +169,12 @@ function setupShopCoordinatesAPI(app) {
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const filePath = path.join(SHOP_COORDINATES_DIR, `${sanitizedAddress}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.json({ success: true, isNear: true, message: 'No coordinates set for shop' });
       }
 
-      const shopCoords = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const shopCoords = JSON.parse(content);
 
       // Calculate distance using Haversine formula
       const toRad = (deg) => deg * Math.PI / 180;

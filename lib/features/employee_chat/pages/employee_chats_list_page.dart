@@ -18,6 +18,11 @@ class EmployeeChatsListPage extends StatefulWidget {
 
 class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
     with SingleTickerProviderStateMixin {
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   List<EmployeeChat> _chats = [];
   bool _isLoading = true;
   String? _userPhone;
@@ -175,112 +180,125 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(),
-          if (_isLoading)
-            const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator(color: Color(0xFF004D40))),
-            )
-          else if (_chats.isEmpty)
-            SliverFillRemaining(child: _buildEmptyState())
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildChatCard(_chats[index], index),
-                  childCount: _chats.length,
-                ),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : _chats.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                            itemCount: _chats.length,
+                            itemBuilder: (context, index) => _buildChatCard(_chats[index], index),
+                          ),
               ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
       floatingActionButton: ScaleTransition(
         scale: _fabAnimationController,
-        child: FloatingActionButton.extended(
-          onPressed: _openNewChat,
-          backgroundColor: const Color(0xFF004D40),
-          foregroundColor: Colors.white,
-          elevation: 4,
-          icon: const Icon(Icons.edit_note),
-          label: const Text('Новый чат'),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSliverAppBar() {
-    return SliverAppBar(
-      expandedHeight: 120,
-      floating: true,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: const Color(0xFF004D40),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF00695C), Color(0xFF004D40)],
+        child: GestureDetector(
+          onTap: _openNewChat,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: _emerald,
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.edit_note, color: Colors.white.withOpacity(0.9), size: 22),
+                const SizedBox(width: 10),
+                Text(
+                  'Новый чат',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chat_bubble_rounded, size: 24),
-            const SizedBox(width: 10),
-            const Text(
-              'Чаты',
-              style: TextStyle(fontWeight: FontWeight.w600),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
             ),
-            if (_totalUnread > 0) ...[
-              const SizedBox(width: 10),
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.8, end: 1.0),
-                duration: const Duration(milliseconds: 300),
-                builder: (context, scale, child) => Transform.scale(
-                  scale: scale,
-                  child: Container(
+          ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Чаты',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 1,
+                  ),
+                ),
+                if (_totalUnread > 0) ...[
+                  const SizedBox(width: 10),
+                  Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.red,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '$_totalUnread',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        centerTitle: true,
-        titlePadding: const EdgeInsets.only(bottom: 16),
+                ],
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: _loadChats,
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+        ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          onPressed: _loadChats,
-          tooltip: 'Обновить',
-        ),
-      ],
     );
   }
 
@@ -290,50 +308,35 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 120,
-            height: 120,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: const Color(0xFF004D40).withOpacity(0.1),
-              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.forum_outlined,
-              size: 60,
-              color: Color(0xFF004D40),
+              size: 32,
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          const SizedBox(height: 20),
+          Text(
             'Нет активных чатов',
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF004D40),
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             'Начните общение с коллегами\nнажав кнопку ниже',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 15,
-              color: Colors.grey[600],
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _openNewChat,
-            icon: const Icon(Icons.add),
-            label: const Text('Создать чат'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 13,
             ),
           ),
         ],
@@ -343,6 +346,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
 
   Widget _buildChatCard(EmployeeChat chat, int index) {
     final showMembersButton = _isAdmin && chat.type == EmployeeChatType.shop;
+    final hasUnread = chat.unreadCount > 0;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -351,132 +355,107 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
         offset: Offset(0, 20 * (1 - value)),
         child: Opacity(opacity: value, child: child),
       ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: chat.unreadCount > 0
-                  ? const Color(0xFF004D40).withOpacity(0.15)
-                  : Colors.black.withOpacity(0.05),
-              blurRadius: chat.unreadCount > 0 ? 12 : 8,
-              offset: const Offset(0, 2),
+      child: GestureDetector(
+        onTap: () => _openChat(chat),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: hasUnread
+                ? Colors.white.withOpacity(0.08)
+                : Colors.white.withOpacity(0.04),
+            border: Border.all(
+              color: hasUnread
+                  ? _emerald.withOpacity(0.6)
+                  : Colors.white.withOpacity(0.1),
             ),
-          ],
-          border: chat.unreadCount > 0
-              ? Border.all(color: const Color(0xFF004D40).withOpacity(0.3), width: 1.5)
-              : null,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _openChat(chat),
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  _buildChatAvatar(chat),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          child: Row(
+            children: [
+              _buildChatAvatar(chat),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                chat.displayName,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: chat.unreadCount > 0
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: Colors.grey[850],
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                        Expanded(
+                          child: Text(
+                            chat.displayName,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+                              color: Colors.white.withOpacity(0.95),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              chat.lastMessageTime,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: chat.unreadCount > 0
-                                    ? const Color(0xFF004D40)
-                                    : Colors.grey[500],
-                                fontWeight: chat.unreadCount > 0
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                chat.lastMessagePreview,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: chat.unreadCount > 0
-                                      ? Colors.grey[800]
-                                      : Colors.grey[600],
-                                  fontWeight: chat.unreadCount > 0
-                                      ? FontWeight.w500
-                                      : FontWeight.normal,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (chat.unreadCount > 0) ...[
-                              const SizedBox(width: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF00695C), Color(0xFF004D40)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${chat.unreadCount}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
+                        const SizedBox(width: 8),
+                        Text(
+                          chat.lastMessageTime,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(hasUnread ? 0.6 : 0.35),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  if (showMembersButton) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF004D40).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.group, color: Color(0xFF004D40)),
-                        onPressed: () => _openShopChatMembers(chat),
-                        tooltip: 'Участники',
-                        iconSize: 22,
-                        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                      ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            chat.lastMessagePreview,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white.withOpacity(hasUnread ? 0.6 : 0.4),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (hasUnread) ...[
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${chat.unreadCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
+              if (showMembersButton) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _openShopChatMembers(chat),
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Icon(Icons.group, color: Colors.white.withOpacity(0.6), size: 18),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),
@@ -485,26 +464,14 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
 
   Widget _buildChatAvatar(EmployeeChat chat) {
     final hasImage = chat.type == EmployeeChatType.group && chat.imageUrl != null;
+    final colors = _getAvatarColors(chat.type);
 
     return Container(
-      width: 56,
-      height: 56,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        gradient: hasImage
-            ? null
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: _getGradientColors(chat.type),
-              ),
+        color: hasImage ? null : colors[0].withOpacity(0.2),
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: _getGradientColors(chat.type).first.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
         image: hasImage
             ? DecorationImage(
                 image: NetworkImage(chat.imageUrl!),
@@ -518,13 +485,13 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
           : Center(
               child: Text(
                 chat.typeIcon,
-                style: const TextStyle(fontSize: 26),
+                style: const TextStyle(fontSize: 18),
               ),
             ),
     );
   }
 
-  List<Color> _getGradientColors(EmployeeChatType type) {
+  List<Color> _getAvatarColors(EmployeeChatType type) {
     switch (type) {
       case EmployeeChatType.general:
         return [Colors.blue[300]!, Colors.blue[500]!];

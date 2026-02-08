@@ -15,6 +15,15 @@ class ManagerEfficiencyData {
   /// Процент эффективности отчётов (проверка + задачи)
   final double reviewEfficiencyPercentage;
 
+  /// Сумма заработанных баллов
+  final double totalEarned;
+
+  /// Сумма потерянных баллов (штрафы)
+  final double totalLost;
+
+  /// Итого баллов (earned - lost)
+  final double totalPoints;
+
   /// Разбивка по магазинам
   final List<ShopEfficiencyItem> shopBreakdown;
 
@@ -28,6 +37,9 @@ class ManagerEfficiencyData {
     required this.totalPercentage,
     required this.shopEfficiencyPercentage,
     required this.reviewEfficiencyPercentage,
+    required this.totalEarned,
+    required this.totalLost,
+    required this.totalPoints,
     required this.shopBreakdown,
     required this.categoryBreakdown,
     this.comparison,
@@ -38,6 +50,9 @@ class ManagerEfficiencyData {
       totalPercentage: (json['totalPercentage'] ?? 0.0).toDouble(),
       shopEfficiencyPercentage: (json['shopEfficiencyPercentage'] ?? 0.0).toDouble(),
       reviewEfficiencyPercentage: (json['reviewEfficiencyPercentage'] ?? 0.0).toDouble(),
+      totalEarned: (json['totalEarned'] ?? 0.0).toDouble(),
+      totalLost: (json['totalLost'] ?? 0.0).toDouble(),
+      totalPoints: (json['totalPoints'] ?? 0.0).toDouble(),
       shopBreakdown: (json['shopBreakdown'] as List<dynamic>?)
               ?.map((item) => ShopEfficiencyItem.fromJson(item))
               .toList() ??
@@ -55,6 +70,9 @@ class ManagerEfficiencyData {
         'totalPercentage': totalPercentage,
         'shopEfficiencyPercentage': shopEfficiencyPercentage,
         'reviewEfficiencyPercentage': reviewEfficiencyPercentage,
+        'totalEarned': totalEarned,
+        'totalLost': totalLost,
+        'totalPoints': totalPoints,
         'shopBreakdown': shopBreakdown.map((s) => s.toJson()).toList(),
         'categoryBreakdown': categoryBreakdown.toJson(),
         if (comparison != null) 'comparison': comparison!.toJson(),
@@ -65,6 +83,9 @@ class ManagerEfficiencyData {
       totalPercentage: 0,
       shopEfficiencyPercentage: 0,
       reviewEfficiencyPercentage: 0,
+      totalEarned: 0,
+      totalLost: 0,
+      totalPoints: 0,
       shopBreakdown: [],
       categoryBreakdown: CategoryBreakdown.empty(),
     );
@@ -82,6 +103,15 @@ class ShopEfficiencyItem {
   /// Общие баллы сотрудников магазина
   final double totalPoints;
 
+  /// Заработанные баллы
+  final double earnedPoints;
+
+  /// Потерянные баллы (штрафы)
+  final double lostPoints;
+
+  /// Количество записей
+  final int recordsCount;
+
   /// Процент от теоретического максимума
   final double percentage;
 
@@ -92,6 +122,9 @@ class ShopEfficiencyItem {
     required this.shopId,
     required this.shopName,
     required this.totalPoints,
+    this.earnedPoints = 0,
+    this.lostPoints = 0,
+    this.recordsCount = 0,
     required this.percentage,
     this.previousMonthChange,
   });
@@ -101,6 +134,9 @@ class ShopEfficiencyItem {
       shopId: json['shopId'] ?? '',
       shopName: json['shopName'] ?? 'Магазин',
       totalPoints: (json['totalPoints'] ?? 0.0).toDouble(),
+      earnedPoints: (json['earnedPoints'] ?? 0.0).toDouble(),
+      lostPoints: (json['lostPoints'] ?? 0.0).toDouble(),
+      recordsCount: (json['recordsCount'] ?? 0) as int,
       percentage: (json['percentage'] ?? 0.0).toDouble(),
       previousMonthChange: json['previousMonthChange']?.toDouble(),
     );
@@ -110,6 +146,9 @@ class ShopEfficiencyItem {
         'shopId': shopId,
         'shopName': shopName,
         'totalPoints': totalPoints,
+        'earnedPoints': earnedPoints,
+        'lostPoints': lostPoints,
+        'recordsCount': recordsCount,
         'percentage': percentage,
         if (previousMonthChange != null) 'previousMonthChange': previousMonthChange,
       };

@@ -1,6 +1,8 @@
 /**
  * Shift Automation Scheduler
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Автоматизация жизненного цикла отчётов пересменки:
  * - Автоматическое создание pending отчётов при начале временного окна
  * - Переход pending → failed по истечении дедлайна
@@ -10,7 +12,7 @@
  * - Очистка failed отчётов в 23:59
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Импортируем функции отправки push-уведомлений
@@ -42,6 +44,16 @@ const PENALTY_CATEGORY_NAME = 'Пропущенная пересменка';
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
 const MOSCOW_OFFSET_HOURS = 3; // UTC+3 для московского времени
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================
 // Moscow Time Helper
 // ============================================
@@ -58,14 +70,14 @@ function getMoscowDateString() {
 }
 
 // ============================================
-// Helper: Load JSON file safely
+// Helper: Load JSON file safely (async)
 // ============================================
-function loadJsonFile(filePath, defaultValue) {
-  if (!fs.existsSync(filePath)) {
+async function loadJsonFile(filePath, defaultValue) {
+  if (!(await fileExists(filePath))) {
     return defaultValue;
   }
   try {
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(data);
   } catch (e) {
     console.error(`[ShiftScheduler] Error loading JSON from ${filePath}:`, e.message);
@@ -73,13 +85,13 @@ function loadJsonFile(filePath, defaultValue) {
   }
 }
 
-function saveJsonFile(filePath, data) {
+async function saveJsonFile(filePath, data) {
   try {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error(`[ShiftScheduler] Error saving JSON to ${filePath}:`, e.message);
@@ -90,8 +102,8 @@ function saveJsonFile(filePath, data) {
 // ============================================
 // State Management
 // ============================================
-function loadState() {
-  return loadJsonFile(STATE_FILE, {
+async function loadState() {
+  return await loadJsonFile(STATE_FILE, {
     lastMorningGeneration: null,
     lastEveningGeneration: null,
     lastCleanup: null,
@@ -99,17 +111,17 @@ function loadState() {
   });
 }
 
-function saveState(state) {
+async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  saveJsonFile(STATE_FILE, state);
+  await saveJsonFile(STATE_FILE, state);
 }
 
 // ============================================
 // Settings Loading
 // ============================================
-function getShiftSettings() {
+async function getShiftSettings() {
   const settingsFile = path.join(POINTS_SETTINGS_DIR, 'shift_points_settings.json');
-  return loadJsonFile(settingsFile, {
+  return await loadJsonFile(settingsFile, {
     morningStartTime: '07:00',
     morningEndTime: '13:00',
     eveningStartTime: '14:00',
@@ -122,9 +134,9 @@ function getShiftSettings() {
 // ============================================
 // Shops Loading
 // ============================================
-function getAllShops() {
+async function getAllShops() {
   const shopsFile = path.join(SHOPS_DIR, 'shops.json');
-  const data = loadJsonFile(shopsFile, { shops: [] });
+  const data = await loadJsonFile(shopsFile, { shops: [] });
   return data.shops || [];
 }
 
@@ -136,12 +148,12 @@ function getTodayReportsFile() {
   return path.join(SHIFT_REPORTS_DIR, `${today}.json`);
 }
 
-function loadTodayReports() {
-  return loadJsonFile(getTodayReportsFile(), []);
+async function loadTodayReports() {
+  return await loadJsonFile(getTodayReportsFile(), []);
 }
 
-function saveTodayReports(reports) {
-  return saveJsonFile(getTodayReportsFile(), reports);
+async function saveTodayReports(reports) {
+  return await saveJsonFile(getTodayReportsFile(), reports);
 }
 
 // ============================================
@@ -188,9 +200,9 @@ function getDeadlineTime(timeStr) {
 // ============================================
 // 1. Generate Pending Reports
 // ============================================
-function generatePendingReports(shiftType) {
-  const settings = getShiftSettings();
-  const shops = getAllShops();
+async function generatePendingReports(shiftType) {
+  const settings = await getShiftSettings();
+  const shops = await getAllShops();
   const today = getMoscowDateString();
 
   if (shops.length === 0) {
@@ -198,7 +210,7 @@ function generatePendingReports(shiftType) {
     return 0;
   }
 
-  let reports = loadTodayReports();
+  let reports = await loadTodayReports();
   let created = 0;
 
   const deadlineTime = shiftType === 'morning'
@@ -248,7 +260,7 @@ function generatePendingReports(shiftType) {
   }
 
   if (created > 0) {
-    saveTodayReports(reports);
+    await saveTodayReports(reports);
   }
 
   console.log(`[ShiftScheduler] Generated ${created} pending ${shiftType} reports`);
@@ -260,7 +272,7 @@ function generatePendingReports(shiftType) {
 // ============================================
 async function checkPendingDeadlines() {
   const now = new Date();
-  let reports = loadTodayReports();
+  let reports = await loadTodayReports();
   let failedCount = 0;
   const failedShops = [];
 
@@ -287,12 +299,12 @@ async function checkPendingDeadlines() {
       console.log(`[ShiftScheduler] Report FAILED: ${report.shopName} (${report.shiftType}), deadline was ${report.deadline}`);
 
       // Assign penalty to employee from work schedule
-      assignPenaltyFromSchedule(report);
+      await assignPenaltyFromSchedule(report);
     }
   }
 
   if (failedCount > 0) {
-    saveTodayReports(reports);
+    await saveTodayReports(reports);
 
     // Send push notification to admin about failed reports
     await sendAdminFailedNotification(failedCount, failedShops);
@@ -304,9 +316,9 @@ async function checkPendingDeadlines() {
 // ============================================
 // 3. Check Review Timeouts (review → rejected)
 // ============================================
-function checkReviewTimeouts() {
+async function checkReviewTimeouts() {
   const now = new Date();
-  let reports = loadTodayReports();
+  let reports = await loadTodayReports();
   let rejectedCount = 0;
 
   for (let i = 0; i < reports.length; i++) {
@@ -326,12 +338,12 @@ function checkReviewTimeouts() {
       console.log(`[ShiftScheduler] Report REJECTED (admin timeout): ${report.shopName} (${report.shiftType}), employee: ${report.employeeName}`);
 
       // Assign penalty
-      assignPenaltyDirect(report);
+      await assignPenaltyDirect(report);
     }
   }
 
   if (rejectedCount > 0) {
-    saveTodayReports(reports);
+    await saveTodayReports(reports);
   }
 
   return rejectedCount;
@@ -340,14 +352,14 @@ function checkReviewTimeouts() {
 // ============================================
 // 4. Assign Penalty from Work Schedule
 // ============================================
-function assignPenaltyFromSchedule(report) {
-  const settings = getShiftSettings();
+async function assignPenaltyFromSchedule(report) {
+  const settings = await getShiftSettings();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7); // YYYY-MM
 
   // Load work schedule for this month
   const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
-  const schedule = loadJsonFile(scheduleFile, { entries: [] });
+  const schedule = await loadJsonFile(scheduleFile, { entries: [] });
 
   if (!schedule.entries || schedule.entries.length === 0) {
     console.log(`[ShiftScheduler] No work schedule found for ${monthKey}, cannot assign penalty`);
@@ -367,7 +379,7 @@ function assignPenaltyFromSchedule(report) {
   }
 
   // Create penalty
-  createPenalty({
+  await createPenalty({
     employeeId: entry.employeeId,
     employeeName: entry.employeeName,
     shopAddress: report.shopAddress,
@@ -380,15 +392,15 @@ function assignPenaltyFromSchedule(report) {
 // ============================================
 // 5. Assign Penalty Direct (for rejected reports)
 // ============================================
-function assignPenaltyDirect(report) {
-  const settings = getShiftSettings();
+async function assignPenaltyDirect(report) {
+  const settings = await getShiftSettings();
 
   if (!report.employeeId || !report.employeeName) {
     console.log(`[ShiftScheduler] Cannot assign penalty - no employee info in report ${report.id}`);
     return;
   }
 
-  createPenalty({
+  await createPenalty({
     employeeId: report.employeeId,
     employeeName: report.employeeName,
     shopAddress: report.shopAddress,
@@ -401,7 +413,7 @@ function assignPenaltyDirect(report) {
 // ============================================
 // 6. Create Penalty
 // ============================================
-function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
+async function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
   const now = new Date();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7);
@@ -425,7 +437,7 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
 
   // Load existing penalties
   const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-  let penalties = loadJsonFile(penaltiesFile, []);
+  let penalties = await loadJsonFile(penaltiesFile, []);
 
   // Check for duplicate
   const exists = penalties.some(p => p.sourceId === sourceId);
@@ -435,7 +447,7 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
   }
 
   penalties.push(penalty);
-  saveJsonFile(penaltiesFile, penalties);
+  await saveJsonFile(penaltiesFile, penalties);
 
   console.log(`[ShiftScheduler] Created penalty for ${employeeName}: ${points} points (${reason})`);
 }
@@ -450,7 +462,7 @@ async function sendAdminFailedNotification(count, failedShops) {
   const title = 'Пересменки не пройдены';
   const body = `${count} магазинов не прошли ${shiftLabel} пересменку`;
 
-  console.log(`[ShiftScheduler] 📢 PUSH to Admin: ${body}`);
+  console.log(`[ShiftScheduler] PUSH to Admin: ${body}`);
 
   // Отправляем реальное push-уведомление админам
   if (sendPushNotification) {
@@ -476,7 +488,7 @@ async function sendEmployeeConfirmedNotification(employeePhone, rating) {
   const title = 'Пересменка оценена';
   const body = `Ваш отчёт оценён на ${rating} баллов`;
 
-  console.log(`[ShiftScheduler] 📢 PUSH to ${employeePhone}: ${body}`);
+  console.log(`[ShiftScheduler] PUSH to ${employeePhone}: ${body}`);
 
   // Отправляем реальное push-уведомление сотруднику
   if (sendPushToPhone && employeePhone) {
@@ -497,8 +509,8 @@ async function sendEmployeeConfirmedNotification(employeePhone, rating) {
 // ============================================
 // 9. Cleanup Failed Reports (at 23:59)
 // ============================================
-function cleanupFailedReports() {
-  let reports = loadTodayReports();
+async function cleanupFailedReports() {
+  let reports = await loadTodayReports();
   const initialCount = reports.length;
 
   // Remove failed reports
@@ -507,7 +519,7 @@ function cleanupFailedReports() {
   const removedCount = initialCount - reports.length;
 
   if (removedCount > 0) {
-    saveTodayReports(reports);
+    await saveTodayReports(reports);
     console.log(`[ShiftScheduler] Cleanup: removed ${removedCount} failed reports`);
   }
 
@@ -520,8 +532,8 @@ function cleanupFailedReports() {
 async function runScheduledChecks() {
   const now = new Date();
   const moscow = getMoscowTime();
-  const settings = getShiftSettings();
-  const state = loadState();
+  const settings = await getShiftSettings();
+  const state = await loadState();
 
   console.log(`\n[${now.toISOString()}] ShiftScheduler: Running checks... (Moscow time: ${moscow.toISOString()})`);
 
@@ -529,7 +541,7 @@ async function runScheduledChecks() {
   if (isTimeReached(settings.morningStartTime) && !isTimeReached(settings.morningEndTime)) {
     const lastGen = state.lastMorningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
-      const created = generatePendingReports('morning');
+      const created = await generatePendingReports('morning');
       if (created > 0) {
         state.lastMorningGeneration = now.toISOString();
       }
@@ -540,7 +552,7 @@ async function runScheduledChecks() {
   if (isTimeReached(settings.eveningStartTime) && !isTimeReached(settings.eveningEndTime)) {
     const lastGen = state.lastEveningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
-      const created = generatePendingReports('evening');
+      const created = await generatePendingReports('evening');
       if (created > 0) {
         state.lastEveningGeneration = now.toISOString();
       }
@@ -554,7 +566,7 @@ async function runScheduledChecks() {
   }
 
   // Check review timeouts
-  const rejected = checkReviewTimeouts();
+  const rejected = await checkReviewTimeouts();
   if (rejected > 0) {
     console.log(`[ShiftScheduler] ${rejected} reports auto-rejected (admin timeout)`);
   }
@@ -565,23 +577,22 @@ async function runScheduledChecks() {
   if (moscowHours === 23 && moscowMinutes >= 59) {
     const lastCleanup = state.lastCleanup;
     if (!lastCleanup || !isSameDay(new Date(lastCleanup), now)) {
-      cleanupFailedReports();
+      await cleanupFailedReports();
       state.lastCleanup = now.toISOString();
     }
   }
 
-  saveState(state);
+  await saveState(state);
   console.log(`[ShiftScheduler] Checks completed\n`);
 }
 
 // ============================================
 // 11. Scheduler Setup
 // ============================================
-function startShiftAutomationScheduler() {
-  const settings = getShiftSettings();
+async function startShiftAutomationScheduler() {
+  const settings = await getShiftSettings();
   const moscow = getMoscowTime();
 
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Shift Automation Scheduler started');
   console.log(`  - Timezone: Moscow (UTC+3)`);
   console.log(`  - Current Moscow time: ${moscow.toISOString()}`);
@@ -590,26 +601,25 @@ function startShiftAutomationScheduler() {
   console.log(`  - Admin review timeout: ${settings.adminReviewTimeout} hours`);
   console.log(`  - Missed penalty: ${settings.missedPenalty} points`);
   console.log(`  - Check interval: ${CHECK_INTERVAL_MS / 1000 / 60} minutes`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(() => {
-    runScheduledChecks();
+  setInterval(async () => {
+    await runScheduledChecks();
   }, CHECK_INTERVAL_MS);
 
   // First check after 2 seconds
-  setTimeout(() => {
-    runScheduledChecks();
+  setTimeout(async () => {
+    await runScheduledChecks();
   }, 2000);
 }
 
 // ============================================
 // 12. API Helper: Set Review Status
 // ============================================
-function setReportToReview(reportId, employeeId, employeeName) {
-  const settings = getShiftSettings();
+async function setReportToReview(reportId, employeeId, employeeName) {
+  const settings = await getShiftSettings();
   const now = new Date();
-  let reports = loadTodayReports();
+  let reports = await loadTodayReports();
 
   const index = reports.findIndex(r => r.id === reportId);
   if (index === -1) {
@@ -626,7 +636,7 @@ function setReportToReview(reportId, employeeId, employeeName) {
   reports[index].submittedAt = now.toISOString();
   reports[index].reviewDeadline = reviewDeadline.toISOString();
 
-  saveTodayReports(reports);
+  await saveTodayReports(reports);
 
   console.log(`[ShiftScheduler] Report ${reportId} set to review, deadline: ${reviewDeadline.toISOString()}`);
   return reports[index];
@@ -635,9 +645,9 @@ function setReportToReview(reportId, employeeId, employeeName) {
 // ============================================
 // 13. API Helper: Confirm Report
 // ============================================
-function confirmReport(reportId, rating, adminName) {
+async function confirmReport(reportId, rating, adminName) {
   const now = new Date();
-  let reports = loadTodayReports();
+  let reports = await loadTodayReports();
 
   const index = reports.findIndex(r => r.id === reportId);
   if (index === -1) {
@@ -650,11 +660,11 @@ function confirmReport(reportId, rating, adminName) {
   reports[index].confirmedByAdmin = adminName;
   reports[index].confirmedAt = now.toISOString();
 
-  saveTodayReports(reports);
+  await saveTodayReports(reports);
 
   // Send notification to employee
   if (reports[index].employeeId) {
-    sendEmployeeConfirmedNotification(reports[index].employeeId, rating);
+    await sendEmployeeConfirmedNotification(reports[index].employeeId, rating);
   }
 
   console.log(`[ShiftScheduler] Report ${reportId} confirmed with rating ${rating}`);

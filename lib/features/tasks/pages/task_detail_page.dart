@@ -14,6 +14,11 @@ class TaskDetailPage extends StatefulWidget {
 }
 
 class _TaskDetailPageState extends State<TaskDetailPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = false;
   final TextEditingController _commentController = TextEditingController();
 
@@ -31,21 +36,31 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(approved ? 'Подтвердить задачу?' : 'Отклонить задачу?'),
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        title: Text(
+          approved ? 'Подтвердить задачу?' : 'Отклонить задачу?',
+          style: TextStyle(color: Colors.white.withOpacity(0.9)),
+        ),
         content: Text(
           approved
               ? 'Сотрудник получит +1 балл за выполнение.'
               : 'Сотрудник получит -3 балла за отклоненную задачу.',
+          style: TextStyle(color: Colors.white.withOpacity(0.6)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: approved ? Colors.green : Colors.red,
+              backgroundColor: approved ? Colors.green.withOpacity(0.8) : Colors.red.withOpacity(0.8),
+              foregroundColor: Colors.white,
             ),
             child: Text(confirmText.substring(0, 1).toUpperCase() + confirmText.substring(1)),
           ),
@@ -93,417 +108,555 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     final assignment = widget.assignment;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Детали задачи'),
-        backgroundColor: const Color(0xFF004D40),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Заголовок задачи
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.9), size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            task?.title ?? 'Задача',
-                            style: const TextStyle(
+                            'Детали задачи',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (task?.description.isNotEmpty == true) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              task!.description,
-                              style: TextStyle(color: Colors.grey[700]),
+                          const SizedBox(height: 2),
+                          Text(
+                            assignment.status.displayName,
+                            style: TextStyle(
+                              color: _gold.withOpacity(0.7),
+                              fontSize: 13,
                             ),
-                          ],
-                          const SizedBox(height: 12),
-                          _buildInfoRow(
-                            icon: Icons.person,
-                            label: 'Исполнитель',
-                            value: assignment.assigneeName,
                           ),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(
-                            icon: Icons.access_time,
-                            label: 'Дедлайн',
-                            value: _formatDateTime(assignment.deadline),
-                            valueColor: DateTime.now().isAfter(assignment.deadline)
-                                ? Colors.red
-                                : null,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(
-                            icon: _getStatusIcon(assignment.status),
-                            label: 'Статус',
-                            value: assignment.status.displayName,
-                            valueColor: _getStatusColor(assignment.status),
-                          ),
-                          if (task != null) ...[
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              icon: _getResponseTypeIcon(task.responseType),
-                              label: 'Тип ответа',
-                              value: _getResponseTypeText(task.responseType),
-                            ),
-                          ],
-                          // Прикрепленные фото от админа при создании задачи
-                          if (task?.attachments.isNotEmpty == true) ...[
-                            const SizedBox(height: 12),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Прикрепленные файлы (${task!.attachments.length}):',
-                              style: const TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 100,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: task.attachments.length,
-                                itemBuilder: (context, index) {
-                                  final photoUrl = task.attachments[index];
-                                  final fullUrl = photoUrl.startsWith('http')
-                                      ? photoUrl
-                                      : '${ApiConstants.serverUrl}/media/$photoUrl';
-
-                                  return GestureDetector(
-                                    onTap: () => _showFullImage(context, fullUrl),
-                                    child: Container(
-                                      width: 100,
-                                      height: 100,
-                                      margin: const EdgeInsets.only(right: 8),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.grey[300]!),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          fullUrl,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
-                                            color: Colors.grey[200],
-                                            child: const Icon(Icons.broken_image),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
 
-                  const SizedBox(height: 16),
-
-                  // Ответ сотрудника (если есть)
-                  if (assignment.respondedAt != null) ...[
-                    const Text(
-                      'Ответ сотрудника',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Card(
-                      child: Padding(
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildInfoRow(
-                              icon: Icons.schedule,
-                              label: 'Время ответа',
-                              value: _formatDateTime(assignment.respondedAt!),
-                            ),
-
-                            // Текст ответа
-                            if (assignment.responseText?.isNotEmpty == true) ...[
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Текст ответа:',
-                                style: TextStyle(fontWeight: FontWeight.w500),
+                            // Заголовок задачи
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
                               ),
-                              const SizedBox(height: 4),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(assignment.responseText!),
-                              ),
-                            ],
-
-                            // Фотографии
-                            if (assignment.responsePhotos.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                'Фотографии (${assignment.responsePhotos.length}):',
-                                style: const TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                height: 120,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: assignment.responsePhotos.length,
-                                  itemBuilder: (context, index) {
-                                    final photoUrl = assignment.responsePhotos[index];
-                                    final fullUrl = photoUrl.startsWith('http')
-                                        ? photoUrl
-                                        : '${ApiConstants.serverUrl}/media/$photoUrl';
-
-                                    return GestureDetector(
-                                      onTap: () => _showFullImage(context, fullUrl),
-                                      child: Container(
-                                        width: 120,
-                                        height: 120,
-                                        margin: const EdgeInsets.only(right: 8),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Colors.grey[300]!),
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.network(
-                                            fullUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => Container(
-                                              color: Colors.grey[200],
-                                              child: const Icon(Icons.broken_image),
-                                            ),
-                                          ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      task?.title ?? 'Задача',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                    if (task?.description.isNotEmpty == true) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        task!.description,
+                                        style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    _buildInfoRow(
+                                      icon: Icons.person,
+                                      label: 'Исполнитель',
+                                      value: assignment.assigneeName,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildInfoRow(
+                                      icon: Icons.access_time,
+                                      label: 'Дедлайн',
+                                      value: _formatDateTime(assignment.deadline),
+                                      valueColor: DateTime.now().isAfter(assignment.deadline)
+                                          ? Colors.red
+                                          : null,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildInfoRow(
+                                      icon: _getStatusIcon(assignment.status),
+                                      label: 'Статус',
+                                      value: assignment.status.displayName,
+                                      valueColor: _getStatusColor(assignment.status),
+                                    ),
+                                    if (task != null) ...[
+                                      const SizedBox(height: 8),
+                                      _buildInfoRow(
+                                        icon: _getResponseTypeIcon(task.responseType),
+                                        label: 'Тип ответа',
+                                        value: _getResponseTypeText(task.responseType),
+                                      ),
+                                    ],
+                                    // Прикрепленные фото от админа при создании задачи
+                                    if (task?.attachments.isNotEmpty == true) ...[
+                                      const SizedBox(height: 12),
+                                      Divider(color: Colors.white.withOpacity(0.1)),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Прикрепленные файлы (${task!.attachments.length}):',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white.withOpacity(0.9),
                                         ),
                                       ),
-                                    );
-                                  },
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: 100,
+                                        child: ListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: task.attachments.length,
+                                          itemBuilder: (context, index) {
+                                            final photoUrl = task.attachments[index];
+                                            final fullUrl = photoUrl.startsWith('http')
+                                                ? photoUrl
+                                                : '${ApiConstants.serverUrl}/media/$photoUrl';
+
+                                            return GestureDetector(
+                                              onTap: () => _showFullImage(context, fullUrl),
+                                              child: Container(
+                                                width: 100,
+                                                height: 100,
+                                                margin: const EdgeInsets.only(right: 8),
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                                ),
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  child: Image.network(
+                                                    fullUrl,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => Container(
+                                                      color: Colors.white.withOpacity(0.06),
+                                                      child: Icon(Icons.broken_image, color: Colors.white.withOpacity(0.3)),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                            ),
 
-                  // Информация о проверке (если уже проверено)
-                  if (assignment.reviewedAt != null) ...[
-                    const Text(
-                      'Результат проверки',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Card(
-                      color: assignment.status == TaskStatus.approved
-                          ? Colors.green[50]
-                          : Colors.red[50],
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  assignment.status == TaskStatus.approved
-                                      ? Icons.check_circle
-                                      : Icons.cancel,
+                            const SizedBox(height: 16),
+
+                            // Ответ сотрудника (если есть)
+                            if (assignment.respondedAt != null) ...[
+                              Text(
+                                'Ответ сотрудника',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildInfoRow(
+                                        icon: Icons.schedule,
+                                        label: 'Время ответа',
+                                        value: _formatDateTime(assignment.respondedAt!),
+                                      ),
+
+                                      // Текст ответа
+                                      if (assignment.responseText?.isNotEmpty == true) ...[
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Текст ответа:',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white.withOpacity(0.9),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.04),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                          ),
+                                          child: Text(
+                                            assignment.responseText!,
+                                            style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                                          ),
+                                        ),
+                                      ],
+
+                                      // Фотографии
+                                      if (assignment.responsePhotos.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Фотографии (${assignment.responsePhotos.length}):',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white.withOpacity(0.9),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          height: 120,
+                                          child: ListView.builder(
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount: assignment.responsePhotos.length,
+                                            itemBuilder: (context, index) {
+                                              final photoUrl = assignment.responsePhotos[index];
+                                              final fullUrl = photoUrl.startsWith('http')
+                                                  ? photoUrl
+                                                  : '${ApiConstants.serverUrl}/media/$photoUrl';
+
+                                              return GestureDetector(
+                                                onTap: () => _showFullImage(context, fullUrl),
+                                                child: Container(
+                                                  width: 120,
+                                                  height: 120,
+                                                  margin: const EdgeInsets.only(right: 8),
+                                                  decoration: BoxDecoration(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                                  ),
+                                                  child: ClipRRect(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    child: Image.network(
+                                                      fullUrl,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (_, __, ___) => Container(
+                                                        color: Colors.white.withOpacity(0.06),
+                                                        child: Icon(Icons.broken_image, color: Colors.white.withOpacity(0.3)),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // Информация о проверке (если уже проверено)
+                            if (assignment.reviewedAt != null) ...[
+                              Text(
+                                'Результат проверки',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
                                   color: assignment.status == TaskStatus.approved
-                                      ? Colors.green
-                                      : Colors.red,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  assignment.status == TaskStatus.approved
-                                      ? 'Задача подтверждена'
-                                      : 'Задача отклонена',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                      ? Colors.green.withOpacity(0.1)
+                                      : Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
                                     color: assignment.status == TaskStatus.approved
-                                        ? Colors.green
-                                        : Colors.red,
+                                        ? Colors.green.withOpacity(0.3)
+                                        : Colors.red.withOpacity(0.3),
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              icon: Icons.person,
-                              label: 'Проверил',
-                              value: assignment.reviewedBy ?? 'Админ',
-                            ),
-                            const SizedBox(height: 4),
-                            _buildInfoRow(
-                              icon: Icons.schedule,
-                              label: 'Время проверки',
-                              value: _formatDateTime(assignment.reviewedAt!),
-                            ),
-                            if (assignment.reviewComment?.isNotEmpty == true) ...[
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Комментарий:',
-                                style: TextStyle(fontWeight: FontWeight.w500),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            assignment.status == TaskStatus.approved
+                                                ? Icons.check_circle
+                                                : Icons.cancel,
+                                            color: assignment.status == TaskStatus.approved
+                                                ? Colors.green
+                                                : Colors.red,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            assignment.status == TaskStatus.approved
+                                                ? 'Задача подтверждена'
+                                                : 'Задача отклонена',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: assignment.status == TaskStatus.approved
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildInfoRow(
+                                        icon: Icons.person,
+                                        label: 'Проверил',
+                                        value: assignment.reviewedBy ?? 'Админ',
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _buildInfoRow(
+                                        icon: Icons.schedule,
+                                        label: 'Время проверки',
+                                        value: _formatDateTime(assignment.reviewedAt!),
+                                      ),
+                                      if (assignment.reviewComment?.isNotEmpty == true) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Комментарий:',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white.withOpacity(0.9),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          assignment.reviewComment!,
+                                          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(assignment.reviewComment!),
+                            ],
+
+                            // Информация об отказе работника
+                            if (assignment.status == TaskStatus.declined) ...[
+                              Text(
+                                'Отказ от задачи',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.block, color: Colors.deepOrange),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Сотрудник отказался от задачи',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.deepOrange,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (assignment.declineReason?.isNotEmpty == true) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Причина:',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white.withOpacity(0.9),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          assignment.declineReason!,
+                                          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+
+                            // Информация о просрочке
+                            if (assignment.status == TaskStatus.expired) ...[
+                              Text(
+                                'Просрочено',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.timer_off, color: Colors.white.withOpacity(0.5)),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Задача не была выполнена в срок',
+                                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+
+                            // Кнопки проверки (только для статуса submitted)
+                            if (assignment.status == TaskStatus.submitted) ...[
+                              const SizedBox(height: 24),
+                              Text(
+                                'Проверка задачи',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _commentController,
+                                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                                decoration: InputDecoration(
+                                  labelText: 'Комментарий (необязательно)',
+                                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: _gold.withOpacity(0.5)),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.04),
+                                ),
+                                maxLines: 2,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => _reviewTask(false),
+                                      icon: const Icon(Icons.cancel),
+                                      label: const Text('Отклонить'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.withOpacity(0.15),
+                                        foregroundColor: Colors.red,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => _reviewTask(true),
+                                      icon: const Icon(Icons.check_circle),
+                                      label: const Text('Подтвердить'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _gold,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ],
                         ),
                       ),
-                    ),
-                  ],
-
-                  // Информация об отказе работника
-                  if (assignment.status == TaskStatus.declined) ...[
-                    const Text(
-                      'Отказ от задачи',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Card(
-                      color: Colors.orange[50],
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.block, color: Colors.deepOrange),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Сотрудник отказался от задачи',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.deepOrange,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (assignment.declineReason?.isNotEmpty == true) ...[
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Причина:',
-                                style: TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(assignment.declineReason!),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // Информация о просрочке
-                  if (assignment.status == TaskStatus.expired) ...[
-                    const Text(
-                      'Просрочено',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Card(
-                      color: Color(0xFFFFF3E0),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.timer_off, color: Colors.grey),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Задача не была выполнена в срок',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // Кнопки проверки (только для статуса submitted)
-                  if (assignment.status == TaskStatus.submitted) ...[
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Проверка задачи',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _commentController,
-                      decoration: InputDecoration(
-                        labelText: 'Комментарий (необязательно)',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _reviewTask(false),
-                            icon: const Icon(Icons.cancel),
-                            label: const Text('Отклонить'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _reviewTask(true),
-                            icon: const Icon(Icons.check_circle),
-                            label: const Text('Подтвердить'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -515,18 +668,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey[600]),
+        Icon(icon, size: 18, color: _gold.withOpacity(0.7)),
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: TextStyle(color: Colors.grey[600]),
+          style: TextStyle(color: Colors.white.withOpacity(0.5)),
         ),
         Expanded(
           child: Text(
             value,
             style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: valueColor,
+              color: valueColor ?? Colors.white.withOpacity(0.9),
             ),
           ),
         ),
@@ -538,6 +691,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        backgroundColor: _night,
         child: Stack(
           children: [
             InteractiveViewer(
@@ -545,7 +699,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 imageUrl,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image, size: 64),
+                  child: Icon(Icons.broken_image, size: 64, color: Colors.white54),
                 ),
               ),
             ),

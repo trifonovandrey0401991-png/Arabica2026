@@ -7,13 +7,11 @@ import '../../../core/constants/api_constants.dart';
 class QrBadgesWidget extends StatefulWidget {
   final Widget qrWidget;
   final List<LoyaltyLevel> earnedLevels;
-  final double qrSize;
 
   const QrBadgesWidget({
     super.key,
     required this.qrWidget,
     required this.earnedLevels,
-    this.qrSize = 200,
   });
 
   @override
@@ -28,8 +26,9 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
   bool _animationStarted = false;
 
   // Размеры
-  static const double _badgeSize = 88.0; // Размер значков (увеличен в 2 раза)
-  static const double _containerPadding = 100.0; // Отступ для значков вокруг QR
+  static const double _badgeSize = 80.0;
+  // Смещение = badgeSize - 12 (белая рамка QR = 12px), бейджи не заходят на данные QR
+  static const double _edgeOffset = _badgeSize - 12;
 
   @override
   void initState() {
@@ -50,40 +49,8 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
     super.dispose();
   }
 
-  /// 8 фиксированных позиций вокруг QR-кода (как показано на скриншоте)
-  /// Позиции: 4 угла карточки + 4 позиции по середине сторон QR
-  List<Offset> _getFixedPositions() {
-    final containerSize = widget.qrSize + _containerPadding * 2;
-    final qrStart = _containerPadding;
-    final qrEnd = _containerPadding + widget.qrSize;
-    final halfBadge = _badgeSize / 2;
-
-    // 8 позиций: углы внешние и по сторонам QR-кода
-    return [
-      // Верхний левый угол карточки
-      Offset(0, 0),
-      // Верхний правый угол карточки
-      Offset(containerSize - _badgeSize, 0),
-      // Нижний левый угол карточки
-      Offset(0, containerSize - _badgeSize),
-      // Нижний правый угол карточки
-      Offset(containerSize - _badgeSize, containerSize - _badgeSize),
-      // Слева от QR (по центру высоты)
-      Offset(0, (containerSize - _badgeSize) / 2),
-      // Справа от QR (по центру высоты)
-      Offset(containerSize - _badgeSize, (containerSize - _badgeSize) / 2),
-      // Сверху QR слева
-      Offset(qrStart - halfBadge, 0),
-      // Сверху QR справа
-      Offset(qrEnd - halfBadge, 0),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
-    final containerSize = widget.qrSize + _containerPadding * 2;
-    final positions = _getFixedPositions();
-
     // Запускаем анимацию при первом построении
     if (!_animationStarted && widget.earnedLevels.isNotEmpty) {
       _animationStarted = true;
@@ -92,37 +59,83 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
       });
     }
 
-    return SizedBox(
-      width: containerSize,
-      height: containerSize,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // QR-код по центру
+    // Распределяем значки по 4 сторонам: сверху, справа, снизу, слева
+    final badges = widget.earnedLevels;
+    final n = badges.length.clamp(0, 8);
+    final top = <LoyaltyLevel>[];
+    final right = <LoyaltyLevel>[];
+    final bottom = <LoyaltyLevel>[];
+    final left = <LoyaltyLevel>[];
+
+    if (n >= 1) top.add(badges[0]);
+    if (n >= 2) bottom.add(badges[1]);
+    if (n >= 3) right.add(badges[2]);
+    if (n >= 4) left.add(badges[3]);
+    if (n >= 5) top.add(badges[4]);
+    if (n >= 6) bottom.add(badges[5]);
+    if (n >= 7) right.add(badges[6]);
+    if (n >= 8) left.add(badges[7]);
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // QR-код определяет размер виджета
+        widget.qrWidget,
+        // Значки сверху
+        if (top.isNotEmpty)
           Positioned(
-            left: _containerPadding,
-            top: _containerPadding,
-            child: SizedBox(
-              width: widget.qrSize,
-              height: widget.qrSize,
-              child: widget.qrWidget,
-            ),
+            top: -_edgeOffset,
+            left: 0, right: 0,
+            child: _buildBadgeRow(top),
           ),
-          // Значки в фиксированных позициях (до 8 штук)
-          for (int i = 0; i < widget.earnedLevels.length && i < positions.length; i++)
-            Positioned(
-              left: positions[i].dx,
-              top: positions[i].dy,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: _StickerBadge(
-                  level: widget.earnedLevels[i],
-                  size: _badgeSize,
-                ),
-              ),
-            ),
-        ],
-      ),
+        // Значки справа
+        if (right.isNotEmpty)
+          Positioned(
+            right: -_edgeOffset,
+            top: 0, bottom: 0,
+            child: _buildBadgeColumn(right),
+          ),
+        // Значки снизу
+        if (bottom.isNotEmpty)
+          Positioned(
+            bottom: -_edgeOffset,
+            left: 0, right: 0,
+            child: _buildBadgeRow(bottom),
+          ),
+        // Значки слева
+        if (left.isNotEmpty)
+          Positioned(
+            left: -_edgeOffset,
+            top: 0, bottom: 0,
+            child: _buildBadgeColumn(left),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBadgeRow(List<LoyaltyLevel> levels) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        for (final level in levels)
+          ScaleTransition(
+            scale: _scaleAnimation,
+            child: _StickerBadge(level: level, size: _badgeSize),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBadgeColumn(List<LoyaltyLevel> levels) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        for (final level in levels)
+          ScaleTransition(
+            scale: _scaleAnimation,
+            child: _StickerBadge(level: level, size: _badgeSize),
+          ),
+      ],
     );
   }
 }

@@ -114,7 +114,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
           SnackBar(
             content: Text(
               orderNumber != null
-                  ? 'Заказ #$orderNumber принят'
+                  ? 'Заказ $orderNumber принят'
                   : 'Заказ принят',
             ),
             backgroundColor: Colors.green,
@@ -234,7 +234,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
           SnackBar(
             content: Text(
               orderNumber != null
-                  ? 'Заказ #$orderNumber отклонен'
+                  ? 'Заказ $orderNumber отклонен'
                   : 'Заказ отклонен',
             ),
             backgroundColor: Colors.orange,
@@ -305,8 +305,8 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
                     Expanded(
                       child: Text(
                         orderNumber != null
-                            ? 'Заказ #$orderNumber'
-                            : 'Заказ #${widget.orderData['id'].toString().substring(0, 6)}',
+                            ? 'Заказ $orderNumber'
+                            : 'Заказ ${widget.orderData['id'].toString().substring(0, 6)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 22,

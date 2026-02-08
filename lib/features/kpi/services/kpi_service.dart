@@ -2,6 +2,7 @@ import '../models/kpi_models.dart';
 import '../models/kpi_employee_month_stats.dart';
 import '../models/kpi_shop_month_stats.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../shifts/services/shift_report_service.dart';
 import '../../recount/services/recount_service.dart';
@@ -12,6 +13,7 @@ import '../../envelope/models/envelope_report_model.dart';
 import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../shift_handover/models/shift_handover_report_model.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import 'kpi_cache_service.dart';
 import 'kpi_filters.dart';
 import 'kpi_aggregation_service.dart';
@@ -274,9 +276,15 @@ class KPIService {
         KPIScheduleIntegrationService.getScheduleForMonth(prevMonth.year, prevMonth.month),
       ]);
 
+      // Получаем разрешённые адреса магазинов для мультитенантности
+      final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
+
       // 1. Сотрудники из отметок прихода
       final attendanceRecords = results[0] as List<dynamic>;
       for (var record in attendanceRecords) {
+        // Фильтрация по мультитенантности — показываем только сотрудников из своих магазинов
+        if (allowedAddresses != null && !allowedAddresses.contains(record.shopAddress)) continue;
+
         if (record.employeeName.isNotEmpty) {
           final normalizedName = record.employeeName.trim();
           if (normalizedName.isNotEmpty) {
@@ -288,6 +296,9 @@ class KPIService {
       // 2. Сотрудники из графика работы (текущий месяц)
       final currentSchedule = results[1] as WorkSchedule;
       for (var entry in currentSchedule.entries) {
+        // Фильтрация по мультитенантности
+        if (allowedAddresses != null && !allowedAddresses.contains(entry.shopAddress)) continue;
+
         if (entry.employeeName.isNotEmpty) {
           final normalizedName = entry.employeeName.trim();
           if (normalizedName.isNotEmpty) {
@@ -299,6 +310,9 @@ class KPIService {
       // 3. Сотрудники из графика работы (прошлый месяц)
       final prevSchedule = results[2] as WorkSchedule;
       for (var entry in prevSchedule.entries) {
+        // Фильтрация по мультитенантности
+        if (allowedAddresses != null && !allowedAddresses.contains(entry.shopAddress)) continue;
+
         if (entry.employeeName.isNotEmpty) {
           final normalizedName = entry.employeeName.trim();
           if (normalizedName.isNotEmpty) {
@@ -501,7 +515,7 @@ class KPIService {
         ShiftReportService.getReports(employeeName: employeeName),
         RecountService.getReports(employeeName: employeeName),
         RKOReportsService.getEmployeeRKOs(employeeName),
-        EnvelopeReportService.getReports(),
+        EnvelopeReportService.getReportsForCurrentUser(),
         ShiftHandoverReportService.getReports(employeeName: employeeName),
       ]);
 
@@ -681,7 +695,7 @@ class KPIService {
         return cached;
       }
 
-      final shops = await Shop.loadShopsFromServer();
+      final shops = await ShopService.getShopsForCurrentUser();
       final addresses = shops.map((s) => s.address).toList()..sort();
 
       // Сохраняем в кэш
@@ -722,7 +736,7 @@ class KPIService {
         ShiftReportService.getReports(shopAddress: shopAddress),
         RecountService.getReports(shopAddress: shopAddress),
         RKOReportsService.getShopRKOs(shopAddress),
-        EnvelopeReportService.getReports(),
+        EnvelopeReportService.getReportsForCurrentUser(),
         ShiftHandoverReportService.getReports(shopAddress: shopAddress),
         KPIScheduleIntegrationService.getShopMonthScheduleStats(shopAddress: shopAddress, year: currentMonth.year, month: currentMonth.month),
         KPIScheduleIntegrationService.getShopMonthScheduleStats(shopAddress: shopAddress, year: previousMonth.year, month: previousMonth.month),

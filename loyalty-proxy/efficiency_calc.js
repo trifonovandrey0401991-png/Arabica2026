@@ -1,5 +1,7 @@
 // =====================================================
 // EFFICIENCY CALCULATION MODULE
+//
+// REFACTORED: Converted from sync to async I/O (2026-02-05)
 // =====================================================
 // Полный расчёт эффективности сотрудника за месяц
 // Используются те же формулы что и в Flutter приложении
@@ -21,7 +23,7 @@
 // Все настройки загружаются из /var/www/points-settings/
 // =====================================================
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -39,6 +41,17 @@ const TASKS_DIR = `${DATA_DIR}/tasks`;
 const RECURRING_TASKS_DIR = `${DATA_DIR}/recurring-tasks`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
+const COFFEE_MACHINE_REPORTS_DIR = `${DATA_DIR}/coffee-machine-reports`;
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // =====================================================
 // OPTIMIZATION: Cache for batch operations
@@ -51,21 +64,21 @@ let _batchCacheMonth = null;
  * Загрузить все файлы из директории, отфильтровав по месяцу
  * @returns {Array} Массив распарсенных объектов
  */
-function loadDirectoryForMonth(dirPath, month, dateField) {
+async function loadDirectoryForMonth(dirPath, month, dateField) {
   const results = [];
 
-  if (!fs.existsSync(dirPath)) {
+  if (!(await fileExists(dirPath))) {
     return results;
   }
 
   try {
-    const files = fs.readdirSync(dirPath);
+    const files = await fsp.readdir(dirPath);
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
       try {
-        const content = fs.readFileSync(path.join(dirPath, file), 'utf8');
+        const content = await fsp.readFile(path.join(dirPath, file), 'utf8');
         const data = JSON.parse(content);
 
         // Фильтруем по месяцу если указано поле даты
@@ -91,7 +104,7 @@ function loadDirectoryForMonth(dirPath, month, dateField) {
  * Инициализация batch кэша - загружает ВСЕ данные за месяц ОДИН раз
  * Вызывается перед расчётом рейтинга для всех сотрудников
  */
-function initBatchCache(month) {
+async function initBatchCache(month) {
   if (_batchCacheMonth === month && _batchCache) {
     console.log(`[Efficiency] Используем существующий кэш для ${month}`);
     return _batchCache;
@@ -101,18 +114,19 @@ function initBatchCache(month) {
   console.log(`[Efficiency] Инициализация batch кэша для ${month}...`);
 
   _batchCache = {
-    shiftReports: loadDirectoryForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate'),
-    recountReports: loadDirectoryForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate'),
-    handoverReports: loadDirectoryForMonth(HANDOVER_REPORTS_DIR, month, 'handoverDate'),
-    attendance: loadDirectoryForMonth(ATTENDANCE_DIR, month, 'timestamp'),
-    tests: loadDirectoryForMonth(TESTS_DIR, month, 'completedAt'),
-    reviews: loadDirectoryForMonth(REVIEWS_DIR, month, 'createdAt'),
-    productQuestions: loadDirectoryForMonth(PRODUCT_QUESTIONS_DIR, month, null), // Загружаем все, фильтруем потом
-    rko: loadDirectoryForMonth(RKO_DIR, month, 'date'),
-    tasks: loadDirectoryForMonth(TASKS_DIR, month, null),
-    recurringTasks: loadDirectoryForMonth(RECURRING_TASKS_DIR, month, null),
-    envelopes: loadDirectoryForMonth(ENVELOPE_REPORTS_DIR, month, 'createdAt'),
-    penalties: loadPenaltiesForMonth(month),
+    shiftReports: await loadDirectoryForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate'),
+    recountReports: await loadDirectoryForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate'),
+    handoverReports: await loadDirectoryForMonth(HANDOVER_REPORTS_DIR, month, 'handoverDate'),
+    attendance: await loadDirectoryForMonth(ATTENDANCE_DIR, month, 'timestamp'),
+    tests: await loadDirectoryForMonth(TESTS_DIR, month, 'completedAt'),
+    reviews: await loadDirectoryForMonth(REVIEWS_DIR, month, 'createdAt'),
+    productQuestions: await loadDirectoryForMonth(PRODUCT_QUESTIONS_DIR, month, null), // Загружаем все, фильтруем потом
+    rko: await loadDirectoryForMonth(RKO_DIR, month, 'date'),
+    tasks: await loadDirectoryForMonth(TASKS_DIR, month, null),
+    recurringTasks: await loadDirectoryForMonth(RECURRING_TASKS_DIR, month, null),
+    envelopes: await loadDirectoryForMonth(ENVELOPE_REPORTS_DIR, month, 'createdAt'),
+    coffeeMachineReports: await loadDirectoryForMonth(COFFEE_MACHINE_REPORTS_DIR, month, 'createdAt'),
+    penalties: await loadPenaltiesForMonth(month),
   };
 
   _batchCacheMonth = month;
@@ -127,15 +141,15 @@ function initBatchCache(month) {
 /**
  * Загрузка штрафов за месяц
  */
-function loadPenaltiesForMonth(month) {
+async function loadPenaltiesForMonth(month) {
   const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${month}.json`);
 
-  if (!fs.existsSync(filePath)) {
+  if (!(await fileExists(filePath))) {
     return [];
   }
 
   try {
-    const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const content = JSON.parse(await fsp.readFile(filePath, 'utf8'));
     return content.penalties || [];
   } catch (e) {
     return [];
@@ -192,11 +206,11 @@ function interpolateTestPoints(score, totalQuestions, minPoints, zeroThreshold, 
 // LOAD SETTINGS
 // =====================================================
 
-function loadSettings(filename, defaults) {
+async function loadSettings(filename, defaults) {
   try {
     const filePath = path.join(POINTS_SETTINGS_DIR, filename);
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (await fileExists(filePath)) {
+      return JSON.parse(await fsp.readFile(filePath, 'utf8'));
     }
     return defaults;
   } catch (e) {
@@ -205,8 +219,8 @@ function loadSettings(filename, defaults) {
   }
 }
 
-function getShiftSettings() {
-  return loadSettings('shift_points_settings.json', {
+async function getShiftSettings() {
+  return await loadSettings('shift_points_settings.json', {
     minPoints: -3,
     zeroThreshold: 6,
     maxPoints: 2,
@@ -215,8 +229,8 @@ function getShiftSettings() {
   });
 }
 
-function getRecountSettings() {
-  return loadSettings('recount_points_settings.json', {
+async function getRecountSettings() {
+  return await loadSettings('recount_points_settings.json', {
     minPoints: -3,
     zeroThreshold: 6,
     maxPoints: 2,
@@ -225,8 +239,8 @@ function getRecountSettings() {
   });
 }
 
-function getHandoverSettings() {
-  return loadSettings('shift_handover_points_settings.json', {
+async function getHandoverSettings() {
+  return await loadSettings('shift_handover_points_settings.json', {
     minPoints: -3,
     zeroThreshold: 7,
     maxPoints: 1,
@@ -235,8 +249,8 @@ function getHandoverSettings() {
   });
 }
 
-function getTestSettings() {
-  return loadSettings('test_points_settings.json', {
+async function getTestSettings() {
+  return await loadSettings('test_points_settings.json', {
     minPoints: -2.5,
     zeroThreshold: 15,
     maxPoints: 3.5,
@@ -244,24 +258,31 @@ function getTestSettings() {
   });
 }
 
-function getAttendanceSettings() {
-  return loadSettings('attendance_points_settings.json', {
+async function getAttendanceSettings() {
+  return await loadSettings('attendance_points_settings.json', {
     onTimePoints: 1.0,
     latePoints: 0.5,
   });
 }
 
-function getRkoSettings() {
-  return loadSettings('rko_points_settings.json', {
+async function getRkoSettings() {
+  return await loadSettings('rko_points_settings.json', {
     hasRkoPoints: 1.0,
     noRkoPoints: -3.0,
   });
 }
 
-function getEnvelopeSettings() {
-  return loadSettings('envelope_points_settings.json', {
+async function getEnvelopeSettings() {
+  return await loadSettings('envelope_points_settings.json', {
     submittedPoints: 0,
     notSubmittedPoints: -5,
+  });
+}
+
+async function getCoffeeMachineSettings() {
+  return await loadSettings('coffee_machine_points_settings.json', {
+    submittedPoints: 1.0,
+    notSubmittedPoints: -3.0,
   });
 }
 
@@ -277,36 +298,40 @@ const DEFAULT_ORDERS_POINTS = { acceptedPoints: 1.0, rejectedPoints: 0 };
 /**
  * Рассчитать баллы за пересменку (shift report)
  */
-function calculateShiftPoints(employeeId, employeeName, month) {
+async function calculateShiftPoints(employeeId, employeeName, month) {
   try {
-    if (!fs.existsSync(SHIFT_REPORTS_DIR)) return 0;
+    if (!(await fileExists(SHIFT_REPORTS_DIR))) return 0;
 
-    const settings = getShiftSettings();
-    const files = fs.readdirSync(SHIFT_REPORTS_DIR);
+    const settings = await getShiftSettings();
+    const files = await fsp.readdir(SHIFT_REPORTS_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
-      const report = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
+        const report = JSON.parse(content);
 
-      // Проверяем что это нужный сотрудник и месяц
-      if ((report.employeeName === employeeName || report.employeePhone === employeeId) &&
-          report.handoverDate && report.handoverDate.startsWith(month)) {
+        // Проверяем что это нужный сотрудник и месяц
+        if ((report.employeeName === employeeName || report.employeePhone === employeeId) &&
+            report.handoverDate && report.handoverDate.startsWith(month)) {
 
-        // Если есть оценка - считаем баллы
-        if (report.adminRating && report.adminRating > 0) {
-          const points = interpolateRatingPoints(
-            report.adminRating,
-            settings.minRating,
-            settings.maxRating,
-            settings.minPoints,
-            settings.zeroThreshold,
-            settings.maxPoints
-          );
-          totalPoints += points;
+          // Если есть оценка - считаем баллы
+          if (report.adminRating && report.adminRating > 0) {
+            const points = interpolateRatingPoints(
+              report.adminRating,
+              settings.minRating,
+              settings.maxRating,
+              settings.minPoints,
+              settings.zeroThreshold,
+              settings.maxPoints
+            );
+            totalPoints += points;
+          }
         }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -320,34 +345,38 @@ function calculateShiftPoints(employeeId, employeeName, month) {
 /**
  * Рассчитать баллы за пересчёт (recount report)
  */
-function calculateRecountPoints(employeeId, employeeName, month) {
+async function calculateRecountPoints(employeeId, employeeName, month) {
   try {
-    if (!fs.existsSync(RECOUNT_REPORTS_DIR)) return 0;
+    if (!(await fileExists(RECOUNT_REPORTS_DIR))) return 0;
 
-    const settings = getRecountSettings();
-    const files = fs.readdirSync(RECOUNT_REPORTS_DIR);
+    const settings = await getRecountSettings();
+    const files = await fsp.readdir(RECOUNT_REPORTS_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(RECOUNT_REPORTS_DIR, file), 'utf8');
-      const report = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(RECOUNT_REPORTS_DIR, file), 'utf8');
+        const report = JSON.parse(content);
 
-      if ((report.employeeName === employeeName || report.employeePhone === employeeId) &&
-          report.recountDate && report.recountDate.startsWith(month)) {
+        if ((report.employeeName === employeeName || report.employeePhone === employeeId) &&
+            report.recountDate && report.recountDate.startsWith(month)) {
 
-        if (report.adminRating && report.adminRating > 0) {
-          const points = interpolateRatingPoints(
-            report.adminRating,
-            settings.minRating,
-            settings.maxRating,
-            settings.minPoints,
-            settings.zeroThreshold,
-            settings.maxPoints
-          );
-          totalPoints += points;
+          if (report.adminRating && report.adminRating > 0) {
+            const points = interpolateRatingPoints(
+              report.adminRating,
+              settings.minRating,
+              settings.maxRating,
+              settings.minPoints,
+              settings.zeroThreshold,
+              settings.maxPoints
+            );
+            totalPoints += points;
+          }
         }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -361,34 +390,38 @@ function calculateRecountPoints(employeeId, employeeName, month) {
 /**
  * Рассчитать баллы за сдачу смены (shift handover)
  */
-function calculateHandoverPoints(employeeId, employeeName, month) {
+async function calculateHandoverPoints(employeeId, employeeName, month) {
   try {
-    if (!fs.existsSync(HANDOVER_REPORTS_DIR)) return 0;
+    if (!(await fileExists(HANDOVER_REPORTS_DIR))) return 0;
 
-    const settings = getHandoverSettings();
-    const files = fs.readdirSync(HANDOVER_REPORTS_DIR);
+    const settings = await getHandoverSettings();
+    const files = await fsp.readdir(HANDOVER_REPORTS_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(HANDOVER_REPORTS_DIR, file), 'utf8');
-      const report = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(HANDOVER_REPORTS_DIR, file), 'utf8');
+        const report = JSON.parse(content);
 
-      if ((report.employeeName === employeeName || report.employeePhone === employeeId) &&
-          report.handoverDate && report.handoverDate.startsWith(month)) {
+        if ((report.employeeName === employeeName || report.employeePhone === employeeId) &&
+            report.handoverDate && report.handoverDate.startsWith(month)) {
 
-        if (report.rating && report.rating > 0) {
-          const points = interpolateRatingPoints(
-            report.rating,
-            settings.minRating,
-            settings.maxRating,
-            settings.minPoints,
-            settings.zeroThreshold,
-            settings.maxPoints
-          );
-          totalPoints += points;
+          if (report.rating && report.rating > 0) {
+            const points = interpolateRatingPoints(
+              report.rating,
+              settings.minRating,
+              settings.maxRating,
+              settings.minPoints,
+              settings.zeroThreshold,
+              settings.maxPoints
+            );
+            totalPoints += points;
+          }
         }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -402,27 +435,31 @@ function calculateHandoverPoints(employeeId, employeeName, month) {
 /**
  * Рассчитать баллы за посещаемость (attendance)
  */
-function calculateAttendancePoints(employeeId, month) {
+async function calculateAttendancePoints(employeeId, month) {
   try {
-    if (!fs.existsSync(ATTENDANCE_DIR)) return 0;
+    if (!(await fileExists(ATTENDANCE_DIR))) return 0;
 
-    const settings = getAttendanceSettings();
-    const files = fs.readdirSync(ATTENDANCE_DIR);
+    const settings = await getAttendanceSettings();
+    const files = await fsp.readdir(ATTENDANCE_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(ATTENDANCE_DIR, file), 'utf8');
-      const record = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(ATTENDANCE_DIR, file), 'utf8');
+        const record = JSON.parse(content);
 
-      if ((record.employeeId === employeeId || record.phone === employeeId)) {
-        const recordDate = record.timestamp || record.createdAt;
-        if (recordDate && recordDate.startsWith(month)) {
-          // Проверяем вовремя или опоздал
-          const points = record.isOnTime ? settings.onTimePoints : settings.latePoints;
-          totalPoints += points;
+        if ((record.employeeId === employeeId || record.phone === employeeId)) {
+          const recordDate = record.timestamp || record.createdAt;
+          if (recordDate && recordDate.startsWith(month)) {
+            // Проверяем вовремя или опоздал
+            const points = record.isOnTime ? settings.onTimePoints : settings.latePoints;
+            totalPoints += points;
+          }
         }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -436,32 +473,36 @@ function calculateAttendancePoints(employeeId, month) {
 /**
  * Рассчитать баллы за тесты
  */
-function calculateTestPoints(employeeId, employeeName, month) {
+async function calculateTestPoints(employeeId, employeeName, month) {
   try {
-    if (!fs.existsSync(TESTS_DIR)) return 0;
+    if (!(await fileExists(TESTS_DIR))) return 0;
 
-    const settings = getTestSettings();
-    const files = fs.readdirSync(TESTS_DIR);
+    const settings = await getTestSettings();
+    const files = await fsp.readdir(TESTS_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(TESTS_DIR, file), 'utf8');
-      const test = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(TESTS_DIR, file), 'utf8');
+        const test = JSON.parse(content);
 
-      if ((test.employeeName === employeeName || test.employeeId === employeeId) &&
-          test.completedAt && test.completedAt.startsWith(month)) {
+        if ((test.employeeName === employeeName || test.employeeId === employeeId) &&
+            test.completedAt && test.completedAt.startsWith(month)) {
 
-        const score = test.score || 0;
-        const points = interpolateTestPoints(
-          score,
-          settings.totalQuestions,
-          settings.minPoints,
-          settings.zeroThreshold,
-          settings.maxPoints
-        );
-        totalPoints += points;
+          const score = test.score || 0;
+          const points = interpolateTestPoints(
+            score,
+            settings.totalQuestions,
+            settings.minPoints,
+            settings.zeroThreshold,
+            settings.maxPoints
+          );
+          totalPoints += points;
+        }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -475,28 +516,32 @@ function calculateTestPoints(employeeId, employeeName, month) {
 /**
  * Рассчитать баллы за отзывы (reviews)
  */
-function calculateReviewsPoints(shopAddress, month) {
+async function calculateReviewsPoints(shopAddress, month) {
   try {
-    if (!fs.existsSync(REVIEWS_DIR)) return 0;
+    if (!(await fileExists(REVIEWS_DIR))) return 0;
 
-    const files = fs.readdirSync(REVIEWS_DIR);
+    const files = await fsp.readdir(REVIEWS_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(REVIEWS_DIR, file), 'utf8');
-      const review = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
+        const review = JSON.parse(content);
 
-      if (review.shopAddress === shopAddress &&
-          review.date && review.date.startsWith(month)) {
+        if (review.shopAddress === shopAddress &&
+            review.date && review.date.startsWith(month)) {
 
-        // Положительный отзыв (rating >= 4) = +баллы, отрицательный = -баллы
-        const isPositive = review.rating && review.rating >= 4;
-        const points = isPositive
-          ? DEFAULT_REVIEWS_POINTS.positivePoints
-          : DEFAULT_REVIEWS_POINTS.negativePoints;
-        totalPoints += points;
+          // Положительный отзыв (rating >= 4) = +баллы, отрицательный = -баллы
+          const isPositive = review.rating && review.rating >= 4;
+          const points = isPositive
+            ? DEFAULT_REVIEWS_POINTS.positivePoints
+            : DEFAULT_REVIEWS_POINTS.negativePoints;
+          totalPoints += points;
+        }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -510,28 +555,32 @@ function calculateReviewsPoints(shopAddress, month) {
 /**
  * Рассчитать баллы за поиск товара (product search)
  */
-function calculateProductSearchPoints(employeeId, month) {
+async function calculateProductSearchPoints(employeeId, month) {
   try {
-    if (!fs.existsSync(PRODUCT_QUESTIONS_DIR)) return 0;
+    if (!(await fileExists(PRODUCT_QUESTIONS_DIR))) return 0;
 
-    const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR);
+    const files = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
-      const question = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+        const question = JSON.parse(content);
 
-      if (question.employeeId === employeeId &&
-          question.createdAt && question.createdAt.startsWith(month)) {
+        if (question.employeeId === employeeId &&
+            question.createdAt && question.createdAt.startsWith(month)) {
 
-        // Если ответил - баллы, не ответил - 0
-        const answered = question.status === 'answered';
-        const points = answered
-          ? DEFAULT_PRODUCT_SEARCH_POINTS.answeredPoints
-          : DEFAULT_PRODUCT_SEARCH_POINTS.missedPoints;
-        totalPoints += points;
+          // Если ответил - баллы, не ответил - 0
+          const answered = question.status === 'answered';
+          const points = answered
+            ? DEFAULT_PRODUCT_SEARCH_POINTS.answeredPoints
+            : DEFAULT_PRODUCT_SEARCH_POINTS.missedPoints;
+          totalPoints += points;
+        }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -545,27 +594,31 @@ function calculateProductSearchPoints(employeeId, month) {
 /**
  * Рассчитать баллы за РКО
  */
-function calculateRkoPoints(shopAddress, month) {
+async function calculateRkoPoints(shopAddress, month) {
   try {
-    if (!fs.existsSync(RKO_DIR)) return 0;
+    if (!(await fileExists(RKO_DIR))) return 0;
 
-    const settings = getRkoSettings();
-    const files = fs.readdirSync(RKO_DIR);
+    const settings = await getRkoSettings();
+    const files = await fsp.readdir(RKO_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(RKO_DIR, file), 'utf8');
-      const rko = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(RKO_DIR, file), 'utf8');
+        const rko = JSON.parse(content);
 
-      if (rko.shopAddress === shopAddress &&
-          rko.date && rko.date.startsWith(month)) {
+        if (rko.shopAddress === shopAddress &&
+            rko.date && rko.date.startsWith(month)) {
 
-        // Есть РКО = баллы, нет РКО = штраф
-        const hasRko = rko.hasRko === true;
-        const points = hasRko ? settings.hasRkoPoints : settings.noRkoPoints;
-        totalPoints += points;
+          // Есть РКО = баллы, нет РКО = штраф
+          const hasRko = rko.hasRko === true;
+          const points = hasRko ? settings.hasRkoPoints : settings.noRkoPoints;
+          totalPoints += points;
+        }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
@@ -579,44 +632,52 @@ function calculateRkoPoints(shopAddress, month) {
 /**
  * Рассчитать баллы за задачи (tasks)
  */
-function calculateTasksPoints(employeeId, month) {
+async function calculateTasksPoints(employeeId, month) {
   try {
     let totalPoints = 0;
 
     // Разовые задачи
-    if (fs.existsSync(TASKS_DIR)) {
-      const files = fs.readdirSync(TASKS_DIR);
+    if (await fileExists(TASKS_DIR)) {
+      const files = await fsp.readdir(TASKS_DIR);
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
 
-        const content = fs.readFileSync(path.join(TASKS_DIR, file), 'utf8');
-        const task = JSON.parse(content);
+        try {
+          const content = await fsp.readFile(path.join(TASKS_DIR, file), 'utf8');
+          const task = JSON.parse(content);
 
-        if (task.assignedTo === employeeId &&
-            task.completedAt && task.completedAt.startsWith(month)) {
-          // TODO: добавить настройки баллов за задачи
-          totalPoints += 1.0; // Временно фиксированный балл
+          if (task.assignedTo === employeeId &&
+              task.completedAt && task.completedAt.startsWith(month)) {
+            // TODO: добавить настройки баллов за задачи
+            totalPoints += 1.0; // Временно фиксированный балл
+          }
+        } catch (e) {
+          // Skip invalid file
         }
       }
     }
 
     // Циклические задачи
-    if (fs.existsSync(RECURRING_TASKS_DIR)) {
-      const files = fs.readdirSync(RECURRING_TASKS_DIR);
+    if (await fileExists(RECURRING_TASKS_DIR)) {
+      const files = await fsp.readdir(RECURRING_TASKS_DIR);
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
 
-        const content = fs.readFileSync(path.join(RECURRING_TASKS_DIR, file), 'utf8');
-        const task = JSON.parse(content);
+        try {
+          const content = await fsp.readFile(path.join(RECURRING_TASKS_DIR, file), 'utf8');
+          const task = JSON.parse(content);
 
-        if (task.assignedTo === employeeId) {
-          // Подсчитать выполненные задачи за месяц
-          const completions = task.completions || [];
-          for (const completion of completions) {
-            if (completion.completedAt && completion.completedAt.startsWith(month)) {
-              totalPoints += 1.0; // Временно фиксированный балл
+          if (task.assignedTo === employeeId) {
+            // Подсчитать выполненные задачи за месяц
+            const completions = task.completions || [];
+            for (const completion of completions) {
+              if (completion.completedAt && completion.completedAt.startsWith(month)) {
+                totalPoints += 1.0; // Временно фиксированный балл
+              }
             }
           }
+        } catch (e) {
+          // Skip invalid file
         }
       }
     }
@@ -632,16 +693,17 @@ function calculateTasksPoints(employeeId, month) {
  * Рассчитать все автоматические штрафы (attendance, envelope, etc.)
  * Читает файл /var/www/efficiency-penalties/YYYY-MM.json
  */
-function calculateAttendancePenalties(employeeId, month) {
+async function calculateAttendancePenalties(employeeId, month) {
   try {
-    if (!fs.existsSync(EFFICIENCY_PENALTIES_DIR)) return 0;
+    if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) return 0;
 
     // Читаем файл штрафов за месяц
     const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${month}.json`);
-    if (!fs.existsSync(penaltiesFile)) return 0;
+    if (!(await fileExists(penaltiesFile))) return 0;
 
-    const content = fs.readFileSync(penaltiesFile, 'utf8');
-    const penalties = JSON.parse(content);
+    const content = await fsp.readFile(penaltiesFile, 'utf8');
+    const penaltiesData = JSON.parse(content);
+    const penalties = penaltiesData.penalties || penaltiesData;
 
     if (!Array.isArray(penalties)) return 0;
 
@@ -667,7 +729,7 @@ function calculateAttendancePenalties(employeeId, month) {
 /**
  * Рассчитать заказы (orders) - TODO: интеграция с Lichi CRM API
  */
-function calculateOrdersPoints(employeeId, month) {
+async function calculateOrdersPoints(employeeId, month) {
   // TODO: Получить заказы из Lichi CRM API
   // Пока возвращаем 0
   return 0;
@@ -680,37 +742,84 @@ function calculateOrdersPoints(employeeId, month) {
  * @param {string} month - Месяц в формате YYYY-MM
  * @returns {number} - Сумма баллов за конверты
  */
-function calculateEnvelopePoints(employeeName, month) {
+async function calculateEnvelopePoints(employeeName, month) {
   try {
-    if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) return 0;
+    if (!(await fileExists(ENVELOPE_REPORTS_DIR))) return 0;
 
-    const settings = getEnvelopeSettings();
-    const files = fs.readdirSync(ENVELOPE_REPORTS_DIR);
+    const settings = await getEnvelopeSettings();
+    const files = await fsp.readdir(ENVELOPE_REPORTS_DIR);
     let totalPoints = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
-      const envelope = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
+        const envelope = JSON.parse(content);
 
-      // Фильтруем по имени сотрудника и месяцу
-      if (envelope.employeeName === employeeName &&
-          envelope.createdAt && envelope.createdAt.startsWith(month)) {
+        // Фильтруем по имени сотрудника и месяцу
+        if (envelope.employeeName === employeeName &&
+            envelope.createdAt && envelope.createdAt.startsWith(month)) {
 
-        // Если конверт подтвержден (status: "confirmed") - 0 баллов
-        // Если не подтвержден (status: "pending" или другой) - штраф -5
-        const isConfirmed = envelope.status === 'confirmed';
-        const points = isConfirmed
-          ? settings.submittedPoints
-          : settings.notSubmittedPoints;
-        totalPoints += points;
+          // Если конверт подтвержден (status: "confirmed") - 0 баллов
+          // Если не подтвержден (status: "pending" или другой) - штраф -5
+          const isConfirmed = envelope.status === 'confirmed';
+          const points = isConfirmed
+            ? settings.submittedPoints
+            : settings.notSubmittedPoints;
+          totalPoints += points;
+        }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
     return totalPoints;
   } catch (e) {
     console.error('Error calculating envelope points:', e);
+    return 0;
+  }
+}
+
+/**
+ * Рассчитать баллы за счётчики кофемашин
+ *
+ * @param {string} employeeName - Имя сотрудника
+ * @param {string} month - Месяц в формате YYYY-MM
+ * @returns {number} - Сумма баллов
+ */
+async function calculateCoffeeMachinePoints(employeeName, month) {
+  try {
+    if (!(await fileExists(COFFEE_MACHINE_REPORTS_DIR))) return 0;
+
+    const settings = await getCoffeeMachineSettings();
+    const files = await fsp.readdir(COFFEE_MACHINE_REPORTS_DIR);
+    let totalPoints = 0;
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      try {
+        const content = await fsp.readFile(path.join(COFFEE_MACHINE_REPORTS_DIR, file), 'utf8');
+        const report = JSON.parse(content);
+
+        if (report.employeeName === employeeName &&
+            report.createdAt && report.createdAt.startsWith(month)) {
+
+          const isConfirmed = report.status === 'confirmed';
+          const points = isConfirmed
+            ? settings.submittedPoints
+            : settings.notSubmittedPoints;
+          totalPoints += points;
+        }
+      } catch (e) {
+        // Skip invalid file
+      }
+    }
+
+    return totalPoints;
+  } catch (e) {
+    console.error('Error calculating coffee machine points:', e);
     return 0;
   }
 }
@@ -728,21 +837,22 @@ function calculateEnvelopePoints(employeeName, month) {
  * @param {string} month - Месяц в формате YYYY-MM
  * @returns {object} - Детальная информация о баллах (12 категорий)
  */
-function calculateFullEfficiency(employeeId, employeeName, shopAddress, month) {
+async function calculateFullEfficiency(employeeId, employeeName, shopAddress, month) {
   try {
     const breakdown = {
-      shift: calculateShiftPoints(employeeId, employeeName, month),
-      recount: calculateRecountPoints(employeeId, employeeName, month),
-      handover: calculateHandoverPoints(employeeId, employeeName, month),
-      attendance: calculateAttendancePoints(employeeId, month),
-      attendancePenalties: calculateAttendancePenalties(employeeId, month),
-      test: calculateTestPoints(employeeId, employeeName, month),
-      reviews: calculateReviewsPoints(shopAddress, month),
-      productSearch: calculateProductSearchPoints(employeeId, month),
-      rko: calculateRkoPoints(shopAddress, month),
-      tasks: calculateTasksPoints(employeeId, month),
-      orders: calculateOrdersPoints(employeeId, month),
-      envelope: calculateEnvelopePoints(employeeName, month),
+      shift: await calculateShiftPoints(employeeId, employeeName, month),
+      recount: await calculateRecountPoints(employeeId, employeeName, month),
+      handover: await calculateHandoverPoints(employeeId, employeeName, month),
+      attendance: await calculateAttendancePoints(employeeId, month),
+      attendancePenalties: await calculateAttendancePenalties(employeeId, month),
+      test: await calculateTestPoints(employeeId, employeeName, month),
+      reviews: await calculateReviewsPoints(shopAddress, month),
+      productSearch: await calculateProductSearchPoints(employeeId, month),
+      rko: await calculateRkoPoints(shopAddress, month),
+      tasks: await calculateTasksPoints(employeeId, month),
+      orders: await calculateOrdersPoints(employeeId, month),
+      envelope: await calculateEnvelopePoints(employeeName, month),
+      coffeeMachine: await calculateCoffeeMachinePoints(employeeName, month),
     };
 
     const total = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
@@ -767,10 +877,10 @@ function calculateFullEfficiency(employeeId, employeeName, shopAddress, month) {
 /**
  * Рассчитать баллы за пересменку используя кэш
  */
-function calculateShiftPointsCached(employeeId, employeeName, cache) {
+async function calculateShiftPointsCached(employeeId, employeeName, cache) {
   if (!cache.shiftReports) return 0;
 
-  const settings = getShiftSettings();
+  const settings = await getShiftSettings();
   let totalPoints = 0;
 
   for (const report of cache.shiftReports) {
@@ -791,10 +901,10 @@ function calculateShiftPointsCached(employeeId, employeeName, cache) {
 /**
  * Рассчитать баллы за пересчёт используя кэш
  */
-function calculateRecountPointsCached(employeeId, employeeName, cache) {
+async function calculateRecountPointsCached(employeeId, employeeName, cache) {
   if (!cache.recountReports) return 0;
 
-  const settings = getRecountSettings();
+  const settings = await getRecountSettings();
   let totalPoints = 0;
 
   for (const report of cache.recountReports) {
@@ -815,10 +925,10 @@ function calculateRecountPointsCached(employeeId, employeeName, cache) {
 /**
  * Рассчитать баллы за сдачу смены используя кэш
  */
-function calculateHandoverPointsCached(employeeId, employeeName, cache) {
+async function calculateHandoverPointsCached(employeeId, employeeName, cache) {
   if (!cache.handoverReports) return 0;
 
-  const settings = getHandoverSettings();
+  const settings = await getHandoverSettings();
   let totalPoints = 0;
 
   for (const report of cache.handoverReports) {
@@ -839,10 +949,10 @@ function calculateHandoverPointsCached(employeeId, employeeName, cache) {
 /**
  * Рассчитать баллы за посещаемость используя кэш
  */
-function calculateAttendancePointsCached(employeeId, cache) {
+async function calculateAttendancePointsCached(employeeId, cache) {
   if (!cache.attendance) return 0;
 
-  const settings = getAttendanceSettings();
+  const settings = await getAttendanceSettings();
   let totalPoints = 0;
 
   for (const record of cache.attendance) {
@@ -874,10 +984,10 @@ function calculateAttendancePenaltiesCached(employeeId, cache) {
 /**
  * Рассчитать баллы за тесты используя кэш
  */
-function calculateTestPointsCached(employeeId, employeeName, cache) {
+async function calculateTestPointsCached(employeeId, employeeName, cache) {
   if (!cache.tests) return 0;
 
-  const settings = getTestSettings();
+  const settings = await getTestSettings();
   let totalPoints = 0;
 
   for (const test of cache.tests) {
@@ -916,10 +1026,10 @@ function calculateReviewsPointsCached(shopAddress, cache) {
 /**
  * Рассчитать баллы за конверты используя кэш
  */
-function calculateEnvelopePointsCached(employeeName, cache) {
+async function calculateEnvelopePointsCached(employeeName, cache) {
   if (!cache.envelopes) return 0;
 
-  const settings = getEnvelopeSettings();
+  const settings = await getEnvelopeSettings();
   let totalPoints = 0;
 
   for (const envelope of cache.envelopes) {
@@ -933,23 +1043,43 @@ function calculateEnvelopePointsCached(employeeName, cache) {
 }
 
 /**
+ * Рассчитать баллы за кофемашины используя кэш
+ */
+async function calculateCoffeeMachinePointsCached(employeeName, cache) {
+  if (!cache.coffeeMachineReports) return 0;
+
+  const settings = await getCoffeeMachineSettings();
+  let totalPoints = 0;
+
+  for (const report of cache.coffeeMachineReports) {
+    if (report.employeeName === employeeName) {
+      const isConfirmed = report.status === 'confirmed';
+      totalPoints += isConfirmed ? settings.submittedPoints : settings.notSubmittedPoints;
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
  * Рассчитать эффективность используя кэш (для batch операций)
  */
-function calculateFullEfficiencyCached(employeeId, employeeName, shopAddress, month, cache) {
+async function calculateFullEfficiencyCached(employeeId, employeeName, shopAddress, month, cache) {
   try {
     const breakdown = {
-      shift: calculateShiftPointsCached(employeeId, employeeName, cache),
-      recount: calculateRecountPointsCached(employeeId, employeeName, cache),
-      handover: calculateHandoverPointsCached(employeeId, employeeName, cache),
-      attendance: calculateAttendancePointsCached(employeeId, cache),
+      shift: await calculateShiftPointsCached(employeeId, employeeName, cache),
+      recount: await calculateRecountPointsCached(employeeId, employeeName, cache),
+      handover: await calculateHandoverPointsCached(employeeId, employeeName, cache),
+      attendance: await calculateAttendancePointsCached(employeeId, cache),
       attendancePenalties: calculateAttendancePenaltiesCached(employeeId, cache),
-      test: calculateTestPointsCached(employeeId, employeeName, cache),
+      test: await calculateTestPointsCached(employeeId, employeeName, cache),
       reviews: calculateReviewsPointsCached(shopAddress, cache),
-      productSearch: calculateProductSearchPoints(employeeId, month), // Оставляем без кэша пока
-      rko: calculateRkoPoints(shopAddress, month), // Оставляем без кэша пока
-      tasks: calculateTasksPoints(employeeId, month), // Оставляем без кэша пока
-      orders: calculateOrdersPoints(employeeId, month), // Оставляем без кэша пока
-      envelope: calculateEnvelopePointsCached(employeeName, cache),
+      productSearch: await calculateProductSearchPoints(employeeId, month), // Оставляем без кэша пока
+      rko: await calculateRkoPoints(shopAddress, month), // Оставляем без кэша пока
+      tasks: await calculateTasksPoints(employeeId, month), // Оставляем без кэша пока
+      orders: await calculateOrdersPoints(employeeId, month), // Оставляем без кэша пока
+      envelope: await calculateEnvelopePointsCached(employeeName, cache),
+      coffeeMachine: await calculateCoffeeMachinePointsCached(employeeName, cache),
     };
 
     const total = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
@@ -969,17 +1099,17 @@ function calculateFullEfficiencyCached(employeeId, employeeName, shopAddress, mo
  * @param {string} month - Месяц в формате YYYY-MM
  * @returns {Map<string, object>} Map employeeId -> {total, breakdown}
  */
-function calculateBatchEfficiency(employees, month) {
+async function calculateBatchEfficiency(employees, month) {
   const startTime = Date.now();
   console.log(`[Efficiency] Batch расчёт для ${employees.length} сотрудников за ${month}`);
 
   // Инициализируем кэш - загружает ВСЕ данные ОДИН раз
-  const cache = initBatchCache(month);
+  const cache = await initBatchCache(month);
 
   const results = new Map();
 
   for (const emp of employees) {
-    const efficiency = calculateFullEfficiencyCached(
+    const efficiency = await calculateFullEfficiencyCached(
       emp.id || emp.phone,
       emp.name,
       emp.shopAddress,
@@ -1012,6 +1142,7 @@ module.exports = {
   calculateTasksPoints,
   calculateOrdersPoints,
   calculateEnvelopePoints,
+  calculateCoffeeMachinePoints,
   // Batch optimized functions
   initBatchCache,
   clearBatchCache,

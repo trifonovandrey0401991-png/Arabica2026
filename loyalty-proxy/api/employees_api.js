@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Employees API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -7,9 +13,24 @@ const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const EMPLOYEE_REGISTRATIONS_DIR = `${DATA_DIR}/employee-registrations`;
 const EMPLOYEE_PHOTOS_DIR = `${DATA_DIR}/employee-photos`;
 
-[EMPLOYEES_DIR, EMPLOYEE_REGISTRATIONS_DIR, EMPLOYEE_PHOTOS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist (async IIFE)
+(async () => {
+  for (const dir of [EMPLOYEES_DIR, EMPLOYEE_REGISTRATIONS_DIR, EMPLOYEE_PHOTOS_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+})();
 
 function setupEmployeesAPI(app, uploadEmployeePhoto) {
   // ===== EMPLOYEE REGISTRATION =====
@@ -31,7 +52,7 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
         createdAt: new Date().toISOString()
       };
 
-      fs.writeFileSync(filePath, JSON.stringify(registration, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(registration, null, 2), 'utf8');
       res.json({ success: true, registration });
     } catch (error) {
       console.error('Error creating registration:', error);
@@ -45,8 +66,9 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
       const normalizedPhone = phone.replace(/[\s+]/g, '');
       const filePath = path.join(EMPLOYEE_REGISTRATIONS_DIR, `${normalizedPhone}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const registration = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const data = await fsp.readFile(filePath, 'utf8');
+        const registration = JSON.parse(data);
         res.json({ success: true, registration });
       } else {
         res.json({ success: false, error: 'Registration not found' });
@@ -64,16 +86,17 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
       const normalizedPhone = phone.replace(/[\s+]/g, '');
       const filePath = path.join(EMPLOYEE_REGISTRATIONS_DIR, `${normalizedPhone}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Registration not found' });
       }
 
-      const registration = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const data = await fsp.readFile(filePath, 'utf8');
+      const registration = JSON.parse(data);
       registration.status = approved ? 'approved' : 'rejected';
       registration.verifiedBy = adminName;
       registration.verifiedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(registration, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(registration, null, 2), 'utf8');
       res.json({ success: true, registration });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -85,12 +108,12 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
       console.log('GET /api/employee-registrations');
       const registrations = [];
 
-      if (fs.existsSync(EMPLOYEE_REGISTRATIONS_DIR)) {
-        const files = fs.readdirSync(EMPLOYEE_REGISTRATIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(EMPLOYEE_REGISTRATIONS_DIR)) {
+        const files = (await fsp.readdir(EMPLOYEE_REGISTRATIONS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(EMPLOYEE_REGISTRATIONS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(EMPLOYEE_REGISTRATIONS_DIR, file), 'utf8');
             registrations.push(JSON.parse(content));
           } catch (e) {
             console.error(`Error reading ${file}:`, e);
@@ -107,17 +130,17 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
 
   // ===== EMPLOYEES =====
 
-  app.get('/api/employees', (req, res) => {
+  app.get('/api/employees', async (req, res) => {
     try {
       console.log('GET /api/employees');
       const employees = [];
 
-      if (fs.existsSync(EMPLOYEES_DIR)) {
-        const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(EMPLOYEES_DIR)) {
+        const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
             employees.push(JSON.parse(content));
           } catch (e) {
             console.error(`Error reading ${file}:`, e);
@@ -131,14 +154,15 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
     }
   });
 
-  app.get('/api/employees/:id', (req, res) => {
+  app.get('/api/employees/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const employee = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const data = await fsp.readFile(filePath, 'utf8');
+        const employee = JSON.parse(data);
         res.json({ success: true, employee });
       } else {
         res.status(404).json({ success: false, error: 'Employee not found' });
@@ -161,7 +185,7 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
       const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
       employee.createdAt = new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(employee, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(employee, null, 2), 'utf8');
 
       res.json({ success: true, employee });
     } catch (error) {
@@ -177,32 +201,33 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Employee not found' });
       }
 
-      const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const data = await fsp.readFile(filePath, 'utf8');
+      const existing = JSON.parse(data);
       const updated = { ...existing, ...updateData, id };
       updated.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, employee: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.delete('/api/employees/:id', (req, res) => {
+  app.delete('/api/employees/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Employee not found' });
       }
 
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });

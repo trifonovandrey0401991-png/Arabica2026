@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../employees/pages/employees_page.dart';
 import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/utils/logger.dart';
 
 /// Страница отчетов по сотрудникам
@@ -29,7 +30,12 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
     });
 
     try {
-      final employees = await EmployeesPage.loadEmployeesForNotifications();
+      final allEmployees = await EmployeesPage.loadEmployeesForNotifications();
+      // Фильтруем сотрудников по мультитенантности
+      final employees = await MultitenancyFilterService.filterByEmployeePhone<Employee>(
+        allEmployees,
+        (emp) => emp.phone ?? '',
+      );
       setState(() {
         _employees = employees;
         _isLoading = false;

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../../shops/services/shop_products_service.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import '../../efficiency/models/points_settings_model.dart';
@@ -339,7 +340,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                     ),
                   )
                 : FutureBuilder<List<Shop>>(
-                    future: Shop.loadShopsFromGoogleSheets(),
+                    future: ShopService.getShopsForCurrentUser(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(

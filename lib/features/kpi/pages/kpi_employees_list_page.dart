@@ -13,6 +13,11 @@ class KPIEmployeesListPage extends StatefulWidget {
 }
 
 class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   List<String> _employees = [];
   bool _isLoading = true;
   String _searchQuery = '';
@@ -44,8 +49,8 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
           _isLoading = false;
         });
 
-        // Ленивая загрузка: предзагружаем только первые 10 видимых сотрудников
-        final preloadCount = employees.length > 10 ? 10 : employees.length;
+        // Ленивая загрузка: предзагружаем только первые 3 видимых сотрудника
+        final preloadCount = employees.length > 3 ? 3 : employees.length;
         for (var i = 0; i < preloadCount; i++) {
           _loadMonthlyStats(employees[i]);
         }
@@ -143,10 +148,10 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: hasProblems ? Colors.red.shade50 : Colors.green.shade50,
+        color: hasProblems ? Colors.red.withOpacity(0.15) : Colors.green.withOpacity(0.15),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: hasProblems ? Colors.red.shade200 : Colors.green.shade200,
+          color: hasProblems ? Colors.red.withOpacity(0.3) : Colors.green.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -194,7 +199,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.grey[600]),
+          Icon(icon, size: 14, color: Colors.white.withOpacity(0.5)),
           const SizedBox(height: 2),
           Text(
             fraction,
@@ -210,9 +215,13 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
   }
 
   Widget _buildMonthRow(String employeeName, KPIEmployeeMonthStats stats, String label) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(left: 40, right: 8, top: 2, bottom: 2),
-      color: Colors.grey[100],
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -226,7 +235,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Column(
@@ -235,7 +244,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.7)),
               ),
               const SizedBox(height: 2),
               _buildMonthIndicators(stats),
@@ -249,168 +258,220 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('KPI - Сотрудники'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              KPIService.clearCache();
-              _loadEmployees();
-            },
-            tooltip: 'Обновить список',
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Поиск сотрудника...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
-            ),
-          ),
-          _isLoading
-              ? const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              : _filteredEmployees.isEmpty
-                  ? Expanded(
-                      child: Center(
-                        child: Text(
-                          _searchQuery.isEmpty
-                              ? 'Нет сотрудников'
-                              : 'Сотрудники не найдены',
-                          style: const TextStyle(fontSize: 16),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                      ),
-                    )
-                  : Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: _filteredEmployees.length,
-                        itemBuilder: (context, index) {
-                          final employee = _filteredEmployees[index];
-                          final isExpanded = _expandedEmployees.contains(employee);
-                          final monthlyStats = _monthlyStatsCache[employee];
-
-                          // Ленивая загрузка: загружаем статистику когда элемент становится видимым
-                          if (monthlyStats == null && !_loadingEmployees.contains(employee)) {
-                            _loadingEmployees.add(employee);
-                            _loadMonthlyStats(employee);
-                          }
-
-                          return Column(
-                            children: [
-                              // Главная строка сотрудника
-                              Card(
-                                margin: const EdgeInsets.symmetric(vertical: 2),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      if (isExpanded) {
-                                        _expandedEmployees.remove(employee);
-                                      } else {
-                                        _expandedEmployees.add(employee);
-                                        if (!_monthlyStatsCache.containsKey(employee)) {
-                                          _loadMonthlyStats(employee);
-                                        }
-                                      }
-                                    });
-                                  },
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                    child: Row(
-                                      children: [
-                                        // Аватар
-                                        CircleAvatar(
-                                          radius: 16,
-                                          backgroundColor: const Color(0xFF004D40),
-                                          child: Text(
-                                            employee.isNotEmpty
-                                                ? employee[0].toUpperCase()
-                                                : '?',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        // ФИО и показатели
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              // ФИО в одну строку
-                                              Text(
-                                                employee,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 4),
-                                              // Показатели под ФИО
-                                              monthlyStats != null && monthlyStats.isNotEmpty
-                                                  ? _buildMonthIndicators(monthlyStats[0])
-                                                  : const SizedBox(
-                                                      width: 16,
-                                                      height: 16,
-                                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                                    ),
-                                            ],
-                                          ),
-                                        ),
-                                        // Стрелка раскрытия
-                                        Icon(
-                                          isExpanded ? Icons.expand_less : Icons.expand_more,
-                                          color: Colors.grey[600],
-                                          size: 20,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // Раскрытые месячные строки
-                              if (isExpanded && monthlyStats != null && monthlyStats.length >= 3) ...[
-                                _buildMonthRow(employee, monthlyStats[1], 'Прошлый месяц'),
-                                _buildMonthRow(employee, monthlyStats[2], 'Позапрошлый месяц'),
-                              ],
-                            ],
-                          );
-                        },
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-        ],
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'KPI - Сотрудники',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        KPIService.clearCache();
+                        _loadEmployees();
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Search
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                child: TextField(
+                  style: const TextStyle(color: Colors.white),
+                  cursorColor: _gold,
+                  decoration: InputDecoration(
+                    hintText: 'Поиск сотрудника...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                    prefixIcon: Icon(Icons.search, color: _gold),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value);
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Content
+              _isLoading
+                  ? Expanded(
+                      child: Center(child: CircularProgressIndicator(color: _gold)),
+                    )
+                  : _filteredEmployees.isEmpty
+                      ? Expanded(
+                          child: Center(
+                            child: Text(
+                              _searchQuery.isEmpty
+                                  ? 'Нет сотрудников'
+                                  : 'Сотрудники не найдены',
+                              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
+                            ),
+                          ),
+                        )
+                      : Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            itemCount: _filteredEmployees.length,
+                            itemBuilder: (context, index) {
+                              final employee = _filteredEmployees[index];
+                              final isExpanded = _expandedEmployees.contains(employee);
+                              final monthlyStats = _monthlyStatsCache[employee];
+
+                              // Ленивая загрузка: загружаем статистику когда элемент становится видимым
+                              if (monthlyStats == null && !_loadingEmployees.contains(employee)) {
+                                _loadingEmployees.add(employee);
+                                _loadMonthlyStats(employee);
+                              }
+
+                              return Column(
+                                children: [
+                                  // Главная строка сотрудника
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.06),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                    ),
+                                    child: InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          if (isExpanded) {
+                                            _expandedEmployees.remove(employee);
+                                          } else {
+                                            _expandedEmployees.add(employee);
+                                            if (!_monthlyStatsCache.containsKey(employee)) {
+                                              _loadMonthlyStats(employee);
+                                            }
+                                          }
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                        child: Row(
+                                          children: [
+                                            // Аватар
+                                            CircleAvatar(
+                                              radius: 16,
+                                              backgroundColor: _emerald,
+                                              child: Text(
+                                                employee.isNotEmpty
+                                                    ? employee[0].toUpperCase()
+                                                    : '?',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            // ФИО и показатели
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  // ФИО в одну строку
+                                                  Text(
+                                                    employee,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 13,
+                                                      color: Colors.white.withOpacity(0.9),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  // Показатели под ФИО
+                                                  monthlyStats != null && monthlyStats.isNotEmpty
+                                                      ? _buildMonthIndicators(monthlyStats[0])
+                                                      : SizedBox(
+                                                          width: 16,
+                                                          height: 16,
+                                                          child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                                                        ),
+                                                ],
+                                              ),
+                                            ),
+                                            // Стрелка раскрытия
+                                            Icon(
+                                              isExpanded ? Icons.expand_less : Icons.expand_more,
+                                              color: Colors.white.withOpacity(0.4),
+                                              size: 20,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Раскрытые месячные строки
+                                  if (isExpanded && monthlyStats != null && monthlyStats.length >= 3) ...[
+                                    _buildMonthRow(employee, monthlyStats[1], 'Прошлый месяц'),
+                                    _buildMonthRow(employee, monthlyStats[2], 'Позапрошлый месяц'),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
-
-
-
-
-
-
-

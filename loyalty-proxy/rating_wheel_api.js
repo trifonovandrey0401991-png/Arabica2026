@@ -1,19 +1,31 @@
 // =====================================================
 // RATING & FORTUNE WHEEL API
+//
+// REFACTORED: Converted from sync to async I/O (2026-02-05)
 // =====================================================
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('./efficiency_calc');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
-const RATINGS_DIR = `${DATA_DIR}/employee-ratings`;
-const FORTUNE_WHEEL_DIR = `${DATA_DIR}/fortune-wheel`;
-const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
-const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
-const EFFICIENCY_DIR = `${DATA_DIR}/efficiency-penalties`;
+const RATINGS_DIR = path.join(DATA_DIR, 'employee-ratings');
+const FORTUNE_WHEEL_DIR = path.join(DATA_DIR, 'fortune-wheel');
+const EMPLOYEES_DIR = path.join(DATA_DIR, 'employees');
+const ATTENDANCE_DIR = path.join(DATA_DIR, 'attendance');
+const EFFICIENCY_DIR = path.join(DATA_DIR, 'efficiency-penalties');
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Хелпер: текущий месяц YYYY-MM
 function getCurrentMonth() {
@@ -37,19 +49,18 @@ function getMonthName(monthStr) {
 }
 
 // Получить количество смен сотрудника за месяц (по attendance)
-function getShiftsCount(employeeId, month) {
+async function getShiftsCount(employeeId, month) {
   try {
-    const attendanceDir = ATTENDANCE_DIR;
-    if (!fs.existsSync(attendanceDir)) return 0;
+    if (!(await fileExists(ATTENDANCE_DIR))) return 0;
 
-    const files = fs.readdirSync(attendanceDir);
+    const files = await fsp.readdir(ATTENDANCE_DIR);
     let count = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const filePath = path.join(attendanceDir, file);
-      const content = fs.readFileSync(filePath, 'utf8');
+      const filePath = path.join(ATTENDANCE_DIR, file);
+      const content = await fsp.readFile(filePath, 'utf8');
       const record = JSON.parse(content);
 
       // Проверяем что это нужный сотрудник и нужный месяц
@@ -69,11 +80,11 @@ function getShiftsCount(employeeId, month) {
 }
 
 // Получить полную эффективность сотрудника за месяц (все 10 категорий)
-function getFullEfficiency(employeeId, employeeName, month) {
+async function getFullEfficiency(employeeId, employeeName, month) {
   try {
     // Используем модуль efficiency_calc для полного расчёта
     // shopAddress передаём пустым, так как reviews и RKO привязаны к магазину
-    const result = calculateFullEfficiency(employeeId, employeeName, '', month);
+    const result = await calculateFullEfficiency(employeeId, employeeName, '', month);
     return result;
   } catch (e) {
     console.error('Ошибка подсчета эффективности:', e);
@@ -82,17 +93,17 @@ function getFullEfficiency(employeeId, employeeName, month) {
 }
 
 // Получить баллы за рефералов (с поддержкой милестоунов)
-function getReferralPoints(employeeId, month) {
+async function getReferralPoints(employeeId, month) {
   try {
-    const referralsDir = `${DATA_DIR}/referral-clients`;
-    if (!fs.existsSync(referralsDir)) return 0;
+    const referralsDir = path.join(DATA_DIR, 'referral-clients');
+    if (!(await fileExists(referralsDir))) return 0;
 
-    const files = fs.readdirSync(referralsDir);
+    const files = await fsp.readdir(referralsDir);
     let count = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
-      const content = fs.readFileSync(path.join(referralsDir, file), 'utf8');
+      const content = await fsp.readFile(path.join(referralsDir, file), 'utf8');
       const client = JSON.parse(content);
 
       if (client.referredByEmployeeId === employeeId &&
@@ -102,13 +113,14 @@ function getReferralPoints(employeeId, month) {
     }
 
     // Получить настройки баллов за рефералов (новый формат с милестоунами)
-    const settingsPath = `${DATA_DIR}/points-settings/referrals.json`;
+    const settingsPath = path.join(DATA_DIR, 'points-settings', 'referrals.json');
     let basePoints = 1;
     let milestoneThreshold = 0;
     let milestonePoints = 1;
 
-    if (fs.existsSync(settingsPath)) {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    if (await fileExists(settingsPath)) {
+      const settingsContent = await fsp.readFile(settingsPath, 'utf8');
+      const settings = JSON.parse(settingsContent);
 
       // ОБРАТНАЯ СОВМЕСТИМОСТЬ: старый формат {pointsPerReferral: 1}
       if (settings.pointsPerReferral !== undefined && settings.basePoints === undefined) {
@@ -132,16 +144,16 @@ function getReferralPoints(employeeId, month) {
 }
 
 // Получить всех активных сотрудников
-function getActiveEmployees() {
+async function getActiveEmployees() {
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) return [];
+    if (!(await fileExists(EMPLOYEES_DIR))) return [];
 
-    const files = fs.readdirSync(EMPLOYEES_DIR);
+    const files = await fsp.readdir(EMPLOYEES_DIR);
     const employees = [];
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
-      const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
+      const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
       const emp = JSON.parse(content);
 
       if (!emp.isArchived) {
@@ -162,20 +174,20 @@ function getActiveEmployees() {
 
 // Рассчитать рейтинг для всех сотрудников за месяц
 // OPTIMIZED: Загружает все данные ОДИН раз, затем O(n) расчёт
-function calculateRatings(month) {
+async function calculateRatings(month) {
   const startTime = Date.now();
   console.log(`[Rating] Начало расчёта рейтинга за ${month}`);
 
-  const employees = getActiveEmployees();
+  const employees = await getActiveEmployees();
   const ratings = [];
 
   // OPTIMIZATION: Предзагружаем ВСЕ данные за месяц ОДИН раз
-  const cache = initBatchCache(month);
+  const cache = await initBatchCache(month);
 
   // OPTIMIZATION: Загружаем attendance и referral данные ОДИН раз
-  const attendanceData = loadAllAttendanceForMonth(month);
-  const referralData = loadAllReferralsForMonth(month);
-  const referralSettings = loadReferralSettings();
+  const attendanceData = await loadAllAttendanceForMonth(month);
+  const referralData = await loadAllReferralsForMonth(month);
+  const referralSettings = await loadReferralSettings();
 
   console.log(`[Rating] Предзагрузка завершена: ${attendanceData.length} attendance, ${referralData.length} referrals`);
 
@@ -184,7 +196,7 @@ function calculateRatings(month) {
     const shiftsCount = countShiftsFromCache(emp.id, attendanceData);
 
     // ПОЛНАЯ эффективность используя кэш (O(n) вместо O(n×m))
-    const efficiency = calculateFullEfficiencyCached(emp.id, emp.name, '', month, cache);
+    const efficiency = await calculateFullEfficiencyCached(emp.id, emp.name, '', month, cache);
     const totalPoints = efficiency.total;
 
     // O(1) подсчёт рефералов из предзагруженных данных
@@ -231,19 +243,19 @@ function calculateRatings(month) {
 }
 
 // OPTIMIZATION: Загрузить ВСЕ attendance записи за месяц ОДИН раз
-function loadAllAttendanceForMonth(month) {
+async function loadAllAttendanceForMonth(month) {
   const records = [];
 
-  if (!fs.existsSync(ATTENDANCE_DIR)) return records;
+  if (!(await fileExists(ATTENDANCE_DIR))) return records;
 
   try {
-    const files = fs.readdirSync(ATTENDANCE_DIR);
+    const files = await fsp.readdir(ATTENDANCE_DIR);
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
       try {
-        const content = fs.readFileSync(path.join(ATTENDANCE_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(ATTENDANCE_DIR, file), 'utf8');
         const record = JSON.parse(content);
 
         const recordDate = record.timestamp || record.createdAt;
@@ -260,20 +272,20 @@ function loadAllAttendanceForMonth(month) {
 }
 
 // OPTIMIZATION: Загрузить ВСЕ referral записи за месяц ОДИН раз
-function loadAllReferralsForMonth(month) {
-  const referralsDir = `${DATA_DIR}/referral-clients`;
+async function loadAllReferralsForMonth(month) {
+  const referralsDir = path.join(DATA_DIR, 'referral-clients');
   const records = [];
 
-  if (!fs.existsSync(referralsDir)) return records;
+  if (!(await fileExists(referralsDir))) return records;
 
   try {
-    const files = fs.readdirSync(referralsDir);
+    const files = await fsp.readdir(referralsDir);
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
       try {
-        const content = fs.readFileSync(path.join(referralsDir, file), 'utf8');
+        const content = await fsp.readFile(path.join(referralsDir, file), 'utf8');
         const client = JSON.parse(content);
 
         if (client.referredAt && client.referredAt.startsWith(month)) {
@@ -289,12 +301,13 @@ function loadAllReferralsForMonth(month) {
 }
 
 // Загрузить настройки рефералов
-function loadReferralSettings() {
-  const settingsPath = `${DATA_DIR}/points-settings/referrals.json`;
+async function loadReferralSettings() {
+  const settingsPath = path.join(DATA_DIR, 'points-settings', 'referrals.json');
 
   try {
-    if (fs.existsSync(settingsPath)) {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    if (await fileExists(settingsPath)) {
+      const content = await fsp.readFile(settingsPath, 'utf8');
+      const settings = JSON.parse(content);
 
       // ОБРАТНАЯ СОВМЕСТИМОСТЬ
       if (settings.pointsPerReferral !== undefined && settings.basePoints === undefined) {
@@ -368,6 +381,111 @@ function getDefaultWheelSectors() {
   }));
 }
 
+// Вспомогательная функция: получить настройки колеса
+async function getWheelSettings() {
+  try {
+    const settingsPath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
+
+    if (await fileExists(settingsPath)) {
+      const content = await fsp.readFile(settingsPath, 'utf8');
+      const settings = JSON.parse(content);
+
+      // Обратная совместимость: если нет topEmployeesCount, используем дефолт 3
+      if (!settings.topEmployeesCount) {
+        settings.topEmployeesCount = 3;
+      }
+
+      return settings;
+    }
+
+    // Дефолтные настройки
+    return {
+      topEmployeesCount: 3,
+      sectors: getDefaultWheelSectors()
+    };
+  } catch (error) {
+    console.error('Ошибка чтения настроек колеса:', error);
+    return {
+      topEmployeesCount: 3,
+      sectors: getDefaultWheelSectors()
+    };
+  }
+}
+
+// Вспомогательная функция: пересчитать прокрутки для текущего месяца
+async function recalculateCurrentMonthSpins(month, topCount) {
+  try {
+    console.log(`🔄 Пересчёт прокруток для месяца ${month}, топ-${topCount} сотрудников`);
+
+    // Читаем текущий рейтинг
+    const ratingsPath = path.join(RATINGS_DIR, `${month}.json`);
+
+    if (!(await fileExists(ratingsPath))) {
+      console.log(`⚠️ Рейтинг за ${month} не найден, пересчёт прокруток невозможен`);
+      return;
+    }
+
+    const content = await fsp.readFile(ratingsPath, 'utf8');
+    const data = JSON.parse(content);
+    const ratings = data.ratings || [];
+
+    if (ratings.length === 0) {
+      console.log(`⚠️ Рейтинг за ${month} пустой, пересчёт прокруток невозможен`);
+      return;
+    }
+
+    // Выдаём прокрутки топ-N сотрудникам
+    const topN = Math.min(topCount, ratings.length);
+    await assignWheelSpins(month, ratings.slice(0, topN));
+
+    console.log(`✅ Прокрутки пересчитаны: топ-${topN} сотрудников получили прокрутки`);
+  } catch (error) {
+    console.error(`❌ Ошибка пересчёта прокруток для ${month}:`, error);
+  }
+}
+
+// Вспомогательная функция: выдать прокрутки топ-3
+async function assignWheelSpins(month, top3) {
+  try {
+    const spinsDir = path.join(FORTUNE_WHEEL_DIR, 'spins');
+    await fsp.mkdir(spinsDir, { recursive: true });
+
+    // Вычисляем срок истечения: конец следующего месяца после награждаемого
+    const [year, monthNum] = month.split('-').map(Number);
+    const expiryDate = new Date(year, monthNum + 1, 0, 23, 59, 59); // Последний день следующего месяца
+    const expiresAt = expiryDate.toISOString();
+
+    const filePath = path.join(spinsDir, `${month}.json`);
+    const spins = {};
+
+    for (let i = 0; i < top3.length; i++) {
+      const emp = top3[i];
+      const spinCount = i === 0 ? 2 : 1; // 1 место = 2 прокрутки, 2-3 = 1
+
+      spins[emp.employeeId] = {
+        employeeName: emp.employeeName,
+        position: i + 1,
+        available: spinCount,
+        used: 0,
+        assignedAt: new Date().toISOString(),
+        expiresAt
+      };
+    }
+
+    const data = {
+      month,
+      assignedAt: new Date().toISOString(),
+      expiresAt, // Глобальный срок истечения для всех прокруток
+      spins
+    };
+
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+    console.log(`✅ Прокрутки выданы топ-3 за ${month} (истекают: ${expiresAt})`);
+  } catch (e) {
+    console.error('Ошибка выдачи прокруток:', e);
+  }
+}
+
 // Инициализация API
 module.exports = function setupRatingWheelAPI(app) {
 
@@ -383,9 +501,7 @@ module.exports = function setupRatingWheelAPI(app) {
       console.log(`📊 GET /api/ratings month=${month} forceRefresh=${forceRefresh}`);
 
       // Создать директорию если не существует
-      if (!fs.existsSync(RATINGS_DIR)) {
-        fs.mkdirSync(RATINGS_DIR, { recursive: true });
-      }
+      await fsp.mkdir(RATINGS_DIR, { recursive: true });
 
       const filePath = path.join(RATINGS_DIR, `${month}.json`);
 
@@ -394,8 +510,8 @@ module.exports = function setupRatingWheelAPI(app) {
       const shouldCache = month !== currentMonth; // Кэшируем только завершённые месяцы
 
       // Проверяем есть ли сохраненный рейтинг (если не forceRefresh)
-      if (!forceRefresh && fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf8');
+      if (!forceRefresh && (await fileExists(filePath))) {
+        const content = await fsp.readFile(filePath, 'utf8');
         const data = JSON.parse(content);
         console.log(`✅ Рейтинг загружен из кэша (calculatedAt: ${data.calculatedAt})`);
         return res.json({
@@ -410,7 +526,7 @@ module.exports = function setupRatingWheelAPI(app) {
 
       // Рассчитываем рейтинг
       console.log(`🔄 Расчёт рейтинга за ${month}...`);
-      const ratings = calculateRatings(month);
+      const ratings = await calculateRatings(month);
 
       // Сохраняем в кэш если нужно
       if (shouldCache) {
@@ -419,7 +535,7 @@ module.exports = function setupRatingWheelAPI(app) {
           calculatedAt: new Date().toISOString(),
           ratings
         };
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+        await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
         console.log(`💾 Рейтинг сохранён в кэш: ${filePath}`);
       }
 
@@ -454,12 +570,12 @@ module.exports = function setupRatingWheelAPI(app) {
         let ratings;
         const filePath = path.join(RATINGS_DIR, `${month}.json`);
 
-        if (fs.existsSync(filePath)) {
-          const content = fs.readFileSync(filePath, 'utf8');
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
           const data = JSON.parse(content);
           ratings = data.ratings;
         } else {
-          ratings = calculateRatings(month);
+          ratings = await calculateRatings(month);
         }
 
         // Находим сотрудника
@@ -499,15 +615,15 @@ module.exports = function setupRatingWheelAPI(app) {
       const month = req.query.month; // Если не указан - удалить все
       console.log(`🗑️ DELETE /api/ratings/cache month=${month || 'all'}`);
 
-      if (!fs.existsSync(RATINGS_DIR)) {
+      if (!(await fileExists(RATINGS_DIR))) {
         return res.json({ success: true, message: 'Кэш уже пуст' });
       }
 
       if (month) {
         // Удалить кэш для конкретного месяца
         const filePath = path.join(RATINGS_DIR, `${month}.json`);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+        if (await fileExists(filePath)) {
+          await fsp.unlink(filePath);
           console.log(`✅ Кэш рейтинга за ${month} удалён`);
           return res.json({ success: true, message: `Кэш за ${month} удалён` });
         } else {
@@ -515,11 +631,11 @@ module.exports = function setupRatingWheelAPI(app) {
         }
       } else {
         // Удалить весь кэш
-        const files = fs.readdirSync(RATINGS_DIR);
+        const files = await fsp.readdir(RATINGS_DIR);
         let deletedCount = 0;
         for (const file of files) {
           if (file.endsWith('.json')) {
-            fs.unlinkSync(path.join(RATINGS_DIR, file));
+            await fsp.unlink(path.join(RATINGS_DIR, file));
             deletedCount++;
           }
         }
@@ -538,11 +654,9 @@ module.exports = function setupRatingWheelAPI(app) {
       const month = req.query.month || getCurrentMonth();
       console.log(`🔄 POST /api/ratings/calculate month=${month}`);
 
-      if (!fs.existsSync(RATINGS_DIR)) {
-        fs.mkdirSync(RATINGS_DIR, { recursive: true });
-      }
+      await fsp.mkdir(RATINGS_DIR, { recursive: true });
 
-      const ratings = calculateRatings(month);
+      const ratings = await calculateRatings(month);
 
       const filePath = path.join(RATINGS_DIR, `${month}.json`);
       const data = {
@@ -551,10 +665,10 @@ module.exports = function setupRatingWheelAPI(app) {
         ratings
       };
 
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 
       // Читаем topEmployeesCount из настроек и выдаем прокрутки топ-N
-      const wheelSettings = getWheelSettings();
+      const wheelSettings = await getWheelSettings();
       const topCount = wheelSettings.topEmployeesCount || 3;
 
       console.log(`🎡 Выдача прокруток топ-${topCount} сотрудникам`);
@@ -577,15 +691,12 @@ module.exports = function setupRatingWheelAPI(app) {
     try {
       console.log('🎡 GET /api/fortune-wheel/settings');
 
-      const settingsDir = FORTUNE_WHEEL_DIR;
-      if (!fs.existsSync(settingsDir)) {
-        fs.mkdirSync(settingsDir, { recursive: true });
-      }
+      await fsp.mkdir(FORTUNE_WHEEL_DIR, { recursive: true });
 
-      const filePath = path.join(settingsDir, 'settings.json');
+      const filePath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
 
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf8');
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
         const settings = JSON.parse(content);
 
         // Обратная совместимость: если нет topEmployeesCount, вернуть дефолт
@@ -627,9 +738,7 @@ module.exports = function setupRatingWheelAPI(app) {
         ? Math.max(1, Math.min(10, topEmployeesCount))
         : 3;
 
-      if (!fs.existsSync(FORTUNE_WHEEL_DIR)) {
-        fs.mkdirSync(FORTUNE_WHEEL_DIR, { recursive: true });
-      }
+      await fsp.mkdir(FORTUNE_WHEEL_DIR, { recursive: true });
 
       const filePath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
       const data = {
@@ -638,7 +747,7 @@ module.exports = function setupRatingWheelAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 
       console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
 
@@ -671,9 +780,7 @@ module.exports = function setupRatingWheelAPI(app) {
         ? Math.max(1, Math.min(10, topEmployeesCount))
         : 3;
 
-      if (!fs.existsSync(FORTUNE_WHEEL_DIR)) {
-        fs.mkdirSync(FORTUNE_WHEEL_DIR, { recursive: true });
-      }
+      await fsp.mkdir(FORTUNE_WHEEL_DIR, { recursive: true });
 
       const filePath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
       const data = {
@@ -682,7 +789,7 @@ module.exports = function setupRatingWheelAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 
       console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
 
@@ -704,20 +811,20 @@ module.exports = function setupRatingWheelAPI(app) {
       console.log(`🎡 GET /api/fortune-wheel/spins/${employeeId}`);
 
       const spinsDir = path.join(FORTUNE_WHEEL_DIR, 'spins');
-      if (!fs.existsSync(spinsDir)) {
+      if (!(await fileExists(spinsDir))) {
         return res.json({ success: true, availableSpins: 0, month: null });
       }
 
       const now = new Date();
 
       // Ищем прокрутки для этого сотрудника
-      const files = fs.readdirSync(spinsDir);
+      const files = await fsp.readdir(spinsDir);
       let totalSpins = 0;
       let latestMonth = null;
 
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
-        const content = fs.readFileSync(path.join(spinsDir, file), 'utf8');
+        const content = await fsp.readFile(path.join(spinsDir, file), 'utf8');
         const data = JSON.parse(content);
 
         // Проверяем срок истечения
@@ -761,14 +868,14 @@ module.exports = function setupRatingWheelAPI(app) {
 
       // Проверяем доступные прокрутки
       const spinsDir = path.join(FORTUNE_WHEEL_DIR, 'spins');
-      if (!fs.existsSync(spinsDir)) {
+      if (!(await fileExists(spinsDir))) {
         return res.status(400).json({ success: false, error: 'Нет доступных прокруток' });
       }
 
       const now = new Date();
 
       // Находим месяц с доступными прокрутками
-      const files = fs.readdirSync(spinsDir);
+      const files = await fsp.readdir(spinsDir);
       let spinMonth = null;
       let spinData = null;
       let spinFilePath = null;
@@ -776,7 +883,7 @@ module.exports = function setupRatingWheelAPI(app) {
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
         const filePath = path.join(spinsDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const data = JSON.parse(content);
 
         // Проверяем срок истечения
@@ -801,8 +908,9 @@ module.exports = function setupRatingWheelAPI(app) {
       // Получаем настройки секторов
       const settingsPath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
       let sectors;
-      if (fs.existsSync(settingsPath)) {
-        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      if (await fileExists(settingsPath)) {
+        const settingsContent = await fsp.readFile(settingsPath, 'utf8');
+        const settings = JSON.parse(settingsContent);
         sectors = settings.sectors;
       } else {
         sectors = getDefaultWheelSectors();
@@ -824,19 +932,18 @@ module.exports = function setupRatingWheelAPI(app) {
       // Уменьшаем количество прокруток
       spinData.spins[employeeId].available--;
       spinData.spins[employeeId].used = (spinData.spins[employeeId].used || 0) + 1;
-      fs.writeFileSync(spinFilePath, JSON.stringify(spinData, null, 2), 'utf8');
+      await fsp.writeFile(spinFilePath, JSON.stringify(spinData, null, 2), 'utf8');
 
       // Сохраняем в историю
       const historyDir = path.join(FORTUNE_WHEEL_DIR, 'history');
-      if (!fs.existsSync(historyDir)) {
-        fs.mkdirSync(historyDir, { recursive: true });
-      }
+      await fsp.mkdir(historyDir, { recursive: true });
 
       const currentMonth = getCurrentMonth();
       const historyPath = path.join(historyDir, `${currentMonth}.json`);
       let historyData = { records: [] };
-      if (fs.existsSync(historyPath)) {
-        historyData = JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+      if (await fileExists(historyPath)) {
+        const historyContent = await fsp.readFile(historyPath, 'utf8');
+        historyData = JSON.parse(historyContent);
       }
 
       const spinRecord = {
@@ -854,7 +961,7 @@ module.exports = function setupRatingWheelAPI(app) {
       };
 
       historyData.records.push(spinRecord);
-      fs.writeFileSync(historyPath, JSON.stringify(historyData, null, 2), 'utf8');
+      await fsp.writeFile(historyPath, JSON.stringify(historyData, null, 2), 'utf8');
 
       console.log(`✅ Прокрутка: ${employeeName} выиграл "${selectedSector.text}"`);
 
@@ -878,11 +985,11 @@ module.exports = function setupRatingWheelAPI(app) {
 
       const historyPath = path.join(FORTUNE_WHEEL_DIR, 'history', `${month}.json`);
 
-      if (!fs.existsSync(historyPath)) {
+      if (!(await fileExists(historyPath))) {
         return res.json({ success: true, records: [], month });
       }
 
-      const content = fs.readFileSync(historyPath, 'utf8');
+      const content = await fsp.readFile(historyPath, 'utf8');
       const data = JSON.parse(content);
 
       // Сортируем по дате (новые первые)
@@ -908,11 +1015,11 @@ module.exports = function setupRatingWheelAPI(app) {
 
       const historyPath = path.join(FORTUNE_WHEEL_DIR, 'history', `${targetMonth}.json`);
 
-      if (!fs.existsSync(historyPath)) {
+      if (!(await fileExists(historyPath))) {
         return res.status(404).json({ success: false, error: 'История не найдена' });
       }
 
-      const content = fs.readFileSync(historyPath, 'utf8');
+      const content = await fsp.readFile(historyPath, 'utf8');
       const data = JSON.parse(content);
 
       const record = data.records.find(r => r.id === id);
@@ -924,7 +1031,7 @@ module.exports = function setupRatingWheelAPI(app) {
       record.processedBy = adminName || 'Администратор';
       record.processedAt = new Date().toISOString();
 
-      fs.writeFileSync(historyPath, JSON.stringify(data, null, 2), 'utf8');
+      await fsp.writeFile(historyPath, JSON.stringify(data, null, 2), 'utf8');
 
       console.log(`✅ Приз ${id} отмечен как обработанный`);
       res.json({ success: true, record });
@@ -936,110 +1043,3 @@ module.exports = function setupRatingWheelAPI(app) {
 
   console.log('✅ Rating & Fortune Wheel API initialized');
 };
-
-// Вспомогательная функция: получить настройки колеса
-function getWheelSettings() {
-  try {
-    const settingsPath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
-
-    if (fs.existsSync(settingsPath)) {
-      const content = fs.readFileSync(settingsPath, 'utf8');
-      const settings = JSON.parse(content);
-
-      // Обратная совместимость: если нет topEmployeesCount, используем дефолт 3
-      if (!settings.topEmployeesCount) {
-        settings.topEmployeesCount = 3;
-      }
-
-      return settings;
-    }
-
-    // Дефолтные настройки
-    return {
-      topEmployeesCount: 3,
-      sectors: getDefaultWheelSectors()
-    };
-  } catch (error) {
-    console.error('Ошибка чтения настроек колеса:', error);
-    return {
-      topEmployeesCount: 3,
-      sectors: getDefaultWheelSectors()
-    };
-  }
-}
-
-// Вспомогательная функция: пересчитать прокрутки для текущего месяца
-async function recalculateCurrentMonthSpins(month, topCount) {
-  try {
-    console.log(`🔄 Пересчёт прокруток для месяца ${month}, топ-${topCount} сотрудников`);
-
-    // Читаем текущий рейтинг
-    const ratingsPath = path.join(RATINGS_DIR, `${month}.json`);
-
-    if (!fs.existsSync(ratingsPath)) {
-      console.log(`⚠️ Рейтинг за ${month} не найден, пересчёт прокруток невозможен`);
-      return;
-    }
-
-    const content = fs.readFileSync(ratingsPath, 'utf8');
-    const data = JSON.parse(content);
-    const ratings = data.ratings || [];
-
-    if (ratings.length === 0) {
-      console.log(`⚠️ Рейтинг за ${month} пустой, пересчёт прокруток невозможен`);
-      return;
-    }
-
-    // Выдаём прокрутки топ-N сотрудникам
-    const topN = Math.min(topCount, ratings.length);
-    await assignWheelSpins(month, ratings.slice(0, topN));
-
-    console.log(`✅ Прокрутки пересчитаны: топ-${topN} сотрудников получили прокрутки`);
-  } catch (error) {
-    console.error(`❌ Ошибка пересчёта прокруток для ${month}:`, error);
-  }
-}
-
-// Вспомогательная функция: выдать прокрутки топ-3
-async function assignWheelSpins(month, top3) {
-  try {
-    const spinsDir = path.join(FORTUNE_WHEEL_DIR, 'spins');
-    if (!fs.existsSync(spinsDir)) {
-      fs.mkdirSync(spinsDir, { recursive: true });
-    }
-
-    // Вычисляем срок истечения: конец следующего месяца после награждаемого
-    const [year, monthNum] = month.split('-').map(Number);
-    const expiryDate = new Date(year, monthNum + 1, 0, 23, 59, 59); // Последний день следующего месяца
-    const expiresAt = expiryDate.toISOString();
-
-    const filePath = path.join(spinsDir, `${month}.json`);
-    const spins = {};
-
-    for (let i = 0; i < top3.length; i++) {
-      const emp = top3[i];
-      const spinCount = i === 0 ? 2 : 1; // 1 место = 2 прокрутки, 2-3 = 1
-
-      spins[emp.employeeId] = {
-        employeeName: emp.employeeName,
-        position: i + 1,
-        available: spinCount,
-        used: 0,
-        assignedAt: new Date().toISOString(),
-        expiresAt
-      };
-    }
-
-    const data = {
-      month,
-      assignedAt: new Date().toISOString(),
-      expiresAt, // Глобальный срок истечения для всех прокруток
-      spins
-    };
-
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-    console.log(`✅ Прокрутки выданы топ-3 за ${month} (истекают: ${expiresAt})`);
-  } catch (e) {
-    console.error('Ошибка выдачи прокруток:', e);
-  }
-}

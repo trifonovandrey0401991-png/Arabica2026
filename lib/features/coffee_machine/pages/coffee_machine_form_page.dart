@@ -8,6 +8,7 @@ import '../models/coffee_machine_report_model.dart';
 import '../services/coffee_machine_template_service.dart';
 import '../services/coffee_machine_report_service.dart';
 import '../services/coffee_machine_ocr_service.dart';
+import '../widgets/counter_region_selector.dart';
 import '../../../core/services/media_upload_service.dart';
 
 /// Форма сдачи показаний счётчиков кофемашин
@@ -46,6 +47,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   final Map<String, TextEditingController> _machineControllers = {};
   final Map<String, bool> _machineWasEdited = {};
   final Map<String, bool> _machineOcrDone = {};
+  final Map<String, Map<String, double>?> _machineSelectedRegions = {};
+  final Map<String, String> _machineBase64 = {}; // base64 фото для повторного OCR
 
   // Фото и данные компьютера
   File? _computerPhoto;
@@ -53,6 +56,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   final _computerController = TextEditingController();
   bool _computerWasEdited = false;
   bool _computerOcrDone = false;
+  String? _computerBase64;
 
   // Текущий шаг
   int _currentStep = 0;
@@ -135,13 +139,54 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     setState(() {
       if (isComputer) {
         _computerPhoto = file;
+        _computerBase64 = base64Image;
       } else {
         _machinePhotos[templateId] = file;
+        _machineBase64[templateId] = base64Image;
       }
     });
 
-    // Показать диалог загрузки OCR
-    if (!mounted) return;
+    // Первый вызов OCR
+    final result = await _callOcr(
+      base64Image: base64Image,
+      templateId: templateId,
+      isComputer: isComputer,
+    );
+
+    if (result == null) return; // диалог загрузки был закрыт (unmounted)
+
+    setState(() {
+      if (isComputer) {
+        _computerAiNumber = result.number;
+        _computerOcrDone = true;
+      } else {
+        _machineAiNumbers[templateId] = result.number;
+        _machineOcrDone[templateId] = true;
+      }
+    });
+
+    if (result.success && result.number != null) {
+      // Показать интерактивный диалог: "Верно?" / "Неверно?"
+      _showInteractiveOcrDialog(
+        number: result.number!,
+        templateId: templateId,
+        isComputer: isComputer,
+      );
+    } else {
+      // OCR не смог распознать — предложить выделить область или ввести вручную
+      _showOcrFailedDialog(templateId: templateId, isComputer: isComputer);
+    }
+  }
+
+  /// Вызов OCR с показом loading-диалога
+  Future<OcrResult?> _callOcr({
+    required String base64Image,
+    required String templateId,
+    required bool isComputer,
+    Map<String, double>? userRegion,
+  }) async {
+    if (!mounted) return null;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -162,9 +207,9 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       ),
     );
 
-    // Получить регион для OCR
-    Map<String, double>? region;
-    if (!isComputer) {
+    // Определить region: пользовательский или из шаблона
+    Map<String, double>? region = userRegion;
+    if (region == null && !isComputer) {
       final template = _machineTemplates.firstWhere((t) => t.id == templateId);
       if (template.counterRegion != null) {
         region = {
@@ -176,65 +221,327 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       }
     }
 
-    // Вызвать OCR
+    // Пресет OCR
+    String? preset;
+    if (isComputer) {
+      preset = 'computer';
+    } else {
+      final template = _machineTemplates.firstWhere((t) => t.id == templateId);
+      preset = template.ocrPreset;
+    }
+
+    // Имя машины для поиска обученного region на сервере
+    String? machineNameForTraining;
+    if (!isComputer) {
+      final tmpl = _machineTemplates.firstWhere((t) => t.id == templateId);
+      machineNameForTraining = tmpl.name;
+    }
+
     final result = await CoffeeMachineOcrService.recognizeNumber(
       imageBase64: base64Image,
       region: region,
+      preset: preset,
+      machineName: machineNameForTraining,
     );
 
-    if (!mounted) return;
-    Navigator.of(context).pop(); // Закрыть диалог загрузки
+    if (!mounted) return null;
+    Navigator.of(context).pop(); // Закрыть loading
 
-    setState(() {
-      if (isComputer) {
-        _computerAiNumber = result.number;
-        _computerOcrDone = true;
-        if (result.success && result.number != null) {
-          _computerController.text = result.number.toString();
-        }
-      } else {
-        _machineAiNumbers[templateId] = result.number;
-        _machineOcrDone[templateId] = true;
-        if (result.success && result.number != null) {
-          _machineControllers[templateId]?.text = result.number.toString();
-        }
-      }
-    });
-
-    // Показать результат
-    if (result.success && result.number != null) {
-      _showOcrResultDialog(result.number!, isComputer ? 'Компьютер' : templateId);
-    } else {
-      _showSnackBar('Не удалось распознать число. Введите вручную.', isError: true);
-    }
+    return result;
   }
 
-  void _showOcrResultDialog(int number, String source) {
+  /// Интерактивный диалог: ИИ распознал X — "Верно?" / "Неверно?"
+  void _showInteractiveOcrDialog({
+    required int number,
+    required String templateId,
+    required bool isComputer,
+    bool isRetry = false,
+  }) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Результат распознавания'),
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.smart_toy, color: _gold, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              isRetry ? 'Повторное распознавание' : 'Результат распознавания',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 48),
-            const SizedBox(height: 12),
-            Text(
-              '$number',
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$number',
+                style: const TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 2,
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
-            const Text('Если число неверное, измените его вручную'),
+            const SizedBox(height: 16),
+            const Text(
+              'Число верное?',
+              style: TextStyle(color: Colors.white70, fontSize: 15),
+            ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+          // Кнопка "Неверно" / "Ввести вручную"
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (isRetry) {
+                // После повторной попытки — ручной ввод
+                _promptManualInput(templateId: templateId, isComputer: isComputer);
+              } else {
+                // Первая попытка — дать выделить область
+                _openRegionSelector(templateId: templateId, isComputer: isComputer);
+              }
+            },
+            icon: Icon(
+              isRetry ? Icons.edit : Icons.crop_free,
+              color: Colors.orange,
+              size: 20,
+            ),
+            label: Text(
+              isRetry ? 'Ввести вручную' : 'Неверно',
+              style: const TextStyle(color: Colors.orange, fontSize: 15),
+            ),
+          ),
+          // Кнопка "Верно"
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _acceptOcrNumber(number, templateId: templateId, isComputer: isComputer);
+            },
+            icon: const Icon(Icons.check, color: Colors.white, size: 20),
+            label: const Text(
+              'Верно',
+              style: TextStyle(color: Colors.white, fontSize: 15),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  /// Принять OCR-число
+  void _acceptOcrNumber(int number, {required String templateId, required bool isComputer}) {
+    setState(() {
+      if (isComputer) {
+        _computerController.text = number.toString();
+        _computerWasEdited = false;
+      } else {
+        _machineControllers[templateId]?.text = number.toString();
+        _machineWasEdited[templateId] = false;
+      }
+    });
+  }
+
+  /// Открыть экран выделения области и повторить OCR
+  Future<void> _openRegionSelector({required String templateId, required bool isComputer}) async {
+    final file = isComputer ? _computerPhoto : _machinePhotos[templateId];
+    if (file == null) return;
+
+    final region = await CounterRegionSelector.show(
+      context,
+      imageFile: file,
+    );
+
+    if (region == null || !mounted) return;
+
+    // Сохранить выбранную область
+    if (!isComputer) {
+      _machineSelectedRegions[templateId] = region;
+    }
+
+    // Повторный OCR с выделенной областью
+    final base64Image = isComputer ? _computerBase64 : _machineBase64[templateId];
+    if (base64Image == null) return;
+
+    final result = await _callOcr(
+      base64Image: base64Image,
+      templateId: templateId,
+      isComputer: isComputer,
+      userRegion: region,
+    );
+
+    if (result == null) return;
+
+    setState(() {
+      if (isComputer) {
+        _computerAiNumber = result.number;
+      } else {
+        _machineAiNumbers[templateId] = result.number;
+      }
+    });
+
+    if (result.success && result.number != null) {
+      // Показать повторный диалог (isRetry=true: кнопка "Ввести вручную" вместо "Неверно")
+      _showInteractiveOcrDialog(
+        number: result.number!,
+        templateId: templateId,
+        isComputer: isComputer,
+        isRetry: true,
+      );
+    } else {
+      _promptManualInput(templateId: templateId, isComputer: isComputer);
+    }
+  }
+
+  /// Диалог ручного ввода числа
+  void _promptManualInput({required String templateId, required bool isComputer}) {
+    final manualController = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit, color: _gold, size: 22),
+            SizedBox(width: 8),
+            Text('Введите число', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Введите показание счётчика вручную',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: manualController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                hintText: '12345',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _gold, width: 2),
+                ),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = manualController.text.trim();
+              if (text.isEmpty) return;
+              Navigator.pop(ctx);
+              setState(() {
+                if (isComputer) {
+                  _computerController.text = text;
+                  _computerWasEdited = true;
+                } else {
+                  _machineControllers[templateId]?.text = text;
+                  _machineWasEdited[templateId] = true;
+                }
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _gold,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Подтвердить', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Диалог при ошибке OCR: только выделить область
+  void _showOcrFailedDialog({required String templateId, required bool isComputer}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Не удалось распознать',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'ИИ не смог определить число на фото.\nВыделите область со счётчиком на фото.',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openRegionSelector(templateId: templateId, isComputer: isComputer);
+            },
+            icon: const Icon(Icons.crop_free, color: Colors.white, size: 20),
+            label: const Text('Выделить область', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _gold,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Проверяет, можно ли перейти на следующий шаг
+  bool get _canProceedToNext {
+    if (_currentStep < _machineTemplates.length) {
+      // Шаг машины: нужно фото + число
+      final t = _machineTemplates[_currentStep];
+      final hasPhoto = _machinePhotos[t.id] != null;
+      final hasNumber = (_machineControllers[t.id]?.text ?? '').isNotEmpty;
+      return hasPhoto && hasNumber;
+    } else if (_currentStep == _machineTemplates.length) {
+      // Шаг компьютера: нужно фото + число
+      final hasPhoto = _computerPhoto != null;
+      final hasNumber = _computerController.text.isNotEmpty;
+      return hasPhoto && hasNumber;
+    }
+    // Итоги — всегда можно отправить (валидация в _submitReport)
+    return true;
   }
 
   int get _sumOfMachines {
@@ -246,28 +553,12 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     return sum;
   }
 
-  /// Парсит число компьютера: убирает пробелы, заменяет запятую на точку
-  /// Поддержка форматов: "-138 141,20" (1С) и "-138,142.20" (FoxPro)
+  /// Число компьютера: сотрудник вводит обычное число, минус применяется автоматически
   double get _computerNumber {
-    String text = _computerController.text.trim();
+    final text = _computerController.text.trim();
     if (text.isEmpty) return 0.0;
-
-    // Определяем формат: если есть и запятая и точка — FoxPro (запятая=тысячи, точка=дробь)
-    final hasComma = text.contains(',');
-    final hasDot = text.contains('.');
-
-    if (hasComma && hasDot) {
-      // FoxPro: -138,142.20 → убираем запятые-тысячи
-      text = text.replaceAll(',', '');
-    } else if (hasComma && !hasDot) {
-      // 1С: -138 141,20 → убираем пробелы, запятая→точка
-      text = text.replaceAll(' ', '').replaceAll(',', '.');
-    } else {
-      // Только цифры/точка/минус
-      text = text.replaceAll(' ', '');
-    }
-
-    return double.tryParse(text) ?? 0.0;
+    final parsed = int.tryParse(text) ?? 0;
+    return -parsed.toDouble();
   }
 
   /// Сверка: компьютер (минус) + сумма машин (плюс) = 0
@@ -309,7 +600,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
         final confirmedNumber = int.tryParse(_machineControllers[t.id]?.text ?? '') ?? 0;
         final aiNumber = _machineAiNumbers[t.id];
-        final wasEdited = aiNumber != null && aiNumber != confirmedNumber;
+        final wasEdited = (_machineWasEdited[t.id] == true) ||
+            (aiNumber != null && aiNumber != confirmedNumber);
 
         readings.add(CoffeeMachineReading(
           templateId: t.id,
@@ -318,6 +610,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           aiReadNumber: aiNumber,
           confirmedNumber: confirmedNumber,
           wasManuallyEdited: wasEdited,
+          selectedRegion: _machineSelectedRegions[t.id],
         ));
       }
 
@@ -908,7 +1201,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     );
   }
 
-  /// Поле ввода числа компьютера (разрешает минус, пробелы, запятые, точки)
+  /// Поле ввода числа компьютера (только цифры, минус добавляется автоматически)
   Widget _buildComputerNumberInput() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -935,14 +1228,12 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ],
           TextField(
             controller: _computerController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9\-\., ]')),
-            ],
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               labelText: 'Остаток по компьютеру',
-              hintText: 'Напр: -138 141,20',
+              hintText: '138141',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 16),
               labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               enabledBorder: OutlineInputBorder(
@@ -954,8 +1245,15 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                 borderSide: const BorderSide(color: _gold, width: 2),
               ),
               prefixIcon: Icon(Icons.computer, color: Colors.white.withOpacity(0.4)),
+              prefixText: '− ',
+              prefixStyle: const TextStyle(color: Colors.red, fontSize: 24, fontWeight: FontWeight.bold),
             ),
             onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Минус применяется автоматически',
+            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
           ),
         ],
       ),
@@ -991,9 +1289,11 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             child: ElevatedButton(
               onPressed: _isSaving
                   ? null
-                  : isLastStep
-                      ? _submitReport
-                      : () => setState(() => _currentStep++),
+                  : !_canProceedToNext
+                      ? null
+                      : isLastStep
+                          ? _submitReport
+                          : () => setState(() => _currentStep++),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isLastStep ? _gold : _emerald,
                 padding: const EdgeInsets.symmetric(vertical: 14),

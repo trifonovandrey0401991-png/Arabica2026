@@ -55,7 +55,7 @@ class UnifiedDialogMessage {
       case 'product_question':
         return data['questionText'] ?? '';
       case 'order':
-        return 'Заказ #${data['orderId'] ?? ''}';
+        return 'Заказ ${data['orderId'] ?? ''}';
       case 'employee_response':
         return data['text'] ?? '';
       default:

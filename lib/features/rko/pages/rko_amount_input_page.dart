@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/rko_service.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../services/rko_pdf_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/pages/employees_page.dart';
@@ -169,7 +170,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       }
 
       // Загружаем список всех магазинов для выбора
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await ShopService.getShopsForCurrentUser();
 
       // Если был выбран магазин, находим его в списке по адресу
       Shop? selectedShopFromList;

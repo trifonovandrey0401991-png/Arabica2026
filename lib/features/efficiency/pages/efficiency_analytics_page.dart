@@ -12,6 +12,12 @@ class EfficiencyAnalyticsPage extends StatefulWidget {
 }
 
 class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
+  // === Dark Emerald Palette ===
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   /// Режим отображения: 'shops' или 'employees'
   String _mode = 'shops';
 
@@ -86,67 +92,107 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Аналитика'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) => setState(() => _mode = value),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'shops',
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emeraldDark, _night],
+            stops: [0.0, 0.3],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom Row AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.store,
-                      color: _mode == 'shops' ? const Color(0xFF004D40) : Colors.grey,
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'По магазинам',
-                      style: TextStyle(
-                        fontWeight: _mode == 'shops' ? FontWeight.bold : FontWeight.normal,
+                    const Expanded(
+                      child: Text(
+                        'Аналитика',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.filter_list, color: Colors.white.withOpacity(0.9)),
+                      color: _emeraldDark,
+                      onSelected: (value) => setState(() => _mode = value),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'shops',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.store,
+                                color: _mode == 'shops' ? _gold : Colors.white.withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'По магазинам',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: _mode == 'shops' ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'employees',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.person,
+                                color: _mode == 'employees' ? _gold : Colors.white.withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'По сотрудникам',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: _mode == 'employees' ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              PopupMenuItem(
-                value: 'employees',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.person,
-                      color: _mode == 'employees' ? const Color(0xFF004D40) : Colors.grey,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'По сотрудникам',
-                      style: TextStyle(
-                        fontWeight: _mode == 'employees' ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // Body
+              Expanded(child: _buildBody()),
             ],
           ),
-        ],
+        ),
       ),
-      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: Color(0xFF004D40)),
-            SizedBox(height: 16),
-            Text('Загрузка данных за 3 месяца...'),
+            const CircularProgressIndicator(color: _gold),
+            const SizedBox(height: 16),
+            Text(
+              'Загрузка данных за 3 месяца...',
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            ),
           ],
         ),
       );
@@ -159,10 +205,17 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 16),
-            Text('Ошибка: $_error'),
+            Text(
+              'Ошибка: $_error',
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _emerald,
+                foregroundColor: _gold,
+              ),
               child: const Text('Повторить'),
             ),
           ],
@@ -171,11 +224,18 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
     }
 
     if (_monthsData.isEmpty) {
-      return const Center(child: Text('Нет данных'));
+      return Center(
+        child: Text(
+          'Нет данных',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+      );
     }
 
     return RefreshIndicator(
       onRefresh: _loadData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -200,22 +260,23 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFE0F2F1),
+        color: _emerald.withOpacity(0.5),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _gold.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             _mode == 'shops' ? Icons.store : Icons.person,
-            color: const Color(0xFF004D40),
+            color: _gold,
             size: 20,
           ),
           const SizedBox(width: 8),
           Text(
             _mode == 'shops' ? 'По магазинам' : 'По сотрудникам',
             style: const TextStyle(
-              color: Color(0xFF004D40),
+              color: Colors.white,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -250,9 +311,12 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
       maxY += 100;
     }
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: _emeraldDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _emerald.withOpacity(0.5)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -263,7 +327,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF004D40),
+                color: _gold,
               ),
             ),
             const SizedBox(height: 16),
@@ -277,7 +341,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                     horizontalInterval: (maxY - minY) / 4,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Colors.grey.shade200,
+                        color: Colors.white.withOpacity(0.1),
                         strokeWidth: 1,
                       );
                     },
@@ -291,7 +355,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                           return Text(
                             value.toStringAsFixed(0),
                             style: TextStyle(
-                              color: Colors.grey.shade600,
+                              color: Colors.white.withOpacity(0.5),
                               fontSize: 11,
                             ),
                           );
@@ -310,7 +374,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                               child: Text(
                                 _getShortMonthName(_monthsData[index].periodStart),
                                 style: TextStyle(
-                                  color: Colors.grey.shade700,
+                                  color: Colors.white.withOpacity(0.7),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -338,7 +402,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                       spots: spots,
                       isCurved: true,
                       curveSmoothness: 0.3,
-                      color: const Color(0xFF004D40),
+                      color: _gold,
                       barWidth: 3,
                       isStrokeCapRound: true,
                       dotData: FlDotData(
@@ -346,21 +410,21 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                         getDotPainter: (spot, percent, barData, index) {
                           return FlDotCirclePainter(
                             radius: 6,
-                            color: Colors.white,
+                            color: _emeraldDark,
                             strokeWidth: 3,
-                            strokeColor: const Color(0xFF004D40),
+                            strokeColor: _gold,
                           );
                         },
                       ),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: const Color(0xFF004D40).withOpacity(0.1),
+                        color: _gold.withOpacity(0.1),
                       ),
                     ),
                   ],
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (touchedSpot) => const Color(0xFF004D40),
+                      getTooltipColor: (touchedSpot) => _emerald,
                       getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
                           final index = spot.x.toInt();
@@ -389,9 +453,12 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
 
   /// Таблица по месяцам
   Widget _buildMonthsTable() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: _emeraldDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _emerald.withOpacity(0.5)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -402,7 +469,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF004D40),
+                color: _gold,
               ),
             ),
             const SizedBox(height: 16),
@@ -410,14 +477,14 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFE0F2F1),
+                color: _emerald.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Expanded(flex: 3, child: Text('Месяц', style: TextStyle(fontWeight: FontWeight.w600))),
-                  Expanded(flex: 2, child: Text('Итого', style: TextStyle(fontWeight: FontWeight.w600), textAlign: TextAlign.right)),
-                  Expanded(flex: 2, child: Text('Изменение', style: TextStyle(fontWeight: FontWeight.w600), textAlign: TextAlign.right)),
+                  Expanded(flex: 3, child: Text('Месяц', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)))),
+                  Expanded(flex: 2, child: Text('Итого', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.right)),
+                  Expanded(flex: 2, child: Text('Изменение', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.right)),
                 ],
               ),
             ),
@@ -446,7 +513,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
       ),
       child: Row(
@@ -455,7 +522,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
             flex: 3,
             child: Text(
               data.periodName,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
             ),
           ),
           Expanded(
@@ -464,7 +531,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               _formatPoints(total),
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: total >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                color: total >= 0 ? Colors.green.shade300 : Colors.red.shade300,
               ),
               textAlign: TextAlign.right,
             ),
@@ -478,19 +545,19 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                       Icon(
                         change >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
                         size: 16,
-                        color: change >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                        color: change >= 0 ? Colors.green.shade300 : Colors.red.shade300,
                       ),
                       const SizedBox(width: 2),
                       Text(
                         _formatPoints(change.abs()),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: change >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                          color: change >= 0 ? Colors.green.shade300 : Colors.red.shade300,
                         ),
                       ),
                     ],
                   )
-                : const Text('—', textAlign: TextAlign.right),
+                : Text('—', textAlign: TextAlign.right, style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
         ],
       ),
@@ -539,9 +606,12 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
         return changeB.compareTo(changeA);
       });
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: _emeraldDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _emerald.withOpacity(0.5)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -552,7 +622,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF004D40),
+                color: _gold,
               ),
             ),
             const SizedBox(height: 8),
@@ -560,12 +630,12 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               'Сравнение: ${previousMonth.periodName} → ${currentMonth.periodName}',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey.shade600,
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 16),
             if (sortedEntities.isEmpty)
-              const Text('Нет данных')
+              Text('Нет данных', style: TextStyle(color: Colors.white.withOpacity(0.7)))
             else
               for (final entity in sortedEntities)
                 _buildEntityTrendRow(entity, previousMap[entity.entityId]),
@@ -581,7 +651,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
       child: Row(
         children: [
@@ -590,7 +660,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
             flex: 3,
             child: Text(
               entity.entityName,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -603,7 +673,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               _formatPoints(entity.totalPoints),
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: entity.totalPoints >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                color: entity.totalPoints >= 0 ? Colors.green.shade300 : Colors.red.shade300,
               ),
               textAlign: TextAlign.right,
               maxLines: 1,
@@ -621,7 +691,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                       Icon(
                         change >= 0 ? Icons.trending_up : Icons.trending_down,
                         size: 16,
-                        color: change >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                        color: change >= 0 ? Colors.green.shade300 : Colors.red.shade300,
                       ),
                       const SizedBox(width: 2),
                       Flexible(
@@ -629,7 +699,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                           _formatPoints(change.abs()),
                           style: TextStyle(
                             fontSize: 13,
-                            color: change >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                            color: change >= 0 ? Colors.green.shade300 : Colors.red.shade300,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -637,9 +707,9 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                       ),
                     ],
                   )
-                : const Text(
+                : Text(
                     'новый',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
                     textAlign: TextAlign.right,
                   ),
           ),

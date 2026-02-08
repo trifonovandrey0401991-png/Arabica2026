@@ -1,9 +1,11 @@
 /**
  * API для геофенсинг push-уведомлений
  * Отправляет push-уведомления клиентам при входе в радиус магазина
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Директории хранения данных
@@ -13,17 +15,34 @@ const GEOFENCE_SETTINGS_FILE = `${DATA_DIR}/geofence-settings.json`;
 const GEOFENCE_NOTIFICATIONS_DIR = `${DATA_DIR}/geofence-notifications`;
 const SHOPS_DIR = `${DATA_DIR}/shops`;
 
-// Создаём директории если не существуют
-if (!fs.existsSync(GEOFENCE_NOTIFICATIONS_DIR)) {
-  fs.mkdirSync(GEOFENCE_NOTIFICATIONS_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+// Создаём директории если не существуют
+(async () => {
+  try {
+    if (!(await fileExists(GEOFENCE_NOTIFICATIONS_DIR))) {
+      await fsp.mkdir(GEOFENCE_NOTIFICATIONS_DIR, { recursive: true });
+    }
+  } catch (e) {
+    console.error('Error creating geofence directory:', e.message);
+  }
+})();
 
 // ==================== УТИЛИТЫ ====================
 
-function loadJsonFile(filePath, defaultValue = null) {
+async function loadJsonFile(filePath, defaultValue = null) {
   try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (await fileExists(filePath)) {
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
     }
   } catch (e) {
     console.error('Error loading file:', filePath, e);
@@ -31,14 +50,14 @@ function loadJsonFile(filePath, defaultValue = null) {
   return defaultValue;
 }
 
-function saveJsonFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+async function saveJsonFile(filePath, data) {
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 /**
  * Загрузить настройки геозоны
  */
-function loadGeofenceSettings() {
+async function loadGeofenceSettings() {
   const defaultSettings = {
     enabled: true,
     radiusMeters: 500,
@@ -49,34 +68,34 @@ function loadGeofenceSettings() {
     updatedBy: 'system'
   };
 
-  const settings = loadJsonFile(GEOFENCE_SETTINGS_FILE, null);
+  const settings = await loadJsonFile(GEOFENCE_SETTINGS_FILE, null);
   return settings || defaultSettings;
 }
 
 /**
  * Сохранить настройки геозоны
  */
-function saveGeofenceSettings(settings) {
-  saveJsonFile(GEOFENCE_SETTINGS_FILE, settings);
+async function saveGeofenceSettings(settings) {
+  await saveJsonFile(GEOFENCE_SETTINGS_FILE, settings);
 }
 
 /**
  * Загрузить все магазины с координатами
  */
-function loadShopsWithCoordinates() {
+async function loadShopsWithCoordinates() {
   const shops = [];
 
-  if (!fs.existsSync(SHOPS_DIR)) {
+  if (!(await fileExists(SHOPS_DIR))) {
     console.log('Папка магазинов не существует');
     return shops;
   }
 
-  const files = fs.readdirSync(SHOPS_DIR);
+  const files = await fsp.readdir(SHOPS_DIR);
   for (const file of files) {
     if (!file.endsWith('.json')) continue;
     try {
       const filePath = path.join(SHOPS_DIR, file);
-      const shop = loadJsonFile(filePath, null);
+      const shop = await loadJsonFile(filePath, null);
       if (shop && shop.latitude && shop.longitude) {
         // Валидация координат
         const lat = parseFloat(shop.latitude);
@@ -118,7 +137,7 @@ function calculateGpsDistance(lat1, lon1, lat2, lon2) {
 /**
  * Проверить, было ли уведомление отправлено в период cooldown
  */
-function wasNotificationSentRecently(phone, shopId, cooldownHours) {
+async function wasNotificationSentRecently(phone, shopId, cooldownHours) {
   try {
     const today = new Date().toISOString().split('T')[0];
     const normalizedPhone = phone.replace(/[\s+]/g, '');
@@ -127,11 +146,11 @@ function wasNotificationSentRecently(phone, shopId, cooldownHours) {
       `${normalizedPhone}_${today}.json`
     );
 
-    if (!fs.existsSync(notificationFile)) {
+    if (!(await fileExists(notificationFile))) {
       return false;
     }
 
-    const notifications = loadJsonFile(notificationFile, []);
+    const notifications = await loadJsonFile(notificationFile, []);
     const now = new Date();
 
     for (const n of notifications) {
@@ -154,7 +173,7 @@ function wasNotificationSentRecently(phone, shopId, cooldownHours) {
 /**
  * Сохранить запись об отправленном уведомлении
  */
-function saveNotificationRecord(phone, shop, distance) {
+async function saveNotificationRecord(phone, shop, distance) {
   try {
     const today = new Date().toISOString().split('T')[0];
     const normalizedPhone = phone.replace(/[\s+]/g, '');
@@ -163,7 +182,7 @@ function saveNotificationRecord(phone, shop, distance) {
       `${normalizedPhone}_${today}.json`
     );
 
-    const notifications = loadJsonFile(notificationFile, []);
+    const notifications = await loadJsonFile(notificationFile, []);
 
     notifications.push({
       phone: normalizedPhone,
@@ -174,7 +193,7 @@ function saveNotificationRecord(phone, shop, distance) {
       distance: Math.round(distance)
     });
 
-    saveJsonFile(notificationFile, notifications);
+    await saveJsonFile(notificationFile, notifications);
     console.log(`📍 Геозона: записано уведомление для ${phone} -> ${shop.address}`);
   } catch (e) {
     console.error('Ошибка сохранения записи уведомления:', e);
@@ -184,11 +203,11 @@ function saveNotificationRecord(phone, shop, distance) {
 /**
  * Очистить старые файлы уведомлений (старше 7 дней)
  */
-function cleanupOldNotifications() {
+async function cleanupOldNotifications() {
   try {
-    if (!fs.existsSync(GEOFENCE_NOTIFICATIONS_DIR)) return;
+    if (!(await fileExists(GEOFENCE_NOTIFICATIONS_DIR))) return;
 
-    const files = fs.readdirSync(GEOFENCE_NOTIFICATIONS_DIR);
+    const files = await fsp.readdir(GEOFENCE_NOTIFICATIONS_DIR);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -200,7 +219,7 @@ function cleanupOldNotifications() {
       if (match) {
         const fileDate = new Date(match[1]);
         if (fileDate < sevenDaysAgo) {
-          fs.unlinkSync(path.join(GEOFENCE_NOTIFICATIONS_DIR, file));
+          await fsp.unlink(path.join(GEOFENCE_NOTIFICATIONS_DIR, file));
           console.log(`🗑️ Удалён старый файл геозоны: ${file}`);
         }
       }
@@ -222,9 +241,9 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   setInterval(cleanupOldNotifications, 24 * 60 * 60 * 1000);
 
   // GET /api/geofence-settings - получить настройки
-  app.get('/api/geofence-settings', (req, res) => {
+  app.get('/api/geofence-settings', async (req, res) => {
     try {
-      const settings = loadGeofenceSettings();
+      const settings = await loadGeofenceSettings();
       res.json({ success: true, settings });
     } catch (e) {
       console.error('Ошибка получения настроек геозоны:', e);
@@ -233,11 +252,11 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   });
 
   // POST /api/geofence-settings - обновить настройки (только админ)
-  app.post('/api/geofence-settings', (req, res) => {
+  app.post('/api/geofence-settings', async (req, res) => {
     try {
       const { enabled, radiusMeters, notificationTitle, notificationBody, cooldownHours } = req.body;
 
-      const settings = loadGeofenceSettings();
+      const settings = await loadGeofenceSettings();
 
       if (typeof enabled === 'boolean') settings.enabled = enabled;
       if (radiusMeters && radiusMeters > 0) settings.radiusMeters = parseInt(radiusMeters);
@@ -248,7 +267,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
       settings.updatedAt = new Date().toISOString();
       settings.updatedBy = req.body.updatedBy || 'admin';
 
-      saveGeofenceSettings(settings);
+      await saveGeofenceSettings(settings);
 
       console.log('📍 Настройки геозоны обновлены:', settings);
       res.json({ success: true, settings });
@@ -276,13 +295,13 @@ function setupGeofenceAPI(app, sendPushToPhone) {
       }
 
       // 1. Загрузить настройки
-      const settings = loadGeofenceSettings();
+      const settings = await loadGeofenceSettings();
       if (!settings.enabled) {
         return res.json({ success: true, triggered: false, reason: 'disabled' });
       }
 
       // 2. Загрузить магазины с координатами
-      const shops = loadShopsWithCoordinates();
+      const shops = await loadShopsWithCoordinates();
       console.log(`📍 Геозона: загружено ${shops.length} магазинов, клиент: ${lat}, ${lon}, радиус: ${settings.radiusMeters}м`);
 
       if (shops.length === 0) {
@@ -304,7 +323,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
 
         if (distance <= settings.radiusMeters) {
           // 4. Проверить cooldown
-          if (wasNotificationSentRecently(clientPhone, shop.id, settings.cooldownHours)) {
+          if (await wasNotificationSentRecently(clientPhone, shop.id, settings.cooldownHours)) {
             console.log(`📍 Геозона: cooldown активен для ${clientPhone} -> ${shop.address}`);
             continue;
           }
@@ -320,7 +339,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
 
             if (sent) {
               // 6. Записать в историю
-              saveNotificationRecord(clientPhone, shop, distance);
+              await saveNotificationRecord(clientPhone, shop, distance);
 
               console.log(`📍 Геозона: push отправлен ${clientPhone} -> ${shop.address} (${Math.round(distance)}м)`);
 
@@ -355,19 +374,19 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   });
 
   // GET /api/geofence/stats - статистика уведомлений (для админа)
-  app.get('/api/geofence/stats', (req, res) => {
+  app.get('/api/geofence/stats', async (req, res) => {
     try {
       const { date } = req.query;
       const targetDate = date || new Date().toISOString().split('T')[0];
 
       const notifications = [];
 
-      if (fs.existsSync(GEOFENCE_NOTIFICATIONS_DIR)) {
-        const files = fs.readdirSync(GEOFENCE_NOTIFICATIONS_DIR);
+      if (await fileExists(GEOFENCE_NOTIFICATIONS_DIR)) {
+        const files = await fsp.readdir(GEOFENCE_NOTIFICATIONS_DIR);
         for (const file of files) {
           if (file.includes(targetDate) && file.endsWith('.json')) {
             const filePath = path.join(GEOFENCE_NOTIFICATIONS_DIR, file);
-            const fileNotifications = loadJsonFile(filePath, []);
+            const fileNotifications = await loadJsonFile(filePath, []);
             notifications.push(...fileNotifications);
           }
         }

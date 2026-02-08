@@ -1,13 +1,32 @@
 // =====================================================
 // JOB APPLICATIONS API (Заявки на трудоустройство)
+//
+// REFACTORED: Converted from sync to async I/O (2026-02-05)
 // =====================================================
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const JOB_APPLICATIONS_DIR = `${DATA_DIR}/job-applications`;
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directory exists (async IIFE)
+(async () => {
+  if (!(await fileExists(JOB_APPLICATIONS_DIR))) {
+    await fsp.mkdir(JOB_APPLICATIONS_DIR, { recursive: true });
+  }
+})();
 
 // Нормализация телефонного номера (убираем все кроме цифр и +)
 function normalizePhone(phone) {
@@ -26,26 +45,30 @@ function normalizePhone(phone) {
 }
 
 // Проверка дубликата по телефону (за последние 24 часа)
-function checkDuplicateApplication(phone) {
+async function checkDuplicateApplication(phone) {
   try {
-    if (!fs.existsSync(JOB_APPLICATIONS_DIR)) return null;
+    if (!(await fileExists(JOB_APPLICATIONS_DIR))) return null;
 
-    const files = fs.readdirSync(JOB_APPLICATIONS_DIR);
+    const files = await fsp.readdir(JOB_APPLICATIONS_DIR);
     const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
     const normalizedPhone = normalizePhone(phone);
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const content = fs.readFileSync(path.join(JOB_APPLICATIONS_DIR, file), 'utf8');
-      const appData = JSON.parse(content);
+      try {
+        const content = await fsp.readFile(path.join(JOB_APPLICATIONS_DIR, file), 'utf8');
+        const appData = JSON.parse(content);
 
-      const appNormalizedPhone = normalizePhone(appData.phone);
-      const appCreatedTime = new Date(appData.createdAt).getTime();
+        const appNormalizedPhone = normalizePhone(appData.phone);
+        const appCreatedTime = new Date(appData.createdAt).getTime();
 
-      // Если номер совпадает и заявка создана менее 24 часов назад
-      if (appNormalizedPhone === normalizedPhone && appCreatedTime > oneDayAgo) {
-        return appData;
+        // Если номер совпадает и заявка создана менее 24 часов назад
+        if (appNormalizedPhone === normalizedPhone && appCreatedTime > oneDayAgo) {
+          return appData;
+        }
+      } catch (e) {
+        // Skip invalid files
       }
     }
 
@@ -67,35 +90,39 @@ async function sendPushToAdmins(title, body) {
 
     // Получаем список админов из employees
     const employeesDir = `${DATA_DIR}/employees`;
-    if (!fs.existsSync(employeesDir)) return;
+    if (!(await fileExists(employeesDir))) return;
 
-    const files = fs.readdirSync(employeesDir);
+    const files = await fsp.readdir(employeesDir);
     const fcmTokensDir = `${DATA_DIR}/fcm-tokens`;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const employeeData = JSON.parse(fs.readFileSync(path.join(employeesDir, file), 'utf8'));
+      try {
+        const employeeData = JSON.parse(await fsp.readFile(path.join(employeesDir, file), 'utf8'));
 
-      if (employeeData.isAdmin && employeeData.phone) {
-        const normalizedPhone = employeeData.phone.replace(/[\s+]/g, '');
-        const tokenFile = path.join(fcmTokensDir, `${normalizedPhone}.json`);
+        if (employeeData.isAdmin && employeeData.phone) {
+          const normalizedPhone = employeeData.phone.replace(/[\s+]/g, '');
+          const tokenFile = path.join(fcmTokensDir, `${normalizedPhone}.json`);
 
-        if (fs.existsSync(tokenFile)) {
-          const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
-          if (tokenData.token) {
-            try {
-              await admin.messaging().send({
-                token: tokenData.token,
-                notification: { title, body },
-                android: { priority: 'high' }
-              });
-              console.log(`✅ Push отправлен админу: ${employeeData.name}`);
-            } catch (e) {
-              console.log(`⚠️ Не удалось отправить push: ${e.message}`);
+          if (await fileExists(tokenFile)) {
+            const tokenData = JSON.parse(await fsp.readFile(tokenFile, 'utf8'));
+            if (tokenData.token) {
+              try {
+                await admin.messaging().send({
+                  token: tokenData.token,
+                  notification: { title, body },
+                  android: { priority: 'high' }
+                });
+                console.log(`✅ Push отправлен админу: ${employeeData.name}`);
+              } catch (e) {
+                console.log(`⚠️ Не удалось отправить push: ${e.message}`);
+              }
             }
           }
         }
+      } catch (e) {
+        // Skip invalid employee files
       }
     }
   } catch (error) {
@@ -109,24 +136,28 @@ module.exports = function setupJobApplicationsAPI(app) {
     try {
       console.log('📥 GET /api/job-applications');
 
-      if (!fs.existsSync(JOB_APPLICATIONS_DIR)) {
-        fs.mkdirSync(JOB_APPLICATIONS_DIR, { recursive: true });
+      if (!(await fileExists(JOB_APPLICATIONS_DIR))) {
+        await fsp.mkdir(JOB_APPLICATIONS_DIR, { recursive: true });
         return res.json({ success: true, applications: [], unviewedCount: 0 });
       }
 
-      const files = fs.readdirSync(JOB_APPLICATIONS_DIR);
+      const files = await fsp.readdir(JOB_APPLICATIONS_DIR);
       const applications = [];
       let unviewedCount = 0;
 
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
 
-        const content = fs.readFileSync(path.join(JOB_APPLICATIONS_DIR, file), 'utf8');
-        const appData = JSON.parse(content);
-        applications.push(appData);
+        try {
+          const content = await fsp.readFile(path.join(JOB_APPLICATIONS_DIR, file), 'utf8');
+          const appData = JSON.parse(content);
+          applications.push(appData);
 
-        if (!appData.isViewed) {
-          unviewedCount++;
+          if (!appData.isViewed) {
+            unviewedCount++;
+          }
+        } catch (e) {
+          console.error(`Error reading ${file}:`, e);
         }
       }
 
@@ -156,7 +187,7 @@ module.exports = function setupJobApplicationsAPI(app) {
       }
 
       // Проверка дубликата по телефону (за последние 24 часа)
-      const duplicate = checkDuplicateApplication(phone);
+      const duplicate = await checkDuplicateApplication(phone);
       if (duplicate) {
         const hoursAgo = Math.floor((Date.now() - new Date(duplicate.createdAt).getTime()) / (1000 * 60 * 60));
         const hoursRemaining = 24 - hoursAgo;
@@ -171,8 +202,8 @@ module.exports = function setupJobApplicationsAPI(app) {
         });
       }
 
-      if (!fs.existsSync(JOB_APPLICATIONS_DIR)) {
-        fs.mkdirSync(JOB_APPLICATIONS_DIR, { recursive: true });
+      if (!(await fileExists(JOB_APPLICATIONS_DIR))) {
+        await fsp.mkdir(JOB_APPLICATIONS_DIR, { recursive: true });
       }
 
       // Нормализуем телефон перед сохранением
@@ -196,13 +227,13 @@ module.exports = function setupJobApplicationsAPI(app) {
       };
 
       const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
 
       console.log(`✅ Заявка создана: ${id}`);
 
       // Отправляем push-уведомление админам
       const shiftText = preferredShift === 'day' ? 'День' : 'Ночь';
-      sendPushToAdmins(
+      await sendPushToAdmins(
         'Новая заявка на работу',
         `${fullName} хочет работать (${shiftText})`
       );
@@ -217,18 +248,22 @@ module.exports = function setupJobApplicationsAPI(app) {
   // GET /api/job-applications/unviewed-count - получить количество непросмотренных
   app.get('/api/job-applications/unviewed-count', async (req, res) => {
     try {
-      if (!fs.existsSync(JOB_APPLICATIONS_DIR)) {
+      if (!(await fileExists(JOB_APPLICATIONS_DIR))) {
         return res.json({ success: true, count: 0 });
       }
 
-      const files = fs.readdirSync(JOB_APPLICATIONS_DIR);
+      const files = await fsp.readdir(JOB_APPLICATIONS_DIR);
       let count = 0;
 
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
-        const content = fs.readFileSync(path.join(JOB_APPLICATIONS_DIR, file), 'utf8');
-        const appData = JSON.parse(content);
-        if (!appData.isViewed) count++;
+        try {
+          const content = await fsp.readFile(path.join(JOB_APPLICATIONS_DIR, file), 'utf8');
+          const appData = JSON.parse(content);
+          if (!appData.isViewed) count++;
+        } catch (e) {
+          // Skip invalid files
+        }
       }
 
       res.json({ success: true, count });
@@ -248,11 +283,11 @@ module.exports = function setupJobApplicationsAPI(app) {
 
       const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Заявка не найдена' });
       }
 
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = await fsp.readFile(filePath, 'utf8');
       const application = JSON.parse(content);
 
       application.isViewed = true;
@@ -264,7 +299,7 @@ module.exports = function setupJobApplicationsAPI(app) {
         application.status = 'viewed';
       }
 
-      fs.writeFileSync(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
 
       console.log(`✅ Заявка ${id} отмечена как просмотренная`);
       res.json({ success: true, application });
@@ -284,17 +319,17 @@ module.exports = function setupJobApplicationsAPI(app) {
 
       const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Заявка не найдена' });
       }
 
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = await fsp.readFile(filePath, 'utf8');
       const application = JSON.parse(content);
 
       application.status = status;
       application.statusUpdatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
 
       console.log(`✅ Статус заявки ${id} обновлен: ${status}`);
       res.json({ success: true, application });
@@ -314,17 +349,17 @@ module.exports = function setupJobApplicationsAPI(app) {
 
       const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Заявка не найдена' });
       }
 
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = await fsp.readFile(filePath, 'utf8');
       const application = JSON.parse(content);
 
       application.adminNotes = adminNotes;
       application.notesUpdatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
 
       console.log(`✅ Комментарии к заявке ${id} обновлены`);
       res.json({ success: true, application });

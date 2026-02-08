@@ -40,7 +40,7 @@ class ShiftHandoverReportService {
     if (success) {
       // Отправляем push уведомление сотруднику
       final reportDate =
-          '${report.date.day.toString().padLeft(2, '0')}.${report.date.month.toString().padLeft(2, '0')}';
+          '${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}';
       await EmployeePushService.sendReportStatusPush(
         employeePhone: employeePhone,
         reportType: 'shift_handover',
@@ -66,7 +66,7 @@ class ShiftHandoverReportService {
     final success = await updateReport(report);
     if (success) {
       final reportDate =
-          '${report.date.day.toString().padLeft(2, '0')}.${report.date.month.toString().padLeft(2, '0')}';
+          '${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}';
       await EmployeePushService.sendReportStatusPush(
         employeePhone: employeePhone,
         reportType: 'shift_handover',

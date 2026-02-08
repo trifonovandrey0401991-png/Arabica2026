@@ -2,8 +2,10 @@ import '../models/attendance_model.dart';
 import '../models/shop_attendance_summary.dart';
 import '../models/pending_attendance_model.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/utils/logger.dart';
 import 'attendance_service.dart';
 
@@ -37,7 +39,7 @@ class AttendanceReportService {
   /// Загрузить сводку по всем магазинам
   static Future<List<ShopAttendanceSummary>> getShopsSummary() async {
     // 1. Загружаем список магазинов
-    final shops = await Shop.loadShopsFromServer();
+    final shops = await ShopService.getShopsForCurrentUser();
 
     // 2. Загружаем ВСЕ отметки
     final allRecords = await AttendanceService.getAttendanceRecordsForCurrentUser();
@@ -177,8 +179,12 @@ class AttendanceReportService {
 
   /// Загрузить сводку по сотрудникам
   static Future<List<EmployeeAttendanceSummary>> getEmployeesSummary() async {
-    // 1. Загружаем список сотрудников
-    final employees = await EmployeesPage.loadEmployeesForNotifications();
+    // 1. Загружаем список сотрудников и фильтруем по мультитенантности
+    final allEmployees = await EmployeesPage.loadEmployeesForNotifications();
+    final employees = await MultitenancyFilterService.filterByEmployeePhone(
+      allEmployees,
+      (emp) => emp.phone ?? '',
+    );
 
     // 2. Загружаем ВСЕ отметки
     final allRecords = await AttendanceService.getAttendanceRecordsForCurrentUser();
@@ -301,7 +307,11 @@ class AttendanceReportService {
       listKey: 'items',
     );
 
-    return result ?? [];
+    // Фильтруем по магазинам текущего пользователя
+    return await MultitenancyFilterService.filterByShopAddress(
+      result ?? [],
+      (report) => report.shopAddress,
+    );
   }
 
   /// Получить failed (пропущенные) отчёты посещаемости
@@ -314,7 +324,11 @@ class AttendanceReportService {
       listKey: 'items',
     );
 
-    return result ?? [];
+    // Фильтруем по магазинам текущего пользователя
+    return await MultitenancyFilterService.filterByShopAddress(
+      result ?? [],
+      (report) => report.shopAddress,
+    );
   }
 
   /// Проверить, можно ли отметиться на магазине

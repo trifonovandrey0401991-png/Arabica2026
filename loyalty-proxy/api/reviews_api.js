@@ -1,13 +1,34 @@
-const fs = require('fs');
+/**
+ * Reviews API
+ * Отзывы клиентов о магазинах
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const REVIEWS_DIR = `${DATA_DIR}/reviews`;
 
-if (!fs.existsSync(REVIEWS_DIR)) {
-  fs.mkdirSync(REVIEWS_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+// Initialize directory on module load
+(async () => {
+  try {
+    await fsp.mkdir(REVIEWS_DIR, { recursive: true });
+  } catch (e) {
+    console.error('Failed to create reviews directory:', e);
+  }
+})();
 
 function setupReviewsAPI(app) {
   // ===== REVIEWS =====
@@ -18,12 +39,13 @@ function setupReviewsAPI(app) {
       const { shopAddress, rating, fromDate, toDate } = req.query;
       const reviews = [];
 
-      if (fs.existsSync(REVIEWS_DIR)) {
-        const files = fs.readdirSync(REVIEWS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(REVIEWS_DIR)) {
+        const allFiles = await fsp.readdir(REVIEWS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(REVIEWS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
             const review = JSON.parse(content);
 
             if (shopAddress && review.shopAddress !== shopAddress) continue;
@@ -56,8 +78,10 @@ function setupReviewsAPI(app) {
 
       review.createdAt = review.createdAt || new Date().toISOString();
 
+      await fsp.mkdir(REVIEWS_DIR, { recursive: true });
+
       const filePath = path.join(REVIEWS_DIR, `${review.id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(review, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(review, null, 2), 'utf8');
 
       res.json({ success: true, review });
     } catch (error) {
@@ -72,8 +96,9 @@ function setupReviewsAPI(app) {
 
       const filePath = path.join(REVIEWS_DIR, `${reviewId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const review = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        const review = JSON.parse(content);
         res.json({ success: true, review });
       } else {
         res.status(404).json({ success: false, error: 'Review not found' });
@@ -91,14 +116,15 @@ function setupReviewsAPI(app) {
 
       const filePath = path.join(REVIEWS_DIR, `${reviewId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Review not found' });
       }
 
-      const review = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const review = JSON.parse(content);
       const updated = { ...review, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, review: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -112,8 +138,8 @@ function setupReviewsAPI(app) {
 
       const filePath = path.join(REVIEWS_DIR, `${reviewId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Review not found' });
@@ -132,12 +158,13 @@ function setupReviewsAPI(app) {
 
       const reviews = [];
 
-      if (fs.existsSync(REVIEWS_DIR)) {
-        const files = fs.readdirSync(REVIEWS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(REVIEWS_DIR)) {
+        const allFiles = await fsp.readdir(REVIEWS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(REVIEWS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
             const review = JSON.parse(content);
 
             if (review.shopAddress === shopAddress) {

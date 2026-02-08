@@ -23,6 +23,11 @@ class ShiftEditDialog extends StatefulWidget {
 }
 
 class _ShiftEditDialogState extends State<ShiftEditDialog> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   String? _selectedShopAddress;
   ShiftType? _selectedShiftType;
   bool _isLoading = false;
@@ -39,7 +44,12 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Смена: ${widget.employeeName}'),
+      backgroundColor: _emeraldDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        'Смена: ${widget.employeeName}',
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -47,35 +57,79 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
           children: [
             Text(
               'Дата: ${_formatDate(widget.date)}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const Text('Магазин:', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _selectedShopAddress,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Выберите магазин',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white.withOpacity(0.7),
               ),
-              items: widget.shops.map((shop) {
-                return DropdownMenuItem<String>(
-                  value: shop.address,
-                  child: Text(shop.address),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedShopAddress = value;
-                });
-              },
             ),
             const SizedBox(height: 16),
-            const Text('Тип смены:', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text(
+              'Магазин:',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Theme(
+              data: Theme.of(context).copyWith(
+                canvasColor: _night,
+              ),
+              child: DropdownButtonFormField<String>(
+                value: _selectedShopAddress,
+                dropdownColor: _night,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                iconEnabledColor: _gold,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: _gold, width: 1.5),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.06),
+                  hintText: 'Выберите магазин',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                ),
+                items: widget.shops.map((shop) {
+                  return DropdownMenuItem<String>(
+                    value: shop.address,
+                    child: Text(
+                      shop.address,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedShopAddress = value;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Тип смены:',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
             const SizedBox(height: 8),
             ...ShiftType.values.map((type) {
               return RadioListTile<ShiftType>(
-                title: Text('${type.label} (${type.timeRange})'),
+                title: Text(
+                  '${type.label} (${type.timeRange})',
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
                 value: type,
                 groupValue: _selectedShiftType,
                 onChanged: (value) {
@@ -83,39 +137,76 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                     _selectedShiftType = value;
                   });
                 },
-                activeColor: type.color,
+                activeColor: _gold,
+                tileColor: Colors.transparent,
               );
             }),
+            Divider(color: Colors.white.withOpacity(0.1)),
             const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _selectedShopAddress = null;
-                  _selectedShiftType = null;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey,
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedShopAddress = null;
+                    _selectedShiftType = null;
+                  });
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: Text(
+                  'Очистить (выходной)',
+                  style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                ),
               ),
-              child: const Text('Очистить (выходной)'),
             ),
           ],
         ),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
+          style: TextButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+          child: Text(
+            'Отмена',
+            style: TextStyle(color: Colors.white.withOpacity(0.6)),
+          ),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _save,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _gold,
+            foregroundColor: _night,
+            disabledBackgroundColor: _gold.withOpacity(0.4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
           child: _isLoading
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _night,
+                  ),
                 )
-              : const Text('Сохранить'),
+              : const Text(
+                  'Сохранить',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
         ),
       ],
     );
@@ -159,5 +250,3 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
     });
   }
 }
-
-

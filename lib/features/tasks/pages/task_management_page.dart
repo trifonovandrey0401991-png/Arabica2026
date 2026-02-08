@@ -21,6 +21,11 @@ class _TaskManagementPageState extends State<TaskManagementPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   @override
   void initState() {
     super.initState();
@@ -36,28 +41,101 @@ class _TaskManagementPageState extends State<TaskManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Управление задачами'),
-        backgroundColor: const Color(0xFF004D40),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: 'Обычные задачи'),
-            Tab(text: 'Циклические'),
-          ],
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Вкладка обычных задач - переходит на CreateTaskPage
-          _RegularTasksTab(createdBy: widget.createdBy),
-          // Вкладка циклических задач
-          _RecurringTasksTab(createdBy: widget.createdBy),
-        ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Управление задачами',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Обычные и циклические',
+                          style: TextStyle(
+                            color: _gold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // TabBar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: _gold,
+                  indicatorWeight: 2.5,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(text: 'Обычные задачи'),
+                    Tab(text: 'Циклические'),
+                  ],
+                ),
+              ),
+
+              // TabBarView
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Вкладка обычных задач - переходит на CreateTaskPage
+                    _RegularTasksTab(createdBy: widget.createdBy),
+                    // Вкладка циклических задач
+                    _RecurringTasksTab(createdBy: widget.createdBy),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -69,6 +147,9 @@ class _RegularTasksTab extends StatelessWidget {
 
   const _RegularTasksTab({required this.createdBy});
 
+  static const Color _gold = Color(0xFFD4AF37);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -77,17 +158,28 @@ class _RegularTasksTab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.assignment_add,
-              size: 64,
-              color: Colors.grey[400],
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+              child: Icon(
+                Icons.assignment_add,
+                size: 40,
+                color: Colors.white.withOpacity(0.5),
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               'Создание обычных задач',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.9),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -95,7 +187,7 @@ class _RegularTasksTab extends StatelessWidget {
             Text(
               'Одноразовые задачи с дедлайном',
               style: TextStyle(
-                color: Colors.grey[500],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 24),
@@ -108,11 +200,13 @@ class _RegularTasksTab extends StatelessWidget {
                   ),
                 );
               },
-              icon: const Icon(Icons.add),
-              label: const Text('Создать задачу'),
+              icon: Icon(Icons.add, color: _emeraldDark),
+              label: Text(
+                'Создать задачу',
+                style: TextStyle(color: _emeraldDark),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF004D40),
-                foregroundColor: Colors.white,
+                backgroundColor: _gold,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
@@ -143,6 +237,9 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
   List<RecurringTask> _tasks = [];
   bool _isLoading = true;
   String? _error;
+
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -194,16 +291,26 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить задачу?'),
-        content: Text('Вы уверены, что хотите удалить "${task.title}"?'),
+        backgroundColor: _emeraldDark,
+        title: Text(
+          'Удалить задачу?',
+          style: TextStyle(color: Colors.white.withOpacity(0.9)),
+        ),
+        content: Text(
+          'Вы уверены, что хотите удалить "${task.title}"?',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: Colors.red[300]),
             child: const Text('Удалить'),
           ),
         ],
@@ -238,7 +345,9 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(color: _gold),
+      );
     }
 
     if (_error != null) {
@@ -246,12 +355,28 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(Icons.error_outline, size: 32, color: Colors.red[300]),
+            ),
             const SizedBox(height: 16),
-            Text('Ошибка загрузки: $_error'),
+            Text(
+              'Ошибка загрузки: $_error',
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadTasks,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _gold,
+                foregroundColor: _emeraldDark,
+              ),
               child: const Text('Повторить'),
             ),
           ],
@@ -279,11 +404,13 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
                   _loadTasks();
                 }
               },
-              icon: const Icon(Icons.add),
-              label: const Text('Создать циклическую задачу'),
+              icon: Icon(Icons.add, color: _emeraldDark),
+              label: Text(
+                'Создать циклическую задачу',
+                style: TextStyle(color: _emeraldDark),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF004D40),
-                foregroundColor: Colors.white,
+                backgroundColor: _gold,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -300,17 +427,28 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.repeat,
-                        size: 64,
-                        color: Colors.grey[400],
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.repeat,
+                          size: 40,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'Нет циклических задач',
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey[600],
+                          color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                     ],
@@ -318,6 +456,8 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
                 )
               : RefreshIndicator(
                   onRefresh: _loadTasks,
+                  color: _gold,
+                  backgroundColor: _emeraldDark,
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _tasks.length,
@@ -365,10 +505,19 @@ class _RecurringTaskCard extends StatelessWidget {
     required this.onEdit,
   });
 
+  static const Color _gold = Color(0xFFD4AF37);
+
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -379,7 +528,9 @@ class _RecurringTaskCard extends StatelessWidget {
               children: [
                 Icon(
                   Icons.repeat,
-                  color: task.isPaused ? Colors.grey : const Color(0xFF004D40),
+                  color: task.isPaused
+                      ? Colors.white.withOpacity(0.3)
+                      : _gold,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -388,7 +539,9 @@ class _RecurringTaskCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: task.isPaused ? Colors.grey : Colors.black87,
+                      color: task.isPaused
+                          ? Colors.white.withOpacity(0.4)
+                          : Colors.white.withOpacity(0.9),
                     ),
                   ),
                 ),
@@ -399,8 +552,8 @@ class _RecurringTaskCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: task.isPaused
-                        ? Colors.orange[100]
-                        : Colors.green[100],
+                        ? Colors.orange.withOpacity(0.15)
+                        : Colors.green.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -408,8 +561,8 @@ class _RecurringTaskCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: task.isPaused
-                          ? Colors.orange[800]
-                          : Colors.green[800],
+                          ? Colors.orange[300]
+                          : Colors.green[300],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -422,7 +575,7 @@ class _RecurringTaskCard extends StatelessWidget {
               Text(
                 task.description,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: Colors.white.withOpacity(0.5),
                   fontSize: 14,
                 ),
                 maxLines: 2,
@@ -435,18 +588,22 @@ class _RecurringTaskCard extends StatelessWidget {
             // Дни и время
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                Icon(Icons.calendar_today,
+                    size: 16, color: Colors.white.withOpacity(0.5)),
                 const SizedBox(width: 4),
                 Text(
                   task.daysOfWeekDisplay,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(
+                      fontSize: 13, color: Colors.white.withOpacity(0.6)),
                 ),
                 const SizedBox(width: 16),
-                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                Icon(Icons.access_time,
+                    size: 16, color: Colors.white.withOpacity(0.5)),
                 const SizedBox(width: 4),
                 Text(
                   task.periodDisplay,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(
+                      fontSize: 13, color: Colors.white.withOpacity(0.6)),
                 ),
               ],
             ),
@@ -456,20 +613,25 @@ class _RecurringTaskCard extends StatelessWidget {
             // Получатели
             Row(
               children: [
-                Icon(Icons.people, size: 16, color: Colors.grey[600]),
+                Icon(Icons.people,
+                    size: 16, color: Colors.white.withOpacity(0.5)),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     task.assignees.length == 1
                         ? task.assignees.first.name
                         : '${task.assignees.length} получателей',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    style: TextStyle(
+                        fontSize: 13, color: Colors.white.withOpacity(0.6)),
                   ),
                 ),
               ],
             ),
 
-            const Divider(height: 24),
+            Divider(
+              height: 24,
+              color: Colors.white.withOpacity(0.1),
+            ),
 
             // Кнопки действий
             Row(
@@ -480,7 +642,7 @@ class _RecurringTaskCard extends StatelessWidget {
                   icon: const Icon(Icons.edit, size: 18),
                   label: const Text('Изменить'),
                   style: TextButton.styleFrom(
-                    foregroundColor: Colors.blue,
+                    foregroundColor: Colors.blue[300],
                   ),
                 ),
                 TextButton.icon(
@@ -491,7 +653,7 @@ class _RecurringTaskCard extends StatelessWidget {
                   ),
                   label: Text(task.isPaused ? 'Возобновить' : 'Пауза'),
                   style: TextButton.styleFrom(
-                    foregroundColor: Colors.orange,
+                    foregroundColor: Colors.orange[300],
                   ),
                 ),
                 TextButton.icon(
@@ -499,7 +661,7 @@ class _RecurringTaskCard extends StatelessWidget {
                   icon: const Icon(Icons.delete, size: 18),
                   label: const Text('Удалить'),
                   style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
+                    foregroundColor: Colors.red[300],
                   ),
                 ),
               ],

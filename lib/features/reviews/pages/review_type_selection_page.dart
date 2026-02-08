@@ -6,59 +6,61 @@ import 'review_shop_selection_page.dart';
 class ReviewTypeSelectionPage extends StatelessWidget {
   const ReviewTypeSelectionPage({super.key});
 
+  // Единая палитра приложения
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   @override
   Widget build(BuildContext context) {
     Logger.debug('ReviewTypeSelectionPage.build() вызван');
     try {
       return Scaffold(
-        backgroundColor: const Color(0xFF004D40),
-        appBar: AppBar(
-          title: const Text(
-            'Оставить отзыв',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: const Color(0xFF004D40),
-          elevation: 0,
-        ),
+        backgroundColor: _night,
         body: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                const Color(0xFF004D40),
-                const Color(0xFF00695C),
-                const Color(0xFF00796B),
-              ],
+              colors: [_emerald, _emeraldDark, _night],
+              stops: [0.0, 0.3, 1.0],
             ),
           ),
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  const SizedBox(height: 32),
-                  // Заголовок
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+            child: Column(
+              children: [
+                _buildAppBar(context),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Column(
                       children: [
-                        const Icon(
-                          Icons.rate_review,
-                          size: 48,
-                          color: Colors.white,
+                        const SizedBox(height: 48),
+                        // Иконка
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.15),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.rate_review_outlined,
+                            size: 36,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
+                        const SizedBox(height: 24),
+                        Text(
                           'Выберите тип отзыва',
                           style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.9),
+                            letterSpacing: 0.5,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -66,70 +68,37 @@ class ReviewTypeSelectionPage extends StatelessWidget {
                         Text(
                           'Ваше мнение важно для нас',
                           style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.5),
                           ),
                           textAlign: TextAlign.center,
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  // Кнопки выбора
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                        const Spacer(),
                         // Положительный отзыв
-                        _buildReviewTypeCard(
+                        _buildReviewCard(
                           context: context,
                           title: 'Положительный отзыв',
                           subtitle: 'Нам понравилось!',
                           icon: Icons.thumb_up_rounded,
-                          gradientColors: [
-                            const Color(0xFF43A047),
-                            const Color(0xFF66BB6A),
-                          ],
-                          shadowColor: Colors.green,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ReviewShopSelectionPage(
-                                  reviewType: 'positive',
-                                ),
-                              ),
-                            );
-                          },
+                          accentColor: const Color(0xFF4CAF50),
+                          reviewType: 'positive',
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         // Отрицательный отзыв
-                        _buildReviewTypeCard(
+                        _buildReviewCard(
                           context: context,
                           title: 'Отрицательный отзыв',
                           subtitle: 'Есть замечания',
                           icon: Icons.thumb_down_rounded,
-                          gradientColors: [
-                            const Color(0xFFE53935),
-                            const Color(0xFFEF5350),
-                          ],
-                          shadowColor: Colors.red,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ReviewShopSelectionPage(
-                                  reviewType: 'negative',
-                                ),
-                              ),
-                            );
-                          },
+                          accentColor: const Color(0xFFEF5350),
+                          reviewType: 'negative',
                         ),
+                        const Spacer(),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -139,7 +108,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Ошибка'),
-          backgroundColor: const Color(0xFF004D40),
+          backgroundColor: _emerald,
         ),
         body: Center(
           child: Text('Ошибка: $e'),
@@ -148,99 +117,115 @@ class ReviewTypeSelectionPage extends StatelessWidget {
     }
   }
 
-  Widget _buildReviewTypeCard({
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'Оставить отзыв',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard({
     required BuildContext context,
     required String title,
     required String subtitle,
     required IconData icon,
-    required List<Color> gradientColors,
-    required Color shadowColor,
-    required VoidCallback onTap,
+    required Color accentColor,
+    required String reviewType,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReviewShopSelectionPage(
+              reviewType: reviewType,
+            ),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: gradientColors,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accentColor.withOpacity(0.4)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              accentColor.withOpacity(0.15),
+              accentColor.withOpacity(0.05),
+            ],
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(12),
               ),
-              borderRadius: BorderRadius.circular(20),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 28,
+              ),
             ),
-            child: Row(
-              children: [
-                // Иконка
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(18),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withOpacity(0.95),
+                    ),
                   ),
-                  child: Icon(
-                    icon,
-                    size: 42,
-                    color: Colors.white,
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 20),
-                // Текст
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.white.withOpacity(0.85),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Стрелка
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.white.withOpacity(0.5),
+              size: 24,
+            ),
+          ],
         ),
       ),
     );

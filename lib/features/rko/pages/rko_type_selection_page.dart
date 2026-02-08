@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'rko_amount_input_page.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../recount/services/recount_service.dart';
@@ -40,7 +41,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
   Future<void> _loadShops() async {
     setState(() => _isLoadingShops = true);
     try {
-      _shops = await Shop.loadShopsFromGoogleSheets();
+      _shops = await ShopService.getShopsForCurrentUser();
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
     }

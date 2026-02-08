@@ -1,15 +1,27 @@
 /**
  * Модуль машинного зрения для подсчёта сигарет
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Функции:
  * - Хранение образцов для обучения
  * - Подсчёт загруженных фото по товарам
  * - Подготовка данных для ML модели
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // YOLO ML Wrapper для детекции
 let yoloWrapper = null;
@@ -67,29 +79,29 @@ const getCountingPendingPaths = () => {
 };
 
 // Инициализация pending директории
-function initCountingPending() {
+async function initCountingPending() {
   const paths = getCountingPendingPaths();
-  if (!fs.existsSync(paths.baseDir)) fs.mkdirSync(paths.baseDir, { recursive: true });
-  if (!fs.existsSync(paths.imagesDir)) fs.mkdirSync(paths.imagesDir, { recursive: true });
-  if (!fs.existsSync(paths.samplesFile)) fs.writeFileSync(paths.samplesFile, '[]');
+  if (!(await fileExists(paths.baseDir))) await fsp.mkdir(paths.baseDir, { recursive: true });
+  if (!(await fileExists(paths.imagesDir))) await fsp.mkdir(paths.imagesDir, { recursive: true });
+  if (!(await fileExists(paths.samplesFile))) await fsp.writeFile(paths.samplesFile, '[]');
   return paths;
 }
 
 // Загрузить pending samples
-function loadPendingCountingSamples() {
+async function loadPendingCountingSamples() {
   const paths = getCountingPendingPaths();
-  if (!fs.existsSync(paths.samplesFile)) return [];
+  if (!(await fileExists(paths.samplesFile))) return [];
   try {
-    return JSON.parse(fs.readFileSync(paths.samplesFile, 'utf8'));
+    return JSON.parse(await fsp.readFile(paths.samplesFile, 'utf8'));
   } catch (e) {
     return [];
   }
 }
 
 // Сохранить pending samples
-function savePendingCountingSamples(samples) {
-  const paths = initCountingPending();
-  fs.writeFileSync(paths.samplesFile, JSON.stringify(samples, null, 2));
+async function savePendingCountingSamples(samples) {
+  const paths = await initCountingPending();
+  await fsp.writeFile(paths.samplesFile, JSON.stringify(samples, null, 2));
 }
 
 // Пути к моделям
@@ -98,19 +110,15 @@ const COUNTING_MODEL = path.join(__dirname, '..', 'ml', 'models', 'counting_dete
 
 // Дефолтные настройки (можно изменить через API)
 const DEFAULT_SETTINGS = {
-  requiredRecountPhotos: 10,  // Крупный план пачки (10 шаблонов) - ОБЩИЙ для всех магазинов
-  requiredDisplayPhotosPerShop: 3,  // Фото выкладки НА КАЖДЫЙ МАГАЗИН
-  requiredCountingPhotos: 10,  // Фото с пересчёта - ОБЩИЙ для всех магазинов
-  maxCountingPhotosPerProduct: 50,  // Лимит фото пересчёта на товар
-  // Источник каталога товаров:
-  // "recount-questions" - текущий каталог (вопросы пересчёта)
-  // "master-catalog" - единый мастер-каталог (новый)
+  requiredRecountPhotos: 10,
+  requiredDisplayPhotosPerShop: 3,
+  requiredCountingPhotos: 10,
+  maxCountingPhotosPerProduct: 50,
   catalogSource: 'recount-questions',
-  // Настройки positive samples (успешные распознавания)
-  positiveSamplesEnabled: true,        // Включить сохранение успешных распознаваний
-  positiveSampleRate: 0.1,             // Процент сохраняемых (10%)
-  maxPositiveSamplesPerProduct: 50,    // Лимит на товар
-  positiveSamplesMaxAgeDays: 180,      // Автоудаление через 6 месяцев
+  positiveSamplesEnabled: true,
+  positiveSampleRate: 0.1,
+  maxPositiveSamplesPerProduct: 50,
+  positiveSamplesMaxAgeDays: 180,
 };
 
 // Кэш настроек
@@ -119,15 +127,15 @@ let settingsCache = null;
 /**
  * Загрузить настройки
  */
-function loadSettings() {
+async function loadSettings() {
   if (settingsCache) return settingsCache;
 
   try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      settingsCache = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    if (await fileExists(SETTINGS_FILE)) {
+      settingsCache = JSON.parse(await fsp.readFile(SETTINGS_FILE, 'utf8'));
     } else {
       settingsCache = { ...DEFAULT_SETTINGS };
-      saveSettings(settingsCache);
+      await saveSettings(settingsCache);
     }
   } catch (e) {
     console.error('Ошибка загрузки настроек:', e);
@@ -139,9 +147,9 @@ function loadSettings() {
 /**
  * Сохранить настройки
  */
-function saveSettings(settings) {
+async function saveSettings(settings) {
   try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    await fsp.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
     settingsCache = settings;
     return true;
   } catch (e) {
@@ -153,17 +161,17 @@ function saveSettings(settings) {
 /**
  * Получить настройки
  */
-function getSettings() {
-  return loadSettings();
+async function getSettings() {
+  return await loadSettings();
 }
 
 /**
  * Обновить настройки
  */
-function updateSettings(newSettings) {
-  const current = loadSettings();
+async function updateSettings(newSettings) {
+  const current = await loadSettings();
   const updated = { ...current, ...newSettings };
-  return saveSettings(updated) ? updated : null;
+  return (await saveSettings(updated)) ? updated : null;
 }
 
 // Для обратной совместимости
@@ -172,42 +180,45 @@ const REQUIRED_PHOTOS_COUNT = 20;
 /**
  * Инициализация модуля - создание необходимых директорий и файлов
  */
-function init() {
-  // Создаём директории если не существуют
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+async function init() {
+  if (!(await fileExists(DATA_DIR))) {
+    await fsp.mkdir(DATA_DIR, { recursive: true });
   }
-  if (!fs.existsSync(IMAGES_DIR)) {
-    fs.mkdirSync(IMAGES_DIR, { recursive: true });
+  if (!(await fileExists(IMAGES_DIR))) {
+    await fsp.mkdir(IMAGES_DIR, { recursive: true });
   }
 
-  // Создаём файлы если не существуют
-  if (!fs.existsSync(SAMPLES_FILE)) {
-    fs.writeFileSync(SAMPLES_FILE, JSON.stringify({ samples: [] }, null, 2));
+  if (!(await fileExists(SAMPLES_FILE))) {
+    await fsp.writeFile(SAMPLES_FILE, JSON.stringify({ samples: [] }, null, 2));
   }
-  if (!fs.existsSync(STATS_FILE)) {
-    fs.writeFileSync(STATS_FILE, JSON.stringify({ lastUpdated: null }, null, 2));
+  if (!(await fileExists(STATS_FILE))) {
+    await fsp.writeFile(STATS_FILE, JSON.stringify({ lastUpdated: null }, null, 2));
   }
 }
+
+// Initialize on module load
+(async () => {
+  await init();
+})();
 
 /**
  * Загрузить все магазины из основной системы
  */
-function loadAllShops() {
+async function loadAllShops() {
   try {
-    if (!fs.existsSync(SHOPS_DIR)) {
+    if (!(await fileExists(SHOPS_DIR))) {
       console.warn('[Cigarette Vision] Директория магазинов не найдена:', SHOPS_DIR);
       return [];
     }
 
     const shops = [];
-    const files = fs.readdirSync(SHOPS_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(SHOPS_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
-        const content = fs.readFileSync(path.join(SHOPS_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
         const shop = JSON.parse(content);
-        if (shop.address) {  // Только магазины с адресом
+        if (shop.address) {
           shops.push({
             id: shop.id,
             name: shop.name,
@@ -229,10 +240,10 @@ function loadAllShops() {
 /**
  * Загрузить все образцы
  */
-function loadSamples() {
+async function loadSamples() {
   try {
-    init();
-    const data = fs.readFileSync(SAMPLES_FILE, 'utf8');
+    await init();
+    const data = await fsp.readFile(SAMPLES_FILE, 'utf8');
     return JSON.parse(data).samples || [];
   } catch (error) {
     console.error('Ошибка загрузки образцов:', error);
@@ -243,10 +254,10 @@ function loadSamples() {
 /**
  * Сохранить образцы
  */
-function saveSamples(samples) {
+async function saveSamples(samples) {
   try {
-    init();
-    fs.writeFileSync(SAMPLES_FILE, JSON.stringify({ samples }, null, 2));
+    await init();
+    await fsp.writeFile(SAMPLES_FILE, JSON.stringify({ samples }, null, 2));
     return true;
   } catch (error) {
     console.error('Ошибка сохранения образцов:', error);
@@ -256,45 +267,35 @@ function saveSamples(samples) {
 
 /**
  * Получить список товаров с информацией об обучении
- * @param {Array} recountQuestions - Вопросы пересчёта (из основной базы)
- * @param {string} productGroup - Фильтр по группе товаров
  */
-function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
-  const samples = loadSamples();
-  const settings = loadSettings();
-  const shops = loadAllShops();  // Загружаем реальные магазины
+async function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
+  const samples = await loadSamples();
+  const settings = await loadSettings();
+  const shops = await loadAllShops();
 
   const requiredRecount = settings.requiredRecountPhotos || 10;
-  const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;  // Per-shop
+  const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
 
-  // Подсчитываем количество фото для каждого товара (раздельно по типам)
   const recountPhotosByProduct = {};
-  const completedTemplatesByProduct = {};  // Выполненные шаблоны (1-10)
-
-  // НОВОЕ: Подсчёт фото выкладки по (productId, shopAddress)
+  const completedTemplatesByProduct = {};
   const displayPhotosByProductAndShop = {};
 
   samples.forEach(sample => {
-    // Индексируем по productId И по barcode (для совместимости разных каталогов)
     const productId = sample.productId;
     const barcode = sample.barcode;
 
     if (sample.type === 'display') {
-      // Per-shop подсчёт для выкладки
       if (sample.shopAddress) {
-        // Сохраняем под productId
         if (productId) {
           const keyById = `${productId}|${sample.shopAddress}`;
           displayPhotosByProductAndShop[keyById] = (displayPhotosByProductAndShop[keyById] || 0) + 1;
         }
-        // Также сохраняем под barcode для кросс-каталожного поиска
         if (barcode && barcode !== productId) {
           const keyByBarcode = `${barcode}|${sample.shopAddress}`;
           displayPhotosByProductAndShop[keyByBarcode] = (displayPhotosByProductAndShop[keyByBarcode] || 0) + 1;
         }
       }
     } else {
-      // recount или без типа - общий для всех магазинов
       if (productId) {
         recountPhotosByProduct[productId] = (recountPhotosByProduct[productId] || 0) + 1;
       }
@@ -302,14 +303,12 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
         recountPhotosByProduct[barcode] = (recountPhotosByProduct[barcode] || 0) + 1;
       }
 
-      // Собираем выполненные шаблоны (только для recount)
       if (sample.templateId) {
         const key = productId || barcode;
         if (!completedTemplatesByProduct[key]) {
           completedTemplatesByProduct[key] = new Set();
         }
         completedTemplatesByProduct[key].add(sample.templateId);
-        // Также под barcode
         if (barcode && barcode !== key) {
           if (!completedTemplatesByProduct[barcode]) {
             completedTemplatesByProduct[barcode] = new Set();
@@ -320,21 +319,13 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
     }
   });
 
-  // Фильтруем и обогащаем данные
   let products = recountQuestions.map(q => {
-    const productKey = q.id || q.barcode;
     const recountPhotos = recountPhotosByProduct[q.id] || recountPhotosByProduct[q.barcode] || 0;
-
-    // Получаем выполненные шаблоны (Set -> Array)
     const completedTemplatesSet = completedTemplatesByProduct[q.id] || completedTemplatesByProduct[q.barcode] || new Set();
     const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
-
-    // Крупный план: завершено когда все 10 шаблонов выполнены
     const isRecountComplete = completedTemplates.length >= requiredRecount;
 
-    // НОВОЕ: Per-shop статистика для выкладки
     const perShopDisplayStats = shops.map(shop => {
-      // Ищем фото по id товара И по barcode (могут отличаться в разных каталогах)
       const keyById = `${q.id}|${shop.address}`;
       const keyByBarcode = `${q.barcode}|${shop.address}`;
       const count = displayPhotosByProductAndShop[keyById] || displayPhotosByProductAndShop[keyByBarcode] || 0;
@@ -348,14 +339,8 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
       };
     });
 
-    // Общее количество фото выкладки (для датасета - сумма по всем магазинам)
     const totalDisplayPhotos = perShopDisplayStats.reduce((sum, s) => sum + s.displayPhotosCount, 0);
-
-    // Количество магазинов где ИИ готов (выкладка завершена)
     const shopsWithAiReady = perShopDisplayStats.filter(s => s.isDisplayComplete).length;
-
-    // Для обратной совместимости: displayPhotosCount = общее количество
-    // isDisplayComplete = true если хотя бы в одном магазине завершено (для общей статистики)
     const isDisplayComplete = shopsWithAiReady > 0;
 
     return {
@@ -364,21 +349,17 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
       productGroup: q.productGroup || '',
       productName: q.productName || q.question || '',
       grade: q.grade || 1,
-      isAiActive: q.isAiActive || false,  // Статус ИИ проверки
-      // Общая статистика (обратная совместимость)
+      isAiActive: q.isAiActive || false,
       trainingPhotosCount: recountPhotos + totalDisplayPhotos,
       requiredPhotosCount: requiredRecount + requiredDisplayPerShop,
       isTrainingComplete: isRecountComplete && isDisplayComplete,
-      // Крупный план (общий для всех магазинов)
       recountPhotosCount: recountPhotos,
       requiredRecountPhotos: requiredRecount,
       isRecountComplete: isRecountComplete,
       completedTemplates: completedTemplates,
-      // Выкладка - общая статистика (обратная совместимость)
       displayPhotosCount: totalDisplayPhotos,
-      requiredDisplayPhotos: requiredDisplayPerShop,  // Теперь это per-shop
+      requiredDisplayPhotos: requiredDisplayPerShop,
       isDisplayComplete: isDisplayComplete,
-      // НОВОЕ: Per-shop статистика выкладки
       perShopDisplayStats: perShopDisplayStats,
       totalDisplayPhotos: totalDisplayPhotos,
       requiredDisplayPhotosPerShop: requiredDisplayPerShop,
@@ -387,7 +368,6 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
     };
   });
 
-  // Фильтруем по группе если указана
   if (productGroup) {
     products = products.filter(p => p.productGroup === productGroup);
   }
@@ -411,19 +391,16 @@ function getProductGroups(recountQuestions) {
 /**
  * Получить статистику обучения
  */
-function getTrainingStats(recountQuestions) {
-  const samples = loadSamples();
-  const products = getProductsWithTrainingInfo(recountQuestions);
+async function getTrainingStats(recountQuestions) {
+  const samples = await loadSamples();
+  const products = await getProductsWithTrainingInfo(recountQuestions);
 
-  // Подсчёт фото по типам
   const recountPhotos = samples.filter(s => s.type === 'recount' || !s.type).length;
   const displayPhotos = samples.filter(s => s.type === 'display').length;
 
-  // Подсчёт товаров
   const productsWithPhotos = products.filter(p => p.trainingPhotosCount > 0).length;
   const productsFullyTrained = products.filter(p => p.isTrainingComplete).length;
 
-  // Общий прогресс (сумма всех прогрессов / количество товаров)
   const totalProgress = products.reduce((sum, p) => {
     return sum + Math.min(p.trainingPhotosCount / REQUIRED_PHOTOS_COUNT * 100, 100);
   }, 0);
@@ -457,30 +434,25 @@ async function saveTrainingSample({
   boundingBoxes = [],
 }) {
   try {
-    init();
+    await init();
 
-    // Создаём директорию для labels если не существует
-    if (!fs.existsSync(LABELS_DIR)) {
-      fs.mkdirSync(LABELS_DIR, { recursive: true });
+    if (!(await fileExists(LABELS_DIR))) {
+      await fsp.mkdir(LABELS_DIR, { recursive: true });
     }
 
     const id = uuidv4();
     const timestamp = new Date().toISOString();
 
-    // Сохраняем изображение
     const imageBuffer = Buffer.from(imageBase64, 'base64');
     const imageFileName = `${id}.jpg`;
     const imagePath = path.join(IMAGES_DIR, imageFileName);
-    fs.writeFileSync(imagePath, imageBuffer);
+    await fsp.writeFile(imagePath, imageBuffer);
 
-    // Сохраняем YOLO аннотации если есть
     if (boundingBoxes && boundingBoxes.length > 0) {
       const labelFileName = `${id}.txt`;
       const labelPath = path.join(LABELS_DIR, labelFileName);
 
-      // Формат YOLO: class_id x_center y_center width height
-      // Используем productId как classId (нужно будет создать маппинг)
-      const classId = getClassIdForProduct(productId);
+      const classId = await getClassIdForProduct(productId);
       const yoloLines = boundingBoxes.map(box => {
         const xCenter = box.xCenter || box.x_center || 0;
         const yCenter = box.yCenter || box.y_center || 0;
@@ -489,11 +461,10 @@ async function saveTrainingSample({
         return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
       }).join('\n');
 
-      fs.writeFileSync(labelPath, yoloLines);
+      await fsp.writeFile(labelPath, yoloLines);
       console.log(`[Cigarette Vision] YOLO аннотация сохранена: ${labelFileName} (${boundingBoxes.length} boxes)`);
     }
 
-    // Создаём запись об образце
     const sample = {
       id,
       productId,
@@ -510,10 +481,9 @@ async function saveTrainingSample({
       createdAt: timestamp,
     };
 
-    // Добавляем в список
-    const samples = loadSamples();
+    const samples = await loadSamples();
     samples.push(sample);
-    saveSamples(samples);
+    await saveSamples(samples);
 
     console.log(`[Cigarette Vision] Образец сохранён: ${productName} (${type}, template=${templateId}, ${boundingBoxes ? boundingBoxes.length : 0} аннотаций)`);
 
@@ -531,12 +501,11 @@ const CLASS_MAPPING_FILE = path.join(DATA_DIR, 'class-mapping.json');
 /**
  * Получить classId для товара (создаёт новый если не существует)
  */
-function getClassIdForProduct(productId) {
-  // Загружаем маппинг если не загружен
+async function getClassIdForProduct(productId) {
   if (classMapping === null) {
-    if (fs.existsSync(CLASS_MAPPING_FILE)) {
+    if (await fileExists(CLASS_MAPPING_FILE)) {
       try {
-        classMapping = JSON.parse(fs.readFileSync(CLASS_MAPPING_FILE, 'utf8'));
+        classMapping = JSON.parse(await fsp.readFile(CLASS_MAPPING_FILE, 'utf8'));
       } catch (e) {
         classMapping = {};
       }
@@ -545,18 +514,15 @@ function getClassIdForProduct(productId) {
     }
   }
 
-  // Если товар уже есть — возвращаем его classId
   if (classMapping[productId] !== undefined) {
     return classMapping[productId];
   }
 
-  // Создаём новый classId
   const maxId = Object.values(classMapping).reduce((max, id) => Math.max(max, id), -1);
   const newId = maxId + 1;
   classMapping[productId] = newId;
 
-  // Сохраняем маппинг
-  fs.writeFileSync(CLASS_MAPPING_FILE, JSON.stringify(classMapping, null, 2));
+  await fsp.writeFile(CLASS_MAPPING_FILE, JSON.stringify(classMapping, null, 2));
   console.log(`[Cigarette Vision] Новый classId для ${productId}: ${newId}`);
 
   return newId;
@@ -565,11 +531,11 @@ function getClassIdForProduct(productId) {
 /**
  * Получить маппинг всех товаров -> classId
  */
-function getClassMapping() {
+async function getClassMapping() {
   if (classMapping === null) {
-    if (fs.existsSync(CLASS_MAPPING_FILE)) {
+    if (await fileExists(CLASS_MAPPING_FILE)) {
       try {
-        classMapping = JSON.parse(fs.readFileSync(CLASS_MAPPING_FILE, 'utf8'));
+        classMapping = JSON.parse(await fsp.readFile(CLASS_MAPPING_FILE, 'utf8'));
       } catch (e) {
         classMapping = {};
       }
@@ -583,17 +549,17 @@ function getClassMapping() {
 /**
  * Получить образцы для товара
  */
-function getSamplesForProduct(productId) {
-  const samples = loadSamples();
+async function getSamplesForProduct(productId) {
+  const samples = await loadSamples();
   return samples.filter(s => s.productId === productId || s.barcode === productId);
 }
 
 /**
  * Удалить образец
  */
-function deleteSample(sampleId) {
+async function deleteSample(sampleId) {
   try {
-    const samples = loadSamples();
+    const samples = await loadSamples();
     const sampleIndex = samples.findIndex(s => s.id === sampleId);
 
     if (sampleIndex === -1) {
@@ -602,17 +568,15 @@ function deleteSample(sampleId) {
 
     const sample = samples[sampleIndex];
 
-    // Удаляем файл изображения
     if (sample.imageFileName) {
       const imagePath = path.join(IMAGES_DIR, sample.imageFileName);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
+      if (await fileExists(imagePath)) {
+        await fsp.unlink(imagePath);
       }
     }
 
-    // Удаляем из списка
     samples.splice(sampleIndex, 1);
-    saveSamples(samples);
+    await saveSamples(samples);
 
     return { success: true };
   } catch (error) {
@@ -632,28 +596,20 @@ function getImagePath(fileName) {
 
 /**
  * Сохранить positive sample (успешное распознавание) с лимитом и ротацией
- * @param {Object} params - Параметры
- * @param {string} params.imageBase64 - Изображение в base64
- * @param {Array} params.detectedProducts - Список распознанных товаров
- * @param {string} params.shopAddress - Адрес магазина
- * @param {Array} params.boxes - Bounding boxes из детекции (для YOLO обучения)
- * @returns {Object} - Результат сохранения
  */
 async function savePositiveSample({
   imageBase64,
   detectedProducts,
   shopAddress,
-  boxes = [],  // НОВОЕ: raw boxes из YOLO детекции
+  boxes = [],
 }) {
   try {
-    const settings = loadSettings();
+    const settings = await loadSettings();
 
-    // Проверяем включена ли функция
     if (!settings.positiveSamplesEnabled) {
       return { success: false, skipped: true, reason: 'Positive samples отключены' };
     }
 
-    // Проверяем вероятность сохранения (10% по умолчанию)
     const sampleRate = settings.positiveSampleRate || 0.1;
     if (Math.random() > sampleRate) {
       return { success: false, skipped: true, reason: 'Не попал в выборку' };
@@ -663,63 +619,50 @@ async function savePositiveSample({
       return { success: false, skipped: true, reason: 'Нет распознанных товаров' };
     }
 
-    init();
+    await init();
 
     const maxPerProduct = settings.maxPositiveSamplesPerProduct || 50;
-    const samples = loadSamples();
+    const samples = await loadSamples();
     const savedCount = { total: 0, rotated: 0 };
 
-    // Сохраняем для каждого распознанного товара
     for (const detected of detectedProducts) {
       const productId = detected.productId || detected.barcode;
 
-      // Считаем существующие positive samples для этого товара
       const existingPositive = samples.filter(
         s => (s.productId === productId || s.barcode === productId) && s.type === 'positive'
       );
 
-      // Если лимит превышен - удаляем самые старые
       if (existingPositive.length >= maxPerProduct) {
-        // Сортируем по дате (старые первыми)
         existingPositive.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-        // Удаляем самый старый
         const toDelete = existingPositive[0];
-        const deleteResult = deleteSampleInternal(samples, toDelete.id);
+        const deleteResult = await deleteSampleInternal(samples, toDelete.id);
         if (deleteResult.deleted) {
           savedCount.rotated++;
           console.log(`[Positive Samples] Ротация: удалён старый sample ${toDelete.id} для ${productId}`);
         }
       }
 
-      // Сохраняем новый positive sample
       const id = uuidv4();
       const timestamp = new Date().toISOString();
 
-      // Сохраняем изображение
       const imageBuffer = Buffer.from(imageBase64, 'base64');
       const imageFileName = `positive_${id}.jpg`;
       const imagePath = path.join(IMAGES_DIR, imageFileName);
-      fs.writeFileSync(imagePath, imageBuffer);
+      await fsp.writeFile(imagePath, imageBuffer);
 
-      // НОВОЕ: Собираем bounding boxes для этого товара из raw boxes
       const productBoxes = boxes.filter(box => box.productId === productId);
 
-      // НОВОЕ: Сохраняем YOLO label файл если есть boxes
       let yoloAnnotationCount = 0;
       if (productBoxes.length > 0) {
-        // Создаём директорию для labels если не существует
-        if (!fs.existsSync(LABELS_DIR)) {
-          fs.mkdirSync(LABELS_DIR, { recursive: true });
+        if (!(await fileExists(LABELS_DIR))) {
+          await fsp.mkdir(LABELS_DIR, { recursive: true });
         }
 
         const labelFileName = `positive_${id}.txt`;
         const labelPath = path.join(LABELS_DIR, labelFileName);
 
-        // Конвертируем x1,y1,x2,y2 в YOLO формат: class x_center y_center width height
-        const classId = getClassIdForProduct(productId);
+        const classId = await getClassIdForProduct(productId);
         const yoloLines = productBoxes.map(box => {
-          // box.box содержит { x1, y1, x2, y2 } normalized 0-1
           const b = box.box;
           const xCenter = (b.x1 + b.x2) / 2;
           const yCenter = (b.y1 + b.y2) / 2;
@@ -728,25 +671,24 @@ async function savePositiveSample({
           return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
         }).join('\n');
 
-        fs.writeFileSync(labelPath, yoloLines);
+        await fsp.writeFile(labelPath, yoloLines);
         yoloAnnotationCount = productBoxes.length;
         console.log(`[Positive Samples] YOLO label сохранён: ${labelFileName} (${yoloAnnotationCount} boxes)`);
       }
 
-      // Создаём запись
       const sample = {
         id,
         productId,
         barcode: detected.barcode || productId,
         productName: detected.productName || '',
-        type: 'positive',  // Маркер positive sample
+        type: 'positive',
         shopAddress: shopAddress || '',
         confidence: detected.confidence || detected.maxConfidence || 0,
         count: detected.count || 1,
         imageFileName,
         imageUrl: `/api/cigarette-vision/images/${imageFileName}`,
-        boundingBoxes: productBoxes.map(b => b.box),  // Сохраняем boxes для справки
-        annotationCount: yoloAnnotationCount,  // Теперь есть аннотации!
+        boundingBoxes: productBoxes.map(b => b.box),
+        annotationCount: yoloAnnotationCount,
         createdAt: timestamp,
       };
 
@@ -754,7 +696,7 @@ async function savePositiveSample({
       savedCount.total++;
     }
 
-    saveSamples(samples);
+    await saveSamples(samples);
 
     console.log(`[Positive Samples] Сохранено ${savedCount.total} samples, ротировано ${savedCount.rotated}`);
 
@@ -768,7 +710,7 @@ async function savePositiveSample({
 /**
  * Внутренняя функция удаления sample из массива
  */
-function deleteSampleInternal(samples, sampleId) {
+async function deleteSampleInternal(samples, sampleId) {
   const sampleIndex = samples.findIndex(s => s.id === sampleId);
 
   if (sampleIndex === -1) {
@@ -777,31 +719,27 @@ function deleteSampleInternal(samples, sampleId) {
 
   const sample = samples[sampleIndex];
 
-  // Удаляем файл изображения
   if (sample.imageFileName) {
     const imagePath = path.join(IMAGES_DIR, sample.imageFileName);
-    if (fs.existsSync(imagePath)) {
+    if (await fileExists(imagePath)) {
       try {
-        fs.unlinkSync(imagePath);
+        await fsp.unlink(imagePath);
       } catch (e) {
         console.warn(`[Positive Samples] Не удалось удалить файл ${imagePath}:`, e.message);
       }
     }
 
-    // Удаляем YOLO label если есть (для positive samples имя файла positive_${id}.txt)
-    // Выводим имя label из имени изображения (меняем .jpg на .txt)
     const labelFileName = sample.imageFileName ? sample.imageFileName.replace(/\.jpg$/, '.txt') : (sample.id + '.txt');
     const labelPath = path.join(LABELS_DIR, labelFileName);
-    if (fs.existsSync(labelPath)) {
+    if (await fileExists(labelPath)) {
       try {
-        fs.unlinkSync(labelPath);
+        await fsp.unlink(labelPath);
       } catch (e) {
         // Игнорируем ошибки удаления label
       }
     }
   }
 
-  // Удаляем из массива
   samples.splice(sampleIndex, 1);
 
   return { deleted: true };
@@ -810,34 +748,31 @@ function deleteSampleInternal(samples, sampleId) {
 /**
  * Очистка старых positive samples (старше N дней)
  */
-function cleanupOldPositiveSamples() {
+async function cleanupOldPositiveSamples() {
   try {
-    const settings = loadSettings();
+    const settings = await loadSettings();
     const maxAgeDays = settings.positiveSamplesMaxAgeDays || 180;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 
-    const samples = loadSamples();
-    const initialCount = samples.length;
+    const samples = await loadSamples();
     let deletedCount = 0;
 
-    // Фильтруем только positive samples старше cutoff
     const toDelete = samples.filter(s => {
       if (s.type !== 'positive') return false;
       const createdAt = new Date(s.createdAt);
       return createdAt < cutoffDate;
     });
 
-    // Удаляем старые
     for (const sample of toDelete) {
-      const result = deleteSampleInternal(samples, sample.id);
+      const result = await deleteSampleInternal(samples, sample.id);
       if (result.deleted) {
         deletedCount++;
       }
     }
 
     if (deletedCount > 0) {
-      saveSamples(samples);
+      await saveSamples(samples);
       console.log(`[Positive Samples] Очистка: удалено ${deletedCount} старых samples (старше ${maxAgeDays} дней)`);
     }
 
@@ -851,12 +786,11 @@ function cleanupOldPositiveSamples() {
 /**
  * Получить статистику positive samples
  */
-function getPositiveSamplesStats() {
+async function getPositiveSamplesStats() {
   try {
-    const samples = loadSamples();
+    const samples = await loadSamples();
     const positiveSamples = samples.filter(s => s.type === 'positive');
 
-    // Группируем по товарам
     const byProduct = {};
     positiveSamples.forEach(s => {
       const key = s.productId || s.barcode;
@@ -866,7 +800,6 @@ function getPositiveSamplesStats() {
       byProduct[key].count++;
     });
 
-    // Группируем по магазинам
     const byShop = {};
     positiveSamples.forEach(s => {
       const key = s.shopAddress || 'unknown';
@@ -889,12 +822,8 @@ function getPositiveSamplesStats() {
 
 /**
  * Детекция и подсчёт сигарет на изображении
- * @param {string} imageBase64 - Изображение в формате base64
- * @param {string} productId - ID товара для фильтрации (опционально)
- * @param {number} confidence - Минимальная уверенность (0-1)
  */
 async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
-  // Проверяем доступность YOLO wrapper
   if (!yoloWrapper) {
     return {
       success: false,
@@ -905,10 +834,8 @@ async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
     };
   }
 
-  // Проверяем, обучена ли модель
   if (!yoloWrapper.isModelReady()) {
-    // Возвращаем информативное сообщение о статусе обучения
-    const samples = loadSamples();
+    const samples = await loadSamples();
     const totalSamples = samples.length;
     const samplesWithAnnotations = samples.filter(s => s.annotationCount > 0).length;
 
@@ -928,7 +855,6 @@ async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
   }
 
   try {
-    // Вызываем YOLO детекцию
     const result = await yoloWrapper.detectAndCount(imageBase64, productId, confidence);
 
     if (result.success) {
@@ -952,12 +878,8 @@ async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
 
 /**
  * Проверка выкладки - обнаружение товаров на витрине
- * @param {string} imageBase64 - Изображение в формате base64
- * @param {string[]} expectedProducts - Список ожидаемых товаров (productId)
- * @param {number} confidence - Минимальная уверенность (0-1)
  */
 async function checkDisplay(imageBase64, expectedProducts = [], confidence = 0.3) {
-  // Проверяем доступность YOLO wrapper
   if (!yoloWrapper) {
     return {
       success: false,
@@ -967,9 +889,8 @@ async function checkDisplay(imageBase64, expectedProducts = [], confidence = 0.3
     };
   }
 
-  // Проверяем, обучена ли модель
   if (!yoloWrapper.isModelReady()) {
-    const samples = loadSamples();
+    const samples = await loadSamples();
     const displaySamples = samples.filter(s => s.type === 'display').length;
 
     return {
@@ -986,7 +907,6 @@ async function checkDisplay(imageBase64, expectedProducts = [], confidence = 0.3
   }
 
   try {
-    // Вызываем YOLO проверку выкладки
     const result = await yoloWrapper.checkDisplay(imageBase64, expectedProducts, confidence);
 
     if (result.success) {
@@ -1009,7 +929,6 @@ async function checkDisplay(imageBase64, expectedProducts = [], confidence = 0.3
 
 /**
  * Экспорт данных для обучения в YOLO формат
- * @param {string} outputDir - Путь для сохранения датасета
  */
 async function exportTrainingData(outputDir) {
   if (!yoloWrapper) {
@@ -1024,8 +943,6 @@ async function exportTrainingData(outputDir) {
 
 /**
  * Запустить обучение модели
- * @param {string} dataYaml - Путь к data.yaml
- * @param {number} epochs - Количество эпох обучения
  */
 async function trainModel(dataYaml, epochs = 100) {
   if (!yoloWrapper) {
@@ -1053,7 +970,6 @@ async function getModelStatus() {
   const status = await yoloWrapper.checkStatus();
   const modelInfo = yoloWrapper.getModelInfo();
 
-  // isTrained = true если модель существует (проверяем оба источника)
   const isTrained = status.model_exists || modelInfo.exists || false;
 
   return {
@@ -1069,20 +985,20 @@ async function getModelStatus() {
 /**
  * Инициализация директорий для раздельного обучения
  */
-function initTypedTraining(trainingType) {
+async function initTypedTraining(trainingType) {
   const paths = getTrainingPaths(trainingType);
 
-  if (!fs.existsSync(paths.baseDir)) {
-    fs.mkdirSync(paths.baseDir, { recursive: true });
+  if (!(await fileExists(paths.baseDir))) {
+    await fsp.mkdir(paths.baseDir, { recursive: true });
   }
-  if (!fs.existsSync(paths.imagesDir)) {
-    fs.mkdirSync(paths.imagesDir, { recursive: true });
+  if (!(await fileExists(paths.imagesDir))) {
+    await fsp.mkdir(paths.imagesDir, { recursive: true });
   }
-  if (!fs.existsSync(paths.labelsDir)) {
-    fs.mkdirSync(paths.labelsDir, { recursive: true });
+  if (!(await fileExists(paths.labelsDir))) {
+    await fsp.mkdir(paths.labelsDir, { recursive: true });
   }
-  if (!fs.existsSync(paths.samplesFile)) {
-    fs.writeFileSync(paths.samplesFile, JSON.stringify({ samples: [] }, null, 2));
+  if (!(await fileExists(paths.samplesFile))) {
+    await fsp.writeFile(paths.samplesFile, JSON.stringify({ samples: [] }, null, 2));
   }
 
   return paths;
@@ -1091,10 +1007,10 @@ function initTypedTraining(trainingType) {
 /**
  * Загрузить образцы для конкретного типа обучения
  */
-function loadTypedSamples(trainingType) {
+async function loadTypedSamples(trainingType) {
   try {
-    const paths = initTypedTraining(trainingType);
-    const data = fs.readFileSync(paths.samplesFile, 'utf8');
+    const paths = await initTypedTraining(trainingType);
+    const data = await fsp.readFile(paths.samplesFile, 'utf8');
     return JSON.parse(data).samples || [];
   } catch (error) {
     console.error(`[Typed Training] Ошибка загрузки образцов ${trainingType}:`, error);
@@ -1105,10 +1021,10 @@ function loadTypedSamples(trainingType) {
 /**
  * Сохранить образцы для конкретного типа обучения
  */
-function saveTypedSamples(trainingType, samples) {
+async function saveTypedSamples(trainingType, samples) {
   try {
-    const paths = initTypedTraining(trainingType);
-    fs.writeFileSync(paths.samplesFile, JSON.stringify({ samples }, null, 2));
+    const paths = await initTypedTraining(trainingType);
+    await fsp.writeFile(paths.samplesFile, JSON.stringify({ samples }, null, 2));
     return true;
   } catch (error) {
     console.error(`[Typed Training] Ошибка сохранения образцов ${trainingType}:`, error);
@@ -1119,13 +1035,13 @@ function saveTypedSamples(trainingType, samples) {
 /**
  * Получить classId для товара в конкретном датасете
  */
-function getTypedClassId(trainingType, productId) {
-  const paths = initTypedTraining(trainingType);
+async function getTypedClassId(trainingType, productId) {
+  const paths = await initTypedTraining(trainingType);
 
   let classMapping = {};
-  if (fs.existsSync(paths.classMappingFile)) {
+  if (await fileExists(paths.classMappingFile)) {
     try {
-      classMapping = JSON.parse(fs.readFileSync(paths.classMappingFile, 'utf8'));
+      classMapping = JSON.parse(await fsp.readFile(paths.classMappingFile, 'utf8'));
     } catch (e) {
       classMapping = {};
     }
@@ -1135,12 +1051,11 @@ function getTypedClassId(trainingType, productId) {
     return classMapping[productId];
   }
 
-  // Создаём новый classId
   const maxId = Object.values(classMapping).reduce((max, id) => Math.max(max, id), -1);
   const newId = maxId + 1;
   classMapping[productId] = newId;
 
-  fs.writeFileSync(paths.classMappingFile, JSON.stringify(classMapping, null, 2));
+  await fsp.writeFile(paths.classMappingFile, JSON.stringify(classMapping, null, 2));
   console.log(`[Typed Training] ${trainingType}: новый classId для ${productId}: ${newId}`);
 
   return newId;
@@ -1148,8 +1063,6 @@ function getTypedClassId(trainingType, productId) {
 
 /**
  * Сохранить positive sample в раздельный датасет
- * @param {string} trainingType - 'display' или 'counting'
- * @param {Object} params - Параметры образца
  */
 async function saveTypedPositiveSample(trainingType, {
   imageBase64,
@@ -1158,14 +1071,12 @@ async function saveTypedPositiveSample(trainingType, {
   boxes = [],
 }) {
   try {
-    const settings = loadSettings();
+    const settings = await loadSettings();
 
-    // Проверяем включена ли функция
     if (!settings.positiveSamplesEnabled) {
       return { success: false, skipped: true, reason: 'Positive samples отключены' };
     }
 
-    // Проверяем вероятность сохранения (10% по умолчанию)
     const sampleRate = settings.positiveSampleRate || 0.1;
     if (Math.random() > sampleRate) {
       return { success: false, skipped: true, reason: 'Не попал в выборку' };
@@ -1175,34 +1086,29 @@ async function saveTypedPositiveSample(trainingType, {
       return { success: false, skipped: true, reason: 'Нет распознанных товаров' };
     }
 
-    const paths = initTypedTraining(trainingType);
+    const paths = await initTypedTraining(trainingType);
     const maxPerProduct = settings.maxPositiveSamplesPerProduct || 50;
-    const samples = loadTypedSamples(trainingType);
+    const samples = await loadTypedSamples(trainingType);
     const savedCount = { total: 0, rotated: 0, withLabels: 0 };
 
-    // Сохраняем для каждого распознанного товара
     for (const detected of detectedProducts) {
       const productId = detected.productId || detected.barcode;
 
-      // Считаем существующие positive samples для этого товара
       const existingPositive = samples.filter(
         s => (s.productId === productId || s.barcode === productId)
       );
 
-      // Если лимит превышен - удаляем самые старые (FIFO)
       if (existingPositive.length >= maxPerProduct) {
         existingPositive.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         const toDelete = existingPositive[0];
 
-        // Удаляем файлы
         const imgPath = path.join(paths.imagesDir, toDelete.imageFileName);
         const lblPath = path.join(paths.labelsDir, toDelete.imageFileName.replace(/\.jpg$/, '.txt'));
         try {
-          if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-          if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+          if (await fileExists(imgPath)) await fsp.unlink(imgPath);
+          if (await fileExists(lblPath)) await fsp.unlink(lblPath);
         } catch (e) { /* ignore */ }
 
-        // Удаляем из массива
         const idx = samples.findIndex(s => s.id === toDelete.id);
         if (idx !== -1) {
           samples.splice(idx, 1);
@@ -1210,23 +1116,19 @@ async function saveTypedPositiveSample(trainingType, {
         }
       }
 
-      // Сохраняем новый positive sample
       const id = uuidv4();
       const timestamp = new Date().toISOString();
       const imageFileName = `${trainingType}_${id}.jpg`;
 
-      // Сохраняем изображение
       const imageBuffer = Buffer.from(imageBase64, 'base64');
-      fs.writeFileSync(path.join(paths.imagesDir, imageFileName), imageBuffer);
+      await fsp.writeFile(path.join(paths.imagesDir, imageFileName), imageBuffer);
 
-      // Собираем bounding boxes для этого товара
       const productBoxes = boxes.filter(box => box.productId === productId);
 
-      // Сохраняем YOLO label если есть boxes
       let annotationCount = 0;
       if (productBoxes.length > 0) {
         const labelFileName = imageFileName.replace(/\.jpg$/, '.txt');
-        const classId = getTypedClassId(trainingType, productId);
+        const classId = await getTypedClassId(trainingType, productId);
 
         const yoloLines = productBoxes.map(box => {
           const b = box.box;
@@ -1237,12 +1139,11 @@ async function saveTypedPositiveSample(trainingType, {
           return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
         }).join('\n');
 
-        fs.writeFileSync(path.join(paths.labelsDir, labelFileName), yoloLines);
+        await fsp.writeFile(path.join(paths.labelsDir, labelFileName), yoloLines);
         annotationCount = productBoxes.length;
         savedCount.withLabels++;
       }
 
-      // Создаём запись
       const sample = {
         id,
         productId,
@@ -1262,7 +1163,7 @@ async function saveTypedPositiveSample(trainingType, {
       savedCount.total++;
     }
 
-    saveTypedSamples(trainingType, samples);
+    await saveTypedSamples(trainingType, samples);
     console.log(`[Typed Training] ${trainingType}: сохранено ${savedCount.total}, с labels: ${savedCount.withLabels}, ротировано: ${savedCount.rotated}`);
 
     return { success: true, savedCount, trainingType };
@@ -1274,13 +1175,6 @@ async function saveTypedPositiveSample(trainingType, {
 
 /**
  * Сохранить фото с пересчёта в PENDING (ожидание подтверждения админа)
- * Фото НЕ попадает в обучение пока админ не подтвердит
- * @param {Object} params - Параметры
- * @param {string} params.imageBase64 - Изображение в base64
- * @param {string} params.productId - ID товара (barcode)
- * @param {string} params.productName - Название товара
- * @param {string} params.shopAddress - Адрес магазина
- * @param {number} params.employeeAnswer - Ответ сотрудника (количество)
  */
 async function saveCountingTrainingSample({
   imageBase64,
@@ -1294,23 +1188,21 @@ async function saveCountingTrainingSample({
       return { success: false, error: 'imageBase64 и productId обязательны' };
     }
 
-    const paths = initCountingPending();
-    const samples = loadPendingCountingSamples();
+    const paths = await initCountingPending();
+    const samples = await loadPendingCountingSamples();
 
-    // Лимит pending фото на товар (чтобы не засорять)
     const maxPendingPerProduct = 20;
     const existingForProduct = samples.filter(
       s => (s.productId === productId || s.barcode === productId)
     );
 
-    // Если лимит превышен - удаляем самый старый (FIFO)
     if (existingForProduct.length >= maxPendingPerProduct) {
       existingForProduct.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       const toDelete = existingForProduct[0];
 
       const imgPath = path.join(paths.imagesDir, toDelete.imageFileName);
       try {
-        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        if (await fileExists(imgPath)) await fsp.unlink(imgPath);
       } catch (e) { /* ignore */ }
 
       const idx = samples.findIndex(s => s.id === toDelete.id);
@@ -1320,13 +1212,12 @@ async function saveCountingTrainingSample({
       }
     }
 
-    // Сохраняем новое фото в pending
     const id = uuidv4();
     const timestamp = new Date().toISOString();
     const imageFileName = `pending_${productId}_${id}.jpg`;
 
     const imageBuffer = Buffer.from(imageBase64, 'base64');
-    fs.writeFileSync(path.join(paths.imagesDir, imageFileName), imageBuffer);
+    await fsp.writeFile(path.join(paths.imagesDir, imageFileName), imageBuffer);
 
     const sample = {
       id,
@@ -1334,7 +1225,7 @@ async function saveCountingTrainingSample({
       barcode: productId,
       productName: productName || '',
       type: 'counting-pending',
-      status: 'pending',  // pending | approved | rejected
+      status: 'pending',
       shopAddress: shopAddress || '',
       employeeAnswer: employeeAnswer || null,
       imageFileName,
@@ -1343,7 +1234,7 @@ async function saveCountingTrainingSample({
     };
 
     samples.push(sample);
-    savePendingCountingSamples(samples);
+    await savePendingCountingSamples(samples);
 
     console.log(`[Counting Pending] Фото добавлено в очередь для ${productName || productId}, pending: ${existingForProduct.length + 1}`);
 
@@ -1356,13 +1247,12 @@ async function saveCountingTrainingSample({
 
 /**
  * Подтвердить pending фото (переместить в counting-training)
- * @param {string} sampleId - ID pending образца
- * @returns {Object} - Результат
  */
-function approveCountingPendingSample(sampleId) {
+async function approveCountingPendingSample(sampleId) {
   try {
-    const pendingPaths = initCountingPending();
-    const pendingSamples = loadPendingCountingSamples();
+    await initCountingPending();
+    const pendingPaths = getCountingPendingPaths();
+    const pendingSamples = await loadPendingCountingSamples();
 
     const idx = pendingSamples.findIndex(s => s.id === sampleId);
     if (idx === -1) {
@@ -1371,17 +1261,15 @@ function approveCountingPendingSample(sampleId) {
 
     const pendingSample = pendingSamples[idx];
     const trainingType = TRAINING_TYPES.COUNTING;
-    const trainingPaths = initTypedTraining(trainingType);
-    const trainingSamples = loadTypedSamples(trainingType);
+    const trainingPaths = await initTypedTraining(trainingType);
+    const trainingSamples = await loadTypedSamples(trainingType);
 
-    // Проверяем лимит в training
-    const settings = loadSettings();
+    const settings = await loadSettings();
     const maxPerProduct = settings.maxCountingPhotosPerProduct || 50;
     const existingForProduct = trainingSamples.filter(
       s => (s.productId === pendingSample.productId || s.barcode === pendingSample.productId)
     );
 
-    // FIFO ротация если лимит
     if (existingForProduct.length >= maxPerProduct) {
       existingForProduct.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       const toDelete = existingForProduct[0];
@@ -1389,25 +1277,23 @@ function approveCountingPendingSample(sampleId) {
       const imgPath = path.join(trainingPaths.imagesDir, toDelete.imageFileName);
       const lblPath = path.join(trainingPaths.labelsDir, toDelete.imageFileName.replace(/\.jpg$/, '.txt'));
       try {
-        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-        if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+        if (await fileExists(imgPath)) await fsp.unlink(imgPath);
+        if (await fileExists(lblPath)) await fsp.unlink(lblPath);
       } catch (e) { /* ignore */ }
 
       const delIdx = trainingSamples.findIndex(s => s.id === toDelete.id);
       if (delIdx !== -1) trainingSamples.splice(delIdx, 1);
     }
 
-    // Перемещаем изображение из pending в training
     const newImageFileName = `counting_${pendingSample.productId}_${pendingSample.id}.jpg`;
     const srcPath = path.join(pendingPaths.imagesDir, pendingSample.imageFileName);
     const dstPath = path.join(trainingPaths.imagesDir, newImageFileName);
 
-    if (fs.existsSync(srcPath)) {
-      fs.copyFileSync(srcPath, dstPath);
-      fs.unlinkSync(srcPath);
+    if (await fileExists(srcPath)) {
+      await fsp.copyFile(srcPath, dstPath);
+      await fsp.unlink(srcPath);
     }
 
-    // Создаём запись в training
     const trainingSample = {
       id: pendingSample.id,
       productId: pendingSample.productId,
@@ -1426,11 +1312,10 @@ function approveCountingPendingSample(sampleId) {
     };
 
     trainingSamples.push(trainingSample);
-    saveTypedSamples(trainingType, trainingSamples);
+    await saveTypedSamples(trainingType, trainingSamples);
 
-    // Удаляем из pending
     pendingSamples.splice(idx, 1);
-    savePendingCountingSamples(pendingSamples);
+    await savePendingCountingSamples(pendingSamples);
 
     console.log(`[Counting Pending] Подтверждено фото для ${pendingSample.productName || pendingSample.productId}`);
 
@@ -1443,13 +1328,11 @@ function approveCountingPendingSample(sampleId) {
 
 /**
  * Отклонить pending фото (удалить)
- * @param {string} sampleId - ID pending образца
- * @returns {Object} - Результат
  */
-function rejectCountingPendingSample(sampleId) {
+async function rejectCountingPendingSample(sampleId) {
   try {
-    const paths = initCountingPending();
-    const samples = loadPendingCountingSamples();
+    const paths = await initCountingPending();
+    const samples = await loadPendingCountingSamples();
 
     const idx = samples.findIndex(s => s.id === sampleId);
     if (idx === -1) {
@@ -1458,15 +1341,13 @@ function rejectCountingPendingSample(sampleId) {
 
     const sample = samples[idx];
 
-    // Удаляем изображение
     const imgPath = path.join(paths.imagesDir, sample.imageFileName);
     try {
-      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      if (await fileExists(imgPath)) await fsp.unlink(imgPath);
     } catch (e) { /* ignore */ }
 
-    // Удаляем из списка
     samples.splice(idx, 1);
-    savePendingCountingSamples(samples);
+    await savePendingCountingSamples(samples);
 
     console.log(`[Counting Pending] Отклонено фото для ${sample.productName || sample.productId}`);
 
@@ -1479,19 +1360,16 @@ function rejectCountingPendingSample(sampleId) {
 
 /**
  * Получить все pending фото пересчёта
- * @returns {Array} - Массив pending образцов
  */
-function getAllPendingCountingSamples() {
-  return loadPendingCountingSamples();
+async function getAllPendingCountingSamples() {
+  return await loadPendingCountingSamples();
 }
 
 /**
  * Получить pending фото для конкретного товара
- * @param {string} productId - ID товара (barcode)
- * @returns {Array} - Массив pending образцов
  */
-function getPendingCountingSamplesForProduct(productId) {
-  const samples = loadPendingCountingSamples();
+async function getPendingCountingSamplesForProduct(productId) {
+  const samples = await loadPendingCountingSamples();
   return samples.filter(
     s => (s.productId === productId || s.barcode === productId)
   );
@@ -1499,11 +1377,9 @@ function getPendingCountingSamplesForProduct(productId) {
 
 /**
  * Получить количество pending фото для товара
- * @param {string} productId - ID товара (barcode)
- * @returns {number} - Количество pending фото
  */
-function getPendingCountingPhotosCount(productId) {
-  const samples = loadPendingCountingSamples();
+async function getPendingCountingPhotosCount(productId) {
+  const samples = await loadPendingCountingSamples();
   return samples.filter(
     s => (s.productId === productId || s.barcode === productId)
   ).length;
@@ -1511,12 +1387,10 @@ function getPendingCountingPhotosCount(productId) {
 
 /**
  * Получить количество фото пересчёта для товара
- * @param {string} productId - ID товара (barcode)
- * @returns {number} - Количество фото
  */
-function getCountingPhotosCount(productId) {
+async function getCountingPhotosCount(productId) {
   try {
-    const samples = loadTypedSamples(TRAINING_TYPES.COUNTING);
+    const samples = await loadTypedSamples(TRAINING_TYPES.COUNTING);
     return samples.filter(
       s => (s.productId === productId || s.barcode === productId)
     ).length;
@@ -1528,12 +1402,10 @@ function getCountingPhotosCount(productId) {
 
 /**
  * Получить все фото пересчёта для товара
- * @param {string} productId - ID товара (barcode)
- * @returns {Array} - Массив образцов
  */
-function getCountingSamplesForProduct(productId) {
+async function getCountingSamplesForProduct(productId) {
   try {
-    const samples = loadTypedSamples(TRAINING_TYPES.COUNTING);
+    const samples = await loadTypedSamples(TRAINING_TYPES.COUNTING);
     return samples.filter(
       s => (s.productId === productId || s.barcode === productId)
     );
@@ -1545,14 +1417,12 @@ function getCountingSamplesForProduct(productId) {
 
 /**
  * Удалить фото пересчёта
- * @param {string} sampleId - ID образца
- * @returns {Object} - Результат
  */
-function deleteCountingSample(sampleId) {
+async function deleteCountingSample(sampleId) {
   try {
     const trainingType = TRAINING_TYPES.COUNTING;
     const paths = getTrainingPaths(trainingType);
-    const samples = loadTypedSamples(trainingType);
+    const samples = await loadTypedSamples(trainingType);
 
     const idx = samples.findIndex(s => s.id === sampleId);
     if (idx === -1) {
@@ -1561,17 +1431,15 @@ function deleteCountingSample(sampleId) {
 
     const sample = samples[idx];
 
-    // Удаляем файлы
     const imgPath = path.join(paths.imagesDir, sample.imageFileName);
     const lblPath = path.join(paths.labelsDir, sample.imageFileName.replace(/\.jpg$/, '.txt'));
     try {
-      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-      if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+      if (await fileExists(imgPath)) await fsp.unlink(imgPath);
+      if (await fileExists(lblPath)) await fsp.unlink(lblPath);
     } catch (e) { /* ignore */ }
 
-    // Удаляем из массива
     samples.splice(idx, 1);
-    saveTypedSamples(trainingType, samples);
+    await saveTypedSamples(trainingType, samples);
 
     console.log(`[Counting Training] Удалён образец ${sampleId}`);
     return { success: true };
@@ -1584,12 +1452,11 @@ function deleteCountingSample(sampleId) {
 /**
  * Получить статистику раздельного датасета
  */
-function getTypedTrainingStats(trainingType) {
+async function getTypedTrainingStats(trainingType) {
   try {
-    const samples = loadTypedSamples(trainingType);
+    const samples = await loadTypedSamples(trainingType);
     const paths = getTrainingPaths(trainingType);
 
-    // Подсчёт по товарам
     const byProduct = {};
     let withAnnotations = 0;
 
@@ -1605,9 +1472,8 @@ function getTypedTrainingStats(trainingType) {
       }
     });
 
-    // Проверяем существование модели
     const modelPath = trainingType === TRAINING_TYPES.COUNTING ? COUNTING_MODEL : DISPLAY_MODEL;
-    const modelExists = fs.existsSync(modelPath);
+    const modelExists = await fileExists(modelPath);
 
     return {
       trainingType,
@@ -1631,33 +1497,33 @@ function getTypedTrainingStats(trainingType) {
 /**
  * Очистка старых образцов в раздельном датасете
  */
-function cleanupTypedSamples(trainingType, maxAgeDays = 180) {
+async function cleanupTypedSamples(trainingType, maxAgeDays = 180) {
   try {
     const paths = getTrainingPaths(trainingType);
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 
-    const samples = loadTypedSamples(trainingType);
+    const samples = await loadTypedSamples(trainingType);
     let deletedCount = 0;
 
-    const toKeep = samples.filter(s => {
+    const toKeep = [];
+    for (const s of samples) {
       const createdAt = new Date(s.createdAt);
       if (createdAt < cutoffDate) {
-        // Удаляем файлы
         const imgPath = path.join(paths.imagesDir, s.imageFileName);
         const lblPath = path.join(paths.labelsDir, s.imageFileName.replace(/\.jpg$/, '.txt'));
         try {
-          if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-          if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+          if (await fileExists(imgPath)) await fsp.unlink(imgPath);
+          if (await fileExists(lblPath)) await fsp.unlink(lblPath);
         } catch (e) { /* ignore */ }
         deletedCount++;
-        return false;
+      } else {
+        toKeep.push(s);
       }
-      return true;
-    });
+    }
 
     if (deletedCount > 0) {
-      saveTypedSamples(trainingType, toKeep);
+      await saveTypedSamples(trainingType, toKeep);
       console.log(`[Typed Training] ${trainingType}: очищено ${deletedCount} старых образцов`);
     }
 
@@ -1670,22 +1536,19 @@ function cleanupTypedSamples(trainingType, maxAgeDays = 180) {
 
 // ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
 
-// Файл для хранения статистики ошибок по товарам
 const AI_ERRORS_FILE = path.join(DATA_DIR, 'ai-errors-stats.json');
-// Директория для "проблемных" фото (для анализа и переобучения)
 const PROBLEM_SAMPLES_DIR = path.join(DATA_DIR, 'problem-samples');
 
-// Настройки автоотключения
-const AI_ERROR_THRESHOLD = 5;  // После 5 ошибок подряд - отключаем ИИ
-const ERROR_RESET_DAYS = 7;    // Сбрасываем счётчик через 7 дней без ошибок
+const AI_ERROR_THRESHOLD = 5;
+const ERROR_RESET_DAYS = 7;
 
 /**
  * Загрузить статистику ошибок ИИ
  */
-function loadAiErrorsStats() {
+async function loadAiErrorsStats() {
   try {
-    if (fs.existsSync(AI_ERRORS_FILE)) {
-      return JSON.parse(fs.readFileSync(AI_ERRORS_FILE, 'utf8'));
+    if (await fileExists(AI_ERRORS_FILE)) {
+      return JSON.parse(await fsp.readFile(AI_ERRORS_FILE, 'utf8'));
     }
   } catch (e) {
     console.error('[AI Errors] Ошибка загрузки статистики:', e.message);
@@ -1696,9 +1559,9 @@ function loadAiErrorsStats() {
 /**
  * Сохранить статистику ошибок ИИ
  */
-function saveAiErrorsStats(stats) {
+async function saveAiErrorsStats(stats) {
   try {
-    fs.writeFileSync(AI_ERRORS_FILE, JSON.stringify(stats, null, 2));
+    await fsp.writeFile(AI_ERRORS_FILE, JSON.stringify(stats, null, 2));
   } catch (e) {
     console.error('[AI Errors] Ошибка сохранения статистики:', e.message);
   }
@@ -1706,15 +1569,6 @@ function saveAiErrorsStats(stats) {
 
 /**
  * Сообщить об ошибке ИИ от сотрудника (информационная метка)
- * НЕ увеличивает счётчик ошибок - это делает только админ через reportAdminAiDecision()
- * @param {Object} params
- * @param {string} params.productId - ID товара
- * @param {string} params.productName - Название товара
- * @param {number} params.expectedCount - Ожидаемое количество (по программе)
- * @param {number} params.aiCount - Количество от ИИ
- * @param {string} params.imageBase64 - Фото для анализа
- * @param {string} params.shopAddress - Адрес магазина
- * @param {string} params.employeeName - Имя сотрудника
  */
 async function reportAiError({
   productId,
@@ -1726,16 +1580,15 @@ async function reportAiError({
   employeeName,
 }) {
   try {
-    const stats = loadAiErrorsStats();
+    const stats = await loadAiErrorsStats();
     const now = new Date();
 
-    // Инициализируем запись для товара если нет
     if (!stats.products[productId]) {
       stats.products[productId] = {
         productName: productName || '',
         consecutiveErrors: 0,
         totalErrors: 0,
-        pendingReports: 0,  // Ожидают проверки админом
+        pendingReports: 0,
         lastErrorAt: null,
         isDisabled: false,
         disabledAt: null,
@@ -1745,26 +1598,23 @@ async function reportAiError({
 
     const product = stats.products[productId];
     product.productName = productName || product.productName;
-    // НЕ увеличиваем consecutiveErrors и totalErrors - это сделает админ
     product.pendingReports = (product.pendingReports || 0) + 1;
     product.lastReportAt = now.toISOString();
 
-    // Сохраняем в историю (последние 20 ошибок) - для информации админу
     product.errorHistory.unshift({
       timestamp: now.toISOString(),
       expectedCount,
       aiCount,
       shopAddress: shopAddress || '',
       employeeName: employeeName || '',
-      status: 'pending',  // Ожидает решения админа
+      status: 'pending',
     });
     if (product.errorHistory.length > 20) {
       product.errorHistory = product.errorHistory.slice(0, 20);
     }
 
-    saveAiErrorsStats(stats);
+    await saveAiErrorsStats(stats);
 
-    // Сохраняем проблемное фото для просмотра админом
     let savedFileName = null;
     if (imageBase64) {
       const saveResult = await saveProblemSample({
@@ -1774,7 +1624,7 @@ async function reportAiError({
         aiCount,
         imageBase64,
         shopAddress,
-        status: 'pending',  // Ожидает решения админа
+        status: 'pending',
       });
       savedFileName = saveResult.fileName;
     }
@@ -1800,16 +1650,6 @@ async function reportAiError({
 
 /**
  * Решение админа по ошибке ИИ
- * ТОЛЬКО эта функция увеличивает счётчик для автоотключения
- * @param {Object} params
- * @param {string} params.productId - ID товара
- * @param {string} params.productName - Название товара
- * @param {string} params.decision - "approved_for_training" | "rejected_bad_photo"
- * @param {string} params.adminName - Имя админа
- * @param {string} params.imageBase64 - Фото (если approved, сохраняем в training)
- * @param {number} params.expectedCount - Ожидаемое количество
- * @param {number} params.aiCount - Количество от ИИ
- * @param {string} params.shopAddress - Адрес магазина
  */
 async function reportAdminAiDecision({
   productId,
@@ -1822,10 +1662,9 @@ async function reportAdminAiDecision({
   shopAddress,
 }) {
   try {
-    const stats = loadAiErrorsStats();
+    const stats = await loadAiErrorsStats();
     const now = new Date();
 
-    // Инициализируем запись для товара если нет
     if (!stats.products[productId]) {
       stats.products[productId] = {
         productName: productName || '',
@@ -1843,12 +1682,10 @@ async function reportAdminAiDecision({
     const product = stats.products[productId];
     product.productName = productName || product.productName;
 
-    // Уменьшаем счётчик pending
     if (product.pendingReports > 0) {
       product.pendingReports--;
     }
 
-    // Сохраняем решение админа
     if (!product.adminDecisions) {
       product.adminDecisions = [];
     }
@@ -1865,19 +1702,16 @@ async function reportAdminAiDecision({
     }
 
     if (decision === 'approved_for_training') {
-      // Админ подтвердил: ИИ ошибся
       product.consecutiveErrors++;
       product.totalErrors++;
       product.lastErrorAt = now.toISOString();
 
-      // Проверяем порог автоотключения
       if (product.consecutiveErrors >= AI_ERROR_THRESHOLD && !product.isDisabled) {
         product.isDisabled = true;
         product.disabledAt = now.toISOString();
         console.log(`[AI Errors] ⚠️ ИИ ОТКЛЮЧЕН для товара ${productId} (${productName}) после ${product.consecutiveErrors} подтверждённых ошибок`);
       }
 
-      // Сохраняем фото в counting-training датасет
       if (imageBase64) {
         try {
           await saveTypedPositiveSample(TRAINING_TYPES.COUNTING, {
@@ -1886,10 +1720,10 @@ async function reportAdminAiDecision({
               productId,
               barcode: productId,
               productName: productName || '',
-              count: expectedCount || 0,  // Правильное количество
+              count: expectedCount || 0,
             }],
             shopAddress: shopAddress || '',
-            boxes: [],  // Без boxes - админ добавит аннотацию позже
+            boxes: [],
           });
           console.log(`[AI Errors] Фото добавлено в counting-training: ${productId}`);
         } catch (e) {
@@ -1899,12 +1733,10 @@ async function reportAdminAiDecision({
 
       console.log(`[AI Errors] Админ ${adminName} подтвердил ошибку ИИ: ${productId} (consecutiveErrors: ${product.consecutiveErrors})`);
     } else if (decision === 'rejected_bad_photo') {
-      // Админ отклонил: фото плохое, ИИ не виноват
-      // НЕ увеличиваем счётчик
       console.log(`[AI Errors] Админ ${adminName} отклонил жалобу на ИИ: ${productId} (плохое фото)`);
     }
 
-    saveAiErrorsStats(stats);
+    await saveAiErrorsStats(stats);
 
     return {
       success: true,
@@ -1924,7 +1756,6 @@ async function reportAdminAiDecision({
 
 /**
  * Сохранить проблемное фото для анализа/переобучения
- * @param {string} status - "pending" (ожидает) | "approved" | "rejected"
  */
 async function saveProblemSample({
   productId,
@@ -1936,42 +1767,36 @@ async function saveProblemSample({
   status = 'pending',
 }) {
   try {
-    // Создаём директорию
     const productDir = path.join(PROBLEM_SAMPLES_DIR, productId);
-    if (!fs.existsSync(productDir)) {
-      fs.mkdirSync(productDir, { recursive: true });
+    if (!(await fileExists(productDir))) {
+      await fsp.mkdir(productDir, { recursive: true });
     }
 
-    // Ограничиваем количество проблемных фото (макс 30 на товар)
-    const existingFiles = fs.readdirSync(productDir).filter(f => f.endsWith('.jpg'));
+    const existingFiles = (await fsp.readdir(productDir)).filter(f => f.endsWith('.jpg'));
     if (existingFiles.length >= 30) {
-      // Удаляем самый старый
       existingFiles.sort();
       const oldest = existingFiles[0];
-      fs.unlinkSync(path.join(productDir, oldest));
-      // Удаляем метаданные
+      await fsp.unlink(path.join(productDir, oldest));
       const metaFile = oldest.replace('.jpg', '.json');
-      if (fs.existsSync(path.join(productDir, metaFile))) {
-        fs.unlinkSync(path.join(productDir, metaFile));
+      if (await fileExists(path.join(productDir, metaFile))) {
+        await fsp.unlink(path.join(productDir, metaFile));
       }
     }
 
-    // Сохраняем фото
     const id = uuidv4().slice(0, 8);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `problem_${timestamp}_${id}.jpg`;
     const imageBuffer = Buffer.from(imageBase64, 'base64');
-    fs.writeFileSync(path.join(productDir, fileName), imageBuffer);
+    await fsp.writeFile(path.join(productDir, fileName), imageBuffer);
 
-    // Сохраняем метаданные
     const metaFileName = fileName.replace('.jpg', '.json');
-    fs.writeFileSync(path.join(productDir, metaFileName), JSON.stringify({
+    await fsp.writeFile(path.join(productDir, metaFileName), JSON.stringify({
       productId,
       productName,
       expectedCount,
       aiCount,
       shopAddress,
-      status,  // pending | approved | rejected
+      status,
       createdAt: new Date().toISOString(),
     }, null, 2));
 
@@ -1986,21 +1811,19 @@ async function saveProblemSample({
 /**
  * Проверить отключен ли ИИ для товара
  */
-function isProductAiDisabled(productId) {
-  const stats = loadAiErrorsStats();
+async function isProductAiDisabled(productId) {
+  const stats = await loadAiErrorsStats();
   const product = stats.products[productId];
 
   if (!product) return false;
 
-  // Проверяем автоматический сброс (если давно не было ошибок)
   if (product.isDisabled && product.lastErrorAt) {
     const daysSinceLastError = (Date.now() - new Date(product.lastErrorAt).getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceLastError >= ERROR_RESET_DAYS) {
-      // Автоматически включаем ИИ обратно
       product.isDisabled = false;
       product.consecutiveErrors = 0;
       product.disabledAt = null;
-      saveAiErrorsStats(stats);
+      await saveAiErrorsStats(stats);
       console.log(`[AI Errors] ИИ автоматически включен для ${productId} (прошло ${daysSinceLastError.toFixed(1)} дней без ошибок)`);
       return false;
     }
@@ -2012,8 +1835,8 @@ function isProductAiDisabled(productId) {
 /**
  * Получить полный статус ИИ для товара
  */
-function getProductAiStatus(productId) {
-  const stats = loadAiErrorsStats();
+async function getProductAiStatus(productId) {
+  const stats = await loadAiErrorsStats();
   const product = stats.products[productId];
 
   if (!product) {
@@ -2028,8 +1851,7 @@ function getProductAiStatus(productId) {
     };
   }
 
-  // Проверяем автосброс
-  const isDisabled = isProductAiDisabled(productId);
+  const isDisabled = await isProductAiDisabled(productId);
 
   return {
     productId,
@@ -2049,8 +1871,8 @@ function getProductAiStatus(productId) {
 /**
  * Сбросить счётчик ошибок и включить ИИ (ручной сброс админом)
  */
-function resetProductAiErrors(productId) {
-  const stats = loadAiErrorsStats();
+async function resetProductAiErrors(productId) {
+  const stats = await loadAiErrorsStats();
 
   if (!stats.products[productId]) {
     return { success: false, error: 'Товар не найден в статистике ошибок' };
@@ -2059,9 +1881,8 @@ function resetProductAiErrors(productId) {
   stats.products[productId].consecutiveErrors = 0;
   stats.products[productId].isDisabled = false;
   stats.products[productId].disabledAt = null;
-  // Не очищаем историю и totalErrors - для аналитики
 
-  saveAiErrorsStats(stats);
+  await saveAiErrorsStats(stats);
   console.log(`[AI Errors] Счётчик ошибок сброшен для ${productId}, ИИ включен`);
 
   return {
@@ -2074,12 +1895,12 @@ function resetProductAiErrors(productId) {
 /**
  * Сообщить об успешном распознавании (сбрасывает счётчик consecutiveErrors)
  */
-function reportAiSuccess(productId) {
-  const stats = loadAiErrorsStats();
+async function reportAiSuccess(productId) {
+  const stats = await loadAiErrorsStats();
 
   if (stats.products[productId]) {
     stats.products[productId].consecutiveErrors = 0;
-    saveAiErrorsStats(stats);
+    await saveAiErrorsStats(stats);
   }
 
   return { success: true };
@@ -2088,8 +1909,8 @@ function reportAiSuccess(productId) {
 /**
  * Получить список всех проблемных товаров
  */
-function getProblematicProducts() {
-  const stats = loadAiErrorsStats();
+async function getProblematicProducts() {
+  const stats = await loadAiErrorsStats();
   const result = [];
 
   for (const [productId, product] of Object.entries(stats.products)) {
@@ -2105,7 +1926,6 @@ function getProblematicProducts() {
     }
   }
 
-  // Сортируем по количеству ошибок
   result.sort((a, b) => b.totalErrors - a.totalErrors);
 
   return result;
@@ -2114,30 +1934,32 @@ function getProblematicProducts() {
 /**
  * Получить проблемные фото для товара (для ручной аннотации)
  */
-function getProblemSamples(productId) {
+async function getProblemSamples(productId) {
   try {
     const productDir = path.join(PROBLEM_SAMPLES_DIR, productId);
-    if (!fs.existsSync(productDir)) {
+    if (!(await fileExists(productDir))) {
       return { success: true, samples: [] };
     }
 
-    const files = fs.readdirSync(productDir).filter(f => f.endsWith('.jpg'));
-    const samples = files.map(fileName => {
+    const files = (await fsp.readdir(productDir)).filter(f => f.endsWith('.jpg'));
+    const samples = [];
+
+    for (const fileName of files) {
       const metaFile = fileName.replace('.jpg', '.json');
       const metaPath = path.join(productDir, metaFile);
       let meta = {};
-      if (fs.existsSync(metaPath)) {
+      if (await fileExists(metaPath)) {
         try {
-          meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+          meta = JSON.parse(await fsp.readFile(metaPath, 'utf8'));
         } catch (e) { /* ignore */ }
       }
 
-      return {
+      samples.push({
         fileName,
         imageUrl: `/api/cigarette-vision/problem-samples/${productId}/${fileName}`,
         ...meta,
-      };
-    });
+      });
+    }
 
     return { success: true, samples };
   } catch (error) {
@@ -2155,17 +1977,17 @@ let recognitionStatsCache = null;
 /**
  * Загрузить статистику распознаваний
  */
-function loadRecognitionStats() {
+async function loadRecognitionStats() {
   try {
     if (recognitionStatsCache !== null) {
       return recognitionStatsCache;
     }
 
-    if (!fs.existsSync(RECOGNITION_STATS_FILE)) {
+    if (!(await fileExists(RECOGNITION_STATS_FILE))) {
       return {};
     }
 
-    const data = fs.readFileSync(RECOGNITION_STATS_FILE, 'utf8');
+    const data = await fsp.readFile(RECOGNITION_STATS_FILE, 'utf8');
     recognitionStatsCache = JSON.parse(data);
     return recognitionStatsCache;
   } catch (error) {
@@ -2177,13 +1999,13 @@ function loadRecognitionStats() {
 /**
  * Сохранить статистику распознаваний
  */
-function saveRecognitionStats(stats) {
+async function saveRecognitionStats(stats) {
   try {
-    if (!fs.existsSync(RECOGNITION_STATS_DIR)) {
-      fs.mkdirSync(RECOGNITION_STATS_DIR, { recursive: true });
+    if (!(await fileExists(RECOGNITION_STATS_DIR))) {
+      await fsp.mkdir(RECOGNITION_STATS_DIR, { recursive: true });
     }
 
-    fs.writeFileSync(RECOGNITION_STATS_FILE, JSON.stringify(stats, null, 2));
+    await fsp.writeFile(RECOGNITION_STATS_FILE, JSON.stringify(stats, null, 2));
     recognitionStatsCache = stats;
     return true;
   } catch (error) {
@@ -2194,14 +2016,10 @@ function saveRecognitionStats(stats) {
 
 /**
  * Записать попытку распознавания
- * @param {string} productId - ID товара
- * @param {string} type - 'display' или 'counting'
- * @param {boolean} success - успешно ли распознано
- * @param {Object} metadata - дополнительные данные (shopAddress, detectedCount, expectedCount)
  */
-function recordRecognitionAttempt(productId, type, success, metadata = {}) {
+async function recordRecognitionAttempt(productId, type, success, metadata = {}) {
   try {
-    const stats = loadRecognitionStats();
+    const stats = await loadRecognitionStats();
 
     if (!stats[productId]) {
       stats[productId] = {
@@ -2219,13 +2037,12 @@ function recordRecognitionAttempt(productId, type, success, metadata = {}) {
       stats[productId][type].successes++;
     }
 
-    // Сохраняем время последней попытки и метаданные
     stats[productId][type].lastAttempt = new Date().toISOString();
     if (metadata.shopAddress) {
       stats[productId][type].lastShop = metadata.shopAddress;
     }
 
-    saveRecognitionStats(stats);
+    await saveRecognitionStats(stats);
 
     console.log(`[Cigarette Vision] Записана попытка распознавания: ${productId} (${type}) - ${success ? 'успех' : 'провал'}`);
     return true;
@@ -2237,11 +2054,9 @@ function recordRecognitionAttempt(productId, type, success, metadata = {}) {
 
 /**
  * Получить статистику распознаваний для товара
- * @param {string} productId - ID товара
- * @returns {Object} - { display: { accuracy, attempts, successes }, counting: { ... } }
  */
-function getProductRecognitionStats(productId) {
-  const stats = loadRecognitionStats();
+async function getProductRecognitionStats(productId) {
+  const stats = await loadRecognitionStats();
   const productStats = stats[productId] || {
     display: { attempts: 0, successes: 0 },
     counting: { attempts: 0, successes: 0 },
@@ -2249,7 +2064,7 @@ function getProductRecognitionStats(productId) {
 
   const calcAccuracy = (data) => {
     if (!data || data.attempts === 0) {
-      return null; // null означает "нет данных"
+      return null;
     }
     return Math.round((data.successes / data.attempts) * 100);
   };
@@ -2272,14 +2087,13 @@ function getProductRecognitionStats(productId) {
 
 /**
  * Получить статистику распознаваний для всех товаров
- * @returns {Object} - { productId: { display: {...}, counting: {...} }, ... }
  */
-function getAllRecognitionStats() {
-  const stats = loadRecognitionStats();
+async function getAllRecognitionStats() {
+  const stats = await loadRecognitionStats();
   const result = {};
 
   for (const productId of Object.keys(stats)) {
-    result[productId] = getProductRecognitionStats(productId);
+    result[productId] = await getProductRecognitionStats(productId);
   }
 
   return result;
@@ -2287,12 +2101,10 @@ function getAllRecognitionStats() {
 
 /**
  * Сбросить статистику распознаваний для товара
- * @param {string} productId - ID товара
- * @param {string} type - 'display', 'counting' или null (оба)
  */
-function resetRecognitionStats(productId, type = null) {
+async function resetRecognitionStats(productId, type = null) {
   try {
-    const stats = loadRecognitionStats();
+    const stats = await loadRecognitionStats();
 
     if (!stats[productId]) {
       return true;
@@ -2307,7 +2119,7 @@ function resetRecognitionStats(productId, type = null) {
       };
     }
 
-    saveRecognitionStats(stats);
+    await saveRecognitionStats(stats);
     console.log(`[Cigarette Vision] Сброшена статистика для ${productId}${type ? ` (${type})` : ''}`);
     return true;
   } catch (error) {
@@ -2332,17 +2144,14 @@ module.exports = {
   getSettings,
   updateSettings,
   loadSamples,
-  loadAllShops,  // НОВОЕ: загрузка магазинов
+  loadAllShops,
   REQUIRED_PHOTOS_COUNT,
-  // Новые функции для ML
   exportTrainingData,
   trainModel,
   getModelStatus,
-  // Positive samples (успешные распознавания)
   savePositiveSample,
   cleanupOldPositiveSamples,
   getPositiveSamplesStats,
-  // Раздельные датасеты для display/counting
   TRAINING_TYPES,
   saveTypedPositiveSample,
   getTypedTrainingStats,
@@ -2351,12 +2160,10 @@ module.exports = {
   getTrainingPaths,
   DISPLAY_MODEL,
   COUNTING_MODEL,
-  // Counting training (фото с пересчёта)
   saveCountingTrainingSample,
   getCountingPhotosCount,
   getCountingSamplesForProduct,
   deleteCountingSample,
-  // Counting pending (ожидающие подтверждения админа)
   getCountingPendingPaths,
   loadPendingCountingSamples,
   getAllPendingCountingSamples,
@@ -2364,9 +2171,8 @@ module.exports = {
   getPendingCountingPhotosCount,
   approveCountingPendingSample,
   rejectCountingPendingSample,
-  // Система обратной связи и автоотключения ИИ
   reportAiError,
-  reportAdminAiDecision,  // НОВОЕ: решение админа по ошибке ИИ
+  reportAdminAiDecision,
   reportAiSuccess,
   isProductAiDisabled,
   getProductAiStatus,
@@ -2375,7 +2181,6 @@ module.exports = {
   getProblemSamples,
   PROBLEM_SAMPLES_DIR,
   AI_ERROR_THRESHOLD,
-  // Статистика точности распознавания
   recordRecognitionAttempt,
   getProductRecognitionStats,
   getAllRecognitionStats,

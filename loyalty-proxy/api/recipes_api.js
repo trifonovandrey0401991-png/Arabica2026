@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Recipes API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -6,9 +12,28 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const RECIPES_DIR = `${DATA_DIR}/recipes`;
 const RECIPE_PHOTOS_DIR = `${DATA_DIR}/recipe-photos`;
 
-[RECIPES_DIR, RECIPE_PHOTOS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist at startup
+(async () => {
+  try {
+    for (const dir of [RECIPES_DIR, RECIPE_PHOTOS_DIR]) {
+      if (!(await fileExists(dir))) {
+        await fsp.mkdir(dir, { recursive: true });
+      }
+    }
+  } catch (e) {
+    console.error('Error creating recipes directories:', e.message);
+  }
+})();
 
 function setupRecipesAPI(app, uploadRecipePhoto) {
   // ===== RECIPES =====
@@ -18,12 +43,12 @@ function setupRecipesAPI(app, uploadRecipePhoto) {
       console.log('GET /api/recipes');
       const recipes = [];
 
-      if (fs.existsSync(RECIPES_DIR)) {
-        const files = fs.readdirSync(RECIPES_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(RECIPES_DIR)) {
+        const files = (await fsp.readdir(RECIPES_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(RECIPES_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(RECIPES_DIR, file), 'utf8');
             recipes.push(JSON.parse(content));
           } catch (e) {
             console.error(`Error reading ${file}:`, e);
@@ -51,7 +76,7 @@ function setupRecipesAPI(app, uploadRecipePhoto) {
       recipe.updatedAt = new Date().toISOString();
 
       const filePath = path.join(RECIPES_DIR, `${recipe.id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(recipe, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(recipe, null, 2), 'utf8');
 
       res.json({ success: true, recipe });
     } catch (error) {
@@ -67,14 +92,15 @@ function setupRecipesAPI(app, uploadRecipePhoto) {
 
       const filePath = path.join(RECIPES_DIR, `${recipeId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Recipe not found' });
       }
 
-      const recipe = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const recipe = JSON.parse(content);
       const updated = { ...recipe, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, recipe: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -88,8 +114,8 @@ function setupRecipesAPI(app, uploadRecipePhoto) {
 
       const filePath = path.join(RECIPES_DIR, `${recipeId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Recipe not found' });

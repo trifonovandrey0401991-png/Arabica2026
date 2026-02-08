@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Виджет для ввода PIN-кода
+/// Виджет для ввода PIN-кода в стиле Arabica
 ///
 /// Особенности:
 /// - 4-6 цифр
 /// - Скрытый ввод (точки вместо цифр)
 /// - Анимация при ошибке
 /// - Цифровая клавиатура
+/// - Поддержка светлой и тёмной темы
 class PinInputWidget extends StatefulWidget {
   /// Длина PIN-кода (от 4 до 6)
   final int pinLength;
@@ -33,6 +34,12 @@ class PinInputWidget extends StatefulWidget {
   /// Очистить поле
   final bool clear;
 
+  /// Использовать светлую тему (белый текст на тёмном фоне)
+  final bool lightTheme;
+
+  /// Цвет акцента (для точек и кнопок)
+  final Color? accentColor;
+
   const PinInputWidget({
     super.key,
     this.pinLength = 4,
@@ -43,6 +50,8 @@ class PinInputWidget extends StatefulWidget {
     this.title,
     this.subtitle,
     this.clear = false,
+    this.lightTheme = false,
+    this.accentColor,
   });
 
   @override
@@ -54,6 +63,14 @@ class _PinInputWidgetState extends State<PinInputWidget>
   String _pin = '';
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
+
+  // Брендовые цвета Arabica
+  static const Color _primaryColor = Color(0xFF1A4D4D);
+  static const Color _accentGold = Color(0xFFD4AF37);
+
+  Color get _activeColor => widget.accentColor ?? (widget.lightTheme ? _accentGold : _primaryColor);
+  Color get _textColor => widget.lightTheme ? Colors.white : Colors.black87;
+  Color get _subtitleColor => widget.lightTheme ? Colors.white70 : Colors.grey[600]!;
 
   @override
   void initState() {
@@ -133,9 +150,11 @@ class _PinInputWidgetState extends State<PinInputWidget>
         if (widget.title != null) ...[
           Text(
             widget.title!,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _textColor,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -145,9 +164,10 @@ class _PinInputWidgetState extends State<PinInputWidget>
         if (widget.subtitle != null) ...[
           Text(
             widget.subtitle!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+            style: TextStyle(
+              fontSize: 14,
+              color: _subtitleColor,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -174,17 +194,25 @@ class _PinInputWidgetState extends State<PinInputWidget>
         // Ошибка
         if (widget.showError && widget.errorMessage != null) ...[
           const SizedBox(height: 16),
-          Text(
-            widget.errorMessage!,
-            style: const TextStyle(
-              color: Colors.red,
-              fontSize: 14,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            textAlign: TextAlign.center,
+            child: Text(
+              widget.errorMessage!,
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
 
-        const SizedBox(height: 48),
+        const SizedBox(height: 40),
 
         // Цифровая клавиатура
         _buildKeypad(),
@@ -193,21 +221,29 @@ class _PinInputWidgetState extends State<PinInputWidget>
   }
 
   Widget _buildPinDot(bool filled) {
-    return Container(
-      width: 20,
-      height: 20,
+    final dotColor = widget.showError ? Colors.redAccent : _activeColor;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: filled ? 18 : 16,
+      height: filled ? 18 : 16,
       margin: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: filled
-            ? (widget.showError ? Colors.red : Theme.of(context).primaryColor)
-            : Colors.transparent,
+        color: filled ? dotColor : Colors.transparent,
         border: Border.all(
-          color: widget.showError
-              ? Colors.red
-              : Theme.of(context).primaryColor,
+          color: dotColor,
           width: 2,
         ),
+        boxShadow: filled
+            ? [
+                BoxShadow(
+                  color: dotColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
     );
   }
@@ -257,21 +293,26 @@ class _PinInputWidgetState extends State<PinInputWidget>
 
   Widget _buildKeypadButton(String digit) {
     return Container(
-      width: 80,
-      height: 80,
-      margin: const EdgeInsets.all(8),
+      width: 72,
+      height: 72,
+      margin: const EdgeInsets.all(6),
       child: Material(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(40),
+        color: widget.lightTheme
+            ? Colors.white.withOpacity(0.15)
+            : Colors.grey[100],
+        borderRadius: BorderRadius.circular(36),
         child: InkWell(
-          borderRadius: BorderRadius.circular(40),
+          borderRadius: BorderRadius.circular(36),
+          splashColor: _activeColor.withOpacity(0.3),
+          highlightColor: _activeColor.withOpacity(0.1),
           onTap: () => _addDigit(digit),
           child: Center(
             child: Text(
               digit,
-              style: const TextStyle(
-                fontSize: 32,
+              style: TextStyle(
+                fontSize: 28,
                 fontWeight: FontWeight.w500,
+                color: _textColor,
               ),
             ),
           ),
@@ -282,20 +323,21 @@ class _PinInputWidgetState extends State<PinInputWidget>
 
   Widget _buildBackspaceButton() {
     return Container(
-      width: 80,
-      height: 80,
-      margin: const EdgeInsets.all(8),
+      width: 72,
+      height: 72,
+      margin: const EdgeInsets.all(6),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: BorderRadius.circular(36),
         child: InkWell(
-          borderRadius: BorderRadius.circular(40),
+          borderRadius: BorderRadius.circular(36),
+          splashColor: _activeColor.withOpacity(0.3),
           onTap: _removeDigit,
-          child: const Center(
+          child: Center(
             child: Icon(
               Icons.backspace_outlined,
-              size: 28,
-              color: Colors.grey,
+              size: 26,
+              color: widget.lightTheme ? Colors.white70 : Colors.grey[600],
             ),
           ),
         ),
@@ -305,9 +347,9 @@ class _PinInputWidgetState extends State<PinInputWidget>
 
   Widget _buildEmptyButton() {
     return Container(
-      width: 80,
-      height: 80,
-      margin: const EdgeInsets.all(8),
+      width: 72,
+      height: 72,
+      margin: const EdgeInsets.all(6),
     );
   }
 }

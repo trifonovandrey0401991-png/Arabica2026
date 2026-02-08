@@ -11,8 +11,11 @@ void main() {
       // ARRANGE: Создаём данные по всем 12 категориям
       // ================================================================
 
+      // ignore: unused_local_variable
       final employeeId = MockEmployeeData.validEmployee['id'];
+      // ignore: unused_local_variable
       final employeeName = MockEmployeeData.validEmployee['name'];
+      // ignore: unused_local_variable
       final month = '2026-01';
 
       // 1. SHIFT REPORTS (пересменки)
@@ -81,6 +84,7 @@ void main() {
       // = 12.0
 
       // Проверяем breakdown по каждой категории
+      // ignore: unused_local_variable
       final expectedBreakdown = {
         'shift': 2.5,
         'recount': 0.5,
@@ -124,10 +128,12 @@ void main() {
       // ================================================================
 
       // Arrange
+      // ignore: unused_local_variable
       final employees = [
         MockEmployeeData.validEmployee,
         MockEmployeeData.adminEmployee,
       ];
+      // ignore: unused_local_variable
       final month = '2026-01';
 
       // Act

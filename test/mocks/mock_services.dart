@@ -1,8 +1,6 @@
 // Mock services for testing
 // This file contains mock implementations for testing purposes
 
-import 'package:flutter/material.dart';
-
 /// Mock данные сотрудника
 class MockEmployeeData {
   static const Map<String, dynamic> validEmployee = {
@@ -343,7 +341,7 @@ class MockHttpResponses {
   static Map<String, dynamic> success(dynamic data) {
     return {
       'success': true,
-      ...?data is Map<String, dynamic> ? data : {'data': data},
+      ...data is Map<String, dynamic> ? data : {'data': data},
     };
   }
 

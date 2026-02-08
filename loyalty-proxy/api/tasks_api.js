@@ -1,13 +1,29 @@
-const fs = require('fs');
+/**
+ * Tasks API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const TASKS_DIR = '/var/www/tasks';
 const TASK_ASSIGNMENTS_DIR = '/var/www/task-assignments';
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Ensure directories exist
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+async function ensureDir(dir) {
+  if (!(await fileExists(dir))) {
+    await fsp.mkdir(dir, { recursive: true });
   }
 }
 
@@ -29,13 +45,14 @@ function generateId(prefix = 'task') {
 }
 
 // Load tasks for a month
-function loadMonthTasks(monthKey) {
-  ensureDir(TASKS_DIR);
+async function loadMonthTasks(monthKey) {
+  await ensureDir(TASKS_DIR);
   const filePath = path.join(TASKS_DIR, `${monthKey}.json`);
 
-  if (fs.existsSync(filePath)) {
+  if (await fileExists(filePath)) {
     try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
     } catch (e) {
       console.error(`Error reading tasks for ${monthKey}:`, e);
       return { monthKey, tasks: [] };
@@ -45,21 +62,22 @@ function loadMonthTasks(monthKey) {
 }
 
 // Save tasks for a month
-function saveMonthTasks(monthKey, data) {
-  ensureDir(TASKS_DIR);
+async function saveMonthTasks(monthKey, data) {
+  await ensureDir(TASKS_DIR);
   const filePath = path.join(TASKS_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // Load assignments for a month
-function loadMonthAssignments(monthKey) {
-  ensureDir(TASK_ASSIGNMENTS_DIR);
+async function loadMonthAssignments(monthKey) {
+  await ensureDir(TASK_ASSIGNMENTS_DIR);
   const filePath = path.join(TASK_ASSIGNMENTS_DIR, `${monthKey}.json`);
 
-  if (fs.existsSync(filePath)) {
+  if (await fileExists(filePath)) {
     try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
     } catch (e) {
       console.error(`Error reading assignments for ${monthKey}:`, e);
       return { monthKey, assignments: [] };
@@ -69,17 +87,17 @@ function loadMonthAssignments(monthKey) {
 }
 
 // Save assignments for a month
-function saveMonthAssignments(monthKey, data) {
-  ensureDir(TASK_ASSIGNMENTS_DIR);
+async function saveMonthAssignments(monthKey, data) {
+  await ensureDir(TASK_ASSIGNMENTS_DIR);
   const filePath = path.join(TASK_ASSIGNMENTS_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // Get all tasks (across months)
-function getAllTasks(fromMonth, toMonth) {
-  ensureDir(TASKS_DIR);
-  const files = fs.readdirSync(TASKS_DIR).filter(f => f.endsWith('.json'));
+async function getAllTasks(fromMonth, toMonth) {
+  await ensureDir(TASKS_DIR);
+  const files = (await fsp.readdir(TASKS_DIR)).filter(f => f.endsWith('.json'));
   let allTasks = [];
 
   for (const file of files) {
@@ -87,7 +105,7 @@ function getAllTasks(fromMonth, toMonth) {
     if (fromMonth && monthKey < fromMonth) continue;
     if (toMonth && monthKey > toMonth) continue;
 
-    const data = loadMonthTasks(monthKey);
+    const data = await loadMonthTasks(monthKey);
     allTasks.push(...(data.tasks || []));
   }
 
@@ -95,9 +113,9 @@ function getAllTasks(fromMonth, toMonth) {
 }
 
 // Get all assignments (across months)
-function getAllAssignments(fromMonth, toMonth) {
-  ensureDir(TASK_ASSIGNMENTS_DIR);
-  const files = fs.readdirSync(TASK_ASSIGNMENTS_DIR).filter(f => f.endsWith('.json'));
+async function getAllAssignments(fromMonth, toMonth) {
+  await ensureDir(TASK_ASSIGNMENTS_DIR);
+  const files = (await fsp.readdir(TASK_ASSIGNMENTS_DIR)).filter(f => f.endsWith('.json'));
   let allAssignments = [];
 
   for (const file of files) {
@@ -105,7 +123,7 @@ function getAllAssignments(fromMonth, toMonth) {
     if (fromMonth && monthKey < fromMonth) continue;
     if (toMonth && monthKey > toMonth) continue;
 
-    const data = loadMonthAssignments(monthKey);
+    const data = await loadMonthAssignments(monthKey);
     allAssignments.push(...(data.assignments || []));
   }
 
@@ -113,10 +131,10 @@ function getAllAssignments(fromMonth, toMonth) {
 }
 
 // Check and update expired tasks
-function checkExpiredTasks() {
+async function checkExpiredTasks() {
   const now = new Date();
   const monthKey = getMonthKey();
-  const data = loadMonthAssignments(monthKey);
+  const data = await loadMonthAssignments(monthKey);
   let updated = false;
 
   for (const assignment of data.assignments) {
@@ -132,7 +150,7 @@ function checkExpiredTasks() {
   }
 
   if (updated) {
-    saveMonthAssignments(monthKey, data);
+    await saveMonthAssignments(monthKey, data);
   }
 
   return updated;
@@ -172,12 +190,12 @@ function setupTasksAPI(app) {
       };
 
       // Save task
-      const tasksData = loadMonthTasks(monthKey);
+      const tasksData = await loadMonthTasks(monthKey);
       tasksData.tasks.push(newTask);
-      saveMonthTasks(monthKey, tasksData);
+      await saveMonthTasks(monthKey, tasksData);
 
       // Create assignments for each recipient
-      const assignmentsData = loadMonthAssignments(monthKey);
+      const assignmentsData = await loadMonthAssignments(monthKey);
       const newAssignments = [];
 
       for (const recipient of task.recipients) {
@@ -202,7 +220,7 @@ function setupTasksAPI(app) {
         newAssignments.push(assignment);
       }
 
-      saveMonthAssignments(monthKey, assignmentsData);
+      await saveMonthAssignments(monthKey, assignmentsData);
 
       console.log(`  Created task ${taskId} with ${newAssignments.length} assignments`);
 
@@ -225,10 +243,10 @@ function setupTasksAPI(app) {
 
       let tasks;
       if (month) {
-        const data = loadMonthTasks(month);
+        const data = await loadMonthTasks(month);
         tasks = data.tasks || [];
       } else {
-        tasks = getAllTasks();
+        tasks = await getAllTasks();
       }
 
       if (createdBy) {
@@ -251,14 +269,15 @@ function setupTasksAPI(app) {
       const { id } = req.params;
       console.log('GET /api/tasks/:id', id);
 
-      const tasks = getAllTasks();
+      const tasks = await getAllTasks();
       const task = tasks.find(t => t.id === id);
 
       if (!task) {
         return res.status(404).json({ success: false, error: 'Task not found' });
       }
 
-      const assignments = getAllAssignments().filter(a => a.taskId === id);
+      const allAssignments = await getAllAssignments();
+      const assignments = allAssignments.filter(a => a.taskId === id);
 
       res.json({ success: true, task, assignments });
     } catch (error) {
@@ -276,14 +295,14 @@ function setupTasksAPI(app) {
       console.log('GET /api/task-assignments', { assigneeId, status, month, taskId });
 
       // Check for expired tasks first
-      checkExpiredTasks();
+      await checkExpiredTasks();
 
       let assignments;
       if (month) {
-        const data = loadMonthAssignments(month);
+        const data = await loadMonthAssignments(month);
         assignments = data.assignments || [];
       } else {
-        assignments = getAllAssignments();
+        assignments = await getAllAssignments();
       }
 
       if (assigneeId) {
@@ -298,7 +317,7 @@ function setupTasksAPI(app) {
       }
 
       // Load task info for each assignment
-      const tasks = getAllTasks();
+      const tasks = await getAllTasks();
       const tasksMap = {};
       for (const t of tasks) {
         tasksMap[t.id] = t;
@@ -327,11 +346,12 @@ function setupTasksAPI(app) {
       console.log('POST /api/task-assignments/:id/respond', id);
 
       // Find the assignment
-      const files = fs.readdirSync(TASK_ASSIGNMENTS_DIR).filter(f => f.endsWith('.json'));
+      await ensureDir(TASK_ASSIGNMENTS_DIR);
+      const files = (await fsp.readdir(TASK_ASSIGNMENTS_DIR)).filter(f => f.endsWith('.json'));
 
       for (const file of files) {
         const monthKey = file.replace('.json', '');
-        const data = loadMonthAssignments(monthKey);
+        const data = await loadMonthAssignments(monthKey);
         const assignment = data.assignments.find(a => a.id === id);
 
         if (assignment) {
@@ -346,7 +366,7 @@ function setupTasksAPI(app) {
           if (new Date(assignment.deadline) < new Date()) {
             assignment.status = 'expired';
             assignment.expiredAt = new Date().toISOString();
-            saveMonthAssignments(monthKey, data);
+            await saveMonthAssignments(monthKey, data);
             return res.status(400).json({
               success: false,
               error: 'Cannot respond: deadline has passed'
@@ -358,10 +378,10 @@ function setupTasksAPI(app) {
           assignment.respondedAt = new Date().toISOString();
           assignment.status = 'submitted';
 
-          saveMonthAssignments(monthKey, data);
+          await saveMonthAssignments(monthKey, data);
 
           // Get task info
-          const tasks = getAllTasks();
+          const tasks = await getAllTasks();
           const task = tasks.find(t => t.id === assignment.taskId);
 
           return res.json({
@@ -386,11 +406,12 @@ function setupTasksAPI(app) {
       console.log('POST /api/task-assignments/:id/decline', id);
 
       // Find the assignment
-      const files = fs.readdirSync(TASK_ASSIGNMENTS_DIR).filter(f => f.endsWith('.json'));
+      await ensureDir(TASK_ASSIGNMENTS_DIR);
+      const files = (await fsp.readdir(TASK_ASSIGNMENTS_DIR)).filter(f => f.endsWith('.json'));
 
       for (const file of files) {
         const monthKey = file.replace('.json', '');
-        const data = loadMonthAssignments(monthKey);
+        const data = await loadMonthAssignments(monthKey);
         const assignment = data.assignments.find(a => a.id === id);
 
         if (assignment) {
@@ -405,10 +426,10 @@ function setupTasksAPI(app) {
           assignment.declinedAt = new Date().toISOString();
           assignment.declineReason = reason || null;
 
-          saveMonthAssignments(monthKey, data);
+          await saveMonthAssignments(monthKey, data);
 
           // Get task info
-          const tasks = getAllTasks();
+          const tasks = await getAllTasks();
           const task = tasks.find(t => t.id === assignment.taskId);
 
           return res.json({
@@ -433,11 +454,12 @@ function setupTasksAPI(app) {
       console.log('POST /api/task-assignments/:id/review', id, { approved, reviewedBy });
 
       // Find the assignment
-      const files = fs.readdirSync(TASK_ASSIGNMENTS_DIR).filter(f => f.endsWith('.json'));
+      await ensureDir(TASK_ASSIGNMENTS_DIR);
+      const files = (await fsp.readdir(TASK_ASSIGNMENTS_DIR)).filter(f => f.endsWith('.json'));
 
       for (const file of files) {
         const monthKey = file.replace('.json', '');
-        const data = loadMonthAssignments(monthKey);
+        const data = await loadMonthAssignments(monthKey);
         const assignment = data.assignments.find(a => a.id === id);
 
         if (assignment) {
@@ -453,10 +475,10 @@ function setupTasksAPI(app) {
           assignment.reviewedAt = new Date().toISOString();
           assignment.reviewComment = reviewComment || null;
 
-          saveMonthAssignments(monthKey, data);
+          await saveMonthAssignments(monthKey, data);
 
           // Get task info
-          const tasks = getAllTasks();
+          const tasks = await getAllTasks();
           const task = tasks.find(t => t.id === assignment.taskId);
 
           return res.json({
@@ -480,14 +502,14 @@ function setupTasksAPI(app) {
       console.log('GET /api/task-assignments/stats', { month });
 
       // Check for expired tasks first
-      checkExpiredTasks();
+      await checkExpiredTasks();
 
       let assignments;
       if (month) {
-        const data = loadMonthAssignments(month);
+        const data = await loadMonthAssignments(month);
         assignments = data.assignments || [];
       } else {
-        assignments = getAllAssignments();
+        assignments = await getAllAssignments();
       }
 
       const stats = {

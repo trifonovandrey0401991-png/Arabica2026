@@ -14,7 +14,6 @@ import '../../employees/services/employee_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
 import '../../shops/services/shop_service.dart';
-import '../../../shared/dialogs/abbreviation_selection_dialog.dart';
 import '../../../shared/dialogs/schedule_bulk_operations_dialog.dart';
 import '../../employees/pages/employees_page.dart';
 import '../work_schedule_validator.dart';
@@ -152,7 +151,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
     try {
       final employees = await EmployeeService.getEmployees();
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await ShopService.getShopsForCurrentUser();
       final schedule = await WorkScheduleService.getSchedule(_selectedMonth);
       
       // Загружаем настройки магазинов для получения аббревиатур

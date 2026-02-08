@@ -11,6 +11,11 @@ class WheelReportsPage extends StatefulWidget {
 }
 
 class _WheelReportsPageState extends State<WheelReportsPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   List<WheelSpinRecord> _records = [];
   bool _isLoading = true;
   String _selectedMonth = '';
@@ -44,24 +49,37 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Обработать приз?'),
+        backgroundColor: _emeraldDark,
+        title: const Text(
+          'Обработать приз?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Сотрудник: ${record.employeeName}'),
-            Text('Приз: ${record.prize}'),
+            Text(
+              'Сотрудник: ${record.employeeName}',
+              style: const TextStyle(color: Colors.white),
+            ),
+            Text(
+              'Приз: ${record.prize}',
+              style: const TextStyle(color: Colors.white),
+            ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'После отметки приз будет считаться выданным.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -108,11 +126,18 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     final selected = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Выберите месяц'),
+        backgroundColor: _emeraldDark,
+        title: const Text(
+          'Выберите месяц',
+          style: TextStyle(color: Colors.white),
+        ),
         children: months.map((month) {
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(context, month),
-            child: Text(_formatMonth(month)),
+            child: Text(
+              _formatMonth(month),
+              style: const TextStyle(color: Colors.white),
+            ),
           );
         }).toList(),
       ),
@@ -140,28 +165,77 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     final unprocessedCount = _records.where((r) => !r.isProcessed).length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отчёт (Колесо)'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          TextButton.icon(
-            onPressed: _showMonthPicker,
-            icon: const Icon(Icons.calendar_today, color: Colors.white),
-            label: Text(
-              _formatMonth(_selectedMonth),
-              style: const TextStyle(color: Colors.white),
-            ),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Отчёт (Колесо)',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _showMonthPicker,
+                      icon: const Icon(Icons.calendar_today, color: _gold, size: 18),
+                      label: Text(
+                        _formatMonth(_selectedMonth),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              if (_isLoading)
+                const Expanded(
+                  child: Center(
+                    child: CircularProgressIndicator(color: _gold),
+                  ),
+                )
+              else ...[
                 // Статистика
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: const Color(0xFF004D40).withOpacity(0.1),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -191,6 +265,8 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                   child: _records.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
+                          color: _gold,
+                          backgroundColor: _emeraldDark,
                           onRefresh: _loadRecords,
                           child: ListView.builder(
                             padding: const EdgeInsets.all(16),
@@ -202,27 +278,31 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                         ),
                 ),
               ],
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildStatItem(String label, String value, IconData icon, {Color? color}) {
     return Column(
       children: [
-        Icon(icon, color: color ?? const Color(0xFF004D40), size: 28),
+        Icon(icon, color: color ?? _gold, size: 28),
         const SizedBox(height: 4),
         Text(
           value,
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: Colors.white.withOpacity(0.5),
           ),
         ),
       ],
@@ -237,14 +317,14 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
           Icon(
             Icons.casino_outlined,
             size: 80,
-            color: Colors.grey[400],
+            color: Colors.white.withOpacity(0.3),
           ),
           const SizedBox(height: 16),
           Text(
             'Нет прокруток за этот месяц',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.grey[600],
+              color: Colors.white.withOpacity(0.5),
             ),
           ),
         ],
@@ -253,12 +333,15 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
   }
 
   Widget _buildRecordCard(WheelSpinRecord record) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: record.isProcessed ? Colors.green : Colors.orange,
+        border: Border.all(
+          color: record.isProcessed
+              ? Colors.green.withOpacity(0.5)
+              : Colors.orange.withOpacity(0.5),
           width: 1,
         ),
       ),
@@ -284,13 +367,14 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                       Text(
                         '${record.position} место за ${_formatMonth(record.rewardMonth)}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                     ],
@@ -300,7 +384,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                   record.formattedDate,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -311,8 +395,9 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber[50],
+                color: _gold.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _gold.withOpacity(0.2)),
               ),
               child: Row(
                 children: [
@@ -324,6 +409,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -339,7 +425,9 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: record.isProcessed ? Colors.green[50] : Colors.orange[50],
+                    color: record.isProcessed
+                        ? Colors.green.withOpacity(0.15)
+                        : Colors.orange.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -357,7 +445,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                             : 'Ожидает обработки',
                         style: TextStyle(
                           fontSize: 12,
-                          color: record.isProcessed ? Colors.green[700] : Colors.orange[700],
+                          color: record.isProcessed ? Colors.green[300] : Colors.orange[300],
                         ),
                       ),
                     ],

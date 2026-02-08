@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../mocks/mock_services.dart';
 
 /// P1 Тесты Рейтинга и Колеса Удачи для роли СОТРУДНИК
 /// Покрывает: Расчёт рейтинга, нормализация, топ-3, прокрутки колеса
@@ -23,6 +22,7 @@ void main() {
     group('Rating Calculation Tests', () {
       test('ET-RAT-001: Расчёт рейтинга с нормализацией по сменам', () async {
         // Arrange
+        // ignore: unused_local_variable
         final employeeId = MockEmployeeData.validEmployee['id'];
         final totalPoints = 70.5;
         final shiftsCount = 20;
@@ -96,6 +96,7 @@ void main() {
 
       test('ET-RAT-005: Рефералы с милестоунами', () async {
         // Arrange
+        // ignore: unused_local_variable
         final employeeId = MockEmployeeData.validEmployee['id'];
         final referralsCount = 7; // Should trigger milestone
 
@@ -165,8 +166,8 @@ void main() {
         final month = '2024-01'; // Past month
 
         // Act
-        final ratings1 = await mockRatingService.getAllRatings(month);
-        final ratings2 = await mockRatingService.getAllRatings(month);
+        await mockRatingService.getAllRatings(month);
+        await mockRatingService.getAllRatings(month);
 
         // Assert
         expect(mockRatingService.cacheHits, 1); // Second call should hit cache

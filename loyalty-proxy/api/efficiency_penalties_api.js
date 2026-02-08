@@ -1,14 +1,30 @@
-const fs = require('fs');
+/**
+ * Efficiency Penalties API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Ensure directory exists
-function ensureDir() {
-  if (!fs.existsSync(EFFICIENCY_PENALTIES_DIR)) {
-    fs.mkdirSync(EFFICIENCY_PENALTIES_DIR, { recursive: true });
+async function ensureDir() {
+  if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
+    await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
   }
 }
 
@@ -27,13 +43,14 @@ function generateId() {
 }
 
 // Load penalties for a month
-function loadMonthPenalties(monthKey) {
-  ensureDir();
+async function loadMonthPenalties(monthKey) {
+  await ensureDir();
   const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
 
-  if (fs.existsSync(filePath)) {
+  if (await fileExists(filePath)) {
     try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
     } catch (e) {
       console.error(`Error reading penalties for ${monthKey}:`, e);
       return { monthKey, penalties: [] };
@@ -43,17 +60,17 @@ function loadMonthPenalties(monthKey) {
 }
 
 // Save penalties for a month
-function saveMonthPenalties(monthKey, data) {
-  ensureDir();
+async function saveMonthPenalties(monthKey, data) {
+  await ensureDir();
   const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // Add penalty
-function addPenalty(penalty) {
+async function addPenalty(penalty) {
   const monthKey = getMonthKey(penalty.date);
-  const data = loadMonthPenalties(monthKey);
+  const data = await loadMonthPenalties(monthKey);
 
   if (!penalty.id) {
     penalty.id = generateId();
@@ -61,15 +78,15 @@ function addPenalty(penalty) {
   penalty.createdAt = new Date().toISOString();
 
   data.penalties.push(penalty);
-  saveMonthPenalties(monthKey, data);
+  await saveMonthPenalties(monthKey, data);
 
   return penalty;
 }
 
 // Check if penalty already exists (to avoid duplicates)
-function penaltyExists(date, shiftType, shopAddress, type) {
+async function penaltyExists(date, shiftType, shopAddress, type) {
   const monthKey = getMonthKey(date);
-  const data = loadMonthPenalties(monthKey);
+  const data = await loadMonthPenalties(monthKey);
 
   return data.penalties.some(p =>
     p.date === date &&
@@ -91,7 +108,7 @@ function setupEfficiencyPenaltiesAPI(app) {
 
       if (month) {
         // Load specific month
-        const data = loadMonthPenalties(month);
+        const data = await loadMonthPenalties(month);
         allPenalties = data.penalties || [];
       } else if (fromDate && toDate) {
         // Load range of months
@@ -110,7 +127,7 @@ function setupEfficiencyPenaltiesAPI(app) {
         }
 
         for (const m of months) {
-          const data = loadMonthPenalties(m);
+          const data = await loadMonthPenalties(m);
           allPenalties.push(...(data.penalties || []));
         }
 
@@ -118,7 +135,7 @@ function setupEfficiencyPenaltiesAPI(app) {
         allPenalties = allPenalties.filter(p => p.date >= fromDate && p.date <= toDate);
       } else {
         // Default: current month
-        const data = loadMonthPenalties(getMonthKey());
+        const data = await loadMonthPenalties(getMonthKey());
         allPenalties = data.penalties || [];
       }
 
@@ -159,7 +176,7 @@ function setupEfficiencyPenaltiesAPI(app) {
 
       // Check for duplicates if it's a shift penalty
       if (penalty.category === 'shift_penalty') {
-        if (penaltyExists(penalty.date, penalty.shiftType, penalty.shopAddress, penalty.type)) {
+        if (await penaltyExists(penalty.date, penalty.shiftType, penalty.shopAddress, penalty.type)) {
           return res.json({
             success: true,
             duplicate: true,
@@ -168,7 +185,7 @@ function setupEfficiencyPenaltiesAPI(app) {
         }
       }
 
-      const savedPenalty = addPenalty(penalty);
+      const savedPenalty = await addPenalty(penalty);
 
       res.json({ success: true, penalty: savedPenalty });
     } catch (error) {
@@ -196,13 +213,13 @@ function setupEfficiencyPenaltiesAPI(app) {
       for (const penalty of penalties) {
         // Check for duplicates
         if (penalty.category === 'shift_penalty') {
-          if (penaltyExists(penalty.date, penalty.shiftType, penalty.shopAddress, penalty.type)) {
+          if (await penaltyExists(penalty.date, penalty.shiftType, penalty.shopAddress, penalty.type)) {
             skipped.push(penalty);
             continue;
           }
         }
 
-        const saved = addPenalty(penalty);
+        const saved = await addPenalty(penalty);
         savedPenalties.push(saved);
       }
 
@@ -233,20 +250,20 @@ function setupEfficiencyPenaltiesAPI(app) {
 
       if (!month) {
         // List all month files
-        ensureDir();
-        const files = fs.readdirSync(EFFICIENCY_PENALTIES_DIR).filter(f => f.endsWith('.json'));
+        await ensureDir();
+        const files = (await fsp.readdir(EFFICIENCY_PENALTIES_DIR)).filter(f => f.endsWith('.json'));
         for (const file of files) {
           searchMonths.push(file.replace('.json', ''));
         }
       }
 
       for (const m of searchMonths) {
-        const data = loadMonthPenalties(m);
+        const data = await loadMonthPenalties(m);
         const index = data.penalties.findIndex(p => p.id === id);
 
         if (index !== -1) {
           data.penalties.splice(index, 1);
-          saveMonthPenalties(m, data);
+          await saveMonthPenalties(m, data);
           return res.json({ success: true });
         }
       }
@@ -266,7 +283,7 @@ function setupEfficiencyPenaltiesAPI(app) {
 
       console.log('GET /api/efficiency-penalties/summary', { monthKey, groupBy });
 
-      const data = loadMonthPenalties(monthKey);
+      const data = await loadMonthPenalties(monthKey);
       const penalties = data.penalties || [];
 
       const summary = {};

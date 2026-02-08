@@ -1,8 +1,10 @@
 /**
  * API для настроек баллов за задачи
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -23,12 +25,22 @@ const DEFAULT_CONFIG = {
   updatedBy: null
 };
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ==================== УТИЛИТЫ ====================
 
-function loadConfig() {
+async function loadConfig() {
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const data = fs.readFileSync(CONFIG_FILE, 'utf8');
+    if (await fileExists(CONFIG_FILE)) {
+      const data = await fsp.readFile(CONFIG_FILE, 'utf8');
       return JSON.parse(data);
     }
   } catch (e) {
@@ -37,10 +49,10 @@ function loadConfig() {
   return { ...DEFAULT_CONFIG };
 }
 
-function saveConfig(config) {
+async function saveConfig(config) {
   try {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
-    console.log('✅ Task points config saved');
+    await fsp.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+    console.log('Task points config saved');
   } catch (e) {
     console.error('Error saving task points config:', e);
     throw e;
@@ -64,9 +76,9 @@ function setupTaskPointsSettingsAPI(app) {
   console.log('Setting up Task Points Settings API...');
 
   // GET /api/points-settings/regular-tasks - Настройки обычных задач
-  app.get('/api/points-settings/regular-tasks', (req, res) => {
+  app.get('/api/points-settings/regular-tasks', async (req, res) => {
     try {
-      const config = loadConfig();
+      const config = await loadConfig();
       res.json({
         success: true,
         settings: config.regularTasks
@@ -78,7 +90,7 @@ function setupTaskPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/regular-tasks - Сохранить настройки обычных задач
-  app.post('/api/points-settings/regular-tasks', (req, res) => {
+  app.post('/api/points-settings/regular-tasks', async (req, res) => {
     try {
       const { completionPoints, penaltyPoints } = req.body;
 
@@ -92,7 +104,7 @@ function setupTaskPointsSettingsAPI(app) {
       const validCompletion = validatePoints(completionPoints);
       const validPenalty = validatePoints(penaltyPoints);
 
-      const config = loadConfig();
+      const config = await loadConfig();
       config.regularTasks = {
         completionPoints: validCompletion,
         penaltyPoints: validPenalty
@@ -100,9 +112,9 @@ function setupTaskPointsSettingsAPI(app) {
       config.updatedAt = new Date().toISOString();
       config.updatedBy = req.body.updatedBy || 'admin';
 
-      saveConfig(config);
+      await saveConfig(config);
 
-      console.log('✅ Regular task points updated:', config.regularTasks);
+      console.log('Regular task points updated:', config.regularTasks);
       res.json({
         success: true,
         settings: config.regularTasks
@@ -114,9 +126,9 @@ function setupTaskPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/recurring-tasks - Настройки циклических задач
-  app.get('/api/points-settings/recurring-tasks', (req, res) => {
+  app.get('/api/points-settings/recurring-tasks', async (req, res) => {
     try {
-      const config = loadConfig();
+      const config = await loadConfig();
       res.json({
         success: true,
         settings: config.recurringTasks
@@ -128,7 +140,7 @@ function setupTaskPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/recurring-tasks - Сохранить настройки циклических задач
-  app.post('/api/points-settings/recurring-tasks', (req, res) => {
+  app.post('/api/points-settings/recurring-tasks', async (req, res) => {
     try {
       const { completionPoints, penaltyPoints } = req.body;
 
@@ -142,7 +154,7 @@ function setupTaskPointsSettingsAPI(app) {
       const validCompletion = validatePoints(completionPoints);
       const validPenalty = validatePoints(penaltyPoints);
 
-      const config = loadConfig();
+      const config = await loadConfig();
       config.recurringTasks = {
         completionPoints: validCompletion,
         penaltyPoints: validPenalty
@@ -150,9 +162,9 @@ function setupTaskPointsSettingsAPI(app) {
       config.updatedAt = new Date().toISOString();
       config.updatedBy = req.body.updatedBy || 'admin';
 
-      saveConfig(config);
+      await saveConfig(config);
 
-      console.log('✅ Recurring task points updated:', config.recurringTasks);
+      console.log('Recurring task points updated:', config.recurringTasks);
       res.json({
         success: true,
         settings: config.recurringTasks
@@ -164,9 +176,9 @@ function setupTaskPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/tasks - Получить все настройки сразу
-  app.get('/api/points-settings/tasks', (req, res) => {
+  app.get('/api/points-settings/tasks', async (req, res) => {
     try {
-      const config = loadConfig();
+      const config = await loadConfig();
       res.json({
         success: true,
         settings: {
@@ -180,16 +192,17 @@ function setupTaskPointsSettingsAPI(app) {
     }
   });
 
-  console.log('✅ Task Points Settings API initialized');
+  console.log('Task Points Settings API initialized');
 }
 
 // ==================== ЭКСПОРТ ФУНКЦИИ ДЛЯ ИСПОЛЬЗОВАНИЯ ====================
 
 /**
  * Получить настройки баллов за задачи (для использования в других модулях)
+ * NOTE: Now async - callers must use await
  */
-function getTaskPointsConfig() {
-  return loadConfig();
+async function getTaskPointsConfig() {
+  return await loadConfig();
 }
 
 module.exports = {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash icon for Android 12+ - use adaptive icon foreground which is designed for circular mask -->
+<!-- ic_launcher_foreground is already designed with proper safe zone for adaptive icons -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_foreground"
+    android:inset="0%" />

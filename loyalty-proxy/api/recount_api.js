@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Recount API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -6,9 +12,24 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const RECOUNT_REPORTS_DIR = `${DATA_DIR}/recount-reports`;
 const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
-[RECOUNT_REPORTS_DIR, RECOUNT_QUESTIONS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist
+(async () => {
+  for (const dir of [RECOUNT_REPORTS_DIR, RECOUNT_QUESTIONS_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+})();
 
 function setupRecountAPI(app, upload) {
   // ===== RECOUNT REPORTS =====
@@ -26,7 +47,7 @@ function setupRecountAPI(app, upload) {
       const filePath = path.join(RECOUNT_REPORTS_DIR, `${sanitizedId}.json`);
 
       report.savedAt = new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
 
       console.log('Recount report saved:', filePath);
       res.json({ success: true, report });
@@ -41,12 +62,12 @@ function setupRecountAPI(app, upload) {
       console.log('GET /api/recount-reports');
       const reports = [];
 
-      if (fs.existsSync(RECOUNT_REPORTS_DIR)) {
-        const files = fs.readdirSync(RECOUNT_REPORTS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(RECOUNT_REPORTS_DIR)) {
+        const files = (await fsp.readdir(RECOUNT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(RECOUNT_REPORTS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(RECOUNT_REPORTS_DIR, file), 'utf8');
             const report = JSON.parse(content);
 
             // Фильтрация
@@ -83,16 +104,17 @@ function setupRecountAPI(app, upload) {
       const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(RECOUNT_REPORTS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Report not found' });
       }
 
-      const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const report = JSON.parse(content);
       report.rating = rating;
       report.confirmedByAdmin = confirmedByAdmin;
       report.confirmedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
 
       res.json({ success: true, report });
     } catch (error) {
@@ -118,12 +140,12 @@ function setupRecountAPI(app, upload) {
       console.log('GET /api/recount-questions');
       const questions = [];
 
-      if (fs.existsSync(RECOUNT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(RECOUNT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(RECOUNT_QUESTIONS_DIR)) {
+        const files = (await fsp.readdir(RECOUNT_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(RECOUNT_QUESTIONS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(RECOUNT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(content);
 
             // Фильтрация по shopAddress
@@ -161,7 +183,7 @@ function setupRecountAPI(app, upload) {
       const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
       question.createdAt = question.createdAt || new Date().toISOString();
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
 
       res.json({ success: true, question });
     } catch (error) {
@@ -178,15 +200,16 @@ function setupRecountAPI(app, upload) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const existing = JSON.parse(content);
       const updated = { ...existing, ...updateData, id: questionId };
       updated.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, question: updated });
     } catch (error) {
       console.error('Error updating recount question:', error);
@@ -210,7 +233,7 @@ function setupRecountAPI(app, upload) {
       const photoDir = `${DATA_DIR}/shift-photos`;
       const photoPath = path.join(photoDir, photoFileName);
 
-      fs.renameSync(req.file.path, photoPath);
+      await fsp.rename(req.file.path, photoPath);
 
       const photoUrl = `https://arabica26.ru/shift-photos/${photoFileName}`;
       res.json({ success: true, photoUrl });
@@ -227,11 +250,11 @@ function setupRecountAPI(app, upload) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      fs.unlinkSync(filePath);
+      await fsp.unlink(filePath);
       res.json({ success: true });
     } catch (error) {
       console.error('Error deleting recount question:', error);

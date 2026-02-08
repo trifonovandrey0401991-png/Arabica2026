@@ -1,15 +1,31 @@
-const fs = require('fs');
+/**
+ * Loyalty Promo API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const LOYALTY_PROMO_FILE = `${DATA_DIR}/loyalty-promo.json`;
 
-// Helper functions
-function loadPromos() {
+// Async helper
+async function fileExists(filePath) {
   try {
-    if (fs.existsSync(LOYALTY_PROMO_FILE)) {
-      const data = fs.readFileSync(LOYALTY_PROMO_FILE, 'utf8');
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Helper functions
+async function loadPromos() {
+  try {
+    if (await fileExists(LOYALTY_PROMO_FILE)) {
+      const data = await fsp.readFile(LOYALTY_PROMO_FILE, 'utf8');
       return JSON.parse(data).promos || [];
     }
   } catch (e) {
@@ -18,9 +34,32 @@ function loadPromos() {
   return [];
 }
 
-function savePromos(promos) {
+async function loadPromoFile() {
+  try {
+    if (await fileExists(LOYALTY_PROMO_FILE)) {
+      const data = await fsp.readFile(LOYALTY_PROMO_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Error loading loyalty-promo file:', e);
+  }
+  return { promos: [] };
+}
+
+async function savePromos(promos) {
   const data = { promos, updatedAt: new Date().toISOString() };
-  fs.writeFileSync(LOYALTY_PROMO_FILE, JSON.stringify(data, null, 2), 'utf8');
+
+  // Preserve other fields like promoText, pointsRequired, drinksToGive
+  try {
+    const existing = await loadPromoFile();
+    data.promoText = existing.promoText;
+    data.pointsRequired = existing.pointsRequired;
+    data.drinksToGive = existing.drinksToGive;
+  } catch (e) {
+    // Ignore - new file
+  }
+
+  await fsp.writeFile(LOYALTY_PROMO_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
 
 function setupLoyaltyPromoAPI(app) {
@@ -30,7 +69,7 @@ function setupLoyaltyPromoAPI(app) {
       console.log('GET /api/loyalty-promo');
       const { active, type } = req.query;
 
-      let promos = loadPromos();
+      let promos = await loadPromos();
 
       // Filter by active status
       if (active === 'true') {
@@ -51,7 +90,16 @@ function setupLoyaltyPromoAPI(app) {
       }
 
       promos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      try { const rawData = fs.readFileSync(LOYALTY_PROMO_FILE, "utf8"); const parsed = JSON.parse(rawData); res.json({ success: true, promos, promoText: parsed.promoText || "", pointsRequired: parsed.pointsRequired || 9, drinksToGive: parsed.drinksToGive || 1 }); } catch(e) { res.json({ success: true, promos }); }
+
+      // Load full file to get additional fields
+      const fullData = await loadPromoFile();
+      res.json({
+        success: true,
+        promos,
+        promoText: fullData.promoText || "",
+        pointsRequired: fullData.pointsRequired || 9,
+        drinksToGive: fullData.drinksToGive || 1
+      });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
@@ -61,7 +109,7 @@ function setupLoyaltyPromoAPI(app) {
   app.get('/api/loyalty-promo/:promoId', async (req, res) => {
     try {
       const { promoId } = req.params;
-      const promos = loadPromos();
+      const promos = await loadPromos();
       const promo = promos.find(p => p.id === promoId);
 
       if (promo) {
@@ -87,7 +135,7 @@ function setupLoyaltyPromoAPI(app) {
         });
       }
 
-      const promos = loadPromos();
+      const promos = await loadPromos();
 
       if (!promo.id) {
         promo.id = `promo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -97,7 +145,7 @@ function setupLoyaltyPromoAPI(app) {
       promo.isActive = promo.isActive !== false;
 
       promos.push(promo);
-      savePromos(promos);
+      await savePromos(promos);
 
       res.json({ success: true, promo });
     } catch (error) {
@@ -112,7 +160,7 @@ function setupLoyaltyPromoAPI(app) {
       const updates = req.body;
       console.log('PUT /api/loyalty-promo:', promoId);
 
-      const promos = loadPromos();
+      const promos = await loadPromos();
       const index = promos.findIndex(p => p.id === promoId);
 
       if (index === -1) {
@@ -125,7 +173,7 @@ function setupLoyaltyPromoAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      savePromos(promos);
+      await savePromos(promos);
       res.json({ success: true, promo: promos[index] });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -138,7 +186,7 @@ function setupLoyaltyPromoAPI(app) {
       const { promoId } = req.params;
       console.log('DELETE /api/loyalty-promo:', promoId);
 
-      const promos = loadPromos();
+      const promos = await loadPromos();
       const index = promos.findIndex(p => p.id === promoId);
 
       if (index === -1) {
@@ -146,7 +194,7 @@ function setupLoyaltyPromoAPI(app) {
       }
 
       promos.splice(index, 1);
-      savePromos(promos);
+      await savePromos(promos);
 
       res.json({ success: true });
     } catch (error) {
@@ -160,7 +208,7 @@ function setupLoyaltyPromoAPI(app) {
       const { promoId } = req.params;
       console.log('POST /api/loyalty-promo/:promoId/toggle:', promoId);
 
-      const promos = loadPromos();
+      const promos = await loadPromos();
       const index = promos.findIndex(p => p.id === promoId);
 
       if (index === -1) {
@@ -170,7 +218,7 @@ function setupLoyaltyPromoAPI(app) {
       promos[index].isActive = !promos[index].isActive;
       promos[index].updatedAt = new Date().toISOString();
 
-      savePromos(promos);
+      await savePromos(promos);
       res.json({ success: true, promo: promos[index] });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -183,7 +231,7 @@ function setupLoyaltyPromoAPI(app) {
       console.log('GET /api/loyalty-promo/active/client');
       const now = new Date();
 
-      let promos = loadPromos().filter(p => {
+      let promos = (await loadPromos()).filter(p => {
         if (!p.isActive) return false;
         if (p.startDate && new Date(p.startDate) > now) return false;
         if (p.endDate && new Date(p.endDate) < now) return false;
@@ -209,7 +257,7 @@ function setupLoyaltyPromoAPI(app) {
     }
   });
 
-  console.log('✅ Loyalty Promo API initialized');
+  console.log('Loyalty Promo API initialized');
 }
 
 module.exports = { setupLoyaltyPromoAPI };

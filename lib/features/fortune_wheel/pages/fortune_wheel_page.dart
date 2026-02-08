@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/fortune_wheel_model.dart';
 import '../services/fortune_wheel_service.dart';
@@ -34,11 +33,12 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   late Animation<double> _pulseAnimation;
   late Animation<double> _shimmerAnimation;
 
-  // Цвета
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00897B);
-  static const _goldColor = Color(0xFFFFD700);
-  static const _darkGold = Color(0xFFB8860B);
+  // Цвета — Dark Emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+  static const Color _darkGold = Color(0xFFB8860B);
 
   @override
   void initState() {
@@ -155,16 +155,16 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+            colors: [_emeraldDark, _night],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             width: 2,
-            color: _goldColor.withOpacity(0.5),
+            color: _gold.withOpacity(0.5),
           ),
           boxShadow: [
             BoxShadow(
-              color: _goldColor.withOpacity(0.3),
+              color: _gold.withOpacity(0.3),
               blurRadius: 30,
               spreadRadius: 5,
             ),
@@ -181,7 +181,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    _goldColor.withOpacity(0.2),
+                    _gold.withOpacity(0.2),
                     Colors.transparent,
                   ],
                 ),
@@ -196,7 +196,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                   const SizedBox(height: 16),
                   ShaderMask(
                     shaderCallback: (bounds) => const LinearGradient(
-                      colors: [_goldColor, Color(0xFFFFF8DC), _goldColor],
+                      colors: [_gold, Color(0xFFFFF8DC), _gold],
                     ).createShader(bounds),
                     child: const Text(
                       'ПОЗДРАВЛЯЕМ!',
@@ -334,13 +334,13 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _goldColor,
+                        backgroundColor: _gold,
                         foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                         ),
                         elevation: 8,
-                        shadowColor: _goldColor.withOpacity(0.5),
+                        shadowColor: _gold.withOpacity(0.5),
                       ),
                       child: const Text(
                         'ОТЛИЧНО!',
@@ -370,9 +370,9 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
+              _emerald,
+              _emeraldDark,
+              _night,
             ],
           ),
         ),
@@ -398,7 +398,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             child: CircularProgressIndicator(
               strokeWidth: 3,
               valueColor: AlwaysStoppedAnimation<Color>(
-                _goldColor.withOpacity(0.8),
+                _gold.withOpacity(0.8),
               ),
             ),
           ),
@@ -460,10 +460,10 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
           const SizedBox(height: 32),
           TextButton.icon(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _goldColor),
+            icon: const Icon(Icons.arrow_back, color: _gold),
             label: const Text(
               'Вернуться',
-              style: TextStyle(color: _goldColor, fontSize: 16),
+              style: TextStyle(color: _gold, fontSize: 16),
             ),
           ),
         ],
@@ -569,11 +569,11 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [_goldColor, _darkGold],
+              colors: [_gold, _darkGold],
             ),
             boxShadow: [
               BoxShadow(
-                color: _goldColor.withOpacity(0.4),
+                color: _gold.withOpacity(0.4),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -588,7 +588,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
         const SizedBox(height: 16),
         ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
-            colors: [_goldColor, Color(0xFFFFF8DC), _goldColor],
+            colors: [_gold, Color(0xFFFFF8DC), _gold],
           ).createShader(bounds),
           child: const Text(
             'КОЛЕСО УДАЧИ',
@@ -626,9 +626,9 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
               end: Alignment.centerRight,
               colors: _availableSpins > 0
                   ? [
-                      _goldColor.withOpacity(0.2),
-                      _goldColor.withOpacity(0.1),
-                      _goldColor.withOpacity(0.2),
+                      _gold.withOpacity(0.2),
+                      _gold.withOpacity(0.1),
+                      _gold.withOpacity(0.2),
                     ]
                   : [
                       Colors.grey.withOpacity(0.2),
@@ -639,7 +639,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
               color: _availableSpins > 0
-                  ? _goldColor.withOpacity(0.5)
+                  ? _gold.withOpacity(0.5)
                   : Colors.grey.withOpacity(0.3),
               width: 1.5,
             ),
@@ -650,7 +650,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             children: [
               Icon(
                 _availableSpins > 0 ? Icons.stars : Icons.hourglass_empty,
-                color: _availableSpins > 0 ? _goldColor : Colors.grey,
+                color: _availableSpins > 0 ? _gold : Colors.grey,
                 size: 24,
               ),
               const SizedBox(width: 12),
@@ -661,7 +661,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: _availableSpins > 0 ? _goldColor : Colors.grey,
+                  color: _availableSpins > 0 ? _gold : Colors.grey,
                 ),
               ),
             ],
@@ -685,7 +685,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: _goldColor.withOpacity(0.3),
+                  color: _gold.withOpacity(0.3),
                   blurRadius: 40,
                   spreadRadius: 10,
                 ),
@@ -701,7 +701,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [_goldColor, _darkGold, _goldColor],
+                colors: [_gold, _darkGold, _gold],
               ),
             ),
           ),
@@ -739,7 +739,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                     ? const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [_goldColor, _darkGold],
+                        colors: [_gold, _darkGold],
                       )
                     : LinearGradient(
                         begin: Alignment.topLeft,
@@ -749,7 +749,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                 boxShadow: canSpin
                     ? [
                         BoxShadow(
-                          color: _goldColor.withOpacity(0.5),
+                          color: _gold.withOpacity(0.5),
                           blurRadius: 20,
                           spreadRadius: 2,
                           offset: const Offset(0, 4),
@@ -961,7 +961,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
                 scale: 0.9 + (_controller.value * 0.2),
                 child: const Icon(
                   Icons.star,
-                  color: Color(0xFFFFD700),
+                  color: Color(0xFFD4AF37),
                   size: 50,
                 ),
               ),
@@ -973,7 +973,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
                   scale: 0.8 + ((1 - _controller.value) * 0.3),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.7),
+                    color: const Color(0xFFD4AF37).withOpacity(0.7),
                     size: 20,
                   ),
                 ),
@@ -985,7 +985,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
                   scale: 0.7 + (_controller.value * 0.3),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.6),
+                    color: const Color(0xFFD4AF37).withOpacity(0.6),
                     size: 18,
                   ),
                 ),
@@ -997,7 +997,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
                   scale: 0.6 + ((1 - _controller.value) * 0.4),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.5),
+                    color: const Color(0xFFD4AF37).withOpacity(0.5),
                     size: 14,
                   ),
                 ),
@@ -1009,7 +1009,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
                   scale: 0.75 + (_controller.value * 0.25),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.65),
+                    color: const Color(0xFFD4AF37).withOpacity(0.65),
                     size: 16,
                   ),
                 ),

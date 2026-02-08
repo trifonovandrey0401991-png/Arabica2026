@@ -34,6 +34,16 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
         setState(() {
           _recipes = recipes;
           _isLoading = false;
+          // Сбросить категорию если она больше не существует
+          if (_selectedCategory != null) {
+            final categories = recipes
+                .map((r) => r.category)
+                .where((c) => c.isNotEmpty)
+                .toSet();
+            if (!categories.contains(_selectedCategory)) {
+              _selectedCategory = null;
+            }
+          }
         });
       }
     } catch (e) {

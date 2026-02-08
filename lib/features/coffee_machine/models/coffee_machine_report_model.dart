@@ -6,6 +6,7 @@ class CoffeeMachineReading {
   final int? aiReadNumber; // Число, распознанное OCR
   final int confirmedNumber; // Подтверждённое число (ручное или AI)
   final bool wasManuallyEdited; // Редактировал ли сотрудник вручную
+  final Map<String, double>? selectedRegion; // Область, выделенная сотрудником {x,y,width,height} 0.0-1.0
 
   CoffeeMachineReading({
     required this.templateId,
@@ -14,6 +15,7 @@ class CoffeeMachineReading {
     this.aiReadNumber,
     required this.confirmedNumber,
     this.wasManuallyEdited = false,
+    this.selectedRegion,
   });
 
   factory CoffeeMachineReading.fromJson(Map<String, dynamic> json) {
@@ -24,6 +26,10 @@ class CoffeeMachineReading {
       aiReadNumber: json['aiReadNumber'],
       confirmedNumber: json['confirmedNumber'] ?? 0,
       wasManuallyEdited: json['wasManuallyEdited'] ?? false,
+      selectedRegion: json['selectedRegion'] != null
+          ? Map<String, double>.from((json['selectedRegion'] as Map).map(
+              (k, v) => MapEntry(k.toString(), (v as num).toDouble())))
+          : null,
     );
   }
 
@@ -34,6 +40,7 @@ class CoffeeMachineReading {
     'aiReadNumber': aiReadNumber,
     'confirmedNumber': confirmedNumber,
     'wasManuallyEdited': wasManuallyEdited,
+    if (selectedRegion != null) 'selectedRegion': selectedRegion,
   };
 
   CoffeeMachineReading copyWith({
@@ -43,6 +50,7 @@ class CoffeeMachineReading {
     int? aiReadNumber,
     int? confirmedNumber,
     bool? wasManuallyEdited,
+    Map<String, double>? selectedRegion,
   }) {
     return CoffeeMachineReading(
       templateId: templateId ?? this.templateId,
@@ -51,6 +59,7 @@ class CoffeeMachineReading {
       aiReadNumber: aiReadNumber ?? this.aiReadNumber,
       confirmedNumber: confirmedNumber ?? this.confirmedNumber,
       wasManuallyEdited: wasManuallyEdited ?? this.wasManuallyEdited,
+      selectedRegion: selectedRegion ?? this.selectedRegion,
     );
   }
 }

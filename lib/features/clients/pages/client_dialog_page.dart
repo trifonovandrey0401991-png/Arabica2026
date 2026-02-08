@@ -262,8 +262,8 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                   Expanded(
                     child: Text(
                       message.data['orderNumber'] != null
-                          ? 'Заказ #${message.data['orderNumber']}'
-                          : 'Заказ #${orderId.toString().substring(orderId.toString().length - 6)}',
+                          ? 'Заказ ${message.data['orderNumber']}'
+                          : 'Заказ ${orderId.toString().substring(orderId.toString().length - 6)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

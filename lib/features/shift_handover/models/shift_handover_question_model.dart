@@ -72,6 +72,9 @@ class ShiftHandoverQuestion {
       answerFormatB?.toLowerCase().trim() == 'free' ||
       answerFormatB?.toLowerCase().trim() == 'photo';
 
+  bool get isScreenshotOnly =>
+      answerFormatB?.toLowerCase().trim() == 'screenshot';
+
   bool get isYesNo =>
       (answerFormatB == null || answerFormatB!.trim().isEmpty) &&
       (answerFormatC == null || answerFormatC!.trim().isEmpty);

@@ -1,5 +1,6 @@
 import '../models/shift_transfer_model.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
@@ -29,10 +30,16 @@ class ShiftTransferService {
   /// Получить запросы для администратора (ожидающие одобрения)
   static Future<List<ShiftTransferRequest>> getAdminRequests() async {
     Logger.debug('Загрузка запросов для администратора');
-    return await BaseHttpService.getList<ShiftTransferRequest>(
+    final allRequests = await BaseHttpService.getList<ShiftTransferRequest>(
       endpoint: '$baseEndpoint/admin',
       fromJson: (json) => ShiftTransferRequest.fromJson(json),
       listKey: 'requests',
+    );
+
+    // Фильтруем по магазинам текущего пользователя
+    return await MultitenancyFilterService.filterByShopAddress(
+      allRequests,
+      (request) => request.shopAddress,
     );
   }
 

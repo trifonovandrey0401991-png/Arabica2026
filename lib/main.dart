@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app/pages/main_menu_page.dart';
 import 'features/clients/pages/registration_page.dart';
+import 'features/auth/services/auth_service.dart';
+import 'features/auth/pages/pin_entry_page.dart';
+import 'features/auth/pages/pin_setup_page.dart';
 import 'shared/providers/cart_provider.dart';
 import 'shared/providers/order_provider.dart';
 import 'shared/dialogs/notification_required_dialog.dart';
@@ -138,6 +141,10 @@ class _CheckRegistrationPage extends StatefulWidget {
 class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
   bool _isLoading = true;
   bool _isRegistered = false;
+  bool _needsPinEntry = false;
+  bool _needsPinSetup = false;
+  String? _userPhone;
+  String? _userName;
 
   @override
   void initState() {
@@ -151,36 +158,42 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       final savedPhone = prefs.getString('user_phone');
       final savedName = prefs.getString('user_name');
       final isRegistered = prefs.getBool('is_registered') ?? false;
-      
+
       // Сначала проверяем локальные данные (мгновенно)
-      if (savedPhone != null && savedPhone.isNotEmpty && 
+      if (savedPhone != null && savedPhone.isNotEmpty &&
           savedName != null && savedName.isNotEmpty && isRegistered) {
-        // Есть локальные данные - сразу показываем приветствие
+
+        // Проверяем, есть ли у пользователя PIN-код
+        Logger.debug('🔐 Проверяем наличие PIN-кода...');
+        final authService = AuthService();
+        final authStatus = await authService.getAuthStatus();
+        Logger.debug('🔐 Auth status: $authStatus');
+        final hasPin = authStatus['hasPin'] == true;
+
+        if (hasPin) {
+          // Есть PIN - показываем страницу ввода PIN
+          Logger.info('✅ Пользователь имеет PIN-код, показываем страницу ввода');
+          if (mounted) {
+            setState(() {
+              _isRegistered = true;
+              _needsPinEntry = true;
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+
+        // Нет PIN - показываем страницу создания PIN
+        Logger.debug('⚠️ PIN не найден, показываем страницу создания PIN');
         if (mounted) {
           setState(() {
             _isRegistered = true;
+            _needsPinSetup = true;
+            _userPhone = savedPhone;
+            _userName = savedName;
             _isLoading = false;
           });
-
-          // Пользователь зарегистрирован, переходим в приложение
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => Builder(
-                    builder: (context) {
-                      NotificationService.setGlobalContext(context);
-                      return const MainMenuPage();
-                    },
-                  ),
-                ),
-              );
-            }
-          });
         }
-        
-        // В фоне проверяем актуальность данных через API
-        _verifyRegistrationInBackground(savedPhone);
         return;
       }
       
@@ -329,6 +342,49 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       return const _SplashScreen();
     }
 
+    // Если нужно создать PIN-код (существующий пользователь без PIN)
+    if (_needsPinSetup) {
+      return PinSetupPage(
+        phone: _userPhone ?? '',
+        name: _userName ?? 'Пользователь',
+        showLogout: true,
+        onSuccess: () {
+          // После создания PIN переходим в приложение
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => Builder(
+                builder: (context) {
+                  NotificationService.setGlobalContext(context);
+                  FirebaseService.setGlobalContext(context);
+                  return const MainMenuPage();
+                },
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    // Если нужен ввод PIN-кода (уже есть PIN)
+    if (_needsPinEntry) {
+      return PinEntryPage(
+        onSuccess: () {
+          // После успешного ввода PIN переходим в приложение
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => Builder(
+                builder: (context) {
+                  NotificationService.setGlobalContext(context);
+                  FirebaseService.setGlobalContext(context);
+                  return const MainMenuPage();
+                },
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     if (_isRegistered) {
       return Builder(
         builder: (context) {
@@ -337,7 +393,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
 
           // Показываем диалог об уведомлениях если нужно
           if (_shouldShowNotificationDialog) {
-            _shouldShowNotificationDialog = false; // Чтобы не показывался повторно
+            _shouldShowNotificationDialog = false;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               NotificationRequiredDialog.show(context, showBackButton: false);
             });

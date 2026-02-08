@@ -1,6 +1,8 @@
 /**
  * Manager Efficiency API
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Эффективность управляющего (admin) состоит из двух компонентов:
  * - Эффективность магазинов (50%) — агрегация баллов по shopAddress
  * - Эффективность отчётов (50%) — баллы за проверку отчётов + задачи
@@ -11,7 +13,7 @@
  * - Агрегирует по магазинам
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Directories
@@ -29,13 +31,23 @@ const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 // Import efficiency calculation settings
 const efficiencyCalc = require('../efficiency_calc.js');
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Load JSON file safely
  */
-function loadJsonFile(filePath) {
+async function loadJsonFile(filePath) {
   try {
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const content = await fsp.readFile(filePath, 'utf8');
       return JSON.parse(content);
     }
   } catch (e) {
@@ -47,15 +59,15 @@ function loadJsonFile(filePath) {
 /**
  * Get all shops
  */
-function getAllShops() {
+async function getAllShops() {
   const shops = [];
   try {
-    if (!fs.existsSync(SHOPS_DIR)) return shops;
+    if (!(await fileExists(SHOPS_DIR))) return shops;
 
-    const files = fs.readdirSync(SHOPS_DIR);
+    const files = await fsp.readdir(SHOPS_DIR);
     for (const file of files) {
       if (file.startsWith('shop_') && file.endsWith('.json')) {
-        const shop = loadJsonFile(path.join(SHOPS_DIR, file));
+        const shop = await loadJsonFile(path.join(SHOPS_DIR, file));
         if (shop) {
           shops.push(shop);
         }
@@ -70,12 +82,12 @@ function getAllShops() {
 /**
  * Get manager data by phone (with managedShopIds from shop-managers.json)
  */
-function getManagerByPhone(phone) {
+async function getManagerByPhone(phone) {
   try {
     const normalizedPhone = phone.replace(/[\s+]/g, '');
 
     // Load shop-managers.json to get managedShopIds
-    const shopManagersData = loadJsonFile(SHOP_MANAGERS_FILE);
+    const shopManagersData = await loadJsonFile(SHOP_MANAGERS_FILE);
     if (!shopManagersData) {
       console.log('shop-managers.json not found');
       return null;
@@ -107,18 +119,18 @@ function getManagerByPhone(phone) {
  * Load reports from directory for a specific month
  * Handles both single-object files and array files
  */
-function loadReportsForMonth(dir, month, dateField = 'date') {
+async function loadReportsForMonth(dir, month, dateField = 'date') {
   const reports = [];
   try {
-    if (!fs.existsSync(dir)) return reports;
+    if (!(await fileExists(dir))) return reports;
 
-    const files = fs.readdirSync(dir);
+    const files = await fsp.readdir(dir);
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
       // Check if filename contains the month (e.g., 2026-02-01.json)
       if (file.startsWith(month)) {
-        const data = loadJsonFile(path.join(dir, file));
+        const data = await loadJsonFile(path.join(dir, file));
         if (!data) continue;
 
         // Handle array of reports (shift-reports, shift-handover-reports)
@@ -133,7 +145,7 @@ function loadReportsForMonth(dir, month, dateField = 'date') {
       }
 
       // For files not named by date, check content
-      const data = loadJsonFile(path.join(dir, file));
+      const data = await loadJsonFile(path.join(dir, file));
       if (!data) continue;
 
       // Handle array of reports
@@ -160,21 +172,21 @@ function loadReportsForMonth(dir, month, dateField = 'date') {
 /**
  * Load penalties for month
  */
-function loadPenaltiesForMonth(month) {
+async function loadPenaltiesForMonth(month) {
   const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${month}.json`);
-  const data = loadJsonFile(filePath);
+  const data = await loadJsonFile(filePath);
   return Array.isArray(data) ? data : [];
 }
 
 /**
  * Load points settings
  */
-function loadPointsSettings() {
+async function loadPointsSettings() {
   return {
-    shift: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_points_settings.json')) || {},
-    recount: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json')) || {},
-    handover: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_handover_points_settings.json')) || {},
-    attendance: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'attendance_points_settings.json')) || {}
+    shift: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_points_settings.json')) || {},
+    recount: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json')) || {},
+    handover: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_handover_points_settings.json')) || {},
+    attendance: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'attendance_points_settings.json')) || {}
   };
 }
 
@@ -240,12 +252,12 @@ function aggregateByShop(records, validAddresses) {
 /**
  * Calculate manager efficiency
  */
-function calculateManagerEfficiency(phone, month) {
+async function calculateManagerEfficiency(phone, month) {
   console.log(`\n========== Calculating manager efficiency ==========`);
   console.log(`Phone: ${phone}, Month: ${month}`);
 
   // Find manager
-  const manager = getManagerByPhone(phone);
+  const manager = await getManagerByPhone(phone);
   if (!manager) {
     console.log(`Manager not found for phone: ${phone}`);
     return null;
@@ -271,14 +283,14 @@ function calculateManagerEfficiency(phone, month) {
   console.log(`Manager has ${managedShopIds.length} managed shops`);
 
   // Get all shops and filter by managedShopIds
-  const allShops = getAllShops();
+  const allShops = await getAllShops();
   const managedShops = allShops.filter(s => managedShopIds.includes(s.id));
   const validAddresses = new Set(managedShops.map(s => s.address));
 
   console.log(`Valid shop addresses: ${[...validAddresses].join(', ')}`);
 
   // Load settings
-  const settings = loadPointsSettings();
+  const settings = await loadPointsSettings();
 
   // Create efficiency records from all sources
   const allRecords = [];
@@ -289,7 +301,7 @@ function calculateManagerEfficiency(phone, month) {
   const isRejected = (status) => status === 'failed' || status === 'rejected';
 
   // 1. Load shift reports
-  const shiftReports = loadReportsForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate');
+  const shiftReports = await loadReportsForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate');
   console.log(`Loaded ${shiftReports.length} shift reports`);
   for (const report of shiftReports) {
     if (!validAddresses.has(report.shopAddress)) continue;
@@ -313,7 +325,7 @@ function calculateManagerEfficiency(phone, month) {
   }
 
   // 2. Load recount reports
-  const recountReports = loadReportsForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate');
+  const recountReports = await loadReportsForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate');
   console.log(`Loaded ${recountReports.length} recount reports`);
   for (const report of recountReports) {
     if (!validAddresses.has(report.shopAddress)) continue;
@@ -336,7 +348,7 @@ function calculateManagerEfficiency(phone, month) {
   }
 
   // 3. Load shift handover reports
-  const handoverReports = loadReportsForMonth(SHIFT_HANDOVER_DIR, month, 'handoverDate');
+  const handoverReports = await loadReportsForMonth(SHIFT_HANDOVER_DIR, month, 'handoverDate');
   console.log(`Loaded ${handoverReports.length} handover reports`);
   for (const report of handoverReports) {
     if (!validAddresses.has(report.shopAddress)) continue;
@@ -359,7 +371,7 @@ function calculateManagerEfficiency(phone, month) {
   }
 
   // 4. Load penalties
-  const penalties = loadPenaltiesForMonth(month);
+  const penalties = await loadPenaltiesForMonth(month);
   console.log(`Loaded ${penalties.length} penalties`);
   for (const penalty of penalties) {
     // Map penalty shopAddress to valid addresses if needed
@@ -570,7 +582,7 @@ function setupManagerEfficiencyAPI(app) {
 
       console.log(`Calculating manager efficiency for ${phone}, month: ${targetMonth}`);
 
-      const efficiency = calculateManagerEfficiency(phone, targetMonth);
+      const efficiency = await calculateManagerEfficiency(phone, targetMonth);
 
       if (!efficiency) {
         return res.status(404).json({

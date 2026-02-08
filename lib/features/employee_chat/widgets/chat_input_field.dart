@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// Виджет поля ввода сообщения с улучшенным дизайном
+/// Виджет поля ввода сообщения — dark emerald стиль
 class ChatInputField extends StatelessWidget {
   final TextEditingController controller;
   final bool isSending;
   final VoidCallback onSend;
   final VoidCallback onAttach;
   final ValueChanged<String>? onChanged;
+
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _night = Color(0xFF051515);
 
   const ChatInputField({
     super.key,
@@ -22,14 +25,8 @@ class ChatInputField extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        color: _night.withOpacity(0.95),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
       ),
       child: SafeArea(
         child: Row(
@@ -38,15 +35,17 @@ class ChatInputField extends StatelessWidget {
             // Кнопка прикрепления
             Container(
               margin: const EdgeInsets.only(bottom: 4),
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF004D40).withOpacity(0.1),
+                color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: IconButton(
-                icon: const Icon(Icons.attach_file_rounded),
+                icon: Icon(Icons.attach_file_rounded, color: Colors.white.withOpacity(0.6)),
                 onPressed: isSending ? null : onAttach,
-                color: const Color(0xFF004D40),
-                iconSize: 24,
+                iconSize: 22,
                 constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               ),
             ),
@@ -56,12 +55,9 @@ class ChatInputField extends StatelessWidget {
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 120),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.grey[200]!,
-                    width: 1,
-                  ),
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
                 ),
                 child: TextField(
                   controller: controller,
@@ -70,14 +66,15 @@ class ChatInputField extends StatelessWidget {
                   minLines: 1,
                   maxLength: 1000,
                   textCapitalization: TextCapitalization.sentences,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     height: 1.4,
+                    color: Colors.white.withOpacity(0.9),
                   ),
                   decoration: InputDecoration(
                     hintText: 'Сообщение...',
                     hintStyle: TextStyle(
-                      color: Colors.grey[400],
+                      color: Colors.white.withOpacity(0.3),
                       fontSize: 15,
                     ),
                     counterText: '',
@@ -96,46 +93,31 @@ class ChatInputField extends StatelessWidget {
             // Кнопка отправки
             Container(
               margin: const EdgeInsets.only(bottom: 4),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF00695C), Color(0xFF004D40)],
+              child: GestureDetector(
+                onTap: isSending ? null : onSend,
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: _emerald,
+                    borderRadius: BorderRadius.circular(23),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
                   ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF004D40).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: isSending ? null : onSend,
-                    borderRadius: BorderRadius.circular(24),
-                    child: Center(
-                      child: isSending
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.send_rounded,
+                  child: Center(
+                    child: isSending
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
                               color: Colors.white,
-                              size: 22,
                             ),
-                    ),
+                          )
+                        : Icon(
+                            Icons.send_rounded,
+                            color: Colors.white.withOpacity(0.9),
+                            size: 22,
+                          ),
                   ),
                 ),
               ),

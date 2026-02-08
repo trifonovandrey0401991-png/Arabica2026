@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
+import '../../../core/constants/api_constants.dart';
 
 /// Страница настроек геймификации программы лояльности
 class LoyaltyGamificationSettingsPage extends StatefulWidget {
@@ -139,6 +141,15 @@ class _LoyaltyGamificationSettingsPageState
   bool _canSave() {
     final total = _calculateTotalProbability();
     return total <= 100;
+  }
+
+  /// Формирует полный URL для изображения значка
+  String _getBadgeImageUrl(String value) {
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    // Относительный путь - добавляем базовый URL
+    return '${ApiConstants.serverUrl}$value';
   }
 
   Future<void> _saveSettings() async {
@@ -524,7 +535,20 @@ class _LoyaltyGamificationSettingsPageState
                             color: Colors.white,
                             size: 28,
                           )
-                        : const Icon(Icons.image, color: Colors.white, size: 28),
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              _getBadgeImageUrl(level.badge.value),
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.image,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -791,71 +815,98 @@ class _LoyaltyGamificationSettingsPageState
     final picker = ImagePicker();
     final image = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 200,
-      maxHeight: 200,
-      imageQuality: 90,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 95,
     );
 
-    if (image != null) {
-      // Показываем индикатор загрузки
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
+    if (image == null) return;
+
+    // Открываем редактор кадрирования (как в Telegram)
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: image.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      compressQuality: 90,
+      maxWidth: 200,
+      maxHeight: 200,
+      cropStyle: CropStyle.circle,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Обрезать значок',
+          toolbarColor: Theme.of(context).primaryColor,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+          hideBottomControls: false,
+        ),
+        IOSUiSettings(
+          title: 'Обрезать значок',
+          aspectRatioLockEnabled: true,
+          resetAspectRatioEnabled: false,
+        ),
+      ],
+    );
+
+    if (croppedFile == null) return;
+
+    // Показываем индикатор загрузки
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
                 ),
-                SizedBox(width: 12),
-                Text('Загрузка значка...'),
-              ],
-            ),
-            duration: Duration(seconds: 10),
+              ),
+              SizedBox(width: 12),
+              Text('Загрузка значка...'),
+            ],
           ),
-        );
-      }
-
-      final file = File(image.path);
-      final url = await LoyaltyGamificationService.uploadBadgeImage(
-        file,
-        _levels[index].id,
+          duration: Duration(seconds: 10),
+        ),
       );
+    }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      }
+    final file = File(croppedFile.path);
+    final url = await LoyaltyGamificationService.uploadBadgeImage(
+      file,
+      _levels[index].id,
+    );
 
-      if (url != null && mounted) {
-        setState(() {
-          _levels[index] = _levels[index].copyWith(
-            badge: LevelBadge(type: 'image', value: url),
-          );
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Значок загружен'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-          ),
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    }
+
+    if (url != null && mounted) {
+      setState(() {
+        _levels[index] = _levels[index].copyWith(
+          badge: LevelBadge(type: 'image', value: url),
         );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ошибка загрузки значка'),
-            backgroundColor: Colors.red,
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Значок загружен'),
+            ],
           ),
-        );
-      }
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ошибка загрузки значка'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

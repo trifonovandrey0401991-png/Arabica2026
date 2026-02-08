@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../models/shop_revenue_model.dart';
 import '../services/revenue_analytics_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 
 /// Режим аналитики
 enum AnalyticsMode {
@@ -19,6 +20,12 @@ class RevenueAnalyticsPage extends StatefulWidget {
 }
 
 class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
+  // Dark Emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   AnalyticsMode _mode = AnalyticsMode.none;
   String? _selectedShop;
   List<String> _shopAddresses = [];
@@ -56,7 +63,12 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   Future<void> _loadShopAddresses() async {
     setState(() => _isLoading = true);
     try {
-      final addresses = await RevenueAnalyticsService.getShopAddresses();
+      final allAddresses = await RevenueAnalyticsService.getShopAddresses();
+      // Фильтрация по мультитенантности — управляющий видит только свои магазины
+      final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
+      final addresses = allowedAddresses == null
+          ? allAddresses
+          : allAddresses.where((a) => allowedAddresses.contains(a)).toList();
       if (!mounted) return;
       setState(() {
         _shopAddresses = addresses;
@@ -81,49 +93,50 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Row(
+        backgroundColor: _emeraldDark,
+        title: Row(
           children: [
-            Icon(Icons.bar_chart, color: Color(0xFF004D40)),
-            SizedBox(width: 12),
-            Text('Аналитика выручки'),
+            Icon(Icons.bar_chart, color: _gold),
+            const SizedBox(width: 12),
+            Text('Аналитика выручки', style: TextStyle(color: Colors.white)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Выберите режим просмотра:',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
             ),
             const SizedBox(height: 16),
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF004D40).withOpacity(0.1),
+                  color: _emerald.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.store, color: Color(0xFF004D40)),
+                child: Icon(Icons.store, color: _gold),
               ),
-              title: const Text('Один магазин', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Детальная аналитика и сравнение периодов'),
+              title: Text('Один магазин', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+              subtitle: Text('Детальная аналитика и сравнение периодов', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
                 Navigator.pop(context);
                 _selectMode(AnalyticsMode.singleShop);
               },
             ),
-            const Divider(),
+            Divider(color: Colors.white.withOpacity(0.1)),
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00796B).withOpacity(0.1),
+                  color: _emerald.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.storefront, color: Color(0xFF00796B)),
+                child: Icon(Icons.storefront, color: _gold),
               ),
-              title: const Text('Все магазины', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Обзор выручки и сравнение магазинов'),
+              title: Text('Все магазины', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+              subtitle: Text('Обзор выручки и сравнение магазинов', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
                 Navigator.pop(context);
                 _selectMode(AnalyticsMode.allShops);
@@ -134,6 +147,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: _gold),
             child: const Text('Отмена'),
           ),
         ],
@@ -159,21 +173,22 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выберите магазин'),
+        backgroundColor: _emeraldDark,
+        title: Text('Выберите магазин', style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: _shopAddresses.isEmpty
-              ? const Center(child: Text('Магазины не найдены'))
+              ? Center(child: Text('Магазины не найдены', style: TextStyle(color: Colors.white.withOpacity(0.5))))
               : ListView.builder(
                   shrinkWrap: true,
                   itemCount: _shopAddresses.length,
                   itemBuilder: (context, index) {
                     final address = _shopAddresses[index];
                     return ListTile(
-                      leading: const Icon(Icons.store_outlined),
+                      leading: Icon(Icons.store_outlined, color: _gold),
                       title: Text(
                         address,
-                        style: const TextStyle(fontSize: 14),
+                        style: TextStyle(fontSize: 14, color: Colors.white),
                       ),
                       onTap: () {
                         Navigator.pop(context);
@@ -190,6 +205,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               setState(() => _mode = AnalyticsMode.none);
               _showModeSelectionDialog();
             },
+            style: TextButton.styleFrom(foregroundColor: _gold),
             child: const Text('Назад'),
           ),
         ],
@@ -295,15 +311,31 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       final startDate = DateTime(now.year, now.month, 1);
       final endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-      final revenues = await RevenueAnalyticsService.getShopRevenues(
-        startDate: startDate,
-        endDate: endDate,
-      );
+      final results = await Future.wait([
+        RevenueAnalyticsService.getShopRevenues(
+          startDate: startDate,
+          endDate: endDate,
+        ),
+        RevenueAnalyticsService.getAllShopsDailyRevenues(
+          startDate: startDate,
+          endDate: endDate,
+        ),
+        MultitenancyFilterService.getAllowedShopAddresses(),
+      ]);
 
-      final dailyRevenues = await RevenueAnalyticsService.getAllShopsDailyRevenues(
-        startDate: startDate,
-        endDate: endDate,
-      );
+      final allRevenues = results[0] as List<ShopRevenue>;
+      final allDailyRevenues = results[1] as Map<String, List<DailyRevenue>>;
+      final allowedAddresses = results[2] as List<String>?;
+
+      // Фильтрация по мультитенантности
+      final revenues = allowedAddresses == null
+          ? allRevenues
+          : allRevenues.where((r) => allowedAddresses.contains(r.shopAddress)).toList();
+      final dailyRevenues = allowedAddresses == null
+          ? allDailyRevenues
+          : Map.fromEntries(
+              allDailyRevenues.entries.where((e) => allowedAddresses.contains(e.key)),
+            );
 
       if (!mounted) return;
       setState(() {
@@ -321,13 +353,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: _night,
       body: Column(
         children: [
           _buildHeader(),
           if (_isLoading)
-            const Expanded(
-              child: Center(child: CircularProgressIndicator()),
+            Expanded(
+              child: Center(child: CircularProgressIndicator(color: _gold)),
             )
           else if (_mode == AnalyticsMode.none)
             Expanded(
@@ -335,11 +367,11 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.bar_chart, size: 64, color: Colors.grey),
+                    Icon(Icons.bar_chart, size: 64, color: Colors.white.withOpacity(0.3)),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Выберите режим аналитики',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
@@ -347,8 +379,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                       icon: const Icon(Icons.settings),
                       label: const Text('Выбрать режим'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
-                        foregroundColor: Colors.white,
+                        backgroundColor: _gold,
+                        foregroundColor: _night,
                       ),
                     ),
                   ],
@@ -377,13 +409,17 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF004D40),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_emeraldDark, _emerald],
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -474,6 +510,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     }
 
     return RefreshIndicator(
+      color: _gold,
+      backgroundColor: _emeraldDark,
       onRefresh: () => _loadSingleShopData(_selectedShop!),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -521,25 +559,19 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Сравнение по дням',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF004D40),
+              color: _gold,
             ),
           ),
           const SizedBox(height: 16),
@@ -549,7 +581,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 child: _buildDayCard(
                   title: 'Вчера',
                   value: _yesterdayRevenue,
-                  color: const Color(0xFF004D40),
+                  color: _emerald,
                 ),
               ),
               const SizedBox(width: 12),
@@ -557,7 +589,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 child: _buildDayCard(
                   title: 'Неделю назад',
                   value: _weekAgoRevenue,
-                  color: const Color(0xFF00796B),
+                  color: _emerald,
                 ),
               ),
               const SizedBox(width: 12),
@@ -583,9 +615,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         children: [
@@ -593,7 +625,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             title,
             style: TextStyle(
               fontSize: 10,
-              color: Colors.grey[600],
+              color: Colors.white.withOpacity(0.5),
             ),
             textAlign: TextAlign.center,
           ),
@@ -603,7 +635,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: Colors.white.withOpacity(0.9),
             ),
             textAlign: TextAlign.center,
           ),
@@ -616,25 +648,19 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Показатели роста',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF004D40),
+              color: _gold,
             ),
           ),
           const SizedBox(height: 16),
@@ -645,7 +671,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             prevValue: _prevMonthRevenue,
             icon: Icons.calendar_month,
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: Colors.white.withOpacity(0.1)),
           _buildGrowthCard(
             title: 'Текущая неделя vs прошлая',
             subtitle: 'С понедельника по сегодня',
@@ -653,7 +679,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             prevValue: _prevWeekRevenue,
             icon: Icons.date_range,
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: Colors.white.withOpacity(0.1)),
           _buildGrowthCard(
             title: 'Вчера vs неделю назад',
             subtitle: 'Тот же день недели',
@@ -712,9 +738,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
               const SizedBox(height: 2),
@@ -722,13 +749,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.grey[600],
+                  color: Colors.white.withOpacity(0.5),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 '${_formatRevenue(prevValue)} → ${_formatRevenue(currentValue)}',
-                style: const TextStyle(fontSize: 11),
+                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7)),
               ),
             ],
           ),
@@ -758,7 +785,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 '${changeAmount >= 0 ? '+' : ''}${_formatRevenue(changeAmount)}',
                 style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey[600],
+                  color: Colors.white.withOpacity(0.5),
                 ),
               ),
           ],
@@ -772,14 +799,15 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Нет данных для графика',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
             ),
             const SizedBox(height: 16),
             _buildDetailedButton(),
@@ -795,25 +823,19 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Выручка по дням (текущий месяц)',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF004D40),
+              color: _gold,
             ),
           ),
           const SizedBox(height: 16),
@@ -847,7 +869,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                         }
                         return Text(
                           '${_dailyRevenues[index].day}',
-                          style: const TextStyle(fontSize: 9),
+                          style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.5)),
                         );
                       },
                       reservedSize: 20,
@@ -860,7 +882,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                       getTitlesWidget: (value, meta) {
                         return Text(
                           _formatRevenueShort(value),
-                          style: const TextStyle(fontSize: 9),
+                          style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.5)),
                         );
                       },
                     ),
@@ -872,6 +894,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   show: true,
                   drawVerticalLine: false,
                   horizontalInterval: maxY / 4,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.white.withOpacity(0.1),
+                    strokeWidth: 1,
+                  ),
                 ),
                 borderData: FlBorderData(show: false),
                 barGroups: List.generate(
@@ -881,7 +907,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                     barRods: [
                       BarChartRodData(
                         toY: _dailyRevenues[index].totalRevenue,
-                        color: const Color(0xFF004D40),
+                        color: _gold,
                         width: _dailyRevenues.length > 20 ? 8 : 12,
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
                       ),
@@ -906,8 +932,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         icon: const Icon(Icons.table_chart),
         label: const Text('Подробно'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF004D40),
-          side: const BorderSide(color: Color(0xFF004D40)),
+          foregroundColor: _gold,
+          side: BorderSide(color: _gold.withOpacity(0.5)),
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -926,25 +952,26 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     }
 
     return Container(
-      color: Colors.grey[100],
+      color: _night,
       child: Column(
         children: [
           // Заголовок
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: Colors.white,
+            color: _emeraldDark,
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back),
+                  icon: Icon(Icons.arrow_back, color: Colors.white.withOpacity(0.9)),
                   onPressed: () => setState(() => _showWeeklyTable = false),
                 ),
                 Expanded(
                   child: Text(
                     'Выручка по неделям (${_weeklyRevenues.length} мес.)',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                 ),
@@ -954,13 +981,17 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
           // Таблица
           Expanded(
             child: _weeklyRevenues.isEmpty
-                ? const Center(child: Text('Нет данных'))
+                ? Center(child: Text('Нет данных', style: TextStyle(color: Colors.white.withOpacity(0.5))))
                 : SingleChildScrollView(
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.all(8),
                       child: Container(
-                        color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -983,18 +1014,18 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   Widget _buildWeeklyTableHeader() {
-    const headerStyle = TextStyle(
+    TextStyle headerStyle = TextStyle(
       fontWeight: FontWeight.bold,
       fontSize: 11,
-      color: Color(0xFF004D40),
+      color: _gold,
     );
     const cellWidth = 55.0;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF004D40).withOpacity(0.1),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        color: _emerald.withOpacity(0.2),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
       ),
       child: Row(
         children: [
@@ -1020,14 +1051,14 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
 
   Widget _buildWeekRow(WeeklyRevenue week) {
     Logger.debug('   📅 Week row: ${week.formattedDate}, days: ${week.dailyRevenues}, total: ${week.total}');
-    const cellStyle = TextStyle(fontSize: 10);
+    final cellStyle = TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.7));
     const cellWidth = 55.0;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
       ),
       child: Row(
@@ -1036,7 +1067,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             width: 85,
             child: Text(
               week.formattedDate,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.7)),
               textAlign: TextAlign.center,
             ),
           ),
@@ -1046,7 +1077,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               child: Text(
                 _formatWeeklyValue(week.dailyRevenues[i]),
                 style: cellStyle.copyWith(
-                  color: week.dailyRevenues[i] > 0 ? Colors.black87 : Colors.grey,
+                  color: week.dailyRevenues[i] > 0 ? Colors.white.withOpacity(0.7) : Colors.white.withOpacity(0.3),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1055,10 +1086,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             width: 70,
             child: Text(
               _formatWeeklyValue(week.total),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
+                color: _gold,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1076,9 +1107,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF004D40).withOpacity(0.05),
+        color: _emerald.withOpacity(0.15),
         border: Border(
-          bottom: BorderSide(color: const Color(0xFF004D40).withOpacity(0.3), width: 2),
+          bottom: BorderSide(color: _gold.withOpacity(0.3), width: 2),
         ),
       ),
       child: Row(
@@ -1090,10 +1121,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               children: [
                 Text(
                   month.monthNameWithYear,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: Color(0xFF004D40),
+                    color: _gold,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1101,7 +1132,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   '(СРЕДНЯЯ: ${_formatRevenueCompact(month.averageRevenue)})',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[700],
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -1114,7 +1145,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFD32F2F),
+                color: Color(0xFFEF5350),
               ),
               textAlign: TextAlign.center,
             ),
@@ -1158,6 +1189,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     }
 
     return RefreshIndicator(
+      color: _gold,
+      backgroundColor: _emeraldDark,
       onRefresh: _loadAllShopsData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -1188,7 +1221,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             title: 'Общая выручка',
             value: _formatRevenue(totalRevenue),
             subtitle: 'за текущий месяц',
-            color: const Color(0xFF004D40),
+            color: _gold,
           ),
         ),
         const SizedBox(width: 12),
@@ -1198,7 +1231,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             title: 'Магазинов',
             value: _allShopsRevenues.length.toString(),
             subtitle: '$totalShifts смен',
-            color: const Color(0xFF00796B),
+            color: _emerald,
           ),
         ),
       ],
@@ -1215,15 +1248,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1237,7 +1264,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   title,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.5),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1247,10 +1274,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white.withOpacity(0.9),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1261,7 +1288,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               subtitle,
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
           ],
@@ -1296,13 +1323,14 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
                 'Недостаточно данных для сравнения',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.white.withOpacity(0.5)),
               ),
             ),
           ),
@@ -1319,16 +1347,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -1349,16 +1370,17 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   title,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.5),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   shop.shopAddress,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
+                    color: Colors.white.withOpacity(0.9),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -1368,7 +1390,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   _formatRevenue(shop.totalRevenue),
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[700],
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -1395,8 +1417,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         icon: const Icon(Icons.table_chart),
         label: const Text('Показать таблицу выручки'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF004D40),
-          foregroundColor: Colors.white,
+          backgroundColor: _gold,
+          foregroundColor: _night,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1409,7 +1431,21 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   Future<void> _loadAllShopsWeeklyData() async {
     setState(() => _isLoading = true);
     try {
-      final data = await RevenueAnalyticsService.getWeeklyRevenuesAllShops();
+      final results = await Future.wait([
+        RevenueAnalyticsService.getWeeklyRevenuesAllShops(),
+        MultitenancyFilterService.getAllowedShopAddresses(),
+      ]);
+
+      final allData = results[0] as Map<String, List<MonthlyRevenueTable>>;
+      final allowedAddresses = results[1] as List<String>?;
+
+      // Фильтрация по мультитенантности
+      final data = allowedAddresses == null
+          ? allData
+          : Map.fromEntries(
+              allData.entries.where((e) => allowedAddresses.contains(e.key)),
+            );
+
       if (!mounted) return;
       setState(() {
         _allShopsWeeklyRevenues = data;
@@ -1435,19 +1471,20 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.white,
+          color: _emeraldDark,
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: Icon(Icons.arrow_back, color: Colors.white.withOpacity(0.9)),
                 onPressed: () => setState(() => _showRevenueTable = false),
               ),
               Expanded(
                 child: Text(
                   'Выручка по неделям ($monthName ${now.year})',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
                   ),
                 ),
               ),
@@ -1456,7 +1493,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         ),
         Expanded(
           child: sortedShops.isEmpty
-              ? const Center(child: Text('Нет данных за текущий месяц'))
+              ? Center(child: Text('Нет данных за текущий месяц', style: TextStyle(color: Colors.white.withOpacity(0.5))))
               : ListView.builder(
                   padding: const EdgeInsets.all(8),
                   itemCount: sortedShops.length,
@@ -1477,15 +1514,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         children: [
@@ -1500,30 +1531,30 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 }
               });
             },
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF004D40).withOpacity(0.1),
+                color: _emerald.withOpacity(0.2),
                 borderRadius: BorderRadius.vertical(
-                  top: const Radius.circular(12),
-                  bottom: isCollapsed ? const Radius.circular(12) : Radius.zero,
+                  top: const Radius.circular(14),
+                  bottom: isCollapsed ? const Radius.circular(14) : Radius.zero,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
                     isCollapsed ? Icons.expand_more : Icons.expand_less,
-                    color: const Color(0xFF004D40),
+                    color: Colors.white.withOpacity(0.9),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       shopAddress,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
-                        color: Color(0xFF004D40),
+                        color: Colors.white.withOpacity(0.9),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1535,7 +1566,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
-                        color: Color(0xFFD32F2F),
+                        color: Color(0xFFEF5350),
                       ),
                     ),
                 ],
@@ -1558,9 +1589,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               ),
             ),
           if (!isCollapsed && month == null)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Нет данных', style: TextStyle(color: Colors.grey)),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Нет данных', style: TextStyle(color: Colors.white.withOpacity(0.5))),
             ),
         ],
       ),
@@ -1568,10 +1599,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   Widget _buildAllShopsTableHeader() {
-    const headerStyle = TextStyle(
+    TextStyle headerStyle = TextStyle(
       fontWeight: FontWeight.bold,
       fontSize: 10,
-      color: Color(0xFF004D40),
+      color: _gold,
     );
     const cellWidth = 55.0;
 
@@ -1579,12 +1610,12 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: const Color(0xFF004D40).withOpacity(0.3)),
+          bottom: BorderSide(color: _gold.withOpacity(0.3)),
         ),
       ),
       child: Row(
         children: [
-          const SizedBox(
+          SizedBox(
             width: 85,
             child: Text('ДАТА', style: headerStyle, textAlign: TextAlign.center),
           ),
@@ -1593,7 +1624,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               width: cellWidth,
               child: Text(day, style: headerStyle, textAlign: TextAlign.center),
             ),
-          const SizedBox(
+          SizedBox(
             width: 70,
             child: Text('ИТОГО', style: headerStyle, textAlign: TextAlign.center),
           ),
@@ -1603,14 +1634,14 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   Widget _buildAllShopsWeekRow(WeeklyRevenue week) {
-    const cellStyle = TextStyle(fontSize: 10);
+    final cellStyle = TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.7));
     const cellWidth = 55.0;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
       ),
       child: Row(
@@ -1619,7 +1650,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             width: 85,
             child: Text(
               week.formattedDate,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.7)),
               textAlign: TextAlign.center,
             ),
           ),
@@ -1629,7 +1660,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               child: Text(
                 _formatWeeklyValue(week.dailyRevenues[i]),
                 style: cellStyle.copyWith(
-                  color: week.dailyRevenues[i] > 0 ? Colors.black87 : Colors.grey,
+                  color: week.dailyRevenues[i] > 0 ? Colors.white.withOpacity(0.7) : Colors.white.withOpacity(0.3),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1638,10 +1669,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             width: 70,
             child: Text(
               _formatWeeklyValue(week.total),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
+                color: _gold,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1659,7 +1690,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF004D40).withOpacity(0.05),
+        color: _emerald.withOpacity(0.15),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
       ),
       child: Row(
@@ -1671,10 +1702,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               children: [
                 Text(
                   month.monthNameWithYear,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: Color(0xFF004D40),
+                    color: _gold,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1682,7 +1713,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   '(СРЕДНЯЯ: ${_formatWeeklyValue(month.averageRevenue)})',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[700],
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -1695,7 +1726,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFD32F2F),
+                color: Color(0xFFEF5350),
               ),
               textAlign: TextAlign.center,
             ),

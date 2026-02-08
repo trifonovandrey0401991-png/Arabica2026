@@ -21,6 +21,11 @@ class ShiftHandoverReportViewPage extends StatefulWidget {
 }
 
 class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   late ShiftHandoverReport _currentReport;
 
   @override
@@ -82,88 +87,118 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Оценка сдачи смены'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Выберите оценку от 1 до 10:',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 20),
-                  // Отображение выбранной оценки
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: _getRatingColor(selectedRating).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '$selectedRating',
+            return Dialog(
+              backgroundColor: _emeraldDark,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Оценка сдачи смены',
                       style: TextStyle(
-                        fontSize: 48,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: _getRatingColor(selectedRating),
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Кнопки выбора оценки
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: List.generate(10, (index) {
-                      final rating = index + 1;
-                      final isSelected = rating == selectedRating;
-                      return InkWell(
-                        onTap: () {
-                          setDialogState(() {
-                            selectedRating = rating;
-                          });
-                        },
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? _getRatingColor(rating)
-                                : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(8),
-                            border: isSelected
-                                ? Border.all(color: Colors.black, width: 2)
-                                : null,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$rating',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected ? Colors.white : Colors.black87,
+                    const SizedBox(height: 16),
+                    Text(
+                      'Выберите оценку от 1 до 10:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Отображение выбранной оценки
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _getRatingColor(selectedRating).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$selectedRating',
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: _getRatingColor(selectedRating),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Кнопки выбора оценки
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: List.generate(10, (index) {
+                        final rating = index + 1;
+                        final isSelected = rating == selectedRating;
+                        return InkWell(
+                          onTap: () {
+                            setDialogState(() {
+                              selectedRating = rating;
+                            });
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? _getRatingColor(rating)
+                                  : Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: isSelected
+                                  ? Border.all(color: _gold, width: 2)
+                                  : Border.all(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$rating',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
+                                ),
                               ),
                             ),
                           ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(
+                            'Отмена',
+                            style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                          ),
                         ),
-                      );
-                    }),
-                  ),
-                ],
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(selectedRating),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _gold,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Подтвердить', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Отмена'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(selectedRating),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                  ),
-                  child: const Text('Подтвердить', style: TextStyle(color: Colors.white)),
-                ),
-              ],
             );
           },
         );
@@ -209,99 +244,110 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
       return const SizedBox.shrink();
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: cardColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(cardIcon, color: cardColor, size: 24),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: cardColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        cardTitle,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: cardColor,
-                        ),
+                child: Icon(cardIcon, color: cardColor, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cardTitle,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: cardColor,
                       ),
-                      Text(
-                        cardSubtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                    ),
+                    Text(
+                      cardSubtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.6),
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // Показываем список недостач если есть
-            if (aiShortages.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              Text(
-                'Недостачи (${aiShortages.length}):',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              ...aiShortages.map((shortage) {
-                final productName = shortage['productName'] ?? 'Неизвестный товар';
-                final barcode = shortage['barcode'] ?? '';
-                final stockQty = shortage['stockQuantity'] ?? 0;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.cancel, color: Colors.red, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              productName,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              'Код: $barcode • На остатках: $stockQty шт.',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
             ],
+          ),
+
+          // Показываем список недостач если есть
+          if (aiShortages.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Divider(color: Colors.white.withOpacity(0.1)),
+            const SizedBox(height: 8),
+            Text(
+              'Недостачи (${aiShortages.length}):',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...aiShortages.map((shortage) {
+              final productName = shortage['productName'] ?? 'Неизвестный товар';
+              final barcode = shortage['barcode'] ?? '';
+              final stockQty = shortage['stockQuantity'] ?? 0;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cancel, color: Colors.red, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            productName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            'Код: $barcode • На остатках: $stockQty шт.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -309,94 +355,146 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отчет сдачи смены'),
-        backgroundColor: const Color(0xFF004D40),
-      ),
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: Column(
           children: [
+            // Custom app bar
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Отчет сдачи смены',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
                   // Информация об отчете
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Магазин: ${_currentReport.shopAddress}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Магазин: ${_currentReport.shopAddress}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Сотрудник: ${_currentReport.employeeName}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                        ),
+                        Text(
+                          'Дата: ${_currentReport.createdAt.day.toString().padLeft(2, '0')}.${_currentReport.createdAt.month.toString().padLeft(2, '0')}.${_currentReport.createdAt.year} '
+                          '${_currentReport.createdAt.hour.toString().padLeft(2, '0')}:${_currentReport.createdAt.minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                        ),
+                        // Показываем информацию о подтверждении
+                        if (_currentReport.isConfirmed && _currentReport.confirmedAt != null) ...[
+                          const SizedBox(height: 12),
+                          Divider(color: Colors.white.withOpacity(0.1)),
                           const SizedBox(height: 8),
-                          Text('Сотрудник: ${_currentReport.employeeName}'),
-                          Text(
-                            'Дата: ${_currentReport.createdAt.day.toString().padLeft(2, '0')}.${_currentReport.createdAt.month.toString().padLeft(2, '0')}.${_currentReport.createdAt.year} '
-                            '${_currentReport.createdAt.hour.toString().padLeft(2, '0')}:${_currentReport.createdAt.minute.toString().padLeft(2, '0')}',
+                          Row(
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Подтверждено: ${_currentReport.confirmedAt!.day.toString().padLeft(2, '0')}.${_currentReport.confirmedAt!.month.toString().padLeft(2, '0')}.${_currentReport.confirmedAt!.year} '
+                                '${_currentReport.confirmedAt!.hour.toString().padLeft(2, '0')}:${_currentReport.confirmedAt!.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                          // Показываем информацию о подтверждении
-                          if (_currentReport.isConfirmed && _currentReport.confirmedAt != null) ...[
-                            const SizedBox(height: 12),
-                            const Divider(),
+                          if (_currentReport.rating != null) ...[
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                                const SizedBox(width: 8),
                                 Text(
-                                  'Подтверждено: ${_currentReport.confirmedAt!.day.toString().padLeft(2, '0')}.${_currentReport.confirmedAt!.month.toString().padLeft(2, '0')}.${_currentReport.confirmedAt!.year} '
-                                  '${_currentReport.confirmedAt!.hour.toString().padLeft(2, '0')}:${_currentReport.confirmedAt!.minute.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                                  'Оценка: ',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.6),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _getRatingColor(_currentReport.rating!),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${_currentReport.rating}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                            if (_currentReport.rating != null) ...[
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Text('Оценка: ', style: TextStyle(fontSize: 14)),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: _getRatingColor(_currentReport.rating!),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '${_currentReport.rating}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                          ],
+                          if (_currentReport.confirmedByAdmin != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Проверил: ${_currentReport.confirmedByAdmin}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.4),
                               ),
-                            ],
-                            if (_currentReport.confirmedByAdmin != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Проверил: ${_currentReport.confirmedByAdmin}',
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                            ],
+                            ),
                           ],
                         ],
-                      ),
+                      ],
                     ),
                   ),
 
@@ -414,211 +512,250 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                   ..._currentReport.answers.asMap().entries.map((entry) {
                     final index = entry.key;
                     final answer = entry.value;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Вопрос ${index + 1}: ${answer.question}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
-                      const SizedBox(height: 8),
-                      if (answer.textAnswer != null)
-                        Text('Ответ: ${answer.textAnswer}'),
-                      if (answer.numberAnswer != null)
-                        Text('Ответ: ${answer.numberAnswer}'),
-                      if (answer.photoPath != null || answer.photoUrl != null) ...[
-                        const SizedBox(height: 8),
-                        // Если есть эталонное фото, показываем две фото рядом
-                        Builder(
-                          builder: (context) {
-                            if (answer.referencePhotoUrl != null) {
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Эталон',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          height: 200,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: Colors.grey),
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
-                                            child: Image.network(
-                                              answer.referencePhotoUrl!,
-                                              fit: BoxFit.cover,
-                                              loadingBuilder: (context, child, loadingProgress) {
-                                                if (loadingProgress == null) return child;
-                                                return const Center(
-                                                  child: CircularProgressIndicator(),
-                                                );
-                                              },
-                                              errorBuilder: (context, error, stackTrace) {
-                                                return const Center(
-                                                  child: Column(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Icon(Icons.error, size: 48),
-                                                      SizedBox(height: 8),
-                                                      Text('Ошибка загрузки\nэталонного фото',
-                                                        textAlign: TextAlign.center,
-                                                        style: TextStyle(fontSize: 12)),
-                                                    ],
-                                                  ),
-                                                );
-                                              },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Вопрос ${index + 1}: ${answer.question}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (answer.textAnswer != null)
+                            Text(
+                              'Ответ: ${answer.textAnswer}',
+                              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                            ),
+                          if (answer.numberAnswer != null)
+                            Text(
+                              'Ответ: ${answer.numberAnswer}',
+                              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                            ),
+                          if (answer.photoPath != null || answer.photoUrl != null) ...[
+                            const SizedBox(height: 8),
+                            // Если есть эталонное фото, показываем две фото рядом
+                            Builder(
+                              builder: (context) {
+                                if (answer.referencePhotoUrl != null) {
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Эталон',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white.withOpacity(0.6),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Сделано сотрудником',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      height: 200,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey),
-                                      ),
-                                      child: answer.photoPath != null
-                                          ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                              ? Image.network(
-                                                  answer.photoPath!,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    return const Center(
-                                                      child: Icon(Icons.error),
-                                                    );
-                                                  },
-                                                )
-                                              : Image.file(
-                                                  File(answer.photoPath!),
-                                                  fit: BoxFit.cover,
-                                                )
-                                          : answer.photoUrl != null
-                                              ? Image.network(
-                                                  answer.photoUrl!,
+                                            const SizedBox(height: 4),
+                                            Container(
+                                              height: 200,
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: Image.network(
+                                                  answer.referencePhotoUrl!,
                                                   fit: BoxFit.cover,
                                                   loadingBuilder: (context, child, loadingProgress) {
                                                     if (loadingProgress == null) return child;
-                                                    return const Center(
-                                                      child: CircularProgressIndicator(),
+                                                    return Center(
+                                                      child: CircularProgressIndicator(
+                                                        color: _gold.withOpacity(0.7),
+                                                      ),
                                                     );
                                                   },
                                                   errorBuilder: (context, error, stackTrace) {
-                                                    return const Center(
+                                                    return Center(
                                                       child: Column(
                                                         mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
-                                                          Icon(Icons.error, size: 48),
-                                                          SizedBox(height: 8),
-                                                          Text('Ошибка загрузки фото', style: TextStyle(fontSize: 12)),
+                                                          Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
+                                                          const SizedBox(height: 8),
+                                                          Text(
+                                                            'Ошибка загрузки\nэталонного фото',
+                                                            textAlign: TextAlign.center,
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              color: Colors.white.withOpacity(0.4),
+                                                            ),
+                                                          ),
                                                         ],
                                                       ),
                                                     );
                                                   },
-                                                )
-                                              : const Center(
-                                                  child: Icon(Icons.image),
                                                 ),
-                                    ),
-                                  ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Сделано сотрудником',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white.withOpacity(0.6),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Container(
+                                              height: 200,
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: answer.photoPath != null
+                                                    ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
+                                                        ? Image.network(
+                                                            answer.photoPath!,
+                                                            fit: BoxFit.cover,
+                                                            errorBuilder: (context, error, stackTrace) {
+                                                              return Center(
+                                                                child: Icon(Icons.error, color: Colors.white.withOpacity(0.4)),
+                                                              );
+                                                            },
+                                                          )
+                                                        : Image.file(
+                                                            File(answer.photoPath!),
+                                                            fit: BoxFit.cover,
+                                                          )
+                                                    : answer.photoUrl != null
+                                                        ? Image.network(
+                                                            answer.photoUrl!,
+                                                            fit: BoxFit.cover,
+                                                            loadingBuilder: (context, child, loadingProgress) {
+                                                              if (loadingProgress == null) return child;
+                                                              return Center(
+                                                                child: CircularProgressIndicator(
+                                                                  color: _gold.withOpacity(0.7),
+                                                                ),
+                                                              );
+                                                            },
+                                                            errorBuilder: (context, error, stackTrace) {
+                                                              return Center(
+                                                                child: Column(
+                                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                                  children: [
+                                                                    Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
+                                                                    const SizedBox(height: 8),
+                                                                    Text(
+                                                                      'Ошибка загрузки фото',
+                                                                      style: TextStyle(
+                                                                        fontSize: 12,
+                                                                        color: Colors.white.withOpacity(0.4),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              );
+                                                            },
+                                                          )
+                                                        : Center(
+                                                            child: Icon(Icons.image, color: Colors.white.withOpacity(0.4)),
+                                                          ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                } else {
+                                  return const SizedBox.shrink();
+                                }
+                              },
+                            ),
+                            if (answer.referencePhotoUrl == null)
+                              // Если нет эталонного фото, показываем только сделанное фото
+                              Container(
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: answer.photoPath != null
+                                      ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
+                                          ? Image.network(
+                                              answer.photoPath!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Center(
+                                                  child: Icon(Icons.error, color: Colors.white.withOpacity(0.4)),
+                                                );
+                                              },
+                                            )
+                                          : Image.file(
+                                              File(answer.photoPath!),
+                                              fit: BoxFit.cover,
+                                            )
+                                      : answer.photoUrl != null
+                                          ? Image.network(
+                                              answer.photoUrl!,
+                                              fit: BoxFit.cover,
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return Center(
+                                                  child: CircularProgressIndicator(
+                                                    color: _gold.withOpacity(0.7),
+                                                  ),
+                                                );
+                                              },
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Center(
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
+                                                      const SizedBox(height: 8),
+                                                      Text(
+                                                        'Ошибка загрузки фото',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.white.withOpacity(0.4),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            )
+                                          : Center(
+                                              child: Icon(Icons.image, color: Colors.white.withOpacity(0.4)),
+                                            ),
                                 ),
                               ),
-                            ],
-                          );
-                            } else {
-                              return const SizedBox.shrink();
-                            }
-                          },
-                        ),
-                        if (answer.referencePhotoUrl == null)
-                          // Если нет эталонного фото, показываем только сделанное фото
-                          Container(
-                            height: 200,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: answer.photoPath != null
-                                ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                    ? Image.network(
-                                        answer.photoPath!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return const Center(
-                                            child: Icon(Icons.error),
-                                          );
-                                        },
-                                      )
-                                    : Image.file(
-                                        File(answer.photoPath!),
-                                        fit: BoxFit.cover,
-                                      )
-                                : answer.photoUrl != null
-                                    ? Image.network(
-                                        answer.photoUrl!,
-                                        fit: BoxFit.cover,
-                                        loadingBuilder: (context, child, loadingProgress) {
-                                          if (loadingProgress == null) return child;
-                                          return const Center(
-                                            child: CircularProgressIndicator(),
-                                          );
-                                        },
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return const Center(
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.error, size: 48),
-                                                SizedBox(height: 8),
-                                                Text('Ошибка загрузки фото', style: TextStyle(fontSize: 12)),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      )
-                                    : const Center(
-                                        child: Icon(Icons.image),
-                                      ),
-                          ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }),
+                          ],
+                        ],
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -626,15 +763,19 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: _night.withOpacity(0.8),
+                border: Border(
+                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                ),
               ),
               child: SafeArea(
                 child: _currentReport.isExpired
                     ? Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.red,
+                          color: Colors.red.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.withOpacity(0.3)),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -642,7 +783,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                             const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.cancel, color: Colors.white),
+                                Icon(Icons.cancel, color: Colors.red),
                                 SizedBox(width: 8),
                                 Text(
                                   'Отчет просрочен',
@@ -658,17 +799,17 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               const SizedBox(height: 8),
                               Text(
                                 'Просрочен: ${_currentReport.expiredAt!.day}.${_currentReport.expiredAt!.month}.${_currentReport.expiredAt!.year}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.6),
                                   fontSize: 14,
                                 ),
                               ),
                             ],
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Подтверждение невозможно',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: Colors.white.withOpacity(0.4),
                                 fontSize: 12,
                               ),
                             ),
@@ -679,8 +820,9 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                     ? Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.orange,
+                          color: Colors.orange.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.withOpacity(0.3)),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -688,7 +830,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                             const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.access_time, color: Colors.white),
+                                Icon(Icons.access_time, color: Colors.orange),
                                 SizedBox(width: 8),
                                 Text(
                                   'Отчет не подтвержден вовремя',
@@ -703,16 +845,16 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                             const SizedBox(height: 8),
                             Text(
                               'Ожидает более 5 часов',
-                              style: const TextStyle(
-                                color: Colors.white70,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
                                 fontSize: 14,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Только для просмотра',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: Colors.white.withOpacity(0.4),
                                 fontSize: 12,
                               ),
                             ),
@@ -723,15 +865,16 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                     ? Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.green,
+                          color: Colors.green.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.withOpacity(0.3)),
                         ),
                         child: Column(
                           children: [
                             const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.check_circle, color: Colors.white),
+                                Icon(Icons.check_circle, color: Colors.green),
                                 SizedBox(width: 8),
                                 Text(
                                   'Отчет подтвержден',
@@ -748,10 +891,10 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Оценка: ',
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: Colors.white.withOpacity(0.6),
                                       fontSize: 14,
                                     ),
                                   ),
@@ -761,7 +904,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: Colors.white.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
@@ -780,8 +923,8 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               const SizedBox(height: 4),
                               Text(
                                 'Проверил: ${_currentReport.confirmedByAdmin}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.4),
                                   fontSize: 12,
                                 ),
                               ),
@@ -799,7 +942,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                             style: TextStyle(fontSize: 18),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF004D40),
+                            backgroundColor: _gold,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(

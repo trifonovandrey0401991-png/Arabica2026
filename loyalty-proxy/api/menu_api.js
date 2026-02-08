@@ -1,13 +1,36 @@
-const fs = require('fs');
+/**
+ * Menu API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const MENU_DIR = `${DATA_DIR}/menu`;
 
-if (!fs.existsSync(MENU_DIR)) {
-  fs.mkdirSync(MENU_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+// Ensure directory exists at startup
+(async () => {
+  try {
+    if (!(await fileExists(MENU_DIR))) {
+      await fsp.mkdir(MENU_DIR, { recursive: true });
+    }
+  } catch (e) {
+    console.error('Error creating menu directory:', e.message);
+  }
+})();
 
 function setupMenuAPI(app) {
   // ===== MENU =====
@@ -18,12 +41,12 @@ function setupMenuAPI(app) {
       const { shopAddress, category } = req.query;
       const items = [];
 
-      if (fs.existsSync(MENU_DIR)) {
-        const files = fs.readdirSync(MENU_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(MENU_DIR)) {
+        const files = (await fsp.readdir(MENU_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(MENU_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(MENU_DIR, file), 'utf8');
             const item = JSON.parse(content);
 
             if (shopAddress && item.shopAddress !== shopAddress) continue;
@@ -56,7 +79,7 @@ function setupMenuAPI(app) {
       item.updatedAt = new Date().toISOString();
 
       const filePath = path.join(MENU_DIR, `${item.id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(item, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(item, null, 2), 'utf8');
 
       res.json({ success: true, item });
     } catch (error) {
@@ -72,14 +95,15 @@ function setupMenuAPI(app) {
 
       const filePath = path.join(MENU_DIR, `${itemId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Menu item not found' });
       }
 
-      const item = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const item = JSON.parse(content);
       const updated = { ...item, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, item: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -93,8 +117,8 @@ function setupMenuAPI(app) {
 
       const filePath = path.join(MENU_DIR, `${itemId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Menu item not found' });
@@ -111,12 +135,12 @@ function setupMenuAPI(app) {
       console.log('GET /api/menu-categories');
       const categories = new Set();
 
-      if (fs.existsSync(MENU_DIR)) {
-        const files = fs.readdirSync(MENU_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(MENU_DIR)) {
+        const files = (await fsp.readdir(MENU_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(MENU_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(MENU_DIR, file), 'utf8');
             const item = JSON.parse(content);
             if (item.category) {
               categories.add(item.category);

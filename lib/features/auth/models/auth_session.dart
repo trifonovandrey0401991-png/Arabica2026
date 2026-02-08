@@ -3,12 +3,14 @@
 /// Хранит информацию о текущей сессии пользователя:
 /// - токен сессии (уникальный идентификатор)
 /// - телефон пользователя
+/// - имя пользователя
 /// - ID устройства
 /// - время создания и истечения
 /// - статус верификации
 class AuthSession {
   final String sessionToken;
   final String phone;
+  final String? name;
   final String deviceId;
   final String? deviceName;
   final DateTime createdAt;
@@ -20,6 +22,7 @@ class AuthSession {
   AuthSession({
     required this.sessionToken,
     required this.phone,
+    this.name,
     required this.deviceId,
     this.deviceName,
     required this.createdAt,
@@ -35,17 +38,28 @@ class AuthSession {
   /// Проверяет, активна ли сессия (не истекла и верифицирована)
   bool get isActive => !isExpired && isVerified;
 
+  /// Парсит дату из JSON (поддерживает timestamp и ISO строку)
+  static DateTime _parseDate(dynamic value) {
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    } else if (value is String) {
+      return DateTime.parse(value);
+    }
+    throw FormatException('Invalid date format: $value');
+  }
+
   /// Создаёт сессию из JSON (для загрузки с сервера)
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     return AuthSession(
       sessionToken: json['sessionToken'] as String,
       phone: json['phone'] as String,
+      name: json['name'] as String?,
       deviceId: json['deviceId'] as String,
       deviceName: json['deviceName'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      expiresAt: DateTime.parse(json['expiresAt'] as String),
+      createdAt: _parseDate(json['createdAt']),
+      expiresAt: _parseDate(json['expiresAt']),
       lastActivity: json['lastActivity'] != null
-          ? DateTime.parse(json['lastActivity'] as String)
+          ? _parseDate(json['lastActivity'])
           : null,
       isVerified: json['isVerified'] as bool? ?? false,
       role: json['role'] as String? ?? 'client',
@@ -57,6 +71,7 @@ class AuthSession {
     return {
       'sessionToken': sessionToken,
       'phone': phone,
+      'name': name,
       'deviceId': deviceId,
       'deviceName': deviceName,
       'createdAt': createdAt.toIso8601String(),
@@ -71,6 +86,7 @@ class AuthSession {
   AuthSession copyWith({
     String? sessionToken,
     String? phone,
+    String? name,
     String? deviceId,
     String? deviceName,
     DateTime? createdAt,
@@ -82,6 +98,7 @@ class AuthSession {
     return AuthSession(
       sessionToken: sessionToken ?? this.sessionToken,
       phone: phone ?? this.phone,
+      name: name ?? this.name,
       deviceId: deviceId ?? this.deviceId,
       deviceName: deviceName ?? this.deviceName,
       createdAt: createdAt ?? this.createdAt,
@@ -94,6 +111,6 @@ class AuthSession {
 
   @override
   String toString() {
-    return 'AuthSession(phone: $phone, role: $role, isActive: $isActive, expiresAt: $expiresAt)';
+    return 'AuthSession(phone: $phone, name: $name, role: $role, isActive: $isActive, expiresAt: $expiresAt)';
   }
 }

@@ -114,8 +114,8 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                       children: [
                         Text(
                           orderNumber != null
-                              ? 'Заказ #$orderNumber'
-                              : 'Заказ #${order['id'].toString().substring(0, 6)}',
+                              ? 'Заказ $orderNumber'
+                              : 'Заказ ${order['id'].toString().substring(0, 6)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,

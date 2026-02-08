@@ -1,13 +1,36 @@
-const fs = require('fs');
+/**
+ * Attendance API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
 
-if (!fs.existsSync(ATTENDANCE_DIR)) {
-  fs.mkdirSync(ATTENDANCE_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+// Ensure directory exists at startup
+(async () => {
+  try {
+    if (!(await fileExists(ATTENDANCE_DIR))) {
+      await fsp.mkdir(ATTENDANCE_DIR, { recursive: true });
+    }
+  } catch (e) {
+    console.error('Error creating attendance directory:', e.message);
+  }
+})();
 
 function setupAttendanceAPI(app) {
   // POST /api/attendance - поддерживает оба формата:
@@ -46,8 +69,9 @@ function setupAttendanceAPI(app) {
         records: []
       };
 
-      if (fs.existsSync(filePath)) {
-        attendance = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        attendance = JSON.parse(content);
       }
 
       // Создаем запись в унифицированном формате
@@ -65,7 +89,7 @@ function setupAttendanceAPI(app) {
 
       attendance.records.push(record);
 
-      fs.writeFileSync(filePath, JSON.stringify(attendance, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(attendance, null, 2), 'utf8');
 
       // Возвращаем результат с информацией о времени
       res.json({
@@ -95,8 +119,9 @@ function setupAttendanceAPI(app) {
       const checkDate = date || new Date().toISOString().split('T')[0];
       const filePath = path.join(ATTENDANCE_DIR, `${normalizedId}_${checkDate}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const attendance = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        const attendance = JSON.parse(content);
         const lastRecord = attendance.records[attendance.records.length - 1];
         res.json({
           success: true,
@@ -120,12 +145,12 @@ function setupAttendanceAPI(app) {
 
       const flatRecords = [];
 
-      if (fs.existsSync(ATTENDANCE_DIR)) {
-        const files = fs.readdirSync(ATTENDANCE_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(ATTENDANCE_DIR)) {
+        const files = (await fsp.readdir(ATTENDANCE_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(ATTENDANCE_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(ATTENDANCE_DIR, file), 'utf8');
             const attendance = JSON.parse(content);
 
             // Проверяем, это новый формат (с вложенными records) или старый (плоский)

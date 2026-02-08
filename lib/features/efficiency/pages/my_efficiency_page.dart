@@ -27,6 +27,12 @@ class MyEfficiencyPage extends StatefulWidget {
 }
 
 class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerProviderStateMixin {
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = true;
   EfficiencySummary? _summary;
   EfficiencySummary? _previousMonthSummary; // Для сравнения
@@ -102,7 +108,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       if (roleData != null && roleData.phone.isEmpty) {
         final savedPhone = prefs.getString('user_phone') ?? prefs.getString('phone') ?? '';
         if (savedPhone.isNotEmpty) {
-          Logger.debug('📱 Phone был пустой, восстановлен из prefs: $savedPhone');
+          Logger.debug('Phone was empty, restored from prefs: $savedPhone');
           roleData = roleData.copyWith(phone: savedPhone);
         }
       }
@@ -112,21 +118,21 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           (roleData?.managedShopIds.isEmpty ?? true) &&
           roleData?.phone != null &&
           roleData!.phone.isNotEmpty) {
-        Logger.debug('🔄 Admin без managedShopIds - обновляем роль с сервера...');
+        Logger.debug('Admin without managedShopIds - updating role from server...');
         try {
           final freshRole = await UserRoleService.getUserRole(roleData.phone);
           await UserRoleService.saveUserRole(freshRole);
           roleData = freshRole;
-          Logger.debug('✅ Роль обновлена: managedShopIds = ${freshRole.managedShopIds}');
+          Logger.debug('Role updated: managedShopIds = ${freshRole.managedShopIds}');
         } catch (e) {
-          Logger.debug('⚠️ Не удалось обновить роль: $e');
+          Logger.debug('Failed to update role: $e');
         }
       }
 
       _userRole = roleData;
 
       // DEBUG: Логируем данные роли для отладки
-      Logger.debug('📊 MyEfficiencyPage: roleData = $roleData');
+      Logger.debug('MyEfficiencyPage: roleData = $roleData');
       Logger.debug('   role: ${roleData?.role}');
       Logger.debug('   phone: "${roleData?.phone}"');
       Logger.debug('   managedShopIds: ${roleData?.managedShopIds}');
@@ -141,7 +147,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
       if (_isManagerWithShops && roleData?.phone != null && roleData!.phone.isNotEmpty) {
         // Загружаем данные эффективности управляющего
-        Logger.debug('✅ Загружаем данные эффективности управляющего...');
+        Logger.debug('Loading manager efficiency data...');
         await _loadManagerEfficiency(roleData.phone);
         return;
       }
@@ -276,34 +282,88 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Моя эффективность'),
-        backgroundColor: EfficiencyUtils.primaryColor,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: 'Текущий месяц'),
-            Tab(text: 'Прошлый месяц'),
-          ],
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Моя эффективность',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Tab bar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: _gold,
+                  indicatorWeight: 3,
+                  labelColor: _gold,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(text: 'Текущий месяц'),
+                    Tab(text: 'Прошлый месяц'),
+                  ],
+                ),
+              ),
+              // Body
+              Expanded(child: _buildBody()),
+            ],
+          ),
         ),
       ),
-      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: Color(0xFF004D40)),
-            SizedBox(height: 16),
-            Text('Загрузка данных...'),
+            const CircularProgressIndicator(color: _gold),
+            const SizedBox(height: 16),
+            Text(
+              'Загрузка данных...',
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            ),
           ],
         ),
       );
@@ -316,10 +376,19 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white.withOpacity(0.8)),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _gold,
+                foregroundColor: _night,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               child: const Text('Повторить'),
             ),
           ],
@@ -345,13 +414,13 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.trending_up, size: 64, color: Colors.grey[400]),
+            Icon(Icons.trending_up, size: 64, color: Colors.white.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
               'Нет данных за ${EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear)}',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 8),
@@ -359,7 +428,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               'Баллы появятся после оценки ваших отчетов',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: Colors.white.withOpacity(0.4),
               ),
             ),
             if (_employeeName != null) ...[
@@ -368,7 +437,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                 _employeeName!,
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey[400],
+                  color: Colors.white.withOpacity(0.3),
                 ),
               ),
             ],
@@ -381,6 +450,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     if (_summary == null) {
       return RefreshIndicator(
         onRefresh: _loadData,
+        color: _gold,
+        backgroundColor: _emeraldDark,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
@@ -388,37 +459,39 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Показываем заглушку вместо основной карточки
-              Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Text(
-                        EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Text(
+                      EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.5),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '0',
-                        style: TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[400],
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '0',
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.3),
                       ),
-                      const Text(
-                        'баллов за отчёты',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
+                    ),
+                    Text(
+                      'баллов за отчёты',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white.withOpacity(0.4),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -431,6 +504,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
     return RefreshIndicator(
       onRefresh: () => _loadData(forceRefresh: true),
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -455,8 +530,12 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   }
 
   Widget _buildRatingButton() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: InkWell(
         onTap: () {
           if (_employeeId != null) {
@@ -471,7 +550,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             );
           }
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -479,17 +558,17 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF004D40).withOpacity(0.1),
+                  color: _gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.leaderboard,
-                  color: Color(0xFF004D40),
+                  color: _gold,
                   size: 28,
                 ),
               ),
               const SizedBox(width: 16),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -498,22 +577,23 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.9),
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Позиция среди сотрудников',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey,
+                        color: Colors.white.withOpacity(0.5),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: Colors.grey,
+                color: Colors.white.withOpacity(0.4),
               ),
             ],
           ),
@@ -531,79 +611,82 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     // Определяем цвет в зависимости от среднего балла (из 20)
     Color scoreColor;
     if (_avgTestScore! >= 16) {
-      scoreColor = Colors.green;
+      scoreColor = const Color(0xFF4CAF50);
     } else if (_avgTestScore! >= 12) {
-      scoreColor = Colors.orange;
+      scoreColor = const Color(0xFFFFB74D);
     } else {
-      scoreColor = Colors.red;
+      scoreColor = const Color(0xFFEF5350);
     }
 
     return Column(
       children: [
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.quiz,
-                    color: Colors.indigo,
-                    size: 28,
-                  ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _emerald.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Тестирование',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Пройдено тестов: $_totalTests',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Icon(
+                  Icons.quiz,
+                  color: Colors.white.withOpacity(0.8),
+                  size: 28,
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_avgTestScore!.toStringAsFixed(1)}/20',
+                      'Тестирование',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: scoreColor,
+                        color: Colors.white.withOpacity(0.9),
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      'средний балл',
+                      'Пройдено тестов: $_totalTests',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[500],
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.5),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${_avgTestScore!.toStringAsFixed(1)}/20',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: scoreColor,
+                    ),
+                  ),
+                  Text(
+                    'средний балл',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -620,63 +703,65 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       change = _summary!.totalPoints - _previousMonthSummary!.totalPoints;
     }
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Text(
-              EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text(
+            EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withOpacity(0.5),
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _summary!.formattedTotal,
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
+            ),
+          ),
+          Text(
+            'баллов',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.4),
+            ),
+          ),
+          // Сравнение с прошлым месяцем
+          if (change != null) ...[
             const SizedBox(height: 8),
-            Text(
-              _summary!.formattedTotal,
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: isPositive ? Colors.green[700] : Colors.red[700],
-              ),
-            ),
-            const Text(
-              'баллов',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
-            // Сравнение с прошлым месяцем
-            if (change != null) ...[
-              const SizedBox(height: 8),
-              _buildComparisonRow(change),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildStatItem(
-                  '+${_summary!.earnedPoints.toStringAsFixed(1)}',
-                  'Заработано',
-                  Colors.green,
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: Colors.grey[300],
-                ),
-                _buildStatItem(
-                  '-${_summary!.lostPoints.toStringAsFixed(1)}',
-                  'Потеряно',
-                  Colors.red,
-                ),
-              ],
-            ),
+            _buildComparisonRow(change),
           ],
-        ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildStatItem(
+                '+${_summary!.earnedPoints.toStringAsFixed(1)}',
+                'Заработано',
+                const Color(0xFF4CAF50),
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: Colors.white.withOpacity(0.1),
+              ),
+              _buildStatItem(
+                '-${_summary!.lostPoints.toStringAsFixed(1)}',
+                'Потеряно',
+                const Color(0xFFEF5350),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -691,7 +776,9 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isImproved ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        color: isImproved
+            ? const Color(0xFF4CAF50).withOpacity(0.15)
+            : const Color(0xFFEF5350).withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -700,7 +787,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           Icon(
             isImproved ? Icons.trending_up : Icons.trending_down,
             size: 18,
-            color: isImproved ? Colors.green[700] : Colors.red[700],
+            color: isImproved ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
           ),
           const SizedBox(width: 4),
           Text(
@@ -708,7 +795,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: isImproved ? Colors.green[700] : Colors.red[700],
+              color: isImproved ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
             ),
           ),
         ],
@@ -731,7 +818,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           label,
           style: TextStyle(
             fontSize: 13,
-            color: Colors.grey[600],
+            color: Colors.white.withOpacity(0.5),
           ),
         ),
       ],
@@ -806,66 +893,78 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     required int referralsCount,
     required bool isPreviousMonth,
   }) {
-    return Card(
+    return Container(
       margin: EdgeInsets.only(bottom: isPreviousMonth ? 0 : 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.person_add,
-                color: Colors.blue,
-              ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFF42A5F5).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: isPreviousMonth ? Colors.grey[600] : Colors.black,
-                    ),
+            child: const Icon(
+              Icons.person_add,
+              color: Color(0xFF42A5F5),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: isPreviousMonth
+                        ? Colors.white.withOpacity(0.5)
+                        : Colors.white.withOpacity(0.9),
                   ),
-                  Text(
-                    '$referralsCount ${_getReferralsLabel(referralsCount)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                ),
+                Text(
+                  '$referralsCount ${_getReferralsLabel(referralsCount)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.4),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Text(
-              '+$points',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
+          ),
+          const Text(
+            '+',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF42A5F5),
             ),
-            const SizedBox(width: 4),
-            Text(
-              'балл${_getPointsEnding(points)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+          ),
+          Text(
+            '$points',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF42A5F5),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'балл${_getPointsEnding(points)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -892,12 +991,16 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     required bool isPreviousMonth,
   }) {
     final isPositive = total >= 0;
-    final color = isPositive ? Colors.green : Colors.red;
+    final color = isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350);
     final formattedTotal = '${isPositive ? '+' : ''}${total.toStringAsFixed(0)} руб';
 
-    return Card(
+    return Container(
       margin: EdgeInsets.only(bottom: isPreviousMonth ? 0 : 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -911,7 +1014,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -920,7 +1023,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -938,7 +1041,9 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: isPreviousMonth ? Colors.grey[600] : Colors.black,
+                        color: isPreviousMonth
+                            ? Colors.white.withOpacity(0.5)
+                            : Colors.white.withOpacity(0.9),
                       ),
                     ),
                     if (records.isNotEmpty)
@@ -946,7 +1051,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                         '${records.length} ${_getRecordsLabel(records.length)}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.4),
                         ),
                       ),
                   ],
@@ -963,7 +1068,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               const SizedBox(width: 4),
               Icon(
                 Icons.chevron_right,
-                color: Colors.grey[400],
+                color: Colors.white.withOpacity(0.3),
               ),
             ],
           ),
@@ -1001,40 +1106,42 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       }
     }
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Критерии оценки',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Критерии оценки',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: _gold,
             ),
-            const SizedBox(height: 4),
-            Text(
-              'По этим показателям оценивается ваша эффективность',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'По этим показателям оценивается ваша эффективность',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.5),
             ),
-            const SizedBox(height: 12),
-            // Сначала показываем категории с данными (из summary)
-            if (_summary != null)
-              ..._summary!.categorySummaries.map((cat) => _buildCategoryRow(cat)),
-            // Затем показываем остальные категории с 0 баллов
-            ..._allCategories
-                .where((info) => !pointsByCategory.containsKey(info.name) &&
-                    !_summary!.categorySummaries.any((c) => c.baseCategory == info.category))
-                .map((info) => _buildEmptyCategoryRow(info)),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          // Сначала показываем категории с данными (из summary)
+          if (_summary != null)
+            ..._summary!.categorySummaries.map((cat) => _buildCategoryRow(cat)),
+          // Затем показываем остальные категории с 0 баллов
+          ..._allCategories
+              .where((info) => !pointsByCategory.containsKey(info.name) &&
+                  !_summary!.categorySummaries.any((c) => c.baseCategory == info.category))
+              .map((info) => _buildEmptyCategoryRow(info)),
+        ],
       ),
     );
   }
@@ -1048,13 +1155,13 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               _getCategoryIcon(info.category),
               size: 20,
-              color: Colors.grey[400],
+              color: Colors.white.withOpacity(0.3),
             ),
           ),
           const SizedBox(width: 12),
@@ -1066,14 +1173,14 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                   info.name,
                   style: TextStyle(
                     fontSize: 15,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
                 Text(
                   info.description,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[400],
+                    color: Colors.white.withOpacity(0.3),
                   ),
                 ),
               ],
@@ -1084,7 +1191,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.grey[400],
+              color: Colors.white.withOpacity(0.3),
             ),
           ),
         ],
@@ -1106,7 +1213,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: _getCategoryColor(categoryData.baseCategory).withOpacity(0.1),
+              color: _getCategoryColor(categoryData.baseCategory).withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -1119,7 +1226,10 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           Expanded(
             child: Text(
               categoryData.name,  // Используем настоящее имя категории
-              style: const TextStyle(fontSize: 15),
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.white.withOpacity(0.9),
+              ),
             ),
           ),
           Text(
@@ -1127,7 +1237,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: isPositive ? Colors.green[700] : Colors.red[700],
+              color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
             ),
           ),
         ],
@@ -1165,27 +1275,27 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   Color _getCategoryColor(EfficiencyCategory category) {
     switch (category) {
       case EfficiencyCategory.shift:
-        return Colors.blue;
+        return const Color(0xFF42A5F5);
       case EfficiencyCategory.recount:
-        return Colors.purple;
+        return const Color(0xFFAB47BC);
       case EfficiencyCategory.shiftHandover:
-        return Colors.teal;
+        return const Color(0xFF26A69A);
       case EfficiencyCategory.attendance:
-        return Colors.orange;
+        return const Color(0xFFFFB74D);
       case EfficiencyCategory.test:
-        return Colors.indigo;
+        return const Color(0xFF5C6BC0);
       case EfficiencyCategory.reviews:
-        return Colors.amber;
+        return _gold;
       case EfficiencyCategory.productSearch:
-        return Colors.cyan;
+        return const Color(0xFF26C6DA);
       case EfficiencyCategory.rko:
-        return Colors.brown;
+        return const Color(0xFF8D6E63);
       case EfficiencyCategory.orders:
-        return Colors.green;
+        return const Color(0xFF66BB6A);
       case EfficiencyCategory.shiftPenalty:
-        return Colors.red;
+        return const Color(0xFFEF5350);
       case EfficiencyCategory.tasks:
-        return Colors.deepPurple;
+        return const Color(0xFF7E57C2);
     }
   }
 
@@ -1213,25 +1323,27 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     final sortedShops = pointsByShop.entries.toList()
       ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'По магазинам',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'По магазинам',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: _gold,
             ),
-            const SizedBox(height: 12),
-            ...sortedShops.map((entry) => _buildShopRow(entry.key, entry.value)),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          ...sortedShops.map((entry) => _buildShopRow(entry.key, entry.value)),
+        ],
       ),
     );
   }
@@ -1250,20 +1362,23 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFE0F2F1),
+              color: _emerald.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.store,
               size: 20,
-              color: Color(0xFF004D40),
+              color: Colors.white.withOpacity(0.7),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               shopAddress,
-              style: const TextStyle(fontSize: 15),
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.white.withOpacity(0.9),
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -1272,7 +1387,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: isPositive ? Colors.green[700] : Colors.red[700],
+              color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
             ),
           ),
         ],
@@ -1288,48 +1403,50 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     // Берем последние 20 записей
     final recentRecords = sortedRecords.take(20).toList();
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Последние записи',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF004D40),
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Последние записи',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: _gold,
                 ),
-                Text(
-                  'Всего: ${_summary!.recordsCount}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
+              ),
+              Text(
+                'Всего: ${_summary!.recordsCount}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.5),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (recentRecords.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Нет записей',
-                    style: TextStyle(color: Colors.grey[500]),
-                  ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (recentRecords.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Нет записей',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4)),
                 ),
-              )
-            else
-              ...recentRecords.map((record) => _buildRecordRow(record)),
-          ],
-        ),
+              ),
+            )
+          else
+            ...recentRecords.map((record) => _buildRecordRow(record)),
+        ],
       ),
     );
   }
@@ -1357,7 +1474,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               dateFormat.format(record.date),
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
           ),
@@ -1368,7 +1485,10 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               children: [
                 Text(
                   record.categoryName,
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1376,7 +1496,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                   record.formattedRawValue,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.5),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -1386,7 +1506,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                     shop,
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey[400],
+                      color: Colors.white.withOpacity(0.3),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1399,7 +1519,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: isPositive ? Colors.green[700] : Colors.red[700],
+              color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
             ),
           ),
         ],
@@ -1415,6 +1535,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
     return RefreshIndicator(
       onRefresh: () => _loadData(forceRefresh: true),
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1439,26 +1561,19 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   Widget _buildManagerHeaderCard(ManagerEfficiencyData efficiency) {
     final totalPercent = efficiency.totalPercentage;
     final color = totalPercent >= 70
-        ? const Color(0xFF00897B)
+        ? _emerald
         : totalPercent >= 40
-            ? Colors.orange
-            : Colors.red;
+            ? const Color(0xFFFFB74D)
+            : const Color(0xFFEF5350);
 
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color, color.withOpacity(0.8)],
+          colors: [color, color.withOpacity(0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1469,7 +1584,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -1483,10 +1598,10 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Общая эффективность',
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: Colors.white.withOpacity(0.7),
                         fontSize: 13,
                       ),
                     ),
@@ -1511,7 +1626,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           Container(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1527,7 +1642,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                 Container(
                   width: 1,
                   height: 40,
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withOpacity(0.2),
                 ),
                 Expanded(
                   child: _buildCompactEfficiencyItem(
@@ -1548,12 +1663,12 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               _buildCompactStatItem(
                 '+${efficiency.totalEarned.toStringAsFixed(0)}',
                 'Заработано',
-                Colors.greenAccent,
+                const Color(0xFF69F0AE),
               ),
               _buildCompactStatItem(
                 '-${efficiency.totalLost.toStringAsFixed(0)}',
                 'Потеряно',
-                Colors.redAccent,
+                const Color(0xFFFF8A80),
               ),
               _buildCompactStatItem(
                 efficiency.totalPoints.toStringAsFixed(0),
@@ -1572,7 +1687,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -1613,8 +1728,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white60,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
                 fontSize: 11,
               ),
             ),
@@ -1657,8 +1772,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         ),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white60,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.6),
             fontSize: 11,
           ),
         ),
@@ -1675,29 +1790,23 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.store, size: 16, color: Color(0xFF00897B)),
+              const Icon(Icons.store, size: 16, color: _gold),
               const SizedBox(width: 6),
               const Text(
                 'Магазины',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF00897B),
+                  color: _gold,
                 ),
               ),
               const Spacer(),
@@ -1705,7 +1814,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                 '${efficiency.shopBreakdown.length} шт.',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Colors.white.withOpacity(0.5),
                 ),
               ),
             ],
@@ -1746,7 +1855,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
   Widget _buildGridShopCard(ShopEfficiencyItem shop) {
     final isPositive = shop.totalPoints >= 0;
-    final color = isPositive ? const Color(0xFF00897B) : Colors.red;
+    final color = isPositive ? _emerald : const Color(0xFFEF5350);
 
     // Извлекаем короткое название магазина
     String shortName = shop.shopName;
@@ -1757,18 +1866,19 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             shortName,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.85),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1782,7 +1892,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: color,
+                  color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
                 ),
               ),
               Column(
@@ -1793,15 +1903,15 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                     children: [
                       Text(
                         '+${shop.earnedPoints.toStringAsFixed(0)}',
-                        style: TextStyle(fontSize: 10, color: Colors.green[600]),
+                        style: const TextStyle(fontSize: 10, color: Color(0xFF4CAF50)),
                       ),
                       Text(
                         '/',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                        style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.3)),
                       ),
                       Text(
                         '-${shop.lostPoints.toStringAsFixed(0)}',
-                        style: TextStyle(fontSize: 10, color: Colors.red[400]),
+                        style: const TextStyle(fontSize: 10, color: Color(0xFFEF5350)),
                       ),
                     ],
                   ),
@@ -1809,7 +1919,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                     '${shop.recordsCount} зап.',
                     style: TextStyle(
                       fontSize: 9,
-                      color: Colors.grey[500],
+                      color: Colors.white.withOpacity(0.4),
                     ),
                   ),
                 ],
@@ -1828,29 +1938,23 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.category, size: 16, color: Color(0xFF00897B)),
+              Icon(Icons.category, size: 16, color: _gold),
               SizedBox(width: 6),
               Text(
                 'Категории оценки',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF00897B),
+                  color: _gold,
                 ),
               ),
             ],
@@ -1892,7 +1996,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                   Icons.assignment,
                   'Задачи',
                   categories.tasksPoints,
-                  Colors.deepPurple,
+                  const Color(0xFF7E57C2),
                 ),
               ),
             ],
@@ -1913,7 +2017,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       margin: const EdgeInsets.symmetric(horizontal: 4),
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -1928,7 +2032,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                   name,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[600],
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
                 Text(
@@ -1936,7 +2040,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: isPositive ? Colors.green[700] : Colors.red[700],
+                    color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
                   ),
                 ),
               ],

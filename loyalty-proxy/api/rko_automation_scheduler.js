@@ -7,10 +7,22 @@
  * - Начисление штрафов за пропуск
  * - Push-уведомления
  * - Очистка failed отчётов в 23:59
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Импортируем функции отправки push-уведомлений
 let sendPushNotification = null;
@@ -60,12 +72,12 @@ function getMoscowDateString() {
 // ============================================
 // Helper: Load JSON file safely
 // ============================================
-function loadJsonFile(filePath, defaultValue) {
-  if (!fs.existsSync(filePath)) {
+async function loadJsonFile(filePath, defaultValue) {
+  if (!(await fileExists(filePath))) {
     return defaultValue;
   }
   try {
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(data);
   } catch (e) {
     console.error(`[RkoScheduler] Error loading JSON from ${filePath}:`, e.message);
@@ -73,13 +85,13 @@ function loadJsonFile(filePath, defaultValue) {
   }
 }
 
-function saveJsonFile(filePath, data) {
+async function saveJsonFile(filePath, data) {
   try {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error(`[RkoScheduler] Error saving JSON to ${filePath}:`, e.message);
@@ -90,8 +102,8 @@ function saveJsonFile(filePath, data) {
 // ============================================
 // State Management
 // ============================================
-function loadState() {
-  return loadJsonFile(STATE_FILE, {
+async function loadState() {
+  return await loadJsonFile(STATE_FILE, {
     lastMorningGeneration: null,
     lastEveningGeneration: null,
     lastCleanup: null,
@@ -99,15 +111,15 @@ function loadState() {
   });
 }
 
-function saveState(state) {
+async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  saveJsonFile(STATE_FILE, state);
+  await saveJsonFile(STATE_FILE, state);
 }
 
 // ============================================
 // Settings Loading
 // ============================================
-function getRkoSettings() {
+async function getRkoSettings() {
   const defaults = {
     hasRkoPoints: 1,
     noRkoPoints: -3,
@@ -119,7 +131,7 @@ function getRkoSettings() {
   };
 
   const settingsFile = path.join(POINTS_SETTINGS_DIR, 'rko_points_settings.json');
-  const loaded = loadJsonFile(settingsFile, {});
+  const loaded = await loadJsonFile(settingsFile, {});
 
   // Объединяем загруженные настройки с defaults
   return {
@@ -137,9 +149,9 @@ function getRkoSettings() {
 // ============================================
 // Shops Loading
 // ============================================
-function getAllShops() {
+async function getAllShops() {
   const shopsFile = path.join(SHOPS_DIR, 'shops.json');
-  const data = loadJsonFile(shopsFile, { shops: [] });
+  const data = await loadJsonFile(shopsFile, { shops: [] });
   return data.shops || [];
 }
 
@@ -150,21 +162,21 @@ function getPendingReportsDir() {
   return RKO_PENDING_DIR;
 }
 
-function loadTodayPendingReports() {
+async function loadTodayPendingReports() {
   const reportsDir = getPendingReportsDir();
   const reports = [];
   const today = getMoscowDateString();
 
-  if (!fs.existsSync(reportsDir)) {
+  if (!(await fileExists(reportsDir))) {
     return reports;
   }
 
   try {
-    const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
     for (const file of files) {
       try {
         const filePath = path.join(reportsDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
         // Фильтруем только сегодняшние отчёты
@@ -183,7 +195,7 @@ function loadTodayPendingReports() {
   return reports;
 }
 
-function savePendingReport(report) {
+async function savePendingReport(report) {
   const filePath = report._filePath;
   if (!filePath) {
     console.error('[RkoScheduler] No _filePath in report');
@@ -193,13 +205,13 @@ function savePendingReport(report) {
   const dataToSave = { ...report };
   delete dataToSave._filePath;
 
-  return saveJsonFile(filePath, dataToSave);
+  return await saveJsonFile(filePath, dataToSave);
 }
 
-function createPendingReport(shop, shiftType, deadline) {
+async function createPendingReport(shop, shiftType, deadline) {
   const reportsDir = getPendingReportsDir();
-  if (!fs.existsSync(reportsDir)) {
-    fs.mkdirSync(reportsDir, { recursive: true });
+  if (!(await fileExists(reportsDir))) {
+    await fsp.mkdir(reportsDir, { recursive: true });
   }
 
   const now = new Date();
@@ -222,7 +234,7 @@ function createPendingReport(shop, shiftType, deadline) {
     failedAt: null
   };
 
-  saveJsonFile(filePath, report);
+  await saveJsonFile(filePath, report);
   console.log(`[RkoScheduler] Created pending ${shiftType} RKO for ${shop.name} (${shop.address}), deadline: ${deadline.toISOString()}`);
   return report;
 }
@@ -230,9 +242,9 @@ function createPendingReport(shop, shiftType, deadline) {
 // ============================================
 // Check if RKO was submitted
 // ============================================
-function checkIfRkoSubmitted(shopAddress, shiftType, today) {
+async function checkIfRkoSubmitted(shopAddress, shiftType, today) {
   const metadataFile = path.join(RKO_REPORTS_DIR, 'rko_metadata.json');
-  const metadata = loadJsonFile(metadataFile, { items: [] });
+  const metadata = await loadJsonFile(metadataFile, { items: [] });
 
   // Ищем РКО за сегодня для этого магазина
   const submitted = metadata.items.some(rko => {
@@ -325,9 +337,9 @@ function getDeadlineTime(timeStr, startTimeStr = null) {
 // ============================================
 // 1. Generate Pending Reports
 // ============================================
-function generatePendingReports(shiftType) {
-  const settings = getRkoSettings();
-  const shops = getAllShops();
+async function generatePendingReports(shiftType) {
+  const settings = await getRkoSettings();
+  const shops = await getAllShops();
   const today = getMoscowDateString();
 
   if (shops.length === 0) {
@@ -335,7 +347,7 @@ function generatePendingReports(shiftType) {
     return 0;
   }
 
-  const pendingReports = loadTodayPendingReports();
+  const pendingReports = await loadTodayPendingReports();
   let created = 0;
 
   const deadlineTime = shiftType === 'morning'
@@ -360,14 +372,14 @@ function generatePendingReports(shiftType) {
     if (existsPending) continue;
 
     // Check if RKO was already submitted today for this shop
-    const alreadySubmitted = checkIfRkoSubmitted(shop.address, shiftType, today);
+    const alreadySubmitted = await checkIfRkoSubmitted(shop.address, shiftType, today);
     if (alreadySubmitted) {
       console.log(`[RkoScheduler] RKO already submitted for ${shop.name}, skipping`);
       continue;
     }
 
     // Create pending report
-    createPendingReport(shop, shiftType, deadline);
+    await createPendingReport(shop, shiftType, deadline);
     created++;
   }
 
@@ -381,7 +393,7 @@ function generatePendingReports(shiftType) {
 async function checkPendingDeadlines() {
   const now = new Date();
   const today = getMoscowDateString();
-  const reports = loadTodayPendingReports();
+  const reports = await loadTodayPendingReports();
   let failedCount = 0;
   const failedShops = [];
 
@@ -391,12 +403,12 @@ async function checkPendingDeadlines() {
     const deadline = new Date(report.deadline);
 
     // Check if RKO was submitted in the meantime
-    const submitted = checkIfRkoSubmitted(report.shopAddress, report.shiftType, today);
+    const submitted = await checkIfRkoSubmitted(report.shopAddress, report.shiftType, today);
     if (submitted) {
       // Mark as completed and remove pending
       console.log(`[RkoScheduler] RKO submitted for ${report.shopName}, removing pending`);
-      if (report._filePath && fs.existsSync(report._filePath)) {
-        fs.unlinkSync(report._filePath);
+      if (report._filePath && (await fileExists(report._filePath))) {
+        await fsp.unlink(report._filePath);
       }
       continue;
     }
@@ -405,7 +417,7 @@ async function checkPendingDeadlines() {
       // Deadline passed - mark as failed
       report.status = 'failed';
       report.failedAt = now.toISOString();
-      savePendingReport(report);
+      await savePendingReport(report);
       failedCount++;
 
       failedShops.push({
@@ -418,7 +430,7 @@ async function checkPendingDeadlines() {
       console.log(`[RkoScheduler] RKO FAILED: ${report.shopName} (${report.shiftType}), deadline was ${report.deadline}`);
 
       // Assign penalty to employee from work schedule
-      assignPenaltyFromSchedule(report);
+      await assignPenaltyFromSchedule(report);
     }
   }
 
@@ -433,14 +445,14 @@ async function checkPendingDeadlines() {
 // ============================================
 // 3. Assign Penalty from Work Schedule
 // ============================================
-function assignPenaltyFromSchedule(report) {
-  const settings = getRkoSettings();
+async function assignPenaltyFromSchedule(report) {
+  const settings = await getRkoSettings();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7); // YYYY-MM
 
   // Load work schedule for this month
   const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
-  const schedule = loadJsonFile(scheduleFile, { entries: [] });
+  const schedule = await loadJsonFile(scheduleFile, { entries: [] });
 
   if (!schedule.entries || schedule.entries.length === 0) {
     console.log(`[RkoScheduler] No work schedule found for ${monthKey}, cannot assign penalty`);
@@ -460,7 +472,7 @@ function assignPenaltyFromSchedule(report) {
   }
 
   // Create penalty
-  createPenalty({
+  await createPenalty({
     employeeId: entry.employeeId,
     employeeName: entry.employeeName,
     shopAddress: report.shopAddress,
@@ -473,7 +485,7 @@ function assignPenaltyFromSchedule(report) {
 // ============================================
 // 4. Create Penalty
 // ============================================
-function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
+async function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
   const now = new Date();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7);
@@ -497,7 +509,7 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
 
   // Load existing penalties
   const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-  let penalties = loadJsonFile(penaltiesFile, []);
+  let penalties = await loadJsonFile(penaltiesFile, []);
 
   // Check for duplicate
   const exists = penalties.some(p => p.sourceId === sourceId);
@@ -507,7 +519,7 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
   }
 
   penalties.push(penalty);
-  saveJsonFile(penaltiesFile, penalties);
+  await saveJsonFile(penaltiesFile, penalties);
 
   console.log(`[RkoScheduler] Created penalty for ${employeeName}: ${points} points (${reason})`);
 }
@@ -543,19 +555,21 @@ async function sendAdminFailedNotification(count, failedShops) {
 // ============================================
 // 6. Cleanup ALL Reports (at 23:59)
 // ============================================
-function cleanupFailedReports() {
+async function cleanupFailedReports() {
   // Удаляем ВСЕ файлы в папке pending (и failed, и оставшиеся pending)
   let removedCount = 0;
 
   try {
-    const files = fs.readdirSync(RKO_PENDING_DIR);
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        try {
-          fs.unlinkSync(path.join(RKO_PENDING_DIR, file));
-          removedCount++;
-        } catch (e) {
-          console.error(`[RkoScheduler] Error removing file ${file}:`, e.message);
+    if (await fileExists(RKO_PENDING_DIR)) {
+      const files = await fsp.readdir(RKO_PENDING_DIR);
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          try {
+            await fsp.unlink(path.join(RKO_PENDING_DIR, file));
+            removedCount++;
+          } catch (e) {
+            console.error(`[RkoScheduler] Error removing file ${file}:`, e.message);
+          }
         }
       }
     }
@@ -574,7 +588,7 @@ function cleanupFailedReports() {
     lastCleanup: new Date().toISOString(),
     lastCheck: new Date().toISOString()
   };
-  saveState(emptyState);
+  await saveState(emptyState);
   console.log('[RkoScheduler] State reset for new day');
 
   return removedCount;
@@ -586,8 +600,8 @@ function cleanupFailedReports() {
 async function runScheduledChecks() {
   const now = new Date();
   const moscow = getMoscowTime();
-  const settings = getRkoSettings();
-  const state = loadState();
+  const settings = await getRkoSettings();
+  const state = await loadState();
 
   console.log(`\n[${now.toISOString()}] RkoScheduler: Running checks... (Moscow time: ${moscow.toISOString()})`);
   console.log(`[RkoScheduler] Settings: morning ${settings.morningStartTime}-${settings.morningEndTime}, evening ${settings.eveningStartTime}-${settings.eveningEndTime}`);
@@ -597,7 +611,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastMorningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[RkoScheduler] Morning window active (${settings.morningStartTime} - ${settings.morningEndTime}), generating reports...`);
-      const created = generatePendingReports('morning');
+      const created = await generatePendingReports('morning');
       if (created > 0) {
         state.lastMorningGeneration = now.toISOString();
       }
@@ -609,7 +623,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastEveningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[RkoScheduler] Evening window active (${settings.eveningStartTime} - ${settings.eveningEndTime}), generating reports...`);
-      const created = generatePendingReports('evening');
+      const created = await generatePendingReports('evening');
       if (created > 0) {
         state.lastEveningGeneration = now.toISOString();
       }
@@ -635,23 +649,23 @@ async function runScheduledChecks() {
   // Cleanup если: новый день И (нет lastCleanup ИЛИ lastCleanup был в прошлом дне) И время 00:00-06:00
   if (moscowHours >= 0 && moscowHours < 6 && lastCleanupMoscow !== todayMoscow) {
     console.log(`[RkoScheduler] Running daily cleanup (last cleanup: ${lastCleanupMoscow}, today: ${todayMoscow})`);
-    cleanupFailedReports();
+    await cleanupFailedReports();
     // cleanupFailedReports сбрасывает state, перезагружаем его
-    const newState = loadState();
-    saveState(newState);
+    const newState = await loadState();
+    await saveState(newState);
     console.log(`[RkoScheduler] Checks completed\n`);
     return; // Выходим чтобы не перезаписать state
   }
 
-  saveState(state);
+  await saveState(state);
   console.log(`[RkoScheduler] Checks completed\n`);
 }
 
 // ============================================
 // 8. Scheduler Setup
 // ============================================
-function startRkoAutomationScheduler() {
-  const settings = getRkoSettings();
+async function startRkoAutomationScheduler() {
+  const settings = await getRkoSettings();
   const moscow = getMoscowTime();
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -665,25 +679,27 @@ function startRkoAutomationScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(() => {
-    runScheduledChecks();
+  setInterval(async () => {
+    await runScheduledChecks();
   }, CHECK_INTERVAL_MS);
 
   // First check after 4 seconds (slightly offset from other schedulers)
-  setTimeout(() => {
-    runScheduledChecks();
+  setTimeout(async () => {
+    await runScheduledChecks();
   }, 4000);
 }
 
 // ============================================
 // 9. API Helper: Get Pending Reports
 // ============================================
-function getPendingReports() {
-  return loadTodayPendingReports().filter(r => r.status === 'pending');
+async function getPendingReports() {
+  const reports = await loadTodayPendingReports();
+  return reports.filter(r => r.status === 'pending');
 }
 
-function getFailedReports() {
-  return loadTodayPendingReports().filter(r => r.status === 'failed');
+async function getFailedReports() {
+  const reports = await loadTodayPendingReports();
+  return reports.filter(r => r.status === 'failed');
 }
 
 // ============================================

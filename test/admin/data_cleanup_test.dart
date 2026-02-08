@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../mocks/mock_services.dart';
 
 /// P3 Тесты очистки данных для роли АДМИНИСТРАТОР
 /// Покрывает: Очистка по категориям, подтверждение, история

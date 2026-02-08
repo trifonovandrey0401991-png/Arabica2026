@@ -7,6 +7,7 @@ import '../../features/orders/pages/orders_page.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/loyalty/pages/loyalty_page.dart';
 import '../../features/shops/models/shop_model.dart';
+import '../../features/shops/services/shop_service.dart';
 import '../../features/shifts/services/shift_sync_service.dart';
 import '../../features/recipes/models/recipe_model.dart';
 import '../../features/reviews/pages/review_type_selection_page.dart';
@@ -62,6 +63,7 @@ import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../core/services/app_update_service.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/network_management/pages/network_management_page.dart';
+import '../../features/main_cash/pages/main_cash_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -100,6 +102,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   static const Color _emeraldLight = Color(0xFF2A6363); // Светлее
   static const Color _emeraldDark = Color(0xFF0D2E2E);  // Темнее
   static const Color _night = Color(0xFF051515);        // Почти чёрный
+  static const Color _gold = Color(0xFFD4AF37);         // Золотой акцент
 
   @override
   void initState() {
@@ -505,22 +508,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
 
-          // 4 кнопки + 3 отступа между ними
-          const buttonCount = 4;
+          // 3 кнопки + 2 отступа между ними
+          const buttonCount = 3;
           const spacing = 16.0;
           final totalSpacing = spacing * (buttonCount - 1);
           final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
 
           return Column(
             children: [
-              _buildAdminRow(
-                Icons.tune_rounded,
-                'Управление',
-                'Настройки системы и данные',
-                buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage())),
-              ),
-              const SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.analytics_outlined,
                 'Отчёты',
@@ -726,7 +721,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     );
   }
 
-  /// Компактное меню для сотрудников - 3x6 без прокрутки + футуристичная кнопка ИИ
+  /// Компактное меню для сотрудников - 3xN без прокрутки + футуристичная кнопка ИИ
   Widget _buildEmployeeMenu() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -739,25 +734,36 @@ class _MainMenuPageState extends State<MainMenuPage> {
           const headerHeight = 20.0;
           const aiButtonHeight = 52.0;
           const aiButtonTopMargin = 10.0;
-
-          // Всё оставшееся пространство делим между 3 секциями
-          final totalGridHeight = availableHeight - (headerHeight * 3) - aiButtonHeight - aiButtonTopMargin;
-          final sectionSpacing = totalGridHeight * 0.03; // 3% на отступы между секциями
-          final gridHeight = totalGridHeight - (sectionSpacing * 2); // минус 2 отступа между секциями
-          final sectionHeight = gridHeight / 3 + headerHeight;
+          const cols = 3;
 
           final sections = _getEmployeeSections();
+
+          // 3 равные секции + кнопка ИИ
+          final totalGridHeight = availableHeight - (headerHeight * 3) - aiButtonHeight - aiButtonTopMargin;
+          final sectionSpacing = totalGridHeight * 0.03;
+          final gridHeight = totalGridHeight - (sectionSpacing * 2);
+          final sectionHeight = gridHeight / 3 + headerHeight;
+
+          final showMainCash = _userRole?.isManager == true && _userRole!.managedShopIds.isNotEmpty;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildEmployeeSection('Повседневные Задачи', sectionHeight, availableWidth, sections[0], headerHeight),
-              SizedBox(height: sectionSpacing),
-              _buildEmployeeSection('Информация', sectionHeight, availableWidth, sections[1], headerHeight),
-              SizedBox(height: sectionSpacing),
-              _buildEmployeeSection('Работа с клиентами', sectionHeight, availableWidth, sections[2], headerHeight),
+              for (int i = 0; i < sections.length; i++) ...[
+                if (i > 0) SizedBox(height: sectionSpacing),
+                _buildEmployeeSection(
+                  ['Повседневные Задачи', 'Информация', 'Работа с клиентами'][i],
+                  sectionHeight,
+                  availableWidth,
+                  sections[i],
+                  headerHeight,
+                ),
+              ],
               SizedBox(height: aiButtonTopMargin),
-              _buildAITrainingButton(aiButtonHeight),
+              if (showMainCash)
+                _buildAITrainingWithCashRow(aiButtonHeight)
+              else
+                _buildAITrainingButton(aiButtonHeight),
             ],
           );
         },
@@ -767,7 +773,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   Widget _buildEmployeeSection(String title, double height, double width, List<Widget> items, double headerHeight) {
     const cols = 3;
-    const rows = 2; // 2 ряда по 3 плитки = 6 функций
+    const rows = 2;
     const spacing = 6.0;
 
     final tileWidth = (width - spacing * (cols - 1)) / cols;
@@ -885,6 +891,131 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Строка: 50% Обучение ИИ + 50% золотая Главная касса
+  Widget _buildAITrainingWithCashRow(double height) {
+    return Row(
+      children: [
+        // Обучение ИИ — 50%
+        Expanded(
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  _emeraldLight.withOpacity(0.8),
+                  _emerald,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF4ECDC4).withOpacity(0.6),
+                width: 1.5,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AITrainingPage()));
+                },
+                borderRadius: BorderRadius.circular(16),
+                splashColor: Colors.white.withOpacity(0.2),
+                highlightColor: Colors.white.withOpacity(0.1),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.smart_toy_outlined, color: Colors.white.withOpacity(0.9), size: 20),
+                    const SizedBox(width: 6),
+                    Text(
+                      'ИИ',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.95),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4ECDC4).withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFF4ECDC4).withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Text(
+                        'AI',
+                        style: TextStyle(
+                          color: Color(0xFF4ECDC4),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Главная касса — 50%, золотой
+        Expanded(
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  _gold.withOpacity(0.9),
+                  const Color(0xFFB8960C),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _gold.withOpacity(0.7),
+                width: 1.5,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MainCashPage()));
+                },
+                borderRadius: BorderRadius.circular(16),
+                splashColor: Colors.white.withOpacity(0.2),
+                highlightColor: Colors.white.withOpacity(0.1),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.account_balance_outlined, color: Colors.white, size: 20),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Касса',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1518,7 +1649,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     try {
       final position = await AttendanceService.getCurrentLocation();
-      final shops = await Shop.loadShopsFromServer();
+      final shops = await ShopService.getShopsForCurrentUser();
 
       if (!context.mounted) return;
 
@@ -1839,9 +1970,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Для админа и разработчика - административные функции + Клиент
     if (role == UserRole.admin || role == UserRole.developer) {
-      items.add(_buildTile(Icons.tune_rounded, 'Управление', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage()));
-      }));
+      // "Управление" видит только разработчик
+      if (role == UserRole.developer) {
+        items.add(_buildTile(Icons.tune_rounded, 'Управление', () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage()));
+        }));
+      }
 
       items.add(_buildTile(
         Icons.analytics_outlined, 'Отчёты', () async {
@@ -2132,7 +2266,7 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
 
   Future<void> _loadShops() async {
     try {
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await ShopService.getShopsForCurrentUser();
       if (mounted) {
         setState(() {
           _shops = shops;

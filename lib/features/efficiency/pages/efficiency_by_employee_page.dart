@@ -8,6 +8,7 @@ import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/services/employee_registration_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 
 /// Страница списка эффективности по сотрудникам
 class EfficiencyByEmployeePage extends StatefulWidget {
@@ -18,6 +19,12 @@ class EfficiencyByEmployeePage extends StatefulWidget {
 }
 
 class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = true;
   EfficiencyData? _data;
   List<EfficiencySummary> _filteredEmployees = []; // Только верифицированные
@@ -54,9 +61,20 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
       final verifiedNames = results[1] as Set<String>;
 
       // Фильтруем только верифицированных сотрудников
-      final filtered = data.byEmployee.where((summary) {
+      var filtered = data.byEmployee.where((summary) {
         return verifiedNames.contains(summary.entityName.toLowerCase());
       }).toList();
+
+      // Фильтрация по мультитенантности — управляющий видит только сотрудников своих магазинов
+      final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
+      if (allowedAddresses != null) {
+        filtered = filtered.where((summary) {
+          // Сотрудник отображается, если у него есть хотя бы одна запись из разрешённого магазина
+          return summary.records.any((record) =>
+            record.shopAddress.isNotEmpty && allowedAddresses.contains(record.shopAddress),
+          );
+        }).toList();
+      }
 
       setState(() {
         _data = data;
@@ -161,24 +179,59 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('По сотрудникам'),
-        backgroundColor: EfficiencyUtils.primaryColor,
-        actions: [
-          MonthPickerButton(
-            selectedMonth: _selectedMonth,
-            selectedYear: _selectedYear,
-            onMonthSelected: (selection) {
-              setState(() {
-                _selectedYear = selection['year']!;
-                _selectedMonth = selection['month']!;
-              });
-              _loadData();
-            },
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emeraldDark, _night],
+            stops: [0.0, 0.3],
           ),
-        ],
+        ),
+        child: Column(
+          children: [
+            // Custom AppBar
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'По сотрудникам',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    MonthPickerButton(
+                      selectedMonth: _selectedMonth,
+                      selectedYear: _selectedYear,
+                      onMonthSelected: (selection) {
+                        setState(() {
+                          _selectedYear = selection['year']!;
+                          _selectedMonth = selection['month']!;
+                        });
+                        _loadData();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Body
+            Expanded(child: _buildBody()),
+          ],
+        ),
       ),
-      body: _buildBody(),
     );
   }
 
@@ -201,6 +254,8 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     }
 
     return RefreshIndicator(
+      color: _gold,
+      backgroundColor: _emerald,
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -231,166 +286,181 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     if (position == 2) medalColor = const Color(0xFFC0C0C0); // Серебро
     if (position == 3) medalColor = const Color(0xFFCD7F32); // Бронза
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EmployeeEfficiencyDetailPage(
-                summary: summary,
-                monthName: EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
-              ),
-            ),
-          );
-        },
+      decoration: BoxDecoration(
+        color: _emeraldDark,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Позиция / Медаль
-                  if (medalColor != null)
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: medalColor.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.emoji_events,
-                          color: medalColor,
-                          size: 20,
+        border: Border.all(color: _emerald.withOpacity(0.5)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EmployeeEfficiencyDetailPage(
+                  summary: summary,
+                  monthName: EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Позиция / Медаль
+                    if (medalColor != null)
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: medalColor.withOpacity(0.2),
+                          shape: BoxShape.circle,
                         ),
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$position',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[600],
+                        child: Center(
+                          child: Icon(
+                            Icons.emoji_events,
+                            color: medalColor,
+                            size: 20,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '$position',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white.withOpacity(0.5),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      summary.entityName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        summary.entityName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isPositive ? Colors.green[50] : Colors.red[50],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      summary.formattedTotal,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isPositive ? Colors.green[700] : Colors.red[700],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isPositive
+                            ? Colors.green.withOpacity(0.15)
+                            : Colors.red.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 44),
-                child: Row(
-                  children: [
-                    Text(
-                      '+${summary.earnedPoints.toStringAsFixed(1)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.green[600],
+                      child: Text(
+                        summary.formattedTotal,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isPositive
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFEF5350),
+                        ),
                       ),
-                    ),
-                    const Text(' / ', style: TextStyle(color: Colors.grey)),
-                    Text(
-                      '-${summary.lostPoints.toStringAsFixed(1)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.red[600],
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${summary.recordsCount} записей',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.chevron_right,
-                      color: Colors.grey[400],
-                      size: 20,
                     ),
                   ],
                 ),
-              ),
-              if (_referralPointsByEmployee.containsKey(summary.entityId) &&
-                  (_referralPointsByEmployee[summary.entityId]!.currentMonthPoints > 0 ||
-                   _referralPointsByEmployee[summary.entityId]!.currentMonthReferrals > 0))
+                const SizedBox(height: 8),
                 Padding(
-                  padding: const EdgeInsets.only(left: 44, top: 8),
+                  padding: const EdgeInsets.only(left: 44),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.person_add_alt_outlined,
-                        size: 14,
-                        color: Colors.teal[600],
+                      Text(
+                        '+${summary.earnedPoints.toStringAsFixed(1)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF4CAF50),
+                        ),
+                      ),
+                      Text(
+                        ' / ',
+                        style: TextStyle(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      Text(
+                        '-${summary.lostPoints.toStringAsFixed(1)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFFEF5350),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${summary.recordsCount} записей',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.4),
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'Приглашения: ${_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals} клиент${_getReferralsEnding(_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '+${_referralPointsByEmployee[summary.entityId]!.currentMonthPoints}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal[600],
-                        ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: Colors.white.withOpacity(0.3),
+                        size: 20,
                       ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 44),
-                child: EfficiencyProgressBar(summary: summary),
-              ),
-            ],
+                if (_referralPointsByEmployee.containsKey(summary.entityId) &&
+                    (_referralPointsByEmployee[summary.entityId]!.currentMonthPoints > 0 ||
+                     _referralPointsByEmployee[summary.entityId]!.currentMonthReferrals > 0))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 44, top: 8),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.person_add_alt_outlined,
+                          size: 14,
+                          color: _gold,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Приглашения: ${_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals} клиент${_getReferralsEnding(_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '+${_referralPointsByEmployee[summary.entityId]!.currentMonthPoints}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _gold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 44),
+                  child: EfficiencyProgressBar(summary: summary),
+                ),
+              ],
+            ),
           ),
         ),
       ),

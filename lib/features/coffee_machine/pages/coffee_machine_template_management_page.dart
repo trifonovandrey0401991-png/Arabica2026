@@ -197,6 +197,10 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                   CoffeeMachineTypes.getDisplayName(template.machineType),
                   style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
                 ),
+                Text(
+                  OcrPresets.getDisplayName(template.ocrPreset),
+                  style: TextStyle(color: _gold.withOpacity(0.6), fontSize: 11),
+                ),
                 if (template.counterRegion != null)
                   Text(
                     'Область настроена',
@@ -265,6 +269,11 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
   Future<Map<String, dynamic>?> _showTemplateDialog({CoffeeMachineTemplate? existing}) async {
     final nameController = TextEditingController(text: existing?.name ?? '');
     String selectedType = existing?.machineType ?? CoffeeMachineTypes.wmf;
+    // Если machineType из сервера нет в списке — подставляем "other"
+    if (!CoffeeMachineTypes.all.contains(selectedType)) {
+      selectedType = CoffeeMachineTypes.other;
+    }
+    String selectedPreset = existing?.ocrPreset ?? OcrPresets.standard;
     Uint8List? imageBytes;
 
     return await showDialog<Map<String, dynamic>>(
@@ -297,6 +306,25 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                     },
                   ),
                   const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedPreset,
+                    decoration: const InputDecoration(labelText: 'Пресет OCR'),
+                    items: OcrPresets.all.map((preset) => DropdownMenuItem(
+                      value: preset,
+                      child: Text(OcrPresets.getDisplayName(preset)),
+                    )).toList(),
+                    onChanged: (v) {
+                      if (v != null) setDialogState(() => selectedPreset = v);
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      OcrPresets.getDescription(selectedPreset),
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () async {
                       final picked = await _imagePicker.pickImage(
@@ -326,6 +354,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                     machineType: selectedType,
                     referencePhotoUrl: existing?.referencePhotoUrl,
                     counterRegion: existing?.counterRegion,
+                    ocrPreset: selectedPreset,
                     createdAt: existing?.createdAt ?? DateTime.now(),
                     updatedAt: DateTime.now(),
                   );

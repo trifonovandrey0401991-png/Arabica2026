@@ -24,6 +24,10 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
   bool _isLoading = true;
   bool _isLoadingComparison = false;
 
+  // Dark Emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _gold = Color(0xFFD4AF37);
+
   static const List<String> _monthNames = [
     'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
@@ -150,7 +154,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left),
+                icon: const Icon(Icons.chevron_left, color: Colors.white),
                 onPressed: _previousMonth,
               ),
               Text(
@@ -158,10 +162,11 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.chevron_right),
+                icon: const Icon(Icons.chevron_right, color: Colors.white),
                 onPressed: _nextMonth,
               ),
             ],
@@ -172,7 +177,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         Expanded(
           flex: 2,
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: _gold))
               : _buildCalendar(),
         ),
 
@@ -198,13 +203,16 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: _weekDays.map((day) {
+              final isWeekend = day == 'Сб' || day == 'Вс';
               return Expanded(
                 child: Center(
                   child: Text(
                     day,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: day == 'Сб' || day == 'Вс' ? Colors.red[300] : null,
+                      color: isWeekend
+                          ? Colors.red[300]
+                          : Colors.white.withOpacity(0.7),
                     ),
                   ),
                 ),
@@ -250,13 +258,11 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                   margin: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFF004D40)
-                        : isToday
-                            ? const Color(0xFF004D40).withOpacity(0.1)
-                            : null,
+                        ? _emerald
+                        : null,
                     borderRadius: BorderRadius.circular(8),
                     border: isToday && !isSelected
-                        ? Border.all(color: const Color(0xFF004D40), width: 2)
+                        ? Border.all(color: _gold, width: 2)
                         : null,
                   ),
                   child: Column(
@@ -269,8 +275,8 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                           color: isSelected
                               ? Colors.white
                               : isFuture
-                                  ? Colors.grey[400]
-                                  : null,
+                                  ? Colors.white.withOpacity(0.3)
+                                  : Colors.white.withOpacity(0.9),
                         ),
                       ),
                       if (turnover != null && turnover.totalRevenue > 0)
@@ -287,7 +293,9 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                           '--',
                           style: TextStyle(
                             fontSize: 10,
-                            color: isSelected ? Colors.white54 : Colors.grey,
+                            color: isSelected
+                                ? Colors.white54
+                                : Colors.white.withOpacity(0.3),
                           ),
                         ),
                     ],
@@ -303,12 +311,15 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
 
   Widget _buildDayDetails() {
     if (_isLoadingComparison) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: _gold));
     }
 
     if (_comparison == null) {
-      return const Center(
-        child: Text('Выберите день для просмотра'),
+      return Center(
+        child: Text(
+          'Выберите день для просмотра',
+          style: TextStyle(color: Colors.white.withOpacity(0.5)),
+        ),
       );
     }
 
@@ -317,8 +328,9 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -326,9 +338,10 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
           children: [
             Text(
               'Выбрано: ${current.formattedDate}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
+                color: Colors.white.withOpacity(0.9),
               ),
             ),
             const SizedBox(height: 12),
@@ -337,19 +350,19 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildAmountChip('ООО', current.oooRevenue, Colors.blue),
-                _buildAmountChip('ИП', current.ipRevenue, Colors.orange),
-                _buildAmountChip('Итого', current.totalRevenue, const Color(0xFF004D40)),
+                _buildAmountChip('ООО', current.oooRevenue, Colors.blue[300]!),
+                _buildAmountChip('ИП', current.ipRevenue, Colors.orange[300]!),
+                _buildAmountChip('Итого', current.totalRevenue, const Color(0xFF4DD0B0)),
               ],
             ),
             const SizedBox(height: 16),
 
             // Сравнение
-            const Text(
+            Text(
               'Сравнение:',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey,
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 8),
@@ -403,12 +416,21 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
           Row(
             children: [
               Text(
                 '${_formatFullAmount(amount)} руб',
-                style: const TextStyle(fontSize: 13),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.9),
+                ),
               ),
               if (changePercent != null) ...[
                 const SizedBox(width: 8),
@@ -416,8 +438,8 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: changePercent >= 0
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
+                        ? Colors.green.withOpacity(0.15)
+                        : Colors.red.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -425,7 +447,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: changePercent >= 0 ? Colors.green : Colors.red,
+                      color: changePercent >= 0 ? Colors.green[300] : Colors.red[300],
                     ),
                   ),
                 ),

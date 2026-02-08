@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Loyalty API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -6,9 +12,24 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const CLIENTS_DIR = `${DATA_DIR}/clients`;
 const LOYALTY_TRANSACTIONS_DIR = `${DATA_DIR}/loyalty-transactions`;
 
-[CLIENTS_DIR, LOYALTY_TRANSACTIONS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist
+(async () => {
+  for (const dir of [CLIENTS_DIR, LOYALTY_TRANSACTIONS_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+})();
 
 function setupLoyaltyAPI(app) {
   // ===== LOYALTY POINTS =====
@@ -26,14 +47,15 @@ function setupLoyaltyAPI(app) {
       const clientPath = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
 
       let client = { phone: normalizedPhone, points: 0, createdAt: new Date().toISOString() };
-      if (fs.existsSync(clientPath)) {
-        client = JSON.parse(fs.readFileSync(clientPath, 'utf8'));
+      if (await fileExists(clientPath)) {
+        const content = await fsp.readFile(clientPath, 'utf8');
+        client = JSON.parse(content);
       }
 
       client.points = (client.points || 0) + points;
       client.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(clientPath, JSON.stringify(client, null, 2), 'utf8');
+      await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
 
       // Log transaction
       const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -48,7 +70,7 @@ function setupLoyaltyAPI(app) {
       };
 
       const txPath = path.join(LOYALTY_TRANSACTIONS_DIR, `${transactionId}.json`);
-      fs.writeFileSync(txPath, JSON.stringify(transaction, null, 2), 'utf8');
+      await fsp.writeFile(txPath, JSON.stringify(transaction, null, 2), 'utf8');
 
       res.json({ success: true, client, transaction });
     } catch (error) {
@@ -68,11 +90,12 @@ function setupLoyaltyAPI(app) {
       const normalizedPhone = phone.replace(/[\s+]/g, '');
       const clientPath = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
 
-      if (!fs.existsSync(clientPath)) {
+      if (!(await fileExists(clientPath))) {
         return res.status(404).json({ success: false, error: 'Client not found' });
       }
 
-      const client = JSON.parse(fs.readFileSync(clientPath, 'utf8'));
+      const content = await fsp.readFile(clientPath, 'utf8');
+      const client = JSON.parse(content);
 
       if ((client.points || 0) < points) {
         return res.status(400).json({ success: false, error: 'Insufficient points' });
@@ -81,7 +104,7 @@ function setupLoyaltyAPI(app) {
       client.points = (client.points || 0) - points;
       client.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(clientPath, JSON.stringify(client, null, 2), 'utf8');
+      await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
 
       // Log transaction
       const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -96,7 +119,7 @@ function setupLoyaltyAPI(app) {
       };
 
       const txPath = path.join(LOYALTY_TRANSACTIONS_DIR, `${transactionId}.json`);
-      fs.writeFileSync(txPath, JSON.stringify(transaction, null, 2), 'utf8');
+      await fsp.writeFile(txPath, JSON.stringify(transaction, null, 2), 'utf8');
 
       res.json({ success: true, client, transaction });
     } catch (error) {
@@ -111,8 +134,9 @@ function setupLoyaltyAPI(app) {
 
       const clientPath = path.join(CLIENTS_DIR, `${phone}.json`);
 
-      if (fs.existsSync(clientPath)) {
-        const client = JSON.parse(fs.readFileSync(clientPath, 'utf8'));
+      if (await fileExists(clientPath)) {
+        const content = await fsp.readFile(clientPath, 'utf8');
+        const client = JSON.parse(content);
         res.json({ success: true, phone, points: client.points || 0 });
       } else {
         res.json({ success: true, phone, points: 0 });
@@ -129,12 +153,12 @@ function setupLoyaltyAPI(app) {
 
       const transactions = [];
 
-      if (fs.existsSync(LOYALTY_TRANSACTIONS_DIR)) {
-        const files = fs.readdirSync(LOYALTY_TRANSACTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(LOYALTY_TRANSACTIONS_DIR)) {
+        const files = (await fsp.readdir(LOYALTY_TRANSACTIONS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(LOYALTY_TRANSACTIONS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(LOYALTY_TRANSACTIONS_DIR, file), 'utf8');
             const tx = JSON.parse(content);
 
             if (tx.phone === phone) {
@@ -169,8 +193,9 @@ function setupLoyaltyAPI(app) {
       const clientPath = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
 
       let client = { phone: normalizedPhone, points: 0, createdAt: new Date().toISOString() };
-      if (fs.existsSync(clientPath)) {
-        client = JSON.parse(fs.readFileSync(clientPath, 'utf8'));
+      if (await fileExists(clientPath)) {
+        const content = await fsp.readFile(clientPath, 'utf8');
+        client = JSON.parse(content);
       }
 
       if (action === 'addPoint') {
@@ -179,7 +204,7 @@ function setupLoyaltyAPI(app) {
         client.lastShop = shopAddress;
         client.updatedAt = new Date().toISOString();
 
-        fs.writeFileSync(clientPath, JSON.stringify(client, null, 2), 'utf8');
+        await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
 
         res.json({ success: true, client, message: 'Point added' });
       } else {

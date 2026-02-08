@@ -36,6 +36,13 @@ class RecountQuestionsPage extends StatefulWidget {
 }
 
 class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
+  // Dark emerald palette (единый стиль приложения)
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+  static const Color _goldLight = Color(0xFFE8C860);
+
   List<RecountQuestion>? _allQuestions;
   List<RecountQuestion>? _selectedQuestions; // 30 выбранных вопросов
   Set<int> _photoRequiredIndices = {}; // Индексы вопросов, для которых требуется фото
@@ -870,26 +877,100 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     }
   }
 
+  Widget _buildAppBar(BuildContext context, String title, {String? subtitle}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.8), size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                if (subtitle != null)
+                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Пересчет товаров'),
-          backgroundColor: const Color(0xFF004D40),
+        backgroundColor: _night,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [_emerald, _emeraldDark, _night],
+              stops: [0.0, 0.3, 1.0],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(context, 'Пересчет товаров'),
+                const Expanded(
+                  child: Center(child: CircularProgressIndicator(color: _gold)),
+                ),
+              ],
+            ),
+          ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_selectedQuestions == null || _selectedQuestions!.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Пересчет товаров'),
-          backgroundColor: const Color(0xFF004D40),
-        ),
-        body: const Center(
-          child: Text('Вопросы не найдены'),
+        backgroundColor: _night,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [_emerald, _emeraldDark, _night],
+              stops: [0.0, 0.3, 1.0],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(context, 'Пересчет товаров'),
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.white.withOpacity(0.3)),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Вопросы не найдены',
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -898,505 +979,612 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     final isPhotoRequired = _photoRequiredIndices.contains(_currentQuestionIndex);
     final progress = (_currentQuestionIndex + 1) / _selectedQuestions!.length;
 
+    // Цвета грейда
+    final gradeColor = question.grade == 1
+        ? const Color(0xFFEF5350)
+        : question.grade == 2
+            ? Colors.orange
+            : const Color(0xFF42A5F5);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Вопрос ${_currentQuestionIndex + 1} из ${_selectedQuestions!.length}'),
-        backgroundColor: const Color(0xFF004D40),
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.25, 1.0],
           ),
         ),
-        child: Column(
-          children: [
-            // Прогресс-бар
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withOpacity(0.3),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-              minHeight: 4,
-            ),
-            // Контент
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Вопрос
-                    Card(
-                      color: Colors.white.withOpacity(0.95),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: question.grade == 1
-                                        ? Colors.red
-                                        : question.grade == 2
-                                            ? Colors.orange
-                                            : Colors.blue,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    'Грейд ${question.grade}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              _buildAppBar(
+                context,
+                'Вопрос ${_currentQuestionIndex + 1} из ${_selectedQuestions!.length}',
+                subtitle: widget.shopAddress,
+              ),
+              // Прогресс-бар
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(_gold.withOpacity(0.8)),
+                    minHeight: 4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Контент
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Карточка вопроса
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              _gold.withOpacity(0.12),
+                              _gold.withOpacity(0.04),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: _gold.withOpacity(0.25)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Бейдж грейда
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: gradeColor.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: gradeColor.withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      'Грейд ${question.grade}',
+                                      style: TextStyle(
+                                        color: gradeColor,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        letterSpacing: 0.5,
+                                      ),
                                     ),
                                   ),
+                                  if (question.isAiActive) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: Colors.blue.withOpacity(0.25)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.smart_toy, size: 12, color: Colors.blue[300]),
+                                          const SizedBox(width: 4),
+                                          Text('AI', style: TextStyle(color: Colors.blue[300], fontSize: 11, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Остаток из DBF
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: _gold.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: _gold.withOpacity(0.25)),
                                 ),
-                              ],
-                            ),
-                            // Остаток из DBF - крупно показываем
-                            const SizedBox(height: 16),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF004D40).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFF004D40).withOpacity(0.3),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.inventory_2_rounded, color: _gold, size: 22),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'По программе: ${question.stock} шт',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: _goldLight,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              const SizedBox(height: 16),
+                              // Название товара
+                              Text(
+                                question.question,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.4,
+                                  color: Colors.white.withOpacity(0.95),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Выбор ответа
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Ответ:',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withOpacity(0.6),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
                                 children: [
-                                  const Icon(
-                                    Icons.inventory_2,
-                                    color: Color(0xFF004D40),
-                                    size: 24,
+                                  Expanded(
+                                    child: _buildAnswerButton(
+                                      label: 'Сходится',
+                                      icon: Icons.check_circle_rounded,
+                                      isSelected: _selectedAnswer == 'сходится',
+                                      color: const Color(0xFF4CAF50),
+                                      onPressed: _answerSaved ? null : () {
+                                        setState(() {
+                                          _selectedAnswer = 'сходится';
+                                        });
+                                      },
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text(
-                                    'По программе: ${question.stock} шт',
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF004D40),
+                                  Expanded(
+                                    child: _buildAnswerButton(
+                                      label: 'Не сходится',
+                                      icon: Icons.cancel_rounded,
+                                      isSelected: _selectedAnswer == 'не сходится',
+                                      color: const Color(0xFFEF5350),
+                                      onPressed: _answerSaved ? null : () {
+                                        setState(() {
+                                          _selectedAnswer = 'не сходится';
+                                        });
+                                      },
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              question.question,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF004D40),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Выбор ответа
-                    Card(
-                      color: Colors.white.withOpacity(0.95),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'Ответ:',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF004D40),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: _answerSaved ? null : () {
-                                      setState(() {
-                                        _selectedAnswer = 'сходится';
-                                      });
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _selectedAnswer == 'сходится'
-                                          ? Colors.green
-                                          : Colors.grey[300],
-                                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                                    ),
-                                    child: const FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        'Сходится',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: _answerSaved ? null : () {
-                                      setState(() {
-                                        _selectedAnswer = 'не сходится';
-                                      });
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _selectedAnswer == 'не сходится'
-                                          ? Colors.red
-                                          : Colors.grey[300],
-                                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                                    ),
-                                    child: const FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        'Не сходится',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // При "Сходится" - ничего вводить не нужно, количество берётся автоматически
-                    if (_selectedAnswer == 'сходится')
-                      Card(
-                        color: Colors.green.withOpacity(0.1),
-                        child: Padding(
+                      const SizedBox(height: 12),
+                      // При "Сходится" - подтверждение
+                      if (_selectedAnswer == 'сходится')
+                        Container(
                           padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.25)),
+                          ),
                           child: Row(
                             children: [
-                              const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                              const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 28),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   'Количество ${question.stock} шт подтверждено',
                                   style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4CAF50),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    // При "Не сходится" - показываем поля "Больше на" и "Меньше на"
-                    if (_selectedAnswer == 'не сходится')
-                      Card(
-                        color: Colors.white.withOpacity(0.95),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const Text(
-                                'Укажите расхождение (заполните ОДНО поле):',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
+                      // При "Не сходится" - поля расхождений
+                      if (_selectedAnswer == 'не сходится')
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Укажите расхождение (заполните ОДНО поле):',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white.withOpacity(0.5),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              // Поле "Больше на"
-                              Row(
-                                children: [
-                                  const Icon(Icons.add_circle, color: Colors.blue, size: 24),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      'Больше на:',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF004D40),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 3,
-                                    child: TextField(
-                                      controller: _moreByController,
-                                      keyboardType: TextInputType.number,
-                                      enabled: !_answerSaved,
-                                      textAlign: TextAlign.center,
-                                      decoration: InputDecoration(
-                                        hintText: '0',
-                                        border: const OutlineInputBorder(),
-                                        suffixText: 'шт',
-                                        filled: _moreByController.text.isNotEmpty,
-                                        fillColor: Colors.blue.withOpacity(0.1),
-                                      ),
-                                      onChanged: (value) {
-                                        // Очищаем поле "Меньше на" если вводим сюда
-                                        if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
-                                          _lessByController.clear();
-                                        }
-                                        setState(() {});
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              // Поле "Меньше на"
-                              Row(
-                                children: [
-                                  const Icon(Icons.remove_circle, color: Colors.red, size: 24),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      'Меньше на:',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF004D40),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 3,
-                                    child: TextField(
-                                      controller: _lessByController,
-                                      keyboardType: TextInputType.number,
-                                      enabled: !_answerSaved,
-                                      textAlign: TextAlign.center,
-                                      decoration: InputDecoration(
-                                        hintText: '0',
-                                        border: const OutlineInputBorder(),
-                                        suffixText: 'шт',
-                                        filled: _lessByController.text.isNotEmpty,
-                                        fillColor: Colors.red.withOpacity(0.1),
-                                      ),
-                                      onChanged: (value) {
-                                        // Очищаем поле "Больше на" если вводим сюда
-                                        if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
-                                          _moreByController.clear();
-                                        }
-                                        setState(() {});
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // Предпросмотр результата
-                              if (_moreByController.text.isNotEmpty || _lessByController.text.isNotEmpty) ...[
                                 const SizedBox(height: 16),
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Builder(
-                                    builder: (context) {
-                                      final moreBy = int.tryParse(_moreByController.text) ?? 0;
-                                      final lessBy = int.tryParse(_lessByController.text) ?? 0;
-                                      final actualBalance = question.stock + moreBy - lessBy;
-                                      return Text(
-                                        'По факту: $actualBalance шт',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      );
-                                    },
-                                  ),
+                                // Поле "Больше на"
+                                _buildDiscrepancyField(
+                                  icon: Icons.add_circle_rounded,
+                                  iconColor: const Color(0xFF42A5F5),
+                                  label: 'Больше на:',
+                                  controller: _moreByController,
+                                  enabled: !_answerSaved,
+                                  fillColor: const Color(0xFF42A5F5),
+                                  onChanged: (value) {
+                                    if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
+                                      _lessByController.clear();
+                                    }
+                                    setState(() {});
+                                  },
                                 ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    // Фото (показываем только после сохранения ответа, если требуется)
-                    if (_answerSaved && isPhotoRequired)
-                      Card(
-                        color: Colors.white.withOpacity(0.95),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.camera_alt, color: Colors.orange),
-                                  const SizedBox(width: 8),
-                                  const Flexible(
-                                    child: Text(
-                                      'Требуется фото для подтверждения',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.orange,
-                                      ),
+                                const SizedBox(height: 14),
+                                // Поле "Меньше на"
+                                _buildDiscrepancyField(
+                                  icon: Icons.remove_circle_rounded,
+                                  iconColor: const Color(0xFFEF5350),
+                                  label: 'Меньше на:',
+                                  controller: _lessByController,
+                                  enabled: !_answerSaved,
+                                  fillColor: const Color(0xFFEF5350),
+                                  onChanged: (value) {
+                                    if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
+                                      _moreByController.clear();
+                                    }
+                                    setState(() {});
+                                  },
+                                ),
+                                // Предпросмотр результата
+                                if (_moreByController.text.isNotEmpty || _lessByController.text.isNotEmpty) ...[
+                                  const SizedBox(height: 14),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: _gold.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: _gold.withOpacity(0.25)),
+                                    ),
+                                    child: Builder(
+                                      builder: (context) {
+                                        final moreBy = int.tryParse(_moreByController.text) ?? 0;
+                                        final lessBy = int.tryParse(_lessByController.text) ?? 0;
+                                        final actualBalance = question.stock + moreBy - lessBy;
+                                        return Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.summarize_rounded, size: 18, color: _gold),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'По факту: $actualBalance шт',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                                color: _goldLight,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
                                     ),
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: 12),
-                              if (_photoPath != null)
-                                Container(
-                                  height: 200,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.grey),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: kIsWeb
-                                        ? Image.network(
-                                            _photoPath!,
-                                            fit: BoxFit.cover,
-                                          )
-                                        : Image.file(
-                                            File(_photoPath!),
-                                            fit: BoxFit.cover,
-                                          ),
-                                  ),
-                                )
-                              else
-                                ElevatedButton.icon(
-                                  onPressed: _takePhoto,
-                                  icon: const Icon(Icons.camera_alt),
-                                  label: const Text('Сделать фото'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orange,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                  ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
+                      // Фото (показываем только после сохранения ответа, если требуется)
+                      if (_answerSaved && isPhotoRequired) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.orange.withOpacity(0.25)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.camera_alt_rounded, color: Colors.orange[300], size: 22),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        'Требуется фото для подтверждения',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.orange[300],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                if (_photoPath != null)
+                                  Container(
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: kIsWeb
+                                          ? Image.network(_photoPath!, fit: BoxFit.cover)
+                                          : Image.file(File(_photoPath!), fit: BoxFit.cover),
+                                    ),
+                                  )
+                                else
+                                  ElevatedButton.icon(
+                                    onPressed: _takePhoto,
+                                    icon: const Icon(Icons.camera_alt_rounded, size: 20),
+                                    label: const Text('Сделать фото', style: TextStyle(fontWeight: FontWeight.w600)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange.withOpacity(0.2),
+                                      foregroundColor: Colors.orange[300],
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(color: Colors.orange.withOpacity(0.3)),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              // Кнопки навигации
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                decoration: BoxDecoration(
+                  color: _night.withOpacity(0.9),
+                  border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
+                ),
+                child: Row(
+                  children: [
+                    if (_currentQuestionIndex > 0)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _currentQuestionIndex--;
+                              _selectedAnswer = null;
+                              _moreByController.clear();
+                              _lessByController.clear();
+                              _photoPath = null;
+                              _answerSaved = false;
+
+                              if (_currentQuestionIndex < _answers.length) {
+                                final savedAnswer = _answers[_currentQuestionIndex];
+                                if (savedAnswer.answer.isNotEmpty) {
+                                  _selectedAnswer = savedAnswer.answer;
+                                  _answerSaved = true;
+                                  if (savedAnswer.answer == 'не сходится') {
+                                    _moreByController.text = savedAnswer.moreBy?.toString() ?? '';
+                                    _lessByController.text = savedAnswer.lessBy?.toString() ?? '';
+                                  }
+                                  _photoPath = savedAnswer.photoPath;
+                                }
+                              }
+                            });
+                          },
+                          icon: Icon(Icons.arrow_back_rounded, color: Colors.white.withOpacity(0.7)),
+                        ),
                       ),
+                    if (_currentQuestionIndex > 0) const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: (_isSubmitting || _isVerifyingAI) ? null : _nextQuestion,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
+                              ? Colors.orange.withOpacity(0.2)
+                              : _gold.withOpacity(0.2),
+                          foregroundColor: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
+                              ? Colors.orange[300]
+                              : _gold,
+                          disabledBackgroundColor: Colors.white.withOpacity(0.05),
+                          disabledForegroundColor: Colors.white.withOpacity(0.3),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(
+                              color: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
+                                  ? Colors.orange.withOpacity(0.4)
+                                  : _gold.withOpacity(0.4),
+                            ),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: (_isSubmitting || _isVerifyingAI)
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                                    ),
+                                  ),
+                                  if (_isVerifyingAI) ...[
+                                    const SizedBox(width: 10),
+                                    Text('ИИ проверяет...', style: TextStyle(color: _goldLight, fontSize: 14)),
+                                  ],
+                                ],
+                              )
+                            : Text(
+                                !_answerSaved
+                                    ? 'Сохранить ответ'
+                                    : _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
+                                        ? 'Сделать фото'
+                                        : _currentQuestionIndex < _selectedQuestions!.length - 1
+                                            ? 'Следующий вопрос'
+                                            : 'Завершить пересчет',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-            // Кнопки навигации
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  if (_currentQuestionIndex > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            _currentQuestionIndex--;
-                            _selectedAnswer = null;
-                            _moreByController.clear();
-                            _lessByController.clear();
-                            _photoPath = null;
-                            _answerSaved = false; // Сбрасываем флаг
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                            if (_currentQuestionIndex < _answers.length) {
-                              final savedAnswer = _answers[_currentQuestionIndex];
-                              if (savedAnswer.answer.isNotEmpty) {
-                                _selectedAnswer = savedAnswer.answer;
-                                _answerSaved = true; // Помечаем как сохраненный
-                                if (savedAnswer.answer == 'не сходится') {
-                                  _moreByController.text = savedAnswer.moreBy?.toString() ?? '';
-                                  _lessByController.text = savedAnswer.lessBy?.toString() ?? '';
-                                }
-                                _photoPath = savedAnswer.photoPath;
-                              }
-                            }
-                          });
-                        },
-                        child: const Text('Назад'),
-                      ),
-                    ),
-                  if (_currentQuestionIndex > 0) const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: (_isSubmitting || _isVerifyingAI) ? null : _nextQuestion,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
-                            ? Colors.orange
-                            : const Color(0xFF004D40),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: (_isSubmitting || _isVerifyingAI)
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                ),
-                                if (_isVerifyingAI) ...[
-                                  const SizedBox(width: 8),
-                                  const Text('ИИ проверяет...'),
-                                ],
-                              ],
-                            )
-                          : Text(
-                              !_answerSaved
-                                  ? 'Сохранить ответ'
-                                  : _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
-                                      ? 'Сделать фото'
-                                      : _currentQuestionIndex < _selectedQuestions!.length - 1
-                                          ? 'Следующий вопрос'
-                                          : 'Завершить пересчет',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
+  /// Кнопка ответа "Сходится" / "Не сходится"
+  Widget _buildAnswerButton({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.15) : Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? color.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? color : Colors.white.withOpacity(0.4), size: 28),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? color : Colors.white.withOpacity(0.5),
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Поле расхождения
+  Widget _buildDiscrepancyField({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required TextEditingController controller,
+    required bool enabled,
+    required Color fillColor,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, color: iconColor, size: 24),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            enabled: enabled,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              hintText: '0',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
+              suffixText: 'шт',
+              suffixStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: fillColor, width: 2),
+              ),
+              filled: true,
+              fillColor: controller.text.isNotEmpty
+                  ? fillColor.withOpacity(0.08)
+                  : Colors.white.withOpacity(0.04),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
   }
 }

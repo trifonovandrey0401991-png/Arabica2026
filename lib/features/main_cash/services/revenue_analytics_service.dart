@@ -368,7 +368,7 @@ class RevenueAnalyticsService {
 
       final addresses = <String>{};
       for (final report in reports) {
-        addresses.add(report.shopAddress);
+        if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
       }
 
       final result = addresses.toList()..sort();

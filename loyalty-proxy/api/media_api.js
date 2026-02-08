@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Media & App Logs API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -7,9 +13,33 @@ const CHAT_MEDIA_DIR = `${DATA_DIR}/chat-media`;
 const TASK_MEDIA_DIR = `${DATA_DIR}/task-media`;
 const APP_LOGS_DIR = `${DATA_DIR}/app-logs`;
 
-[CHAT_MEDIA_DIR, TASK_MEDIA_DIR, APP_LOGS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist
+async function ensureDirs() {
+  for (const dir of [CHAT_MEDIA_DIR, TASK_MEDIA_DIR, APP_LOGS_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+}
+
+// Initialize directories at module load
+(async () => {
+  try {
+    await ensureDirs();
+  } catch (e) {
+    console.error('Error creating media directories:', e.message);
+  }
+})();
 
 function setupMediaAPI(app, uploadChatMedia) {
   // ===== CHAT MEDIA =====
@@ -28,33 +58,33 @@ function setupMediaAPI(app, uploadChatMedia) {
         // Если это для задач - используем task-media, иначе chat-media
         const mediaType = req.body.mediaType || 'image';
         const isTaskMedia = req.body.fileName && req.body.fileName.startsWith('photo_');
-        
+
         let targetDir = CHAT_MEDIA_DIR;
         let targetPath = 'chat-media';
-        
+
         if (isTaskMedia) {
           targetDir = TASK_MEDIA_DIR;
           targetPath = 'task-media';
-          
+
           // Перемещаем файл из chat-media в task-media
           const srcPath = path.join(CHAT_MEDIA_DIR, req.file.filename);
           const dstPath = path.join(TASK_MEDIA_DIR, req.file.filename);
-          
-          if (fs.existsSync(srcPath)) {
-            fs.renameSync(srcPath, dstPath);
+
+          if (await fileExists(srcPath)) {
+            await fsp.rename(srcPath, dstPath);
             console.log('  Moved to task-media:', req.file.filename);
           }
         }
 
         const mediaUrl = `https://arabica26.ru/${targetPath}/${req.file.filename}`;
         console.log('  Full URL:', mediaUrl);
-        
-        res.json({ 
-          success: true, 
+
+        res.json({
+          success: true,
           url: mediaUrl,           // Для совместимости с Flutter
           filePath: mediaUrl,      // Альтернативное поле
           mediaUrl: mediaUrl,      // Старое поле для обратной совместимости
-          filename: req.file.filename 
+          filename: req.file.filename
         });
       } catch (error) {
         console.error('Error in /upload-media:', error);
@@ -71,12 +101,12 @@ function setupMediaAPI(app, uploadChatMedia) {
         }
 
         const mediaUrl = `https://arabica26.ru/chat-media/${req.file.filename}`;
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           url: mediaUrl,
           filePath: mediaUrl,
-          mediaUrl: mediaUrl, 
-          filename: req.file.filename 
+          mediaUrl: mediaUrl,
+          filename: req.file.filename
         });
       } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -95,15 +125,15 @@ function setupMediaAPI(app, uploadChatMedia) {
       const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const dateDir = path.join(APP_LOGS_DIR, date);
-      if (!fs.existsSync(dateDir)) {
-        fs.mkdirSync(dateDir, { recursive: true });
+      if (!(await fileExists(dateDir))) {
+        await fsp.mkdir(dateDir, { recursive: true });
       }
 
       logData.id = logId;
       logData.timestamp = new Date().toISOString();
 
       const filePath = path.join(dateDir, `${logId}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(logData, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(logData, null, 2), 'utf8');
 
       res.json({ success: true, logId });
     } catch (error) {
@@ -120,12 +150,12 @@ function setupMediaAPI(app, uploadChatMedia) {
       const searchDate = date || new Date().toISOString().split('T')[0];
       const dateDir = path.join(APP_LOGS_DIR, searchDate);
 
-      if (fs.existsSync(dateDir)) {
-        const files = fs.readdirSync(dateDir).filter(f => f.endsWith('.json'));
+      if (await fileExists(dateDir)) {
+        const files = (await fsp.readdir(dateDir)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(dateDir, file), 'utf8');
+            const content = await fsp.readFile(path.join(dateDir, file), 'utf8');
             const log = JSON.parse(content);
 
             if (phone && log.phone !== phone) continue;

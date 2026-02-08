@@ -3,9 +3,14 @@ import '../models/task_model.dart';
 
 /// Общие константы и виджеты для модуля задач
 class TaskStyles {
-  // Основные цвета
-  static const primaryColor = Color(0xFF004D40);
-  static const accentColor = Color(0xFF00897B);
+  // Основные цвета — Dark Emerald Theme
+  static const primaryColor = Color(0xFF1A4D4D);
+  static const accentColor = Color(0xFFD4AF37);
+
+  // Дополнительные цвета палитры
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   // Градиенты для статусов
   static const orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
@@ -165,6 +170,7 @@ class TaskStatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: gradient.map((c) => c.withOpacity(0.15)).toList()),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: gradient[0].withOpacity(0.25), width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -176,7 +182,7 @@ class TaskStatusBadge extends StatelessWidget {
           Text(
             status.displayName,
             style: TextStyle(
-              color: gradient[0],
+              color: Colors.white,
               fontSize: fontSize ?? 11,
               fontWeight: FontWeight.w600,
             ),
@@ -207,11 +213,11 @@ class TaskStatusIconBox extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradient),
+        gradient: LinearGradient(colors: gradient.map((c) => c.withOpacity(0.85)).toList()),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: gradient[0].withOpacity(0.3),
+            color: gradient[0].withOpacity(0.25),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -240,20 +246,21 @@ class TaskPointsBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = points >= 0;
-    final color = isPositive ? Colors.green : Colors.red;
+    final color = isPositive ? TaskStyles.accentColor : Colors.red;
     final text = isPositive ? '+${points.toStringAsFixed(0)}' : points.toStringAsFixed(0);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: fontSize ?? 11,
-          color: color[700],
+          color: color,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -288,22 +295,22 @@ class TaskEmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: colors.map((c) => c.withOpacity(0.15)).toList()),
+              color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
             ),
             child: Icon(
               displayIcon,
               size: 48,
-              color: colors[0],
+              color: colors[0].withOpacity(0.7),
             ),
           ),
           const SizedBox(height: 20),
           Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white.withOpacity(0.8),
             ),
           ),
           if (subtitle != null) ...[
@@ -312,7 +319,7 @@ class TaskEmptyState extends StatelessWidget {
               subtitle!,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
           ],
@@ -341,8 +348,9 @@ class TaskSectionHeader extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: TaskStyles.primaryColor.withOpacity(0.1),
+        color: TaskStyles.primaryColor.withOpacity(0.25),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: TaskStyles.accentColor.withOpacity(0.15), width: 0.5),
       ),
       child: Row(
         children: [
@@ -352,28 +360,28 @@ class TaskSectionHeader extends StatelessWidget {
               color: TaskStyles.primaryColor,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: Colors.white),
+            child: Icon(icon, size: 16, color: TaskStyles.accentColor),
           ),
           const SizedBox(width: 10),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: TaskStyles.primaryColor,
+              color: TaskStyles.accentColor,
             ),
           ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: TaskStyles.primaryColor,
+              color: TaskStyles.accentColor,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               count.toString(),
               style: const TextStyle(
-                color: Colors.white,
+                color: Color(0xFF051515),
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -415,11 +423,11 @@ class TaskTabWithBadge extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: gradientColors),
+                gradient: LinearGradient(colors: gradientColors.map((c) => c.withOpacity(0.85)).toList()),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: gradientColors[0].withOpacity(0.3),
+                    color: gradientColors[0].withOpacity(0.2),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),

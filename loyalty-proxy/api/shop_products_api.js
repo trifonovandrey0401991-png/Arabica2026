@@ -1,9 +1,11 @@
 /**
  * Shop Products API Module
  * API для работы с товарами магазинов (синхронизация из DBF)
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Импортируем функции мастер-каталога для детекции новых кодов и подстановки названий
@@ -21,12 +23,22 @@ const API_KEYS_FILE = `${DATA_DIR}/dbf-sync-settings/api-keys.json`;
 // Кэш товаров магазинов
 const shopProductsCache = new Map();
 
-/**
- * Загрузить API ключи
- */
-function loadApiKeys() {
+// Async helper
+async function fileExists(filePath) {
   try {
-    if (!fs.existsSync(API_KEYS_FILE)) {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Загрузить API ключи (async)
+ */
+async function loadApiKeys() {
+  try {
+    if (!(await fileExists(API_KEYS_FILE))) {
       // Создаём файл с дефолтным ключом
       const defaultKeys = {
         keys: [
@@ -39,14 +51,12 @@ function loadApiKeys() {
         ],
       };
       const dir = path.dirname(API_KEYS_FILE);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      fs.writeFileSync(API_KEYS_FILE, JSON.stringify(defaultKeys, null, 2));
+      await fsp.mkdir(dir, { recursive: true });
+      await fsp.writeFile(API_KEYS_FILE, JSON.stringify(defaultKeys, null, 2));
       return defaultKeys.keys;
     }
 
-    const data = fs.readFileSync(API_KEYS_FILE, 'utf8');
+    const data = await fsp.readFile(API_KEYS_FILE, 'utf8');
     const parsed = JSON.parse(data);
     return parsed.keys || [];
   } catch (error) {
@@ -56,10 +66,10 @@ function loadApiKeys() {
 }
 
 /**
- * Проверить API ключ
+ * Проверить API ключ (async)
  */
-function validateApiKey(apiKey, shopId) {
-  const keys = loadApiKeys();
+async function validateApiKey(apiKey, shopId) {
+  const keys = await loadApiKeys();
   const keyEntry = keys.find((k) => k.key === apiKey);
 
   if (!keyEntry) return false;
@@ -70,9 +80,9 @@ function validateApiKey(apiKey, shopId) {
 }
 
 /**
- * Загрузить товары магазина из файла
+ * Загрузить товары магазина из файла (async)
  */
-function loadShopProducts(shopId) {
+async function loadShopProducts(shopId) {
   try {
     // Проверяем кэш
     if (shopProductsCache.has(shopId)) {
@@ -81,11 +91,11 @@ function loadShopProducts(shopId) {
 
     const filePath = path.join(SHOP_PRODUCTS_DIR, `${shopId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!(await fileExists(filePath))) {
       return { products: [], lastSync: null, shopId };
     }
 
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     const parsed = JSON.parse(data);
 
     // Сохраняем в кэш
@@ -99,13 +109,11 @@ function loadShopProducts(shopId) {
 }
 
 /**
- * Сохранить товары магазина
+ * Сохранить товары магазина (async)
  */
-function saveShopProducts(shopId, products) {
+async function saveShopProducts(shopId, products) {
   try {
-    if (!fs.existsSync(SHOP_PRODUCTS_DIR)) {
-      fs.mkdirSync(SHOP_PRODUCTS_DIR, { recursive: true });
-    }
+    await fsp.mkdir(SHOP_PRODUCTS_DIR, { recursive: true });
 
     const filePath = path.join(SHOP_PRODUCTS_DIR, `${shopId}.json`);
 
@@ -116,7 +124,7 @@ function saveShopProducts(shopId, products) {
       productCount: products.length,
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2));
 
     // Обновляем кэш
     shopProductsCache.set(shopId, data);
@@ -150,21 +158,21 @@ function enrichProductsWithMasterNames(products) {
 }
 
 /**
- * Получить список всех магазинов с товарами
+ * Получить список всех магазинов с товарами (async)
  */
-function getShopsWithProducts() {
+async function getShopsWithProducts() {
   try {
-    if (!fs.existsSync(SHOP_PRODUCTS_DIR)) {
+    if (!(await fileExists(SHOP_PRODUCTS_DIR))) {
       return [];
     }
 
-    const files = fs.readdirSync(SHOP_PRODUCTS_DIR);
+    const files = await fsp.readdir(SHOP_PRODUCTS_DIR);
     const shops = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         const shopId = file.replace('.json', '');
-        const shopData = loadShopProducts(shopId);
+        const shopData = await loadShopProducts(shopId);
         shops.push({
           shopId,
           productCount: shopData.products?.length || 0,
@@ -186,34 +194,24 @@ function getShopsWithProducts() {
 function setupShopProductsAPI(app) {
   console.log('[Shop Products API] Инициализация...');
 
-  // Создаём директорию если не существует
-  if (!fs.existsSync(SHOP_PRODUCTS_DIR)) {
-    fs.mkdirSync(SHOP_PRODUCTS_DIR, { recursive: true });
-  }
+  // Создаём директорию асинхронно
+  fsp.mkdir(SHOP_PRODUCTS_DIR, { recursive: true }).catch(e => {
+    console.error('[Shop Products API] Ошибка создания директории:', e);
+  });
 
   // ============ СИНХРОНИЗАЦИЯ (для DBF Agent) ============
 
   /**
    * POST /api/shop-products/:shopId/sync
    * Синхронизация товаров магазина (вызывается DBF агентом)
-   *
-   * Headers:
-   *   X-API-Key: ключ авторизации
-   *
-   * Body:
-   *   {
-   *     "products": [
-   *       { "kod": "12345", "name": "Товар", "group": "Сигареты", "stock": 10 }
-   *     ]
-   *   }
    */
-  app.post('/api/shop-products/:shopId/sync', (req, res) => {
+  app.post('/api/shop-products/:shopId/sync', async (req, res) => {
     try {
       const { shopId } = req.params;
       const apiKey = req.headers['x-api-key'];
 
       // Проверка API ключа
-      if (!apiKey || !validateApiKey(apiKey, shopId)) {
+      if (!apiKey || !(await validateApiKey(apiKey, shopId))) {
         return res.status(401).json({ success: false, error: 'Неверный API ключ' });
       }
 
@@ -234,14 +232,12 @@ function setupShopProductsAPI(app) {
       }));
 
       // ============ ДЕТЕКЦИЯ НОВЫХ КОДОВ ============
-      // Получаем название магазина для pending-codes
       const shopName = req.body.shopName || shopId;
       const newCodes = [];
 
       for (const product of normalizedProducts) {
         if (!product.kod) continue;
 
-        // Проверяем через master_catalog_api
         const result = addPendingCode({
           kod: product.kod,
           shopId,
@@ -262,15 +258,13 @@ function setupShopProductsAPI(app) {
       if (newCodes.length > 0) {
         console.log(`[Shop Products API] Обнаружено ${newCodes.length} новых кодов от магазина ${shopName}`);
 
-        // Отправляем push-уведомления админам (асинхронно, не блокируем ответ)
         notifyAdminsAboutNewCodes(newCodes, shopName).catch((err) => {
           console.error('[Shop Products API] Ошибка отправки push:', err.message);
         });
       }
-      // ============ КОНЕЦ ДЕТЕКЦИИ ============
 
       // Сохраняем
-      const saved = saveShopProducts(shopId, normalizedProducts);
+      const saved = await saveShopProducts(shopId, normalizedProducts);
 
       if (saved) {
         res.json({
@@ -278,7 +272,7 @@ function setupShopProductsAPI(app) {
           message: `Синхронизировано ${normalizedProducts.length} товаров`,
           productCount: normalizedProducts.length,
           newCodesCount: newCodes.length,
-          newCodes: newCodes.slice(0, 10), // Первые 10 для лога
+          newCodes: newCodes.slice(0, 10),
         });
       } else {
         res.status(500).json({ success: false, error: 'Ошибка сохранения' });
@@ -293,30 +287,25 @@ function setupShopProductsAPI(app) {
 
   /**
    * GET /api/shop-products/:shopId
-   * Получить все товары магазина
-   * Названия подставляются из мастер-каталога если товар там найден
    */
-  app.get('/api/shop-products/:shopId', (req, res) => {
+  app.get('/api/shop-products/:shopId', async (req, res) => {
     try {
       const { shopId } = req.params;
       const { group, hasStock, useMasterNames } = req.query;
 
-      const shopData = loadShopProducts(shopId);
+      const shopData = await loadShopProducts(shopId);
       let products = shopData.products || [];
 
-      // Фильтр по группе
       if (group) {
         products = products.filter((p) => p.group === group);
       }
 
-      // Фильтр по наличию остатка
       if (hasStock === 'true') {
         products = products.filter((p) => p.stock > 0);
       } else if (hasStock === 'false') {
         products = products.filter((p) => p.stock === 0);
       }
 
-      // Подставляем названия из мастер-каталога (по умолчанию включено)
       if (useMasterNames !== 'false') {
         products = enrichProductsWithMasterNames(products);
       }
@@ -336,26 +325,20 @@ function setupShopProductsAPI(app) {
 
   /**
    * GET /api/shop-products/:shopId/for-recount
-   * Получить товары для пересчёта (только с остатком > 0)
-   * Названия ВСЕГДА подставляются из мастер-каталога если товар там найден
    */
-  app.get('/api/shop-products/:shopId/for-recount', (req, res) => {
+  app.get('/api/shop-products/:shopId/for-recount', async (req, res) => {
     try {
       const { shopId } = req.params;
       const { group } = req.query;
 
-      const shopData = loadShopProducts(shopId);
+      const shopData = await loadShopProducts(shopId);
       let products = (shopData.products || []).filter((p) => p.stock > 0);
 
-      // Фильтр по группе
       if (group) {
         products = products.filter((p) => p.group === group);
       }
 
-      // Подставляем названия из мастер-каталога (для пересчёта ОБЯЗАТЕЛЬНО)
       products = enrichProductsWithMasterNames(products);
-
-      // Сортировка по названию (уже с подставленными названиями)
       products.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
       res.json({
@@ -373,15 +356,13 @@ function setupShopProductsAPI(app) {
 
   /**
    * GET /api/shop-products/:shopId/groups
-   * Получить список групп товаров магазина
    */
-  app.get('/api/shop-products/:shopId/groups', (req, res) => {
+  app.get('/api/shop-products/:shopId/groups', async (req, res) => {
     try {
       const { shopId } = req.params;
-      const shopData = loadShopProducts(shopId);
+      const shopData = await loadShopProducts(shopId);
       const products = shopData.products || [];
 
-      // Собираем уникальные группы
       const groupsSet = new Set();
       products.forEach((p) => {
         if (p.group) groupsSet.add(p.group);
@@ -404,11 +385,10 @@ function setupShopProductsAPI(app) {
 
   /**
    * GET /api/shop-products/shops/list
-   * Получить список всех магазинов с товарами
    */
-  app.get('/api/shop-products/shops/list', (req, res) => {
+  app.get('/api/shop-products/shops/list', async (req, res) => {
     try {
-      const shops = getShopsWithProducts();
+      const shops = await getShopsWithProducts();
 
       res.json({
         success: true,
@@ -423,21 +403,20 @@ function setupShopProductsAPI(app) {
 
   /**
    * GET /api/shop-products/stats
-   * Общая статистика по товарам всех магазинов
    */
-  app.get('/api/shop-products/stats', (req, res) => {
+  app.get('/api/shop-products/stats', async (req, res) => {
     try {
-      const shops = getShopsWithProducts();
+      const shops = await getShopsWithProducts();
 
       let totalProducts = 0;
       let totalWithStock = 0;
 
-      shops.forEach((shop) => {
-        const shopData = loadShopProducts(shop.shopId);
+      for (const shop of shops) {
+        const shopData = await loadShopProducts(shop.shopId);
         const products = shopData.products || [];
         totalProducts += products.length;
         totalWithStock += products.filter((p) => p.stock > 0).length;
-      });
+      }
 
       res.json({
         success: true,
@@ -458,10 +437,8 @@ function setupShopProductsAPI(app) {
 
   /**
    * GET /api/shop-products-search
-   * Поиск товара по всем магазинам
-   * Использует пословный поиск - все слова запроса должны быть в названии или коде
    */
-  app.get('/api/shop-products-search', (req, res) => {
+  app.get('/api/shop-products-search', async (req, res) => {
     try {
       const { q, shopId, group } = req.query;
 
@@ -475,23 +452,21 @@ function setupShopProductsAPI(app) {
       const searchLower = q.toLowerCase();
       const searchWords = searchLower.split(/\s+/).filter(w => w.length >= 2);
       const results = [];
-      const shops = shopId ? [{ shopId }] : getShopsWithProducts();
+      const shops = shopId ? [{ shopId }] : await getShopsWithProducts();
 
-      shops.forEach((shop) => {
-        const shopData = loadShopProducts(shop.shopId);
+      for (const shop of shops) {
+        const shopData = await loadShopProducts(shop.shopId);
         const products = shopData.products || [];
 
         products.forEach((product) => {
           const nameLower = (product.name || '').toLowerCase();
           const kodLower = (product.kod || '').toLowerCase();
 
-          // Пословный поиск - все слова запроса должны быть в названии или коде
           const allWordsMatch = searchWords.every(word =>
             nameLower.includes(word) || kodLower.includes(word)
           );
 
           if (allWordsMatch) {
-            // Фильтр по группе
             if (group && product.group !== group) return;
 
             results.push({
@@ -500,9 +475,8 @@ function setupShopProductsAPI(app) {
             });
           }
         });
-      });
+      }
 
-      // Сортировка по релевантности (точное совпадение кода первее)
       results.sort((a, b) => {
         const aExact = a.kod?.toLowerCase() === searchLower;
         const bExact = b.kod?.toLowerCase() === searchLower;
@@ -513,7 +487,7 @@ function setupShopProductsAPI(app) {
 
       res.json({
         success: true,
-        results: results.slice(0, 100), // Лимит 100 результатов
+        results: results.slice(0, 100),
         total: results.length,
         query: q,
       });
@@ -527,12 +501,10 @@ function setupShopProductsAPI(app) {
 
   /**
    * GET /api/shop-products/api-keys
-   * Получить список API ключей (только для админа)
    */
-  app.get('/api/shop-products/api-keys', (req, res) => {
+  app.get('/api/shop-products/api-keys', async (req, res) => {
     try {
-      const keys = loadApiKeys();
-      // Маскируем ключи
+      const keys = await loadApiKeys();
       const maskedKeys = keys.map((k) => ({
         ...k,
         key: k.key.substring(0, 4) + '****' + k.key.substring(k.key.length - 4),
@@ -547,9 +519,8 @@ function setupShopProductsAPI(app) {
 
   /**
    * POST /api/shop-products/api-keys
-   * Создать новый API ключ
    */
-  app.post('/api/shop-products/api-keys', (req, res) => {
+  app.post('/api/shop-products/api-keys', async (req, res) => {
     try {
       const { shopId, description } = req.body;
 
@@ -557,10 +528,9 @@ function setupShopProductsAPI(app) {
         return res.status(400).json({ success: false, error: 'shopId обязателен' });
       }
 
-      // Генерируем ключ
       const key = 'arabica-' + Math.random().toString(36).substring(2, 15);
 
-      const keys = loadApiKeys();
+      const keys = await loadApiKeys();
       keys.push({
         key,
         shopId,
@@ -569,10 +539,8 @@ function setupShopProductsAPI(app) {
       });
 
       const dir = path.dirname(API_KEYS_FILE);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      fs.writeFileSync(API_KEYS_FILE, JSON.stringify({ keys }, null, 2));
+      await fsp.mkdir(dir, { recursive: true });
+      await fsp.writeFile(API_KEYS_FILE, JSON.stringify({ keys }, null, 2));
 
       res.json({ success: true, key, shopId });
     } catch (error) {

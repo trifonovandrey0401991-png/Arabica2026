@@ -150,7 +150,7 @@ class NotificationService {
     await _notifications.show(
       order.id.hashCode,
       'Новый заказ!',
-      'Заказ #${order.id.substring(order.id.length - 6)} на сумму ${order.totalPrice.toStringAsFixed(0)} руб',
+      'Заказ ${order.id.substring(order.id.length - 6)} на сумму ${order.totalPrice.toStringAsFixed(0)} руб',
       notificationDetails,
       payload: order.id,
     );
@@ -182,7 +182,7 @@ class NotificationService {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Заказ #${order.id.substring(order.id.length - 6)}'),
+            Text('Заказ ${order.id.substring(order.id.length - 6)}'),
             const SizedBox(height: 8),
             Text('Сумма: ${order.totalPrice.toStringAsFixed(0)} руб'),
             if (order.comment != null && order.comment!.isNotEmpty) ...[
@@ -253,7 +253,7 @@ class NotificationService {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Заказ #${order.id.substring(order.id.length - 6)}'),
+            Text('Заказ ${order.id.substring(order.id.length - 6)}'),
             const SizedBox(height: 16),
             const Text(
               'Укажите причину отказа:',

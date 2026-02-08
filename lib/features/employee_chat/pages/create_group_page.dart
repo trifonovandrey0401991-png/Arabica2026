@@ -1,12 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/employee_chat_model.dart';
 import '../services/employee_chat_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../../employees/services/employee_service.dart';
 
-/// Страница создания группы
+/// Страница создания группы — dark emerald стиль
 class CreateGroupPage extends StatefulWidget {
   final String creatorPhone;
   final String creatorName;
@@ -22,6 +21,11 @@ class CreateGroupPage extends StatefulWidget {
 }
 
 class _CreateGroupPageState extends State<CreateGroupPage> {
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   final _nameController = TextEditingController();
   final _searchController = TextEditingController();
   File? _selectedImage;
@@ -49,7 +53,6 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   Future<void> _loadParticipants() async {
     setState(() => _isLoading = true);
     try {
-      // Загружаем сотрудников и клиентов параллельно
       final results = await Future.wait([
         EmployeeService.getEmployees(),
         EmployeeChatService.getClientsForGroupSelection(),
@@ -58,7 +61,6 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       final employees = results[0] as List<Employee>;
       final clients = results[1] as List<ChatClient>;
 
-      // Исключаем создателя из списка
       final normalizedCreator = widget.creatorPhone.replaceAll(RegExp(r'[\s+]'), '');
       _employees = employees.where((e) {
         final empPhone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
@@ -115,7 +117,6 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     setState(() => _isCreating = true);
 
     try {
-      // Загружаем фото если выбрано
       String? imageUrl;
       if (_selectedImage != null) {
         imageUrl = await EmployeeChatService.uploadGroupPhoto(_selectedImage!);
@@ -150,74 +151,147 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Создать группу'),
-        backgroundColor: const Color(0xFF004D40),
-        foregroundColor: Colors.white,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Аватар группы
-                _buildGroupAvatar(),
-
-                // Название группы
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Название группы',
-                      hintText: 'Например: VIP клиенты',
-                      prefixIcon: Icon(Icons.group),
-                      border: OutlineInputBorder(),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white.withOpacity(0.8), size: 22),
                     ),
-                  ),
-                ),
-
-                // Поиск участников
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                    decoration: const InputDecoration(
-                      hintText: 'Поиск по имени или телефону...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Создать группу',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 48),
+                  ],
                 ),
-
-                // Выбранные участники (chips)
-                if (_selectedParticipants.isNotEmpty) _buildSelectedChips(),
-
-                const SizedBox(height: 8),
-
-                // Список для выбора
-                Expanded(
-                  child: _buildParticipantsList(),
-                ),
-              ],
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _selectedParticipants.isEmpty || _isCreating ? null : _createGroup,
-        backgroundColor: _selectedParticipants.isEmpty || _isCreating
-            ? Colors.grey
-            : const Color(0xFF004D40),
-        icon: _isCreating
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-              )
-            : const Icon(Icons.check, color: Colors.white),
-        label: Text(
-          _isCreating ? 'Создание...' : 'Создать (${_selectedParticipants.length})',
-          style: const TextStyle(color: Colors.white),
+              ),
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : Column(
+                        children: [
+                          // Аватар
+                          _buildGroupAvatar(),
+                          // Название
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                              ),
+                              child: TextField(
+                                controller: _nameController,
+                                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                                cursorColor: Colors.white,
+                                decoration: InputDecoration(
+                                  labelText: 'Название группы',
+                                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                                  hintText: 'Например: VIP клиенты',
+                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                                  prefixIcon: Icon(Icons.group, color: Colors.white.withOpacity(0.4)),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Поиск
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                                cursorColor: Colors.white,
+                                decoration: InputDecoration(
+                                  hintText: 'Поиск по имени или телефону...',
+                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                                  prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.4)),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Чипсы
+                          if (_selectedParticipants.isNotEmpty) _buildSelectedChips(),
+                          const SizedBox(height: 8),
+                          // Список
+                          Expanded(child: _buildParticipantsList()),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
+      floatingActionButton: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: _selectedParticipants.isEmpty || _isCreating
+              ? Colors.grey[700]
+              : _emerald,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
+        ),
+        child: GestureDetector(
+          onTap: _selectedParticipants.isEmpty || _isCreating ? null : _createGroup,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _isCreating
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : Icon(Icons.check, color: Colors.white.withOpacity(0.9)),
+              const SizedBox(width: 10),
+              Text(
+                _isCreating ? 'Создание...' : 'Создать (${_selectedParticipants.length})',
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -226,24 +300,22 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       onTap: _pickImage,
       child: Container(
         margin: const EdgeInsets.all(16),
-        width: 100,
-        height: 100,
+        width: 90,
+        height: 90,
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: Colors.white.withOpacity(0.08),
           shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
           image: _selectedImage != null
-              ? DecorationImage(
-                  image: FileImage(_selectedImage!),
-                  fit: BoxFit.cover,
-                )
+              ? DecorationImage(image: FileImage(_selectedImage!), fit: BoxFit.cover)
               : null,
         ),
         child: _selectedImage == null
-            ? const Column(
+            ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.camera_alt, size: 32, color: Colors.grey),
-                  Text('Фото', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Icon(Icons.camera_alt, size: 28, color: Colors.white.withOpacity(0.4)),
+                  Text('Фото', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11)),
                 ],
               )
             : null,
@@ -255,6 +327,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     return Container(
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(top: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _selectedParticipants.length,
@@ -263,15 +336,24 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           final name = _getParticipantName(phone);
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: Chip(
-              label: Text(name, style: const TextStyle(fontSize: 12)),
-              deleteIcon: const Icon(Icons.close, size: 16),
-              onDeleted: () {
-                setState(() {
-                  _selectedParticipants.remove(phone);
-                });
-              },
-              backgroundColor: const Color(0xFF004D40).withOpacity(0.1),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _emerald.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _emerald.withOpacity(0.6)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(name, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9))),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => setState(() => _selectedParticipants.remove(phone)),
+                    child: Icon(Icons.close, size: 16, color: Colors.white.withOpacity(0.6)),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -282,7 +364,6 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   String _getParticipantName(String phone) {
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
 
-    // Ищем в сотрудниках
     for (final e in _employees) {
       final empPhone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
       if (empPhone == normalizedPhone) {
@@ -290,7 +371,6 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       }
     }
 
-    // Ищем в клиентах
     for (final c in _clients) {
       final clientPhone = c.phone.replaceAll(RegExp(r'[\s+]'), '');
       if (clientPhone == normalizedPhone) {
@@ -302,7 +382,6 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   }
 
   Widget _buildParticipantsList() {
-    // Фильтруем по поиску
     final filteredEmployees = _employees.where((e) {
       final name = (e.name ?? '').toLowerCase();
       final phone = (e.phone ?? '').toLowerCase();
@@ -316,26 +395,25 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     }).toList();
 
     if (filteredEmployees.isEmpty && filteredClients.isEmpty) {
-      return const Center(
-        child: Text('Нет участников для отображения'),
+      return Center(
+        child: Text('Нет участников для отображения',
+            style: TextStyle(color: Colors.white.withOpacity(0.4))),
       );
     }
 
     return ListView(
+      padding: const EdgeInsets.only(bottom: 80),
       children: [
-        // Секция сотрудников
         if (filteredEmployees.isNotEmpty) ...[
           Container(
-            color: Colors.grey[100],
+            color: Colors.white.withOpacity(0.04),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.badge, size: 20, color: Color(0xFF004D40)),
-                SizedBox(width: 8),
-                Text(
-                  'Сотрудники',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF004D40)),
-                ),
+                Icon(Icons.badge, size: 20, color: Colors.white.withOpacity(0.6)),
+                const SizedBox(width: 8),
+                Text('Сотрудники',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.7))),
               ],
             ),
           ),
@@ -346,20 +424,16 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                 isEmployee: true,
               )),
         ],
-
-        // Секция клиентов
         if (filteredClients.isNotEmpty) ...[
           Container(
-            color: Colors.grey[100],
+            color: Colors.white.withOpacity(0.04),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.person, size: 20, color: Colors.green),
-                SizedBox(width: 8),
-                Text(
-                  'Клиенты',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-                ),
+                Icon(Icons.person, size: 20, color: Colors.green[400]),
+                const SizedBox(width: 8),
+                Text('Клиенты',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[400])),
               ],
             ),
           ),
@@ -383,28 +457,36 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
     final isSelected = _selectedParticipants.contains(normalizedPhone);
 
-    return CheckboxListTile(
-      value: isSelected,
-      onChanged: (v) {
-        setState(() {
-          if (v == true) {
-            _selectedParticipants.add(normalizedPhone);
-          } else {
-            _selectedParticipants.remove(normalizedPhone);
-          }
-        });
-      },
-      title: Text(name),
-      subtitle: subtitle != null && subtitle.isNotEmpty ? Text(subtitle) : null,
-      secondary: CircleAvatar(
-        backgroundColor: isEmployee ? const Color(0xFF004D40) : Colors.green,
-        child: Icon(
-          isEmployee ? Icons.badge : Icons.person,
-          color: Colors.white,
-          size: 20,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
-      activeColor: const Color(0xFF004D40),
+      child: CheckboxListTile(
+        value: isSelected,
+        onChanged: (v) {
+          setState(() {
+            if (v == true) {
+              _selectedParticipants.add(normalizedPhone);
+            } else {
+              _selectedParticipants.remove(normalizedPhone);
+            }
+          });
+        },
+        title: Text(name, style: TextStyle(color: Colors.white.withOpacity(0.9))),
+        subtitle: subtitle != null && subtitle.isNotEmpty
+            ? Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.4)))
+            : null,
+        secondary: CircleAvatar(
+          backgroundColor: isEmployee ? _emerald : Colors.green.withOpacity(0.3),
+          child: Icon(
+            isEmployee ? Icons.badge : Icons.person,
+            color: Colors.white.withOpacity(0.8),
+            size: 20,
+          ),
+        ),
+        activeColor: _emerald,
+        checkColor: Colors.white,
+      ),
     );
   }
 }

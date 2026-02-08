@@ -37,9 +37,13 @@ class CoffeeMachineOcrService {
   ///
   /// [imageBase64] - фото в base64
   /// [region] - область обрезки (относительные координаты 0.0-1.0)
+  /// [preset] - пресет предобработки: standard, invert_lcd, standard_resize
+  /// [machineName] - название машины (для поиска обученного region)
   static Future<OcrResult> recognizeNumber({
     required String imageBase64,
     Map<String, double>? region,
+    String? preset,
+    String? machineName,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -47,6 +51,12 @@ class CoffeeMachineOcrService {
       };
       if (region != null) {
         body['region'] = region;
+      }
+      if (preset != null) {
+        body['preset'] = preset;
+      }
+      if (machineName != null) {
+        body['machineName'] = machineName;
       }
 
       final response = await http.post(

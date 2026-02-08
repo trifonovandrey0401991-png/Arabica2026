@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Shift Transfers API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 const { isAdminPhone } = require('../utils/admin_cache');
 
@@ -17,11 +23,21 @@ const {
   notifyOthersDeclined,
 } = require('./shift_transfers_notifications');
 
-// Helper functions
-function loadShiftTransfers() {
+// Async helper
+async function fileExists(filePath) {
   try {
-    if (fs.existsSync(SHIFT_TRANSFERS_FILE)) {
-      const data = fs.readFileSync(SHIFT_TRANSFERS_FILE, 'utf8');
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Helper functions
+async function loadShiftTransfers() {
+  try {
+    if (await fileExists(SHIFT_TRANSFERS_FILE)) {
+      const data = await fsp.readFile(SHIFT_TRANSFERS_FILE, 'utf8');
       return JSON.parse(data).requests || [];
     }
   } catch (e) {
@@ -30,9 +46,9 @@ function loadShiftTransfers() {
   return [];
 }
 
-function saveShiftTransfers(requests) {
+async function saveShiftTransfers(requests) {
   const data = { requests, updatedAt: new Date().toISOString() };
-  fs.writeFileSync(SHIFT_TRANSFERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  await fsp.writeFile(SHIFT_TRANSFERS_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // Cleanup expired transfers (older than 30 days with pending status)
@@ -57,18 +73,19 @@ function cleanupExpiredTransfers(requests) {
  * @param {string} newEmployeeId - ID нового сотрудника
  * @param {string} newEmployeeName - Имя нового сотрудника
  */
-function updateWorkSchedule(transfer, newEmployeeId, newEmployeeName) {
+async function updateWorkSchedule(transfer, newEmployeeId, newEmployeeName) {
   try {
     const shiftDate = new Date(transfer.shiftDate);
     const monthKey = `${shiftDate.getFullYear()}-${String(shiftDate.getMonth() + 1).padLeft(2, '0')}`;
     const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
 
-    if (!fs.existsSync(scheduleFile)) {
+    if (!(await fileExists(scheduleFile))) {
       console.log(`[ShiftTransfer] Schedule file not found: ${scheduleFile}`);
       return false;
     }
 
-    const scheduleData = JSON.parse(fs.readFileSync(scheduleFile, 'utf8'));
+    const content = await fsp.readFile(scheduleFile, 'utf8');
+    const scheduleData = JSON.parse(content);
     const entries = scheduleData.entries || [];
 
     // Найти запись в графике
@@ -102,7 +119,7 @@ function updateWorkSchedule(transfer, newEmployeeId, newEmployeeName) {
     scheduleData.entries = entries;
     scheduleData.updatedAt = new Date().toISOString();
 
-    fs.writeFileSync(scheduleFile, JSON.stringify(scheduleData, null, 2), 'utf8');
+    await fsp.writeFile(scheduleFile, JSON.stringify(scheduleData, null, 2), 'utf8');
     console.log(`[ShiftTransfer] Schedule updated: ${transfer.fromEmployeeName} → ${newEmployeeName}`);
     return true;
   } catch (e) {
@@ -125,12 +142,12 @@ function setupShiftTransfersAPI(app) {
       console.log('GET /api/shift-transfers');
       const { shopAddress, status, employeeName } = req.query;
 
-      let requests = loadShiftTransfers();
+      let requests = await loadShiftTransfers();
 
       // Cleanup expired
       const cleanedRequests = cleanupExpiredTransfers(requests);
       if (cleanedRequests.length !== requests.length) {
-        saveShiftTransfers(cleanedRequests);
+        await saveShiftTransfers(cleanedRequests);
         requests = cleanedRequests;
       }
 
@@ -160,12 +177,12 @@ function setupShiftTransfersAPI(app) {
       const { employeeId } = req.params;
       console.log('GET /api/shift-transfers/employee/:employeeId', employeeId);
 
-      let requests = loadShiftTransfers();
+      let requests = await loadShiftTransfers();
 
       // Cleanup expired
       const cleanedRequests = cleanupExpiredTransfers(requests);
       if (cleanedRequests.length !== requests.length) {
-        saveShiftTransfers(cleanedRequests);
+        await saveShiftTransfers(cleanedRequests);
         requests = cleanedRequests;
       }
 
@@ -200,7 +217,7 @@ function setupShiftTransfersAPI(app) {
       const { employeeId } = req.params;
       console.log('GET /api/shift-transfers/employee/:employeeId/outgoing', employeeId);
 
-      let requests = loadShiftTransfers();
+      let requests = await loadShiftTransfers();
 
       // Filter: requests sent by this employee
       requests = requests.filter(r => r.fromEmployeeId === employeeId);
@@ -218,7 +235,7 @@ function setupShiftTransfersAPI(app) {
       const { employeeId } = req.params;
       console.log('GET /api/shift-transfers/employee/:employeeId/unread-count', employeeId);
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
 
       // Count unread incoming requests
       const count = requests.filter(r => {
@@ -245,7 +262,7 @@ function setupShiftTransfersAPI(app) {
     try {
       console.log('GET /api/shift-transfers/admin');
 
-      let requests = loadShiftTransfers();
+      let requests = await loadShiftTransfers();
 
       // Filter: requests that have acceptances (status = 'has_acceptances' or legacy 'accepted')
       requests = requests.filter(r => {
@@ -266,7 +283,7 @@ function setupShiftTransfersAPI(app) {
     try {
       console.log('GET /api/shift-transfers/admin/unread-count');
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
 
       // Count unread requests with acceptances
       const count = requests.filter(r =>
@@ -292,7 +309,7 @@ function setupShiftTransfersAPI(app) {
         });
       }
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
 
       // Generate ID if not provided
       if (!transfer.id) {
@@ -306,7 +323,7 @@ function setupShiftTransfersAPI(app) {
       transfer.isReadByAdmin = false;
 
       requests.push(transfer);
-      saveShiftTransfers(requests);
+      await saveShiftTransfers(requests);
 
       // ✅ Отправка уведомлений
       try {
@@ -325,7 +342,7 @@ function setupShiftTransfersAPI(app) {
   app.get('/api/shift-transfers/:requestId', async (req, res) => {
     try {
       const { requestId } = req.params;
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
       const request = requests.find(r => r.id === requestId);
 
       if (request) {
@@ -352,7 +369,7 @@ function setupShiftTransfersAPI(app) {
         });
       }
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);
 
       if (index === -1) {
@@ -402,7 +419,7 @@ function setupShiftTransfersAPI(app) {
       }
 
       requests[index] = transfer;
-      saveShiftTransfers(requests);
+      await saveShiftTransfers(requests);
 
       // ✅ Отправка уведомлений
       try {
@@ -424,7 +441,7 @@ function setupShiftTransfersAPI(app) {
       const { employeeId, employeeName } = req.body;
       console.log('PUT /api/shift-transfers/:requestId/reject:', requestId, employeeName || 'unknown');
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);
 
       if (index === -1) {
@@ -453,7 +470,7 @@ function setupShiftTransfersAPI(app) {
       }
 
       requests[index] = transfer;
-      saveShiftTransfers(requests);
+      await saveShiftTransfers(requests);
 
       // ✅ Отправка уведомлений
       try {
@@ -475,7 +492,7 @@ function setupShiftTransfersAPI(app) {
       const { selectedEmployeeId } = req.body; // ID выбранного сотрудника
       console.log('PUT /api/shift-transfers/:requestId/approve:', requestId, 'selected:', selectedEmployeeId);
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);
 
       if (index === -1) {
@@ -520,10 +537,10 @@ function setupShiftTransfersAPI(app) {
       transfer.acceptedByEmployeeName = approvedEmployee.employeeName;
 
       requests[index] = transfer;
-      saveShiftTransfers(requests);
+      await saveShiftTransfers(requests);
 
       // ✅ Обновляем график работы
-      const scheduleUpdated = updateWorkSchedule(
+      const scheduleUpdated = await updateWorkSchedule(
         transfer,
         approvedEmployee.employeeId,
         approvedEmployee.employeeName
@@ -563,7 +580,7 @@ function setupShiftTransfersAPI(app) {
       const { requestId } = req.params;
       console.log('PUT /api/shift-transfers/:requestId/decline:', requestId);
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);
 
       if (index === -1) {
@@ -573,7 +590,7 @@ function setupShiftTransfersAPI(app) {
       requests[index].status = 'declined';
       requests[index].resolvedAt = new Date().toISOString();
 
-      saveShiftTransfers(requests);
+      await saveShiftTransfers(requests);
 
       // ✅ Отправка уведомлений всем участникам
       try {
@@ -605,7 +622,7 @@ function setupShiftTransfersAPI(app) {
         console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'isAdmin:', isAdminUser, '(from body - DEPRECATED)');
       }
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);
 
       if (index === -1) {
@@ -618,7 +635,7 @@ function setupShiftTransfersAPI(app) {
         requests[index].isReadByRecipient = true;
       }
 
-      saveShiftTransfers(requests);
+      await saveShiftTransfers(requests);
       res.json({ success: true, request: requests[index] });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -631,7 +648,7 @@ function setupShiftTransfersAPI(app) {
       const { requestId } = req.params;
       console.log('DELETE /api/shift-transfers:', requestId);
 
-      const requests = loadShiftTransfers();
+      const requests = await loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);
 
       if (index === -1) {
@@ -639,7 +656,7 @@ function setupShiftTransfersAPI(app) {
       }
 
       requests.splice(index, 1);
-      saveShiftTransfers(requests);
+      await saveShiftTransfers(requests);
 
       res.json({ success: true });
     } catch (error) {

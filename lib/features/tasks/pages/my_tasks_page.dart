@@ -26,9 +26,12 @@ class MyTasksPage extends StatefulWidget {
 }
 
 class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStateMixin {
-  // Цветовая схема
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00897B);
+  // Единая палитра приложения
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   static const _orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
   static const _greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
   static const _redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
@@ -189,7 +192,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: isError ? Colors.red[700] : (isSuccess ? Colors.green[700] : _primaryColor),
+        backgroundColor: isError ? Colors.red[700] : (isSuccess ? Colors.green[700] : _emerald),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -204,108 +207,202 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     final expiredCount = _expiredAssignments.length + _expiredRecurring.length;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Мои Задачи'),
-            Text(
-              TaskUtils.getMonthName(_selectedMonth, _selectedYear),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-            ),
-          ],
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
         ),
-        backgroundColor: _primaryColor,
-        elevation: 0,
-        actions: [
-          // Кнопка выбора месяца
-          PopupMenuButton<Map<String, dynamic>>(
-            icon: const Icon(Icons.calendar_month),
-            tooltip: 'Выбрать месяц',
-            onSelected: (monthData) {
-              setState(() {
-                _selectedYear = monthData['year'] as int;
-                _selectedMonth = monthData['month'] as int;
-              });
-              _loadAssignments();
-            },
-            itemBuilder: (context) {
-              final months = TaskUtils.generateMonthsList(count: 6);
-              return months.map((m) {
-                final isSelected = m['year'] == _selectedYear && m['month'] == _selectedMonth;
-                return PopupMenuItem<Map<String, dynamic>>(
-                  value: m,
-                  child: Row(
-                    children: [
-                      if (isSelected)
-                        const Icon(Icons.check, size: 18, color: _primaryColor)
-                      else
-                        const SizedBox(width: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        m['name'] as String,
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? _primaryColor : null,
-                        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              _buildTabBar(activeCount, completedCount, expiredCount),
+              Expanded(
+                child: _isLoading
+                    ? _buildLoadingState()
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true),
+                          _buildTaskList(_completedAssignments, _completedRecurring, 'Нет выполненных задач', isCompleted: true),
+                          _buildTaskList(_expiredAssignments, _expiredRecurring, 'Нет просроченных задач', isExpired: true),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }).toList();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _loadAssignments(forceRefresh: true),
-            tooltip: 'Обновить',
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: _primaryColor,
-              indicatorWeight: 3,
-              labelColor: _primaryColor,
-              unselectedLabelColor: Colors.grey[600],
-              labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-              tabs: [
-                _buildModernTab('Активные', activeCount, _orangeGradient),
-                _buildModernTab('Выполненные', completedCount, _greenGradient),
-                _buildModernTab('Просроченные', expiredCount, _redGradient),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Загрузка задач...',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            )
-          : TabBarView(
-              controller: _tabController,
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.8), size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true),
-                _buildTaskList(_completedAssignments, _completedRecurring, 'Нет выполненных задач', isCompleted: true),
-                _buildTaskList(_expiredAssignments, _expiredRecurring, 'Нет просроченных задач', isExpired: true),
+                const Text(
+                  'Мои Задачи',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(
+                    TaskUtils.getMonthName(_selectedMonth, _selectedYear),
+                    style: TextStyle(
+                      color: _gold.withOpacity(0.7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ],
             ),
+          ),
+          // Кнопка выбора месяца
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: PopupMenuButton<Map<String, dynamic>>(
+              icon: Icon(Icons.calendar_month, color: Colors.white.withOpacity(0.8), size: 20),
+              tooltip: 'Выбрать месяц',
+              color: _emeraldDark,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onSelected: (monthData) {
+                setState(() {
+                  _selectedYear = monthData['year'] as int;
+                  _selectedMonth = monthData['month'] as int;
+                });
+                _loadAssignments();
+              },
+              itemBuilder: (context) {
+                final months = TaskUtils.generateMonthsList(count: 6);
+                return months.map((m) {
+                  final isSelected = m['year'] == _selectedYear && m['month'] == _selectedMonth;
+                  return PopupMenuItem<Map<String, dynamic>>(
+                    value: m,
+                    child: Row(
+                      children: [
+                        if (isSelected)
+                          Icon(Icons.check, size: 18, color: _gold)
+                        else
+                          const SizedBox(width: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          m['name'] as String,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? _gold : Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList();
+              },
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh, color: Colors.white.withOpacity(0.8), size: 20),
+              onPressed: () => _loadAssignments(forceRefresh: true),
+              tooltip: 'Обновить',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar(int activeCount, int completedCount, int expiredCount) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: _gold.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _gold.withOpacity(0.4)),
+        ),
+        dividerColor: Colors.transparent,
+        labelColor: _gold,
+        unselectedLabelColor: Colors.white.withOpacity(0.5),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+        tabs: [
+          _buildModernTab('Активные', activeCount, _orangeGradient),
+          _buildModernTab('Выполнено', completedCount, _greenGradient),
+          _buildModernTab('Просрочено', expiredCount, _redGradient),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: _gold.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Загрузка задач...',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -321,25 +418,18 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             ),
           ),
           if (count > 0) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: gradientColors),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: gradientColors[0].withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 count.toString(),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -364,9 +454,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
     return RefreshIndicator(
       onRefresh: _loadAssignments,
-      color: _primaryColor,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           // Циклические задачи (показываем первыми)
           if (recurring.isNotEmpty) ...[
@@ -390,39 +481,41 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: _primaryColor.withOpacity(0.1),
+        color: _gold.withOpacity(0.1),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _gold.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _primaryColor,
+              color: _gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _gold.withOpacity(0.3)),
             ),
-            child: Icon(icon, size: 16, color: Colors.white),
+            child: Icon(icon, size: 16, color: _gold),
           ),
           const SizedBox(width: 10),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: _primaryColor,
+              color: _gold,
             ),
           ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: _primaryColor,
+              color: _gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               count.toString(),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: _gold,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -455,22 +548,23 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: gradientColors.map((c) => c.withOpacity(0.15)).toList()),
+              gradient: LinearGradient(colors: gradientColors.map((c) => c.withOpacity(0.12)).toList()),
               shape: BoxShape.circle,
+              border: Border.all(color: gradientColors[0].withOpacity(0.2)),
             ),
             child: Icon(
               icon,
               size: 48,
-              color: gradientColors[0],
+              color: gradientColors[0].withOpacity(0.7),
             ),
           ),
           const SizedBox(height: 20),
           Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white.withOpacity(0.8),
             ),
           ),
           const SizedBox(height: 8),
@@ -480,7 +574,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             'Просроченные задачи появятся здесь',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
         ],
@@ -511,27 +605,20 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       statusText = 'В работе';
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () => _openRecurringTaskDetail(instance),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
             child: Row(
               children: [
                 // Status icon
@@ -562,9 +649,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     children: [
                       Text(
                         instance.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -572,21 +660,22 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                          Icon(Icons.access_time, size: 14, color: Colors.white.withOpacity(0.4)),
                           const SizedBox(width: 4),
                           Text(
                             isCompleted ? 'Выполнено' : 'До: ${dateFormat.format(instance.deadline)}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isExpired ? Colors.red[600] : Colors.grey[600],
+                              color: isExpired ? Colors.red[300] : Colors.white.withOpacity(0.5),
                             ),
                           ),
                           const Spacer(),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: statusGradient.map((c) => c.withOpacity(0.15)).toList()),
+                              gradient: LinearGradient(colors: statusGradient.map((c) => c.withOpacity(0.2)).toList()),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: statusGradient[0].withOpacity(0.3)),
                             ),
                             child: Text(
                               statusText,
@@ -602,14 +691,15 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.red[50],
+                                color: Colors.red.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.withOpacity(0.3)),
                               ),
                               child: Text(
                                 '-3',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.red[700],
+                                  color: Colors.red[300],
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -621,7 +711,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(Icons.chevron_right, color: Colors.grey[400], size: 22),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
               ],
             ),
           ),
@@ -650,28 +740,23 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                       assignment.status == TaskStatus.rejected ||
                       assignment.status == TaskStatus.declined;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isOverdue ? Border.all(color: Colors.red[300]!, width: 2) : null,
-        boxShadow: [
-          BoxShadow(
-            color: isOverdue ? Colors.red.withOpacity(0.15) : Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () => _openTaskDetail(assignment),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isOverdue ? Colors.red.withOpacity(0.4) : Colors.white.withOpacity(0.1),
+                width: isOverdue ? 1.5 : 1,
+              ),
+            ),
             child: Row(
               children: [
                 // Status icon
@@ -702,9 +787,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     children: [
                       Text(
                         assignment.taskTitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -712,13 +798,13 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.access_time, size: 14, color: isOverdue ? Colors.red : Colors.grey[500]),
+                          Icon(Icons.access_time, size: 14, color: isOverdue ? Colors.red[300] : Colors.white.withOpacity(0.4)),
                           const SizedBox(width: 4),
                           Text(
                             'До: ${dateFormat.format(assignment.deadline)}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isOverdue ? Colors.red[600] : Colors.grey[600],
+                              color: isOverdue ? Colors.red[300] : Colors.white.withOpacity(0.5),
                               fontWeight: isOverdue ? FontWeight.w500 : FontWeight.normal,
                             ),
                           ),
@@ -726,8 +812,9 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: statusGradient.map((c) => c.withOpacity(0.15)).toList()),
+                              gradient: LinearGradient(colors: statusGradient.map((c) => c.withOpacity(0.2)).toList()),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: statusGradient[0].withOpacity(0.3)),
                             ),
                             child: Text(
                               assignment.status.displayName,
@@ -743,14 +830,15 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.red[50],
+                                color: Colors.red.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.withOpacity(0.3)),
                               ),
                               child: Text(
                                 '-3',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.red[700],
+                                  color: Colors.red[300],
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -762,7 +850,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(Icons.chevron_right, color: Colors.grey[400], size: 22),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
               ],
             ),
           ),

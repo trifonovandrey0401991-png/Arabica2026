@@ -1,4 +1,11 @@
-const fs = require('fs');
+/**
+ * Points Settings API
+ * Настройки баллов для всех категорий эффективности
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -14,12 +21,25 @@ const REVIEWS_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'reviews_points_setti
 const PRODUCT_SEARCH_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'product_search_points_settings.json');
 const ORDERS_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'orders_points_settings.json');
 const ENVELOPE_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'envelope_points_settings.json');
+const COFFEE_MACHINE_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'coffee_machine_points_settings.json');
 const MANAGER_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'manager_points_settings.json');
 
-// Ensure directory exists
-function ensureDir() {
-  if (!fs.existsSync(POINTS_SETTINGS_DIR)) {
-    fs.mkdirSync(POINTS_SETTINGS_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directory exists (async)
+async function ensureDir() {
+  try {
+    await fsp.mkdir(POINTS_SETTINGS_DIR, { recursive: true });
+  } catch (e) {
+    // Directory might already exist
   }
 }
 
@@ -177,6 +197,23 @@ const DEFAULT_ENVELOPE_POINTS_SETTINGS = {
   updatedAt: null
 };
 
+// Default settings for coffee machine (Счётчик кофемашин)
+const DEFAULT_COFFEE_MACHINE_POINTS_SETTINGS = {
+  id: 'coffee_machine_points',
+  category: 'coffee_machine',
+  submittedPoints: 1.0,       // Points for submitted counter report
+  notSubmittedPoints: -3.0,   // Points for not submitted counter report
+  morningStartTime: '07:00',
+  morningEndTime: '12:00',
+  morningDeadline: '12:00',
+  eveningStartTime: '14:00',
+  eveningEndTime: '22:00',
+  eveningDeadline: '22:00',
+  adminReviewTimeoutHours: 4,
+  createdAt: null,
+  updatedAt: null
+};
+
 // Default category settings for managers (simplified)
 // confirmedPoints - баллы за проверенный отчёт
 // rejectedPenalty - штраф за непроверенный отчёт
@@ -271,9 +308,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/test - Get test points settings
   app.get('/api/points-settings/test', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(TEST_POINTS_FILE)) {
+      if (!(await fileExists(TEST_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -281,7 +318,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(TEST_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(TEST_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -294,7 +331,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/test - Save test points settings
   app.post('/api/points-settings/test', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const { minPoints, zeroThreshold, maxPoints } = req.body;
 
@@ -329,8 +366,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_TEST_POINTS_SETTINGS };
-      if (fs.existsSync(TEST_POINTS_FILE)) {
-        const content = fs.readFileSync(TEST_POINTS_FILE, 'utf8');
+      if (await fileExists(TEST_POINTS_FILE)) {
+        const content = await fsp.readFile(TEST_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -342,7 +379,7 @@ function setupPointsSettingsAPI(app) {
       settings.maxPoints = parseFloat(maxPoints);
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(TEST_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(TEST_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Test points settings saved:', settings);
 
@@ -358,11 +395,11 @@ function setupPointsSettingsAPI(app) {
     try {
       const score = parseInt(req.query.score) || 0;
 
-      ensureDir();
+      await ensureDir();
 
       let settings = { ...DEFAULT_TEST_POINTS_SETTINGS };
-      if (fs.existsSync(TEST_POINTS_FILE)) {
-        const content = fs.readFileSync(TEST_POINTS_FILE, 'utf8');
+      if (await fileExists(TEST_POINTS_FILE)) {
+        const content = await fsp.readFile(TEST_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       }
 
@@ -389,9 +426,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/attendance - Get attendance points settings
   app.get('/api/points-settings/attendance', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(ATTENDANCE_POINTS_FILE)) {
+      if (!(await fileExists(ATTENDANCE_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -399,7 +436,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(ATTENDANCE_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(ATTENDANCE_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -412,7 +449,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/attendance - Save attendance points settings
   app.post('/api/points-settings/attendance', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const {
         onTimePoints, latePoints,
@@ -444,8 +481,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_ATTENDANCE_POINTS_SETTINGS };
-      if (fs.existsSync(ATTENDANCE_POINTS_FILE)) {
-        const content = fs.readFileSync(ATTENDANCE_POINTS_FILE, 'utf8');
+      if (await fileExists(ATTENDANCE_POINTS_FILE)) {
+        const content = await fsp.readFile(ATTENDANCE_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -464,7 +501,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(ATTENDANCE_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(ATTENDANCE_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Attendance points settings saved:', settings);
 
@@ -480,9 +517,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/shift - Get shift points settings
   app.get('/api/points-settings/shift', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(SHIFT_POINTS_FILE)) {
+      if (!(await fileExists(SHIFT_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -490,7 +527,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(SHIFT_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(SHIFT_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -503,7 +540,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/shift - Save shift points settings
   app.post('/api/points-settings/shift', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const {
         minPoints, zeroThreshold, maxPoints,
@@ -542,8 +579,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_SHIFT_POINTS_SETTINGS };
-      if (fs.existsSync(SHIFT_POINTS_FILE)) {
-        const content = fs.readFileSync(SHIFT_POINTS_FILE, 'utf8');
+      if (await fileExists(SHIFT_POINTS_FILE)) {
+        const content = await fsp.readFile(SHIFT_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -564,7 +601,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(SHIFT_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(SHIFT_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Shift points settings saved:', settings);
 
@@ -580,11 +617,11 @@ function setupPointsSettingsAPI(app) {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
-      ensureDir();
+      await ensureDir();
 
       let settings = { ...DEFAULT_SHIFT_POINTS_SETTINGS };
-      if (fs.existsSync(SHIFT_POINTS_FILE)) {
-        const content = fs.readFileSync(SHIFT_POINTS_FILE, 'utf8');
+      if (await fileExists(SHIFT_POINTS_FILE)) {
+        const content = await fsp.readFile(SHIFT_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       }
 
@@ -611,9 +648,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/recount - Get recount points settings
   app.get('/api/points-settings/recount', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(RECOUNT_POINTS_FILE)) {
+      if (!(await fileExists(RECOUNT_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -621,7 +658,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(RECOUNT_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(RECOUNT_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -634,7 +671,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/recount - Save recount points settings
   app.post('/api/points-settings/recount', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const {
         minPoints, zeroThreshold, maxPoints,
@@ -673,8 +710,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_RECOUNT_POINTS_SETTINGS };
-      if (fs.existsSync(RECOUNT_POINTS_FILE)) {
-        const content = fs.readFileSync(RECOUNT_POINTS_FILE, 'utf8');
+      if (await fileExists(RECOUNT_POINTS_FILE)) {
+        const content = await fsp.readFile(RECOUNT_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -695,7 +732,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(RECOUNT_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(RECOUNT_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Recount points settings saved:', settings);
 
@@ -711,11 +748,11 @@ function setupPointsSettingsAPI(app) {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
-      ensureDir();
+      await ensureDir();
 
       let settings = { ...DEFAULT_RECOUNT_POINTS_SETTINGS };
-      if (fs.existsSync(RECOUNT_POINTS_FILE)) {
-        const content = fs.readFileSync(RECOUNT_POINTS_FILE, 'utf8');
+      if (await fileExists(RECOUNT_POINTS_FILE)) {
+        const content = await fsp.readFile(RECOUNT_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       }
 
@@ -742,9 +779,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/rko - Get RKO points settings
   app.get('/api/points-settings/rko', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(RKO_POINTS_FILE)) {
+      if (!(await fileExists(RKO_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -752,7 +789,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(RKO_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(RKO_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -765,7 +802,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/rko - Save RKO points settings
   app.post('/api/points-settings/rko', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const {
         hasRkoPoints,
@@ -801,8 +838,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_RKO_POINTS_SETTINGS };
-      if (fs.existsSync(RKO_POINTS_FILE)) {
-        const content = fs.readFileSync(RKO_POINTS_FILE, 'utf8');
+      if (await fileExists(RKO_POINTS_FILE)) {
+        const content = await fsp.readFile(RKO_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -821,7 +858,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(RKO_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(RKO_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('RKO points settings saved:', settings);
 
@@ -837,9 +874,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/shift-handover - Get shift handover points settings
   app.get('/api/points-settings/shift-handover', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(SHIFT_HANDOVER_POINTS_FILE)) {
+      if (!(await fileExists(SHIFT_HANDOVER_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -847,7 +884,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(SHIFT_HANDOVER_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(SHIFT_HANDOVER_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -860,7 +897,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/shift-handover - Save shift handover points settings
   app.post('/api/points-settings/shift-handover', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const {
         minPoints, zeroThreshold, maxPoints,
@@ -899,8 +936,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_SHIFT_HANDOVER_POINTS_SETTINGS };
-      if (fs.existsSync(SHIFT_HANDOVER_POINTS_FILE)) {
-        const content = fs.readFileSync(SHIFT_HANDOVER_POINTS_FILE, 'utf8');
+      if (await fileExists(SHIFT_HANDOVER_POINTS_FILE)) {
+        const content = await fsp.readFile(SHIFT_HANDOVER_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -921,7 +958,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(SHIFT_HANDOVER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(SHIFT_HANDOVER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Shift handover points settings saved:', settings);
 
@@ -937,11 +974,11 @@ function setupPointsSettingsAPI(app) {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
-      ensureDir();
+      await ensureDir();
 
       let settings = { ...DEFAULT_SHIFT_HANDOVER_POINTS_SETTINGS };
-      if (fs.existsSync(SHIFT_HANDOVER_POINTS_FILE)) {
-        const content = fs.readFileSync(SHIFT_HANDOVER_POINTS_FILE, 'utf8');
+      if (await fileExists(SHIFT_HANDOVER_POINTS_FILE)) {
+        const content = await fsp.readFile(SHIFT_HANDOVER_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       }
 
@@ -968,9 +1005,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/reviews - Get reviews points settings
   app.get('/api/points-settings/reviews', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(REVIEWS_POINTS_FILE)) {
+      if (!(await fileExists(REVIEWS_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -978,7 +1015,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(REVIEWS_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(REVIEWS_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -991,7 +1028,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/reviews - Save reviews points settings
   app.post('/api/points-settings/reviews', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const { positivePoints, negativePoints } = req.body;
 
@@ -1019,8 +1056,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_REVIEWS_POINTS_SETTINGS };
-      if (fs.existsSync(REVIEWS_POINTS_FILE)) {
-        const content = fs.readFileSync(REVIEWS_POINTS_FILE, 'utf8');
+      if (await fileExists(REVIEWS_POINTS_FILE)) {
+        const content = await fsp.readFile(REVIEWS_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -1031,7 +1068,7 @@ function setupPointsSettingsAPI(app) {
       settings.negativePoints = parseFloat(negativePoints);
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(REVIEWS_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(REVIEWS_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Reviews points settings saved:', settings);
 
@@ -1047,9 +1084,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/product-search - Get product search points settings
   app.get('/api/points-settings/product-search', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(PRODUCT_SEARCH_POINTS_FILE)) {
+      if (!(await fileExists(PRODUCT_SEARCH_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -1057,7 +1094,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(PRODUCT_SEARCH_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(PRODUCT_SEARCH_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -1070,7 +1107,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/product-search - Save product search points settings
   app.post('/api/points-settings/product-search', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const { answeredPoints, notAnsweredPoints, answerTimeoutMinutes } = req.body;
 
@@ -1105,8 +1142,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_PRODUCT_SEARCH_POINTS_SETTINGS };
-      if (fs.existsSync(PRODUCT_SEARCH_POINTS_FILE)) {
-        const content = fs.readFileSync(PRODUCT_SEARCH_POINTS_FILE, 'utf8');
+      if (await fileExists(PRODUCT_SEARCH_POINTS_FILE)) {
+        const content = await fsp.readFile(PRODUCT_SEARCH_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -1118,7 +1155,7 @@ function setupPointsSettingsAPI(app) {
       settings.answerTimeoutMinutes = answerTimeoutMinutes !== undefined ? parseInt(answerTimeoutMinutes) : (settings.answerTimeoutMinutes || 30);
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(PRODUCT_SEARCH_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(PRODUCT_SEARCH_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Product search points settings saved:', settings);
 
@@ -1134,9 +1171,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/orders - Get orders points settings
   app.get('/api/points-settings/orders', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(ORDERS_POINTS_FILE)) {
+      if (!(await fileExists(ORDERS_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -1144,7 +1181,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(ORDERS_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(ORDERS_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -1157,7 +1194,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/orders - Save orders points settings
   app.post('/api/points-settings/orders', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const { acceptedPoints, rejectedPoints } = req.body;
 
@@ -1185,8 +1222,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_ORDERS_POINTS_SETTINGS };
-      if (fs.existsSync(ORDERS_POINTS_FILE)) {
-        const content = fs.readFileSync(ORDERS_POINTS_FILE, 'utf8');
+      if (await fileExists(ORDERS_POINTS_FILE)) {
+        const content = await fsp.readFile(ORDERS_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -1197,7 +1234,7 @@ function setupPointsSettingsAPI(app) {
       settings.rejectedPoints = parseFloat(rejectedPoints);
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(ORDERS_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(ORDERS_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Orders points settings saved:', settings);
 
@@ -1213,9 +1250,9 @@ function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/envelope - Get envelope points settings
   app.get('/api/points-settings/envelope', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(ENVELOPE_POINTS_FILE)) {
+      if (!(await fileExists(ENVELOPE_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -1223,7 +1260,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(ENVELOPE_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(ENVELOPE_POINTS_FILE, 'utf8');
       const settings = JSON.parse(content);
 
       res.json({ success: true, settings });
@@ -1236,7 +1273,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/envelope - Save envelope points settings
   app.post('/api/points-settings/envelope', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const { submittedPoints, notSubmittedPoints } = req.body;
 
@@ -1264,8 +1301,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_ENVELOPE_POINTS_SETTINGS };
-      if (fs.existsSync(ENVELOPE_POINTS_FILE)) {
-        const content = fs.readFileSync(ENVELOPE_POINTS_FILE, 'utf8');
+      if (await fileExists(ENVELOPE_POINTS_FILE)) {
+        const content = await fsp.readFile(ENVELOPE_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -1276,7 +1313,7 @@ function setupPointsSettingsAPI(app) {
       settings.notSubmittedPoints = parseFloat(notSubmittedPoints);
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(ENVELOPE_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(ENVELOPE_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Envelope points settings saved:', settings);
 
@@ -1287,15 +1324,88 @@ function setupPointsSettingsAPI(app) {
     }
   });
 
+  // ===== COFFEE MACHINE POINTS SETTINGS (Счётчик кофемашин) =====
+
+  // GET /api/points-settings/coffee-machine - Get coffee machine points settings
+  app.get('/api/points-settings/coffee-machine', async (req, res) => {
+    try {
+      await ensureDir();
+
+      if (!(await fileExists(COFFEE_MACHINE_POINTS_FILE))) {
+        return res.json({
+          success: true,
+          settings: { ...DEFAULT_COFFEE_MACHINE_POINTS_SETTINGS, createdAt: new Date().toISOString() }
+        });
+      }
+
+      const content = await fsp.readFile(COFFEE_MACHINE_POINTS_FILE, 'utf8');
+      const settings = JSON.parse(content);
+
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error('Error getting coffee machine points settings:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/points-settings/coffee-machine - Save coffee machine points settings
+  app.post('/api/points-settings/coffee-machine', async (req, res) => {
+    try {
+      await ensureDir();
+
+      const { submittedPoints, notSubmittedPoints, morningStartTime, morningEndTime,
+              morningDeadline, eveningStartTime, eveningEndTime, eveningDeadline,
+              adminReviewTimeoutHours } = req.body;
+
+      // Validation
+      if (submittedPoints === undefined || notSubmittedPoints === undefined) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: submittedPoints, notSubmittedPoints'
+        });
+      }
+
+      // Load existing or create new
+      let settings = { ...DEFAULT_COFFEE_MACHINE_POINTS_SETTINGS };
+      if (await fileExists(COFFEE_MACHINE_POINTS_FILE)) {
+        const content = await fsp.readFile(COFFEE_MACHINE_POINTS_FILE, 'utf8');
+        settings = JSON.parse(content);
+      } else {
+        settings.createdAt = new Date().toISOString();
+      }
+
+      // Update settings
+      settings.submittedPoints = parseFloat(submittedPoints);
+      settings.notSubmittedPoints = parseFloat(notSubmittedPoints);
+      if (morningStartTime) settings.morningStartTime = morningStartTime;
+      if (morningEndTime) settings.morningEndTime = morningEndTime;
+      if (morningDeadline) settings.morningDeadline = morningDeadline;
+      if (eveningStartTime) settings.eveningStartTime = eveningStartTime;
+      if (eveningEndTime) settings.eveningEndTime = eveningEndTime;
+      if (eveningDeadline) settings.eveningDeadline = eveningDeadline;
+      if (adminReviewTimeoutHours !== undefined) settings.adminReviewTimeoutHours = parseInt(adminReviewTimeoutHours);
+      settings.updatedAt = new Date().toISOString();
+
+      await fsp.writeFile(COFFEE_MACHINE_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+
+      console.log('Coffee machine points settings saved:', settings);
+
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error('Error saving coffee machine points settings:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ===== MANAGER POINTS SETTINGS (Управляющие) =====
 
   // GET /api/points-settings/manager - Get manager points settings
   // With migration from old format (subordinateQuality/reviewPercentage -> confirmed/rejected)
   app.get('/api/points-settings/manager', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
-      if (!fs.existsSync(MANAGER_POINTS_FILE)) {
+      if (!(await fileExists(MANAGER_POINTS_FILE))) {
         // Return default settings if none exist
         return res.json({
           success: true,
@@ -1303,7 +1413,7 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
-      const content = fs.readFileSync(MANAGER_POINTS_FILE, 'utf8');
+      const content = await fsp.readFile(MANAGER_POINTS_FILE, 'utf8');
       let settings = JSON.parse(content);
 
       // Migration: check if old format (subordinateQualityMinPoints exists)
@@ -1326,7 +1436,7 @@ function setupPointsSettingsAPI(app) {
         settings.updatedAt = new Date().toISOString();
 
         // Save migrated settings
-        fs.writeFileSync(MANAGER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+        await fsp.writeFile(MANAGER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
         console.log('Manager points settings migrated to new format');
       }
 
@@ -1341,7 +1451,7 @@ function setupPointsSettingsAPI(app) {
   // Simplified: confirmedPoints (>=0), rejectedPenalty (<=0)
   app.post('/api/points-settings/manager', async (req, res) => {
     try {
-      ensureDir();
+      await ensureDir();
 
       const { shiftSettings, recountSettings, shiftHandoverSettings } = req.body;
 
@@ -1384,8 +1494,8 @@ function setupPointsSettingsAPI(app) {
 
       // Load existing or create new
       let settings = { ...DEFAULT_MANAGER_POINTS_SETTINGS };
-      if (fs.existsSync(MANAGER_POINTS_FILE)) {
-        const content = fs.readFileSync(MANAGER_POINTS_FILE, 'utf8');
+      if (await fileExists(MANAGER_POINTS_FILE)) {
+        const content = await fsp.readFile(MANAGER_POINTS_FILE, 'utf8');
         settings = JSON.parse(content);
       } else {
         settings.createdAt = new Date().toISOString();
@@ -1406,7 +1516,7 @@ function setupPointsSettingsAPI(app) {
       };
       settings.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(MANAGER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(MANAGER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('Manager points settings saved:', settings);
 

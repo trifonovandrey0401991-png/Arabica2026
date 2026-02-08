@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../widgets/pin_input_widget.dart';
-import 'phone_entry_page.dart';
+import '../../../features/clients/pages/registration_page.dart';
 import 'forgot_pin_page.dart';
 
 /// Страница ввода PIN-кода
@@ -32,6 +32,11 @@ class PinEntryPage extends StatefulWidget {
 class _PinEntryPageState extends State<PinEntryPage> {
   final AuthService _authService = AuthService();
   final BiometricService _biometricService = BiometricService();
+
+  // Брендовые цвета Arabica
+  static const Color _primaryColor = Color(0xFF1A4D4D);
+  static const Color _primaryDark = Color(0xFF0D3333);
+  static const Color _accentGold = Color(0xFFD4AF37);
 
   bool _isLoading = false;
   bool _showError = false;
@@ -82,6 +87,10 @@ class _PinEntryPageState extends State<PinEntryPage> {
     });
 
     if (result.success) {
+      // Если биометрия доступна но НЕ включена - предложить включить
+      if (_biometricAvailable && !_biometricEnabled) {
+        await _offerEnableBiometric();
+      }
       widget.onSuccess?.call();
     } else {
       setState(() {
@@ -97,6 +106,88 @@ class _PinEntryPageState extends State<PinEntryPage> {
           });
         }
       });
+    }
+  }
+
+  Future<void> _offerEnableBiometric() async {
+    if (!mounted) return;
+
+    final enable = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Включить $_biometricName?'),
+        content: Text(
+          'Хотите использовать $_biometricName для быстрого входа в приложение?\n\n'
+          'Это позволит входить без ввода PIN-кода.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Не сейчас'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Включить'),
+          ),
+        ],
+      ),
+    );
+
+    if (enable == true && mounted) {
+      await _authService.enableBiometric();
+      setState(() {
+        _biometricEnabled = true;
+      });
+    }
+  }
+
+  Future<void> _onBiometricButtonPressed() async {
+    if (_biometricEnabled) {
+      // Биометрия уже включена - просто авторизуемся
+      await _authenticateWithBiometric();
+    } else {
+      // Биометрия не включена - предложить включить
+      final enable = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Включить $_biometricName?'),
+          content: Text(
+            'Для использования $_biometricName необходимо сначала включить эту функцию.\n\n'
+            'После включения вы сможете входить без ввода PIN-кода.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Включить'),
+            ),
+          ],
+        ),
+      );
+
+      if (enable == true && mounted) {
+        // Сначала проверяем биометрию
+        final authenticated = await _biometricService.authenticate(
+          reason: 'Подтвердите личность для включения $_biometricName',
+        );
+
+        if (authenticated && mounted) {
+          await _authService.enableBiometric();
+          setState(() {
+            _biometricEnabled = true;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$_biometricName успешно включён!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -154,9 +245,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => PhoneEntryPage(
-            onSuccess: widget.onSuccess,
-          ),
+          builder: (context) => const RegistrationPage(),
         ),
       );
     }
@@ -184,13 +273,14 @@ class _PinEntryPageState extends State<PinEntryPage> {
     );
 
     if (confirmed == true && mounted) {
-      // Получаем текущую сессию для номера телефона
+      // Получаем текущую сессию для номера телефона и имени
       final session = await _authService.getCurrentSession();
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => ForgotPinPage(
               phone: session?.phone,
+              name: session?.name,
               onSuccess: widget.onSuccess,
             ),
           ),
@@ -202,89 +292,156 @@ class _PinEntryPageState extends State<PinEntryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                // Кнопка выхода
-                if (widget.showLogout)
-                  Align(
-                    alignment: Alignment.topRight,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _primaryColor,
+              _primaryDark,
+              Color(0xFF0A2626),
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  // Верхняя панель с кнопкой выхода
+                  if (widget.showLogout)
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: TextButton(
+                          onPressed: _logout,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                          ),
+                          child: const Text('Выйти'),
+                        ),
+                      ),
+                    ),
+
+                  // Логотип Arabica
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withOpacity(0.1),
+                      border: Border.all(
+                        color: _accentGold.withOpacity(0.4),
+                        width: 2,
+                      ),
+                    ),
+                    child: Image.asset(
+                      'assets/images/arabica_logo.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // PIN ввод
+                  Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: TextButton(
-                        onPressed: _logout,
-                        child: const Text('Выйти'),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: PinInputWidget(
+                              pinLength: 4,
+                              title: 'Введите PIN-код',
+                              subtitle: 'Для входа в приложение',
+                              onCompleted: _onPinEntered,
+                              showError: _showError,
+                              errorMessage: _errorMessage,
+                              clear: _clearPin,
+                              lightTheme: true,
+                              accentColor: _accentGold,
+                            ),
+                          ),
+
+                          // Кнопка биометрии (показываем если доступна)
+                          if (_biometricAvailable) ...[
+                            const SizedBox(height: 16),
+                            OutlinedButton.icon(
+                              onPressed: _onBiometricButtonPressed,
+                              icon: Icon(
+                                _biometricName == 'Face ID'
+                                    ? Icons.face
+                                    : Icons.fingerprint,
+                                color: _accentGold,
+                                size: 28,
+                              ),
+                              label: Text(
+                                _biometricEnabled
+                                    ? 'Войти через $_biometricName'
+                                    : 'Использовать $_biometricName',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: BorderSide(
+                                  color: _accentGold.withOpacity(0.6),
+                                  width: 1.5,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          // Забыли PIN
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: _forgotPin,
+                            style: TextButton.styleFrom(
+                              foregroundColor: _accentGold,
+                            ),
+                            child: const Text(
+                              'Забыли PIN-код?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ),
                     ),
                   ),
+                ],
+              ),
 
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 32),
-
-                        // PIN ввод
-                        Expanded(
-                          child: PinInputWidget(
-                            pinLength: 4,
-                            title: 'Введите PIN-код',
-                            subtitle: 'Для входа в приложение',
-                            onCompleted: _onPinEntered,
-                            showError: _showError,
-                            errorMessage: _errorMessage,
-                            clear: _clearPin,
-                          ),
-                        ),
-
-                        // Кнопка биометрии
-                        if (_biometricAvailable && _biometricEnabled) ...[
-                          const SizedBox(height: 16),
-                          OutlinedButton.icon(
-                            onPressed: _authenticateWithBiometric,
-                            icon: Icon(
-                              _biometricName == 'Face ID'
-                                  ? Icons.face
-                                  : Icons.fingerprint,
-                            ),
-                            label: Text('Войти через $_biometricName'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ],
-
-                        // Забыли PIN
-                        const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: _forgotPin,
-                          child: const Text('Забыли PIN-код?'),
-                        ),
-                      ],
+              // Индикатор загрузки
+              if (_isLoading)
+                Container(
+                  color: Colors.black45,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(_accentGold),
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
-
-            // Индикатор загрузки
-            if (_isLoading)
-              Container(
-                color: Colors.black26,
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

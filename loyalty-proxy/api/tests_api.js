@@ -1,12 +1,33 @@
-const fs = require('fs');
+/**
+ * Tests API
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const TEST_QUESTIONS_DIR = '/var/www/test-questions';
 const TEST_RESULTS_DIR = '/var/www/test-results';
 
-[TEST_QUESTIONS_DIR, TEST_RESULTS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist
+(async () => {
+  for (const dir of [TEST_QUESTIONS_DIR, TEST_RESULTS_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+})();
 
 function setupTestsAPI(app) {
   // ===== TEST QUESTIONS =====
@@ -16,12 +37,12 @@ function setupTestsAPI(app) {
       console.log('GET /api/test-questions');
       const questions = [];
 
-      if (fs.existsSync(TEST_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(TEST_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(TEST_QUESTIONS_DIR)) {
+        const files = (await fsp.readdir(TEST_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(TEST_QUESTIONS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(TEST_QUESTIONS_DIR, file), 'utf8');
             questions.push(JSON.parse(content));
           } catch (e) {
             console.error(`Error reading ${file}:`, e);
@@ -49,7 +70,7 @@ function setupTestsAPI(app) {
       question.updatedAt = new Date().toISOString();
 
       const filePath = path.join(TEST_QUESTIONS_DIR, `${question.id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
 
       res.json({ success: true, question });
     } catch (error) {
@@ -65,14 +86,15 @@ function setupTestsAPI(app) {
 
       const filePath = path.join(TEST_QUESTIONS_DIR, `${questionId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const question = JSON.parse(content);
       const updated = { ...question, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, question: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -86,8 +108,8 @@ function setupTestsAPI(app) {
 
       const filePath = path.join(TEST_QUESTIONS_DIR, `${questionId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Question not found' });
@@ -105,12 +127,12 @@ function setupTestsAPI(app) {
       const { phone, shopAddress } = req.query;
       const results = [];
 
-      if (fs.existsSync(TEST_RESULTS_DIR)) {
-        const files = fs.readdirSync(TEST_RESULTS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(TEST_RESULTS_DIR)) {
+        const files = (await fsp.readdir(TEST_RESULTS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(TEST_RESULTS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(TEST_RESULTS_DIR, file), 'utf8');
             const result = JSON.parse(content);
 
             if (phone && result.phone !== phone) continue;
@@ -142,7 +164,7 @@ function setupTestsAPI(app) {
       result.completedAt = result.completedAt || new Date().toISOString();
 
       const filePath = path.join(TEST_RESULTS_DIR, `${result.id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(result, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(result, null, 2), 'utf8');
 
       res.json({ success: true, result });
     } catch (error) {
@@ -157,8 +179,9 @@ function setupTestsAPI(app) {
 
       const filePath = path.join(TEST_RESULTS_DIR, `${resultId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const result = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        const result = JSON.parse(content);
         res.json({ success: true, result });
       } else {
         res.status(404).json({ success: false, error: 'Result not found' });

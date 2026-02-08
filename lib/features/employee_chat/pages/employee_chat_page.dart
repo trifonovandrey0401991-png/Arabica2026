@@ -11,7 +11,7 @@ import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
 import 'group_info_page.dart';
 
-/// Страница чата с улучшенным визуалом
+/// Страница чата — dark emerald стиль
 class EmployeeChatPage extends StatefulWidget {
   final EmployeeChat chat;
   final String userPhone;
@@ -32,6 +32,11 @@ class EmployeeChatPage extends StatefulWidget {
 
 class _EmployeeChatPageState extends State<EmployeeChatPage>
     with TickerProviderStateMixin {
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -359,7 +364,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
           duration: const Duration(seconds: 30),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          backgroundColor: const Color(0xFF004D40),
+          backgroundColor: _emerald,
         ),
       );
     }
@@ -407,9 +412,12 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: _night.withOpacity(0.98),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border(
+            top: BorderSide(color: Colors.white.withOpacity(0.1)),
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -420,28 +428,38 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                 height: 4,
                 margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Text(
                   'Отправить фото',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
                 ),
               ),
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    color: _emerald.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.camera_alt, color: Color(0xFF004D40)),
+                  child: Icon(Icons.camera_alt, color: Colors.white.withOpacity(0.8)),
                 ),
-                title: const Text('Камера'),
-                subtitle: const Text('Сделать фото'),
+                title: Text(
+                  'Камера',
+                  style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                ),
+                subtitle: Text(
+                  'Сделать фото',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _takePhoto();
@@ -451,13 +469,19 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
+                    color: Colors.purple.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.photo_library, color: Colors.purple),
+                  child: Icon(Icons.photo_library, color: Colors.purple[300]),
                 ),
-                title: const Text('Галерея'),
-                subtitle: const Text('Выбрать из галереи'),
+                title: Text(
+                  'Галерея',
+                  style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                ),
+                subtitle: Text(
+                  'Выбрать из галереи',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickAndSendImage();
@@ -475,33 +499,46 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: _night.withOpacity(0.98),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.delete_sweep, color: Colors.red),
             ),
             const SizedBox(width: 12),
-            const Text('Очистить чат'),
+            Text(
+              'Очистить чат',
+              style: TextStyle(color: Colors.white.withOpacity(0.9)),
+            ),
           ],
         ),
-        content: const Text('Выберите период для удаления сообщений:'),
+        content: Text(
+          'Выберите период для удаления сообщений:',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _confirmClearMessages('previous_month', 'за предыдущий месяц');
             },
-            child: const Text('За прошлый месяц'),
+            child: Text(
+              'За прошлый месяц',
+              style: TextStyle(color: Colors.white.withOpacity(0.8)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -523,15 +560,23 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: _night.withOpacity(0.98),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Подтверждение'),
+        title: Text(
+          'Подтверждение',
+          style: TextStyle(color: Colors.white.withOpacity(0.9)),
+        ),
         content: Text(
           'Будут удалены $periodText сообщения.\nЭто действие нельзя отменить.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -574,7 +619,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Функция пересылки будет доступна в следующем обновлении'),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: _emerald,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -664,139 +709,327 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: _isSearching ? _buildSearchAppBar() : _buildNormalAppBar(),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF004D40).withOpacity(0.02),
-              Colors.grey[50]!,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.15, 0.4],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // AppBar
+              _isSearching ? _buildSearchHeader() : _buildAppBar(),
+              // Результаты поиска
+              if (_isSearching && _searchResults.isNotEmpty)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
+                    ),
+                  ),
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final msg = _searchResults[index];
+                      return ListTile(
+                        dense: true,
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _emerald.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.message,
+                            color: Colors.white.withOpacity(0.7),
+                            size: 18,
+                          ),
+                        ),
+                        title: Text(
+                          msg.text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                        ),
+                        subtitle: Text(
+                          '${msg.senderName} • ${msg.formattedTime}',
+                          style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4)),
+                        ),
+                        onTap: () => _scrollToMessage(msg.id),
+                      );
+                    },
+                  ),
+                ),
+              if (_isSearching && _isSearchLoading)
+                LinearProgressIndicator(
+                  backgroundColor: Colors.white.withOpacity(0.05),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.4)),
+                ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                    : _messages.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              final message = _messages[index];
+                              final isMe = message.senderPhone == widget.userPhone;
+
+                              bool showDate = false;
+                              if (index == 0) {
+                                showDate = true;
+                              } else {
+                                final prevMessage = _messages[index - 1];
+                                final prevDate = DateTime(
+                                  prevMessage.timestamp.year,
+                                  prevMessage.timestamp.month,
+                                  prevMessage.timestamp.day,
+                                );
+                                final currDate = DateTime(
+                                  message.timestamp.year,
+                                  message.timestamp.month,
+                                  message.timestamp.day,
+                                );
+                                showDate = prevDate != currDate;
+                              }
+
+                              return Column(
+                                children: [
+                                  if (showDate) _buildDateSeparator(message.timestamp),
+                                  ChatMessageBubble(
+                                    message: message,
+                                    isMe: isMe,
+                                    showSenderName:
+                                        widget.chat.type != EmployeeChatType.private && !isMe,
+                                    userPhone: widget.userPhone,
+                                    onReactionTap: (reaction) => _handleReaction(message, reaction),
+                                    onForwardTap: () => _showForwardDialog(message),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+              ),
+              // Typing indicator
+              if (_typingPhone != null) _buildTypingIndicator(),
+              ChatInputField(
+                controller: _messageController,
+                isSending: _isSending,
+                onSend: () {
+                  ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
+                  _sendMessage();
+                },
+                onAttach: _showImageSourceDialog,
+                onChanged: _onTextChanged,
+              ),
             ],
           ),
         ),
-        child: Column(
-          children: [
-            // Результаты поиска
-            if (_isSearching && _searchResults.isNotEmpty)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: widget.chat.type == EmployeeChatType.group ? _openGroupInfo : null,
+              child: Row(
+                children: [
+                  // Аватар для групп
+                  if (widget.chat.type == EmployeeChatType.group) ...[
+                    Hero(
+                      tag: 'group_avatar_${widget.chat.id}',
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: widget.chat.imageUrl == null
+                              ? Colors.purple.withOpacity(0.3)
+                              : null,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.15)),
+                          image: widget.chat.imageUrl != null
+                              ? DecorationImage(
+                                  image: NetworkImage(widget.chat.imageUrl!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: widget.chat.imageUrl == null
+                            ? const Icon(Icons.group, size: 22, color: Colors.white)
+                            : null,
+                      ),
                     ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.chat.displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (widget.chat.type == EmployeeChatType.shop)
+                          Text(
+                            widget.chat.shopAddress ?? '',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                          ),
+                        if (widget.chat.type == EmployeeChatType.group)
+                          Text(
+                            '${widget.chat.participantsCount} участников',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7), size: 22),
+            onPressed: () => setState(() => _isSearching = true),
+          ),
+          if (widget.chat.type == EmployeeChatType.group)
+            IconButton(
+              icon: Icon(Icons.info_outline_rounded, color: Colors.white.withOpacity(0.7), size: 22),
+              onPressed: _openGroupInfo,
+            ),
+          if (widget.isAdmin)
+            IconButton(
+              icon: Icon(Icons.delete_sweep_rounded, color: Colors.white.withOpacity(0.7), size: 22),
+              onPressed: _showClearMessagesDialog,
+            ),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert_rounded, color: Colors.white.withOpacity(0.7), size: 22),
+            color: _night.withOpacity(0.98),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onSelected: (value) {
+              if (value == 'refresh') _loadMessages();
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'refresh',
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh, color: Colors.white.withOpacity(0.7)),
+                    const SizedBox(width: 12),
+                    Text('Обновить', style: TextStyle(color: Colors.white.withOpacity(0.9))),
                   ],
                 ),
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _searchResults.length,
-                  itemBuilder: (context, index) {
-                    final msg = _searchResults[index];
-                    return ListTile(
-                      dense: true,
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF004D40).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.message,
-                          color: Color(0xFF004D40),
-                          size: 18,
-                        ),
-                      ),
-                      title: Text(
-                        msg.text,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        '${msg.senderName} • ${msg.formattedTime}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                      onTap: () => _scrollToMessage(msg.id),
-                    );
-                  },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.arrow_back_rounded, color: Colors.white.withOpacity(0.8)),
+            onPressed: () {
+              setState(() {
+                _isSearching = false;
+                _searchController.clear();
+                _searchResults = [];
+              });
+            },
+          ),
+          Expanded(
+            child: Container(
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+              ),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
+                cursorColor: Colors.white,
+                decoration: InputDecoration(
+                  hintText: 'Поиск сообщений...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
+                onChanged: _searchMessages,
               ),
-            if (_isSearching && _isSearchLoading)
-              LinearProgressIndicator(
-                backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
-              ),
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF004D40)),
-                    )
-                  : _messages.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, index) {
-                            final message = _messages[index];
-                            final isMe = message.senderPhone == widget.userPhone;
-
-                            bool showDate = false;
-                            if (index == 0) {
-                              showDate = true;
-                            } else {
-                              final prevMessage = _messages[index - 1];
-                              final prevDate = DateTime(
-                                prevMessage.timestamp.year,
-                                prevMessage.timestamp.month,
-                                prevMessage.timestamp.day,
-                              );
-                              final currDate = DateTime(
-                                message.timestamp.year,
-                                message.timestamp.month,
-                                message.timestamp.day,
-                              );
-                              showDate = prevDate != currDate;
-                            }
-
-                            return Column(
-                              children: [
-                                if (showDate) _buildDateSeparator(message.timestamp),
-                                ChatMessageBubble(
-                                  message: message,
-                                  isMe: isMe,
-                                  showSenderName:
-                                      widget.chat.type != EmployeeChatType.private && !isMe,
-                                  userPhone: widget.userPhone,
-                                  onReactionTap: (reaction) => _handleReaction(message, reaction),
-                                  onForwardTap: () => _showForwardDialog(message),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
             ),
-            // Typing indicator
-            if (_typingPhone != null) _buildTypingIndicator(),
-            ChatInputField(
-              controller: _messageController,
-              isSending: _isSending,
-              onSend: () {
-                ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
-                _sendMessage();
+          ),
+          if (_searchController.text.isNotEmpty)
+            IconButton(
+              icon: Icon(Icons.close_rounded, color: Colors.white.withOpacity(0.7)),
+              onPressed: () {
+                _searchController.clear();
+                setState(() => _searchResults = []);
               },
-              onAttach: _showImageSourceDialog,
-              onChanged: _onTextChanged,
             ),
-          ],
+        ],
+      ),
+    );
+  }
+
+  void _openGroupInfo() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroupInfoPage(
+          chat: widget.chat,
+          currentUserPhone: widget.userPhone,
         ),
       ),
     );
+
+    if (result == 'left' || result == 'deleted') {
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 
   Widget _buildEmptyState() {
@@ -805,16 +1038,17 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 100,
-            height: 100,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: const Color(0xFF004D40).withOpacity(0.1),
-              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.chat_bubble_outline,
-              size: 48,
-              color: Color(0xFF004D40),
+              size: 32,
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
           const SizedBox(height: 20),
@@ -822,16 +1056,16 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             'Нет сообщений',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.8),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Начните общение прямо сейчас!',
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
         ],
@@ -859,8 +1093,8 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                       child: Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF004D40),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.5),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -876,208 +1110,11 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             style: TextStyle(
               fontSize: 12,
               fontStyle: FontStyle.italic,
-              color: Colors.grey[600],
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  AppBar _buildNormalAppBar() {
-    return AppBar(
-      elevation: 0,
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF00695C), Color(0xFF004D40)],
-          ),
-        ),
-      ),
-      title: InkWell(
-        onTap: widget.chat.type == EmployeeChatType.group ? _openGroupInfo : null,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              // Аватар для групп
-              if (widget.chat.type == EmployeeChatType.group) ...[
-                Hero(
-                  tag: 'group_avatar_${widget.chat.id}',
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: widget.chat.imageUrl == null
-                          ? LinearGradient(
-                              colors: [Colors.purple[300]!, Colors.purple[500]!],
-                            )
-                          : null,
-                      shape: BoxShape.circle,
-                      image: widget.chat.imageUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(widget.chat.imageUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: widget.chat.imageUrl == null
-                        ? const Icon(Icons.group, size: 22, color: Colors.white)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.chat.displayName,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (widget.chat.type == EmployeeChatType.shop)
-                      Text(
-                        widget.chat.shopAddress ?? '',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    if (widget.chat.type == EmployeeChatType.group)
-                      Text(
-                        '${widget.chat.participantsCount} участников',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.search_rounded),
-          onPressed: () => setState(() => _isSearching = true),
-          tooltip: 'Поиск',
-        ),
-        if (widget.chat.type == EmployeeChatType.group)
-          IconButton(
-            icon: const Icon(Icons.info_outline_rounded),
-            onPressed: _openGroupInfo,
-            tooltip: 'О группе',
-          ),
-        if (widget.isAdmin)
-          IconButton(
-            icon: const Icon(Icons.delete_sweep_rounded),
-            onPressed: _showClearMessagesDialog,
-            tooltip: 'Очистить',
-          ),
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert_rounded),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          onSelected: (value) {
-            if (value == 'refresh') _loadMessages();
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'refresh',
-              child: Row(
-                children: [
-                  Icon(Icons.refresh, color: Color(0xFF004D40)),
-                  SizedBox(width: 12),
-                  Text('Обновить'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  void _openGroupInfo() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => GroupInfoPage(
-          chat: widget.chat,
-          currentUserPhone: widget.userPhone,
-        ),
-      ),
-    );
-
-    if (result == 'left' || result == 'deleted') {
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    }
-  }
-
-  AppBar _buildSearchAppBar() {
-    return AppBar(
-      elevation: 0,
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF00695C), Color(0xFF004D40)],
-          ),
-        ),
-      ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded),
-        onPressed: () {
-          setState(() {
-            _isSearching = false;
-            _searchController.clear();
-            _searchResults = [];
-          });
-        },
-      ),
-      title: TextField(
-        controller: _searchController,
-        autofocus: true,
-        style: const TextStyle(color: Colors.white),
-        cursorColor: Colors.white,
-        decoration: InputDecoration(
-          hintText: 'Поиск сообщений...',
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-          border: InputBorder.none,
-        ),
-        onChanged: _searchMessages,
-      ),
-      actions: [
-        if (_searchController.text.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.close_rounded),
-            onPressed: () {
-              _searchController.clear();
-              setState(() => _searchResults = []);
-            },
-          ),
-      ],
     );
   }
 
@@ -1106,7 +1143,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                 gradient: LinearGradient(
                   colors: [
                     Colors.transparent,
-                    Colors.grey[300]!,
+                    Colors.white.withOpacity(0.15),
                   ],
                 ),
               ),
@@ -1116,20 +1153,14 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Text(
               dateText,
               style: TextStyle(
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -1141,7 +1172,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.grey[300]!,
+                    Colors.white.withOpacity(0.15),
                     Colors.transparent,
                   ],
                 ),

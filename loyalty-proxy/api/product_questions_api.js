@@ -1,4 +1,11 @@
-const fs = require('fs');
+/**
+ * Product Questions API
+ * Вопросы о товарах от клиентов
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Push-уведомления
@@ -11,13 +18,31 @@ const {
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
-const PRODUCT_QUESTIONS_DIR = `${DATA_DIR}/product-questions`;
-const PRODUCT_QUESTION_DIALOGS_DIR = `${DATA_DIR}/product-question-dialogs`;
-const PRODUCT_QUESTION_PHOTOS_DIR = `${DATA_DIR}/product-question-photos`;
+const PRODUCT_QUESTIONS_DIR = path.join(DATA_DIR, 'product-questions');
+const PRODUCT_QUESTION_DIALOGS_DIR = path.join(DATA_DIR, 'product-question-dialogs');
+const PRODUCT_QUESTION_PHOTOS_DIR = path.join(DATA_DIR, 'product-question-photos');
 
-[PRODUCT_QUESTIONS_DIR, PRODUCT_QUESTION_DIALOGS_DIR, PRODUCT_QUESTION_PHOTOS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Initialize directories on module load
+(async () => {
+  try {
+    const dirs = [PRODUCT_QUESTIONS_DIR, PRODUCT_QUESTION_DIALOGS_DIR, PRODUCT_QUESTION_PHOTOS_DIR];
+    for (const dir of dirs) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  } catch (e) {
+    console.error('Failed to create product-questions directories:', e);
+  }
+})();
 
 function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== HELPER FUNCTIONS =====
@@ -30,17 +55,16 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     const today = now.toISOString().split('T')[0];
     const monthKey = today.substring(0, 7); // YYYY-MM
 
-    const PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
-    if (!fs.existsSync(PENALTIES_DIR)) {
-      fs.mkdirSync(PENALTIES_DIR, { recursive: true });
-    }
+    const PENALTIES_DIR = path.join(DATA_DIR, 'efficiency-penalties');
+    await fsp.mkdir(PENALTIES_DIR, { recursive: true });
 
     const penaltiesFile = path.join(PENALTIES_DIR, `${monthKey}.json`);
     let penalties = [];
 
-    if (fs.existsSync(penaltiesFile)) {
+    if (await fileExists(penaltiesFile)) {
       try {
-        penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+        const content = await fsp.readFile(penaltiesFile, 'utf8');
+        penalties = JSON.parse(content);
       } catch (e) {
         console.error('Error reading penalties file:', e);
       }
@@ -75,7 +99,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
     penalties.push(bonus);
 
-    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
     console.log(`✅ Bonus assigned: ${senderName} (+${points} points) for question ${questionId}`);
   }
 
@@ -87,12 +111,13 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const { shopAddress } = req.query;
       const questions = [];
 
-      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(content);
 
             // Фильтр по магазину - проверяем shops[] массив или старый формат
@@ -134,7 +159,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   // GET /api/product-questions/unanswered-count - Получить количество неотвеченных вопросов для сотрудников
   // Считает вопросы, на которые ещё не ответили (isAnswered = false)
-  app.get('/api/product-questions/unanswered-count', (req, res) => {
+  app.get('/api/product-questions/unanswered-count', async (req, res) => {
     try {
       console.log('GET /api/product-questions/unanswered-count');
 
@@ -142,12 +167,13 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const EXPIRED_MINUTES = 30;
       const now = new Date();
 
-      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(data);
 
             // Проверяем, истёк ли срок ответа (более 30 минут)
@@ -233,7 +259,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       };
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
 
       console.log('✅ Question created:', questionId);
 
@@ -258,8 +284,9 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        const question = JSON.parse(content);
         res.json({ success: true, question });
       } else {
         res.status(404).json({ success: false, error: 'Question not found' });
@@ -277,14 +304,15 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const question = JSON.parse(content);
       const updated = { ...question, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, question: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -298,8 +326,8 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Question not found' });
@@ -326,11 +354,12 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const question = JSON.parse(content);
       const timestamp = new Date().toISOString();
       const messageId = `msg_${Date.now()}`;
 
@@ -379,7 +408,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         });
       }
 
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
 
       console.log('✅ Answer added to question:', questionId, 'by shop:', shopAddress);
 
@@ -388,11 +417,12 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         const questionAge = (new Date() - new Date(question.timestamp)) / (1000 * 60); // минуты
 
         // Загружаем настройки баллов
-        const settingsFile = path.join(`${DATA_DIR}/points-settings`, 'product_search_points_settings.json');
+        const settingsFile = path.join(DATA_DIR, 'points-settings', 'product_search_points_settings.json');
         let settings = { answeredPoints: 0.2, answerTimeoutMinutes: 30 };
-        if (fs.existsSync(settingsFile)) {
+        if (await fileExists(settingsFile)) {
           try {
-            settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+            const settingsContent = await fsp.readFile(settingsFile, 'utf8');
+            settings = JSON.parse(settingsContent);
           } catch (e) {
             console.error('Error loading product search settings:', e);
           }
@@ -430,7 +460,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // POST /api/product-questions/:questionId/mark-read - Пометить сообщения вопроса как прочитанные
-  app.post('/api/product-questions/:questionId/mark-read', (req, res) => {
+  app.post('/api/product-questions/:questionId/mark-read', async (req, res) => {
     try {
       const { questionId } = req.params;
       const { readerType } = req.body; // 'client' or 'employee'
@@ -438,11 +468,12 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Question not found' });
       }
 
-      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const question = JSON.parse(content);
 
       // Помечаем сообщения как прочитанные
       if (question.messages && question.messages.length > 0) {
@@ -455,7 +486,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         });
       }
 
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
       console.log('✅ Messages marked as read for question:', questionId);
 
       res.json({ success: true });
@@ -466,20 +497,22 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // POST /api/product-questions/client/:phone/mark-all-read - Пометить все сообщения клиента как прочитанные
-  app.post('/api/product-questions/client/:phone/mark-all-read', (req, res) => {
+  app.post('/api/product-questions/client/:phone/mark-all-read', async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('POST /api/product-questions/client/:phone/mark-all-read', phone);
 
       let markedCount = 0;
 
-      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
-        files.forEach(file => {
+        for (const file of files) {
           try {
             const filePath = path.join(PRODUCT_QUESTIONS_DIR, file);
-            const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            const content = await fsp.readFile(filePath, 'utf8');
+            const question = JSON.parse(content);
 
             if (question.clientPhone === phone) {
               let hasChanges = false;
@@ -494,14 +527,14 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
               }
 
               if (hasChanges) {
-                fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+                await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
                 markedCount++;
               }
             }
           } catch (e) {
             console.error(`Error processing ${file}:`, e);
           }
-        });
+        }
       }
 
       console.log(`✅ Marked ${markedCount} questions as read for client ${phone}`);
@@ -521,8 +554,9 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${questionId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        const dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        const dialog = JSON.parse(content);
         res.json({ success: true, dialog });
       } else {
         res.json({ success: true, dialog: { questionId, messages: [] } });
@@ -541,15 +575,16 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${questionId}.json`);
 
       let dialog = { questionId, messages: [] };
-      if (fs.existsSync(filePath)) {
-        dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const content = await fsp.readFile(filePath, 'utf8');
+        dialog = JSON.parse(content);
       }
 
       message.timestamp = message.timestamp || new Date().toISOString();
       message.id = message.id || `msg_${Date.now()}`;
       dialog.messages.push(message);
 
-      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       res.json({ success: true, message });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -608,7 +643,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       }
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
 
       // Отправить push сотрудникам только если есть сообщение
       if (text && dialog.messages.length > 0) {
@@ -628,19 +663,20 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 2. GET /api/product-question-dialogs/client/:phone - Получить диалоги клиента
-  app.get('/api/product-question-dialogs/client/:phone', (req, res) => {
+  app.get('/api/product-question-dialogs/client/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('GET /api/product-question-dialogs/client/:phone', phone);
 
       const dialogs = [];
 
-      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
             const dialog = JSON.parse(data);
 
             if (dialog.clientPhone === phone) {
@@ -664,18 +700,19 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 3. GET /api/product-question-dialogs/all - Получить все диалоги (для администраторов)
-  app.get('/api/product-question-dialogs/all', (req, res) => {
+  app.get('/api/product-question-dialogs/all', async (req, res) => {
     try {
       console.log('GET /api/product-question-dialogs/all');
 
       const dialogs = [];
 
-      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
             const dialog = JSON.parse(data);
             dialogs.push(dialog);
           } catch (e) {
@@ -695,19 +732,20 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 3.5. GET /api/product-question-dialogs/shop/:shopAddress - Получить диалоги магазина
-  app.get('/api/product-question-dialogs/shop/:shopAddress', (req, res) => {
+  app.get('/api/product-question-dialogs/shop/:shopAddress', async (req, res) => {
     try {
       const { shopAddress } = req.params;
       console.log('GET /api/product-question-dialogs/shop/:shopAddress', shopAddress);
 
       const dialogs = [];
 
-      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
             const dialog = JSON.parse(data);
 
             if (dialog.shopAddress === shopAddress) {
@@ -731,7 +769,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   // 3.6. GET /api/product-question-dialogs/unviewed-counts - Получить количество непросмотренных отвеченных диалогов и вопросов по магазинам
   // ВАЖНО: этот маршрут должен быть ПЕРЕД маршрутом /:dialogId, иначе "unviewed-counts" воспринимается как dialogId
-  app.get('/api/product-question-dialogs/unviewed-counts', (req, res) => {
+  app.get('/api/product-question-dialogs/unviewed-counts', async (req, res) => {
     try {
       console.log('GET /api/product-question-dialogs/unviewed-counts');
 
@@ -739,12 +777,13 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       let totalUnviewed = 0;
 
       // 1. Считаем непросмотренные персональные диалоги
-      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
             const dialog = JSON.parse(data);
 
             // Считаем только отвеченные и непросмотренные админом диалоги
@@ -760,12 +799,13 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       }
 
       // 2. Считаем непросмотренные общие вопросы (ProductQuestion)
-      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(data);
 
             // Проверяем каждый магазин в вопросе
@@ -793,18 +833,18 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 4. GET /api/product-question-dialogs/:dialogId - Получить конкретный диалог
-  app.get('/api/product-question-dialogs/:dialogId', (req, res) => {
+  app.get('/api/product-question-dialogs/:dialogId', async (req, res) => {
     try {
       const { dialogId } = req.params;
       console.log('GET /api/product-question-dialogs/:dialogId', dialogId);
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Dialog not found' });
       }
 
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = await fsp.readFile(filePath, 'utf8');
       const dialog = JSON.parse(data);
 
       res.json({ success: true, dialog });
@@ -823,11 +863,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Dialog not found' });
       }
 
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = await fsp.readFile(filePath, 'utf8');
       const dialog = JSON.parse(data);
 
       const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -858,7 +898,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         dialog.answeredAt = timestamp;
       }
 
-      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
 
       // Отправить push уведомления для персонального диалога
       try {
@@ -882,7 +922,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 6. POST /api/product-question-dialogs/:dialogId/mark-read - Пометить диалог как прочитанный
-  app.post('/api/product-question-dialogs/:dialogId/mark-read', (req, res) => {
+  app.post('/api/product-question-dialogs/:dialogId/mark-read', async (req, res) => {
     try {
       const { dialogId } = req.params;
       const { readerType } = req.body; // 'client' or 'employee'
@@ -890,11 +930,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Dialog not found' });
       }
 
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = await fsp.readFile(filePath, 'utf8');
       const dialog = JSON.parse(data);
 
       if (readerType === 'client') {
@@ -915,7 +955,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         });
       }
 
-      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
 
       console.log('✅ Dialog marked as read:', dialogId, 'by', readerType);
       res.json({ success: true, dialog });
@@ -926,24 +966,24 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 7. POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin - Пометить диалог как просмотренный админом
-  app.post('/api/product-question-dialogs/:dialogId/mark-viewed-by-admin', (req, res) => {
+  app.post('/api/product-question-dialogs/:dialogId/mark-viewed-by-admin', async (req, res) => {
     try {
       const { dialogId } = req.params;
       console.log('POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin', dialogId);
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Dialog not found' });
       }
 
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = await fsp.readFile(filePath, 'utf8');
       const dialog = JSON.parse(data);
 
       dialog.viewedByAdmin = true;
       dialog.viewedByAdminAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
 
       console.log('✅ Dialog marked as viewed by admin:', dialogId);
       res.json({ success: true, dialog });
@@ -954,7 +994,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 8. POST /api/product-question-dialogs/mark-shop-viewed-by-admin - Пометить все диалоги и вопросы магазина как просмотренные
-  app.post('/api/product-question-dialogs/mark-shop-viewed-by-admin', (req, res) => {
+  app.post('/api/product-question-dialogs/mark-shop-viewed-by-admin', async (req, res) => {
     try {
       const { shopAddress } = req.body;
       console.log('POST /api/product-question-dialogs/mark-shop-viewed-by-admin', shopAddress);
@@ -968,19 +1008,20 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const timestamp = new Date().toISOString();
 
       // 1. Маркируем персональные диалоги
-      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
             const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, file);
-            const data = fs.readFileSync(filePath, 'utf8');
+            const data = await fsp.readFile(filePath, 'utf8');
             const dialog = JSON.parse(data);
 
             if (dialog.shopAddress === shopAddress && dialog.isAnswered && !dialog.viewedByAdmin) {
               dialog.viewedByAdmin = true;
               dialog.viewedByAdminAt = timestamp;
-              fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+              await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
               markedDialogsCount++;
             }
           } catch (e) {
@@ -990,13 +1031,14 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       }
 
       // 2. Маркируем общие вопросы (ProductQuestion)
-      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
             const filePath = path.join(PRODUCT_QUESTIONS_DIR, file);
-            const data = fs.readFileSync(filePath, 'utf8');
+            const data = await fsp.readFile(filePath, 'utf8');
             const question = JSON.parse(data);
 
             let questionModified = false;
@@ -1014,7 +1056,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
             }
 
             if (questionModified) {
-              fs.writeFileSync(filePath, JSON.stringify(question, null, 2));
+              await fsp.writeFile(filePath, JSON.stringify(question, null, 2));
             }
           } catch (e) {
             console.error(`Error processing question ${file}:`, e);
@@ -1035,18 +1077,19 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== CLIENT ENDPOINTS =====
 
   // GET /api/product-questions/client/:phone - Получить все вопросы клиента (для "Мои диалоги")
-  app.get('/api/product-questions/client/:phone', (req, res) => {
+  app.get('/api/product-questions/client/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('GET /api/product-questions/client/:phone', phone);
 
       const questions = [];
-      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(data);
 
             if (question.clientPhone === phone) {
@@ -1101,19 +1144,20 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== GROUPING ENDPOINT (1 endpoint) =====
 
   // GET /api/product-questions/client/:phone/grouped - Группировка диалогов по магазинам
-  app.get('/api/product-questions/client/:phone/grouped', (req, res) => {
+  app.get('/api/product-questions/client/:phone/grouped', async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('GET /api/product-questions/client/:phone/grouped', phone);
 
       // Получить все вопросы клиента
       const questions = [];
-      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
-        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
+        const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(data);
 
             if (question.clientPhone === phone) {
@@ -1127,12 +1171,13 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       // Получить все персональные диалоги
       const dialogs = [];
-      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
-        const dialogFiles = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const allDialogFiles = await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR);
+        const dialogFiles = allDialogFiles.filter(f => f.endsWith('.json'));
 
         for (const file of dialogFiles) {
           try {
-            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const data = await fsp.readFile(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
             const dialog = JSON.parse(data);
 
             if (dialog.clientPhone === phone) {

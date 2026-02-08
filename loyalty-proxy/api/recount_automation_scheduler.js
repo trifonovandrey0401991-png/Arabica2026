@@ -1,6 +1,8 @@
 /**
  * Recount Automation Scheduler
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Автоматизация жизненного цикла отчётов пересчёта:
  * - Автоматическое создание pending отчётов при начале временного окна
  * - Переход pending → failed по истечении дедлайна
@@ -10,7 +12,7 @@
  * - Очистка failed отчётов в 23:59
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Импортируем функции отправки push-уведомлений
@@ -42,6 +44,16 @@ const PENALTY_CATEGORY_NAME = 'Пропущенный пересчёт';
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
 const MOSCOW_OFFSET_HOURS = 3; // UTC+3 для московского времени
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================
 // Moscow Time Helper
 // ============================================
@@ -60,12 +72,12 @@ function getMoscowDateString() {
 // ============================================
 // Helper: Load JSON file safely
 // ============================================
-function loadJsonFile(filePath, defaultValue) {
-  if (!fs.existsSync(filePath)) {
+async function loadJsonFile(filePath, defaultValue) {
+  if (!(await fileExists(filePath))) {
     return defaultValue;
   }
   try {
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(data);
   } catch (e) {
     console.error(`[RecountScheduler] Error loading JSON from ${filePath}:`, e.message);
@@ -73,13 +85,13 @@ function loadJsonFile(filePath, defaultValue) {
   }
 }
 
-function saveJsonFile(filePath, data) {
+async function saveJsonFile(filePath, data) {
   try {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error(`[RecountScheduler] Error saving JSON to ${filePath}:`, e.message);
@@ -90,8 +102,8 @@ function saveJsonFile(filePath, data) {
 // ============================================
 // State Management
 // ============================================
-function loadState() {
-  return loadJsonFile(STATE_FILE, {
+async function loadState() {
+  return await loadJsonFile(STATE_FILE, {
     lastMorningGeneration: null,
     lastEveningGeneration: null,
     lastCleanup: null,
@@ -99,15 +111,15 @@ function loadState() {
   });
 }
 
-function saveState(state) {
+async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  saveJsonFile(STATE_FILE, state);
+  await saveJsonFile(STATE_FILE, state);
 }
 
 // ============================================
 // Settings Loading
 // ============================================
-function getRecountSettings() {
+async function getRecountSettings() {
   const defaults = {
     morningStartTime: '08:00',
     morningEndTime: '14:00',
@@ -118,7 +130,7 @@ function getRecountSettings() {
   };
 
   const settingsFile = path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json');
-  const loaded = loadJsonFile(settingsFile, {});
+  const loaded = await loadJsonFile(settingsFile, {});
 
   // Объединяем загруженные настройки с defaults
   return {
@@ -137,9 +149,9 @@ function getRecountSettings() {
 // ============================================
 // Shops Loading
 // ============================================
-function getAllShops() {
+async function getAllShops() {
   const shopsFile = path.join(SHOPS_DIR, 'shops.json');
-  const data = loadJsonFile(shopsFile, { shops: [] });
+  const data = await loadJsonFile(shopsFile, { shops: [] });
   return data.shops || [];
 }
 
@@ -150,21 +162,21 @@ function getTodayReportsDir() {
   return RECOUNT_REPORTS_DIR;
 }
 
-function loadTodayReports() {
+async function loadTodayReports() {
   const reportsDir = getTodayReportsDir();
   const reports = [];
   const today = getMoscowDateString();
 
-  if (!fs.existsSync(reportsDir)) {
+  if (!(await fileExists(reportsDir))) {
     return reports;
   }
 
   try {
-    const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
     for (const file of files) {
       try {
         const filePath = path.join(reportsDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
         // Фильтруем только сегодняшние отчёты
@@ -183,7 +195,7 @@ function loadTodayReports() {
   return reports;
 }
 
-function saveReport(report) {
+async function saveReport(report) {
   const filePath = report._filePath;
   if (!filePath) {
     console.error('[RecountScheduler] No _filePath in report');
@@ -193,13 +205,13 @@ function saveReport(report) {
   const dataToSave = { ...report };
   delete dataToSave._filePath;
 
-  return saveJsonFile(filePath, dataToSave);
+  return await saveJsonFile(filePath, dataToSave);
 }
 
-function createPendingReport(shop, shiftType, deadline) {
+async function createPendingReport(shop, shiftType, deadline) {
   const reportsDir = getTodayReportsDir();
-  if (!fs.existsSync(reportsDir)) {
-    fs.mkdirSync(reportsDir, { recursive: true });
+  if (!(await fileExists(reportsDir))) {
+    await fsp.mkdir(reportsDir, { recursive: true });
   }
 
   const now = new Date();
@@ -226,7 +238,7 @@ function createPendingReport(shop, shiftType, deadline) {
     rejectedAt: null
   };
 
-  saveJsonFile(filePath, report);
+  await saveJsonFile(filePath, report);
   return report;
 }
 
@@ -310,9 +322,9 @@ function getDeadlineTime(timeStr, startTimeStr = null) {
 // ============================================
 // 1. Generate Pending Reports
 // ============================================
-function generatePendingReports(shiftType) {
-  const settings = getRecountSettings();
-  const shops = getAllShops();
+async function generatePendingReports(shiftType) {
+  const settings = await getRecountSettings();
+  const shops = await getAllShops();
   const today = getMoscowDateString();
 
   if (shops.length === 0) {
@@ -320,7 +332,7 @@ function generatePendingReports(shiftType) {
     return 0;
   }
 
-  const reports = loadTodayReports();
+  const reports = await loadTodayReports();
   let created = 0;
 
   const deadlineTime = shiftType === 'morning'
@@ -346,7 +358,7 @@ function generatePendingReports(shiftType) {
     if (exists) continue;
 
     // Create pending report
-    createPendingReport(shop, shiftType, deadline);
+    await createPendingReport(shop, shiftType, deadline);
     created++;
     console.log(`[RecountScheduler] Created pending ${shiftType} recount for ${shop.name} (${shop.address})`);
   }
@@ -360,7 +372,7 @@ function generatePendingReports(shiftType) {
 // ============================================
 async function checkPendingDeadlines() {
   const now = new Date();
-  const reports = loadTodayReports();
+  const reports = await loadTodayReports();
   let failedCount = 0;
   const failedShops = [];
 
@@ -373,7 +385,7 @@ async function checkPendingDeadlines() {
       // Deadline passed - mark as failed
       report.status = 'failed';
       report.failedAt = now.toISOString();
-      saveReport(report);
+      await saveReport(report);
       failedCount++;
 
       failedShops.push({
@@ -386,7 +398,7 @@ async function checkPendingDeadlines() {
       console.log(`[RecountScheduler] Recount FAILED: ${report.shopName} (${report.shiftType}), deadline was ${report.deadline}`);
 
       // Assign penalty to employee from work schedule
-      assignPenaltyFromSchedule(report);
+      await assignPenaltyFromSchedule(report);
     }
   }
 
@@ -401,9 +413,9 @@ async function checkPendingDeadlines() {
 // ============================================
 // 3. Check Review Timeouts (review → rejected)
 // ============================================
-function checkReviewTimeouts() {
+async function checkReviewTimeouts() {
   const now = new Date();
-  const reports = loadTodayReports();
+  const reports = await loadTodayReports();
   let rejectedCount = 0;
 
   for (const report of reports) {
@@ -416,13 +428,13 @@ function checkReviewTimeouts() {
       // Review timeout - mark as rejected
       report.status = 'rejected';
       report.rejectedAt = now.toISOString();
-      saveReport(report);
+      await saveReport(report);
       rejectedCount++;
 
       console.log(`[RecountScheduler] Recount REJECTED (admin timeout): ${report.shopName} (${report.shiftType}), employee: ${report.employeeName}`);
 
       // Assign penalty
-      assignPenaltyDirect(report);
+      await assignPenaltyDirect(report);
     }
   }
 
@@ -432,14 +444,14 @@ function checkReviewTimeouts() {
 // ============================================
 // 4. Assign Penalty from Work Schedule
 // ============================================
-function assignPenaltyFromSchedule(report) {
-  const settings = getRecountSettings();
+async function assignPenaltyFromSchedule(report) {
+  const settings = await getRecountSettings();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7); // YYYY-MM
 
   // Load work schedule for this month
   const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
-  const schedule = loadJsonFile(scheduleFile, { entries: [] });
+  const schedule = await loadJsonFile(scheduleFile, { entries: [] });
 
   if (!schedule.entries || schedule.entries.length === 0) {
     console.log(`[RecountScheduler] No work schedule found for ${monthKey}, cannot assign penalty`);
@@ -459,7 +471,7 @@ function assignPenaltyFromSchedule(report) {
   }
 
   // Create penalty
-  createPenalty({
+  await createPenalty({
     employeeId: entry.employeeId,
     employeeName: entry.employeeName,
     shopAddress: report.shopAddress,
@@ -472,15 +484,15 @@ function assignPenaltyFromSchedule(report) {
 // ============================================
 // 5. Assign Penalty Direct (for rejected reports)
 // ============================================
-function assignPenaltyDirect(report) {
-  const settings = getRecountSettings();
+async function assignPenaltyDirect(report) {
+  const settings = await getRecountSettings();
 
   if (!report.employeeName) {
     console.log(`[RecountScheduler] Cannot assign penalty - no employee info in report ${report.id}`);
     return;
   }
 
-  createPenalty({
+  await createPenalty({
     employeeId: report.employeePhone || report.id,
     employeeName: report.employeeName,
     shopAddress: report.shopAddress,
@@ -493,7 +505,7 @@ function assignPenaltyDirect(report) {
 // ============================================
 // 6. Create Penalty
 // ============================================
-function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
+async function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
   const now = new Date();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7);
@@ -517,7 +529,7 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
 
   // Load existing penalties
   const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-  let penalties = loadJsonFile(penaltiesFile, []);
+  let penalties = await loadJsonFile(penaltiesFile, []);
 
   // Check for duplicate
   const exists = penalties.some(p => p.sourceId === sourceId);
@@ -527,7 +539,7 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
   }
 
   penalties.push(penalty);
-  saveJsonFile(penaltiesFile, penalties);
+  await saveJsonFile(penaltiesFile, penalties);
 
   console.log(`[RecountScheduler] Created penalty for ${employeeName}: ${points} points (${reason})`);
 }
@@ -587,14 +599,14 @@ async function sendEmployeeConfirmedNotification(employeePhone, rating) {
 // ============================================
 // 9. Cleanup Failed Reports (at 23:59)
 // ============================================
-function cleanupFailedReports() {
-  const reports = loadTodayReports();
+async function cleanupFailedReports() {
+  const reports = await loadTodayReports();
   let removedCount = 0;
 
   for (const report of reports) {
     if (report.status === 'failed' && report._filePath) {
       try {
-        fs.unlinkSync(report._filePath);
+        await fsp.unlink(report._filePath);
         removedCount++;
       } catch (e) {
         console.error(`[RecountScheduler] Error removing file ${report._filePath}:`, e.message);
@@ -615,8 +627,8 @@ function cleanupFailedReports() {
 async function runScheduledChecks() {
   const now = new Date();
   const moscow = getMoscowTime();
-  const settings = getRecountSettings();
-  const state = loadState();
+  const settings = await getRecountSettings();
+  const state = await loadState();
 
   console.log(`\n[${now.toISOString()}] RecountScheduler: Running checks... (Moscow time: ${moscow.toISOString()})`);
 
@@ -625,7 +637,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastMorningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[RecountScheduler] Morning window active (${settings.morningStartTime} - ${settings.morningEndTime}), generating reports...`);
-      const created = generatePendingReports('morning');
+      const created = await generatePendingReports('morning');
       if (created > 0) {
         state.lastMorningGeneration = now.toISOString();
       }
@@ -637,7 +649,7 @@ async function runScheduledChecks() {
     const lastGen = state.lastEveningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
       console.log(`[RecountScheduler] Evening window active (${settings.eveningStartTime} - ${settings.eveningEndTime}), generating reports...`);
-      const created = generatePendingReports('evening');
+      const created = await generatePendingReports('evening');
       if (created > 0) {
         state.lastEveningGeneration = now.toISOString();
       }
@@ -651,7 +663,7 @@ async function runScheduledChecks() {
   }
 
   // Check review timeouts
-  const rejected = checkReviewTimeouts();
+  const rejected = await checkReviewTimeouts();
   if (rejected > 0) {
     console.log(`[RecountScheduler] ${rejected} recounts auto-rejected (admin timeout)`);
   }
@@ -662,20 +674,20 @@ async function runScheduledChecks() {
   if (moscowHours === 23 && moscowMinutes >= 59) {
     const lastCleanup = state.lastCleanup;
     if (!lastCleanup || !isSameDay(new Date(lastCleanup), now)) {
-      cleanupFailedReports();
+      await cleanupFailedReports();
       state.lastCleanup = now.toISOString();
     }
   }
 
-  saveState(state);
+  await saveState(state);
   console.log(`[RecountScheduler] Checks completed\n`);
 }
 
 // ============================================
 // 11. Scheduler Setup
 // ============================================
-function startRecountAutomationScheduler() {
-  const settings = getRecountSettings();
+async function startRecountAutomationScheduler() {
+  const settings = await getRecountSettings();
   const moscow = getMoscowTime();
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -690,23 +702,23 @@ function startRecountAutomationScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(() => {
-    runScheduledChecks();
+  setInterval(async () => {
+    await runScheduledChecks();
   }, CHECK_INTERVAL_MS);
 
   // First check after 3 seconds (slightly offset from shift scheduler)
-  setTimeout(() => {
-    runScheduledChecks();
+  setTimeout(async () => {
+    await runScheduledChecks();
   }, 3000);
 }
 
 // ============================================
 // 12. API Helper: Set Review Status
 // ============================================
-function setReportToReview(reportId, employeeId, employeeName) {
-  const settings = getRecountSettings();
+async function setReportToReview(reportId, employeeId, employeeName) {
+  const settings = await getRecountSettings();
   const now = new Date();
-  const reports = loadTodayReports();
+  const reports = await loadTodayReports();
 
   const report = reports.find(r => r.id === reportId);
   if (!report) {
@@ -723,7 +735,7 @@ function setReportToReview(reportId, employeeId, employeeName) {
   report.submittedAt = now.toISOString();
   report.reviewDeadline = reviewDeadline.toISOString();
 
-  saveReport(report);
+  await saveReport(report);
 
   console.log(`[RecountScheduler] Report ${reportId} set to review, deadline: ${reviewDeadline.toISOString()}`);
   return report;
@@ -732,9 +744,9 @@ function setReportToReview(reportId, employeeId, employeeName) {
 // ============================================
 // 13. API Helper: Confirm Report
 // ============================================
-function confirmReport(reportId, rating, adminName) {
+async function confirmReport(reportId, rating, adminName) {
   const now = new Date();
-  const reports = loadTodayReports();
+  const reports = await loadTodayReports();
 
   const report = reports.find(r => r.id === reportId);
   if (!report) {
@@ -747,11 +759,11 @@ function confirmReport(reportId, rating, adminName) {
   report.adminName = adminName;
   report.ratedAt = now.toISOString();
 
-  saveReport(report);
+  await saveReport(report);
 
   // Send notification to employee
   if (report.employeePhone) {
-    sendEmployeeConfirmedNotification(report.employeePhone, rating);
+    await sendEmployeeConfirmedNotification(report.employeePhone, rating);
   }
 
   console.log(`[RecountScheduler] Report ${reportId} confirmed with rating ${rating}`);

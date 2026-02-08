@@ -15,6 +15,10 @@ const TEMPLATES_DIR = `${DATA_DIR}/coffee-machine-templates`;
 const SHOP_CONFIGS_DIR = `${DATA_DIR}/coffee-machine-shop-configs`;
 const REPORTS_DIR = `${DATA_DIR}/coffee-machine-reports`;
 const PHOTOS_DIR = `${DATA_DIR}/coffee-machine-photos`;
+const TRAINING_DIR = `${DATA_DIR}/coffee-machine-training`;
+const TRAINING_IMAGES_DIR = `${TRAINING_DIR}/images`;
+const TRAINING_SAMPLES_FILE = `${TRAINING_DIR}/samples.json`;
+const MAX_TRAINING_SAMPLES = 200;
 
 // Async helper
 async function fileExists(filePath) {
@@ -28,7 +32,7 @@ async function fileExists(filePath) {
 
 // Ensure directories exist
 (async () => {
-  for (const dir of [TEMPLATES_DIR, SHOP_CONFIGS_DIR, REPORTS_DIR, PHOTOS_DIR]) {
+  for (const dir of [TEMPLATES_DIR, SHOP_CONFIGS_DIR, REPORTS_DIR, PHOTOS_DIR, TRAINING_DIR, TRAINING_IMAGES_DIR]) {
     if (!(await fileExists(dir))) {
       await fsp.mkdir(dir, { recursive: true });
     }
@@ -456,7 +460,7 @@ function setupCoffeeMachineAPI(app) {
   // POST /api/coffee-machine/ocr — распознать число с фото
   app.post('/api/coffee-machine/ocr', async (req, res) => {
     try {
-      const { imageBase64, region, preset } = req.body;
+      const { imageBase64, region, preset, machineName } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Нужно передать imageBase64' });
@@ -477,7 +481,43 @@ function setupCoffeeMachineAPI(app) {
         });
       }
 
-      const result = await ocrModule.readCounterNumber(imageBase64, region, preset);
+      // Если region не передан — попробовать взять из training data
+      let effectiveRegion = region || null;
+      if (!effectiveRegion) {
+        try {
+          const samples = await loadTrainingSamples();
+          // Ищем samples для этого preset + machineName (с selectedRegion)
+          const matching = samples.filter(s =>
+            s.selectedRegion &&
+            s.preset === (preset || 'standard') &&
+            (!machineName || s.machineName === machineName)
+          );
+          if (matching.length > 0) {
+            // Усредняем region по всем подходящим samples
+            const avg = { x: 0, y: 0, width: 0, height: 0 };
+            for (const s of matching) {
+              avg.x += s.selectedRegion.x || 0;
+              avg.y += s.selectedRegion.y || 0;
+              avg.width += s.selectedRegion.width || 0;
+              avg.height += s.selectedRegion.height || 0;
+            }
+            avg.x /= matching.length;
+            avg.y /= matching.length;
+            avg.width /= matching.length;
+            avg.height /= matching.length;
+            effectiveRegion = avg;
+            console.log(`[CoffeeMachine] 🎓 Используем обученный region (${matching.length} samples): x=${avg.x.toFixed(2)}, y=${avg.y.toFixed(2)}, w=${avg.width.toFixed(2)}, h=${avg.height.toFixed(2)}`);
+          }
+        } catch (e) {
+          // Training data недоступна — продолжаем без region
+        }
+      }
+
+      const result = await ocrModule.readCounterNumber(imageBase64, effectiveRegion, preset);
+      // Добавляем флаг: использовался ли обученный region
+      if (effectiveRegion && !region) {
+        result.usedTrainingRegion = true;
+      }
       res.json(result);
     } catch (error) {
       console.error('[CoffeeMachine] Ошибка OCR:', error.message);
@@ -540,6 +580,188 @@ function setupCoffeeMachineAPI(app) {
 
       results.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       res.json(results);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================
+  // ОБУЧЕНИЕ OCR (training)
+  // ============================================
+
+  // Загрузить samples.json
+  async function loadTrainingSamples() {
+    try {
+      if (await fileExists(TRAINING_SAMPLES_FILE)) {
+        return JSON.parse(await fsp.readFile(TRAINING_SAMPLES_FILE, 'utf8'));
+      }
+    } catch (e) {
+      console.error('[CoffeeMachine] Ошибка чтения training samples:', e.message);
+    }
+    return [];
+  }
+
+  // Сохранить samples.json
+  async function saveTrainingSamples(samples) {
+    await fsp.writeFile(TRAINING_SAMPLES_FILE, JSON.stringify(samples, null, 2), 'utf8');
+  }
+
+  // POST /api/coffee-machine/training — сохранить обучающее фото
+  app.post('/api/coffee-machine/training', async (req, res) => {
+    try {
+      const { photoUrl, correctNumber, selectedRegion, preset, machineName, shopAddress, trainedBy } = req.body;
+
+      if (!photoUrl || correctNumber === undefined) {
+        return res.status(400).json({ success: false, error: 'Нужно указать photoUrl и correctNumber' });
+      }
+
+      let samples = await loadTrainingSamples();
+
+      const sample = {
+        id: `train_${Date.now()}`,
+        photoUrl,
+        correctNumber,
+        selectedRegion: selectedRegion || null,
+        preset: preset || 'standard',
+        machineName: machineName || '',
+        shopAddress: shopAddress || '',
+        trainedBy: trainedBy || '',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Скачать фото в локальное хранилище (если URL)
+      if (photoUrl.startsWith('http') || photoUrl.startsWith('/uploads/')) {
+        try {
+          const https = require('https');
+          const http = require('http');
+          let fullUrl = photoUrl;
+          if (photoUrl.startsWith('/uploads/')) {
+            // Локальный файл на сервере
+            const srcPath = `/var/www${photoUrl.replace('/uploads', '')}`;
+            if (await fileExists(srcPath)) {
+              const imgFileName = `train_${Date.now()}.jpg`;
+              const destPath = path.join(TRAINING_IMAGES_DIR, imgFileName);
+              await fsp.copyFile(srcPath, destPath);
+              sample.localPhotoPath = `/coffee-machine-training/images/${imgFileName}`;
+            }
+          } else {
+            // Внешний URL — скачиваем
+            const imgFileName = `train_${Date.now()}.jpg`;
+            const destPath = path.join(TRAINING_IMAGES_DIR, imgFileName);
+            const proto = fullUrl.startsWith('https') ? https : http;
+            await new Promise((resolve, reject) => {
+              proto.get(fullUrl, (response) => {
+                const chunks = [];
+                response.on('data', chunk => chunks.push(chunk));
+                response.on('end', async () => {
+                  await fsp.writeFile(destPath, Buffer.concat(chunks));
+                  resolve();
+                });
+                response.on('error', reject);
+              }).on('error', reject);
+            });
+            sample.localPhotoPath = `/coffee-machine-training/images/${imgFileName}`;
+          }
+        } catch (e) {
+          console.error('[CoffeeMachine] Ошибка сохранения training фото:', e.message);
+          // Продолжаем без локальной копии
+        }
+      }
+
+      samples.push(sample);
+
+      // Ротация: удалить самые старые если > лимита
+      if (samples.length > MAX_TRAINING_SAMPLES) {
+        const toRemove = samples.splice(0, samples.length - MAX_TRAINING_SAMPLES);
+        // Удалить фото старых samples
+        for (const old of toRemove) {
+          if (old.localPhotoPath) {
+            try {
+              const oldPath = path.join(DATA_DIR, old.localPhotoPath);
+              if (await fileExists(oldPath)) {
+                await fsp.unlink(oldPath);
+              }
+            } catch (e) { /* ignore */ }
+          }
+        }
+      }
+
+      await saveTrainingSamples(samples);
+      console.log(`[CoffeeMachine] ✅ Training sample сохранён: ${sample.id} (${machineName}, число: ${correctNumber})`);
+      res.json({ success: true, sample });
+    } catch (error) {
+      console.error('[CoffeeMachine] Ошибка сохранения training:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/coffee-machine/training — список обучающих фото (фильтр по machineName)
+  app.get('/api/coffee-machine/training', async (req, res) => {
+    try {
+      let samples = await loadTrainingSamples();
+      // Фильтрация по machineName (если передан)
+      const { machineName } = req.query;
+      if (machineName) {
+        samples = samples.filter(s => s.machineName === machineName);
+      }
+      // Сортировка: новые первые
+      samples.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      res.json({ success: true, samples, total: samples.length, limit: MAX_TRAINING_SAMPLES });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/coffee-machine/training/stats — статистика
+  app.get('/api/coffee-machine/training/stats', async (req, res) => {
+    try {
+      const samples = await loadTrainingSamples();
+      const byPreset = {};
+      const byMachine = {};
+      for (const s of samples) {
+        const p = s.preset || 'unknown';
+        byPreset[p] = (byPreset[p] || 0) + 1;
+        const m = s.machineName || 'unknown';
+        byMachine[m] = (byMachine[m] || 0) + 1;
+      }
+      res.json({
+        success: true,
+        total: samples.length,
+        limit: MAX_TRAINING_SAMPLES,
+        byPreset,
+        byMachine,
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/coffee-machine/training/:id — удалить обучающее фото
+  app.delete('/api/coffee-machine/training/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      let samples = await loadTrainingSamples();
+      const idx = samples.findIndex(s => s.id === id);
+
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: 'Training sample не найден' });
+      }
+
+      const removed = samples.splice(idx, 1)[0];
+
+      // Удалить локальное фото
+      if (removed.localPhotoPath) {
+        try {
+          const photoPath = path.join(DATA_DIR, removed.localPhotoPath);
+          if (await fileExists(photoPath)) {
+            await fsp.unlink(photoPath);
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      await saveTrainingSamples(samples);
+      console.log(`[CoffeeMachine] ❌ Training sample удалён: ${id}`);
+      res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }

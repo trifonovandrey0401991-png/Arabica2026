@@ -65,6 +65,11 @@ class WithdrawalFormPage extends StatefulWidget {
 }
 
 class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
+  static const _emerald = Color(0xFF1A4D4D);
+  static const _emeraldDark = Color(0xFF0D2E2E);
+  static const _night = Color(0xFF051515);
+  static const _gold = Color(0xFFD4AF37);
+
   String _selectedType = 'ooo'; // 'ooo' или 'ip'
   List<Supplier> _allSuppliers = [];
   List<Supplier> _filteredSuppliers = [];
@@ -223,7 +228,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Выемка успешно создана'),
+            content: Text('Выемка успешно создана'),
             backgroundColor: Colors.green,
           ),
         );
@@ -246,328 +251,354 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Форма выемки'),
-        backgroundColor: const Color(0xFF004D40),
-        elevation: 0,
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF004D40).withOpacity(0.05),
-              Colors.white,
-            ],
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: _isLoadingSuppliers
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
                   children: [
-                    // Карточка с информацией
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          _buildInfoRow(
-                            Icons.store,
-                            'Магазин',
-                            widget.shopAddress,
-                            const Color(0xFF004D40),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Divider(height: 1),
-                          ),
-                          _buildInfoRow(
-                            Icons.person,
-                            'Сотрудник',
-                            widget.employeeName,
-                            const Color(0xFF004D40),
-                          ),
-                        ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // Выбор типа (современный дизайн)
-                    Text(
-                      'Выберите тип',
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Форма выемки',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey[800],
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTypeCard('ООО', 'ooo', Colors.blue),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildTypeCard('ИП', 'ip', Colors.orange),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Заголовок расходов
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Расходы',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                        if (_expenses.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF004D40),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${_expenses.length}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                  ],
+                ),
+              ),
+              // Content
+              Expanded(
+                child: _isLoadingSuppliers
+                    ? const Center(
+                        child: CircularProgressIndicator(color: _gold))
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Карточка с информацией
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildInfoRow(
+                                    Icons.store,
+                                    'Магазин',
+                                    widget.shopAddress,
+                                  ),
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 12),
+                                    child: Divider(
+                                      height: 1,
+                                      color: Colors.white.withOpacity(0.1),
+                                    ),
+                                  ),
+                                  _buildInfoRow(
+                                    Icons.person,
+                                    'Сотрудник',
+                                    widget.employeeName,
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                            const SizedBox(height: 24),
 
-                    // Список расходов или placeholder
-                    if (_expenses.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(40),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.grey[300]!,
-                            width: 2,
-                            style: BorderStyle.solid,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.inbox_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
+                            // Выбор типа (современный дизайн)
+                            Text(
+                              'Выберите тип',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
                             ),
                             const SizedBox(height: 12),
-                            Text(
-                              'Нет расходов',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Нажмите кнопку ниже чтобы добавить',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      ..._expenses.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final expense = entry.value;
-                        return _buildExpenseCard(index, expense);
-                      }).toList(),
-
-                    const SizedBox(height: 20),
-
-                    // Кнопки добавления (улучшенный дизайн)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActionButton(
-                            icon: Icons.add_circle_outline,
-                            label: 'Добавить расход',
-                            color: const Color(0xFF004D40),
-                            onPressed: _addSupplierExpense,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildActionButton(
-                            icon: Icons.edit_note,
-                            label: 'Другой расход',
-                            color: Colors.orange[700]!,
-                            onPressed: _addOtherExpense,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Общая сумма (улучшенный дизайн)
-                    if (_expenses.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF004D40),
-                              const Color(0xFF00695C),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF004D40).withOpacity(0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Row(
                               children: [
-                                const Text(
-                                  'Итоговая сумма',
+                                Expanded(
+                                  child: _buildTypeCard(
+                                      'ООО', 'ooo', Colors.blue),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildTypeCard(
+                                      'ИП', 'ip', Colors.orange),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 28),
+
+                            // Заголовок расходов
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Расходы',
                                   style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white.withOpacity(0.9),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${_calculateTotal().toStringAsFixed(0)} руб',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: -0.5,
+                                if (_expenses.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _emerald.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '${_expenses.length}',
+                                      style: const TextStyle(
+                                        color: _gold,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Список расходов или placeholder
+                            if (_expenses.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(40),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.1),
+                                    width: 2,
+                                    style: BorderStyle.solid,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.inbox_outlined,
+                                      size: 64,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Нет расходов',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Нажмите кнопку ниже чтобы добавить',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white.withOpacity(0.3),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              ..._expenses.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final expense = entry.value;
+                                return _buildExpenseCard(index, expense);
+                              }),
+
+                            const SizedBox(height: 20),
+
+                            // Кнопки добавления
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildActionButton(
+                                    icon: Icons.add_circle_outline,
+                                    label: 'Добавить расход',
+                                    color: _emerald,
+                                    onPressed: _addSupplierExpense,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildActionButton(
+                                    icon: Icons.edit_note,
+                                    label: 'Другой расход',
+                                    color: Colors.orange[700]!.withOpacity(0.8),
+                                    onPressed: _addOtherExpense,
                                   ),
                                 ),
                               ],
                             ),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
+                            const SizedBox(height: 28),
+
+                            // Общая сумма
+                            if (_expenses.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [_emeraldDark, _emerald],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Итоговая сумма',
+                                          style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.5),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${_calculateTotal().toStringAsFixed(0)} руб',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: -0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.account_balance_wallet,
+                                        color: Colors.white,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.account_balance_wallet,
-                                color: Colors.white,
-                                size: 32,
+                              const SizedBox(height: 28),
+                            ],
+
+                            // Кнопка сохранения
+                            SizedBox(
+                              height: 56,
+                              child: ElevatedButton(
+                                onPressed:
+                                    _isSaving ? null : _showConfirmationDialog,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green[600],
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        height: 24,
+                                        width: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.check_circle_outline,
+                                              size: 24),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Сохранить выемку',
+                                            style: TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                               ),
                             ),
+                            const SizedBox(height: 20),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 28),
-                    ],
-
-                    // Кнопка сохранения (финальная)
-                    Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.green.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _showConfirmationDialog,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(Icons.check_circle_outline, size: 24),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Сохранить выемку',
-                                    style: TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
               ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: _emerald.withOpacity(0.3),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: _gold, size: 20),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -578,17 +609,17 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Colors.white.withOpacity(0.5),
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
             ],
@@ -600,33 +631,23 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
 
   Widget _buildTypeCard(String label, String value, Color color) {
     final isSelected = _selectedType == value;
-    return InkWell(
+    return GestureDetector(
       onTap: () => _onTypeChanged(value),
-      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? color : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? color : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? color : Colors.grey[300]!,
+            color: isSelected ? color : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
         ),
         child: Column(
           children: [
             Icon(
               isSelected ? Icons.check_circle : Icons.circle_outlined,
-              color: isSelected ? Colors.white : Colors.grey[400],
+              color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
               size: 28,
             ),
             const SizedBox(height: 8),
@@ -635,7 +656,8 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : Colors.grey[700],
+                color:
+                    isSelected ? Colors.white : Colors.white.withOpacity(0.5),
               ),
             ),
           ],
@@ -650,18 +672,8 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return Container(
+    return SizedBox(
       height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -698,15 +710,11 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -722,7 +730,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    color: _emerald.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -730,13 +738,13 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF004D40),
+                      color: _gold,
                     ),
                   ),
                 ),
                 const Spacer(),
                 Material(
-                  color: Colors.red[50],
+                  color: Colors.red.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
                     onTap: () => _removeExpense(index),
@@ -745,7 +753,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                       padding: const EdgeInsets.all(8),
                       child: Icon(
                         Icons.delete_outline,
-                        color: Colors.red[700],
+                        color: Colors.red[400],
                         size: 20,
                       ),
                     ),
@@ -761,15 +769,10 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.orange[100]!,
-                      Colors.orange[50]!,
-                    ],
-                  ),
+                  color: Colors.orange.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.orange[300]!,
+                    color: Colors.orange.withOpacity(0.3),
                     width: 1.5,
                   ),
                 ),
@@ -777,7 +780,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                   children: [
                     Icon(
                       Icons.edit_note,
-                      color: Colors.orange[800],
+                      color: Colors.orange[300],
                       size: 22,
                     ),
                     const SizedBox(width: 10),
@@ -786,7 +789,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Colors.orange[900],
+                        color: Colors.orange[300],
                       ),
                     ),
                   ],
@@ -795,17 +798,22 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
             else
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                  ),
                 ),
                 child: DropdownButtonFormField<String>(
                   value: expense.supplierId,
                   decoration: InputDecoration(
                     labelText: 'Выберите поставщика',
+                    labelStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.5),
+                    ),
                     prefixIcon: Icon(
                       Icons.business,
-                      color: const Color(0xFF004D40),
+                      color: _gold,
                     ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
@@ -813,13 +821,20 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                       vertical: 14,
                     ),
                   ),
-                  dropdownColor: Colors.white,
+                  dropdownColor: _emeraldDark,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                  ),
                   items: _filteredSuppliers.map((supplier) {
                     return DropdownMenuItem(
                       value: supplier.id,
                       child: Text(
                         supplier.name,
-                        style: const TextStyle(fontSize: 14),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
                       ),
                     );
                   }).toList(),
@@ -838,17 +853,22 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
             // Сумма
             Container(
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                ),
               ),
               child: TextFormField(
                 controller: expense.amountController,
                 decoration: InputDecoration(
                   labelText: 'Сумма (руб)',
+                  labelStyle: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                  ),
                   prefixIcon: Icon(
                     Icons.account_balance_wallet,
-                    color: Colors.green[700],
+                    color: Colors.green[400],
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
@@ -857,12 +877,14 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                   ),
                 ),
                 keyboardType: TextInputType.number,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.9),
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                  FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d+\.?\d{0,2}')),
                 ],
               ),
             ),
@@ -871,9 +893,11 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
             // Комментарий
             Container(
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                ),
               ),
               child: TextFormField(
                 controller: expense.commentController,
@@ -881,9 +905,12 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                   labelText: expense.isOtherExpense
                       ? 'Комментарий (обязательно)'
                       : 'Комментарий (опционально)',
+                  labelStyle: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                  ),
                   prefixIcon: Icon(
                     Icons.comment_outlined,
-                    color: Colors.blue[700],
+                    color: Colors.blue[400],
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
@@ -892,7 +919,10 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                   ),
                 ),
                 maxLines: 2,
-                style: const TextStyle(fontSize: 14),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.9),
+                ),
               ),
             ),
           ],

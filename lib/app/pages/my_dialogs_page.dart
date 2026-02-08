@@ -8,7 +8,6 @@ import '../../features/clients/pages/network_dialog_page.dart';
 import '../../features/clients/pages/management_dialog_page.dart';
 import '../../features/product_questions/models/product_question_model.dart';
 import '../../features/product_questions/services/product_question_service.dart';
-import '../../features/product_questions/pages/product_question_client_dialog_page.dart';
 import '../../features/product_questions/pages/product_question_personal_dialog_page.dart';
 import '../../features/product_questions/pages/product_question_shops_list_page.dart';
 import '../../features/reviews/models/review_model.dart';
@@ -65,7 +64,6 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
 
   // Групповые чаты для клиента
   List<EmployeeChat> _clientGroups = [];
-  int _groupsUnreadCount = 0;
   String? _userPhone;
   String? _userName;
 
@@ -91,75 +89,57 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     _userPhone = phone;
     _userName = userName;
 
-    // Загружаем сетевые сообщения
-    final networkData = await NetworkMessageService.getNetworkMessages(phone);
-    if (mounted) {
-      setState(() {
-        _networkData = networkData;
-      });
-    }
-
-    // Загружаем сообщения руководству
-    final managementData = await ManagementMessageService.getManagementMessages(phone);
-    if (mounted) {
-      setState(() {
-        _managementData = managementData;
-      });
-    }
-
-    // Загружаем отзывы клиента
-    try {
-      final reviews = await ReviewService.getClientReviews(phone);
-      int unreadCount = 0;
-      for (final review in reviews) {
-        unreadCount += review.getUnreadCountForClient();
-      }
-      if (mounted) {
-        setState(() {
-          _clientReviews = reviews;
-          _reviewsUnreadCount = unreadCount;
-        });
-      }
-    } catch (e) {
+    // Запускаем все запросы параллельно (вместо последовательных)
+    final networkFuture = NetworkMessageService.getNetworkMessages(phone);
+    final managementFuture = ManagementMessageService.getManagementMessages(phone);
+    final reviewsFuture = ReviewService.getClientReviews(phone).catchError((e) {
       Logger.error('Ошибка загрузки отзывов', e);
-    }
-
-    // Загружаем персональные диалоги "Поиск Товара"
-    final personalDialogs = await ProductQuestionService.getClientPersonalDialogs(phone);
-    if (mounted) {
-      setState(() {
-        _personalDialogs = personalDialogs;
-      });
-    }
-
-    // Загружаем общий чат "Поиск Товара"
-    final productQuestionData = await ProductQuestionService.getClientDialog(phone);
-    if (mounted) {
-      setState(() {
-        _productQuestionData = productQuestionData;
-      });
-    }
-
-    // Загружаем групповые чаты клиента
-    try {
-      final groups = await ClientGroupChatService.getClientGroupChats(phone);
-      int unreadCount = 0;
-      for (final group in groups) {
-        unreadCount += group.unreadCount;
-      }
-      if (mounted) {
-        setState(() {
-          _clientGroups = groups;
-          _groupsUnreadCount = unreadCount;
-        });
-      }
-    } catch (e) {
+      return <Review>[];
+    });
+    final personalDialogsFuture = ProductQuestionService.getClientPersonalDialogs(phone);
+    final productQuestionFuture = ProductQuestionService.getClientDialog(phone);
+    final groupsFuture = ClientGroupChatService.getClientGroupChats(phone).catchError((e) {
       Logger.error('Ошибка загрузки групповых чатов', e);
+      return <EmployeeChat>[];
+    });
+
+    // Ждём завершения всех запросов параллельно
+    final results = await Future.wait<dynamic>([
+      networkFuture,
+      managementFuture,
+      reviewsFuture,
+      personalDialogsFuture,
+      productQuestionFuture,
+      groupsFuture,
+    ]);
+
+    if (!mounted) return;
+
+    // Распаковываем результаты
+    final networkData = results[0] as NetworkDialogData?;
+    final managementData = results[1] as ManagementDialogData?;
+    final reviews = results[2] as List<Review>;
+    final personalDialogs = results[3] as List<PersonalProductDialog>;
+    final productQuestionData = results[4] as ProductQuestionClientDialogData?;
+    final groups = results[5] as List<EmployeeChat>;
+
+    // Подсчитываем непрочитанные отзывы
+    int reviewsUnreadCount = 0;
+    for (final review in reviews) {
+      reviewsUnreadCount += review.getUnreadCountForClient();
     }
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
+    // Обновляем состояние один раз со всеми данными
+    setState(() {
+      _networkData = networkData;
+      _managementData = managementData;
+      _clientReviews = reviews;
+      _reviewsUnreadCount = reviewsUnreadCount;
+      _personalDialogs = personalDialogs;
+      _productQuestionData = productQuestionData;
+      _clientGroups = groups;
+      _isLoading = false;
+    });
   }
 
   String _formatTimestamp(String timestamp) {
@@ -180,96 +160,119 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     }
   }
 
+  // Единая палитра приложения
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF004D40),
-      appBar: AppBar(
-        title: const Text(
-          'Мои диалоги',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: const Color(0xFF004D40),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDialogs,
-            tooltip: 'Обновить',
-          ),
-        ],
-      ),
+      backgroundColor: _night,
       floatingActionButton: _buildFloatingActionButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF004D40),
-              const Color(0xFF00695C),
-              const Color(0xFF00796B),
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                    : _buildContent(),
+              ),
             ],
           ),
         ),
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              )
-            : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'Мои диалоги',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: _loadDialogs,
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFloatingActionButton() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ManagementDialogPage(),
+          ),
+        );
+        _loadDialogs();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(
+            colors: [
+              _emerald,
+              _emerald.withOpacity(0.8),
+            ],
+          ),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(28),
-          onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ManagementDialogPage(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.business_rounded, color: Colors.white.withOpacity(0.9), size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'Связаться с Руководством',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
               ),
-            );
-            _loadDialogs();
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.business, color: Colors.white, size: 22),
-                SizedBox(width: 10),
-                Text(
-                  'Связаться с Руководством',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -409,12 +412,12 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     final sortedItems = _sortDialogItems(items);
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
       itemCount: sortedItems.length,
       itemBuilder: (context, index) {
         final item = sortedItems[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 6),
           child: _buildDialogItemWidget(item),
         );
       },
@@ -427,37 +430,36 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            child: const Icon(
-              Icons.chat_bubble_outline,
-              size: 64,
-              color: Colors.white54,
+            child: Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: 32,
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          const SizedBox(height: 20),
+          Text(
             'У вас пока нет диалогов',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              'Оставьте отзыв, задайте вопрос или сделайте заказ',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 15,
-              ),
-              textAlign: TextAlign.center,
+          const SizedBox(height: 8),
+          Text(
+            'Оставьте отзыв, задайте вопрос или сделайте заказ',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 13,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -477,172 +479,132 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   }) {
     final hasUnread = unreadCount > 0;
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(hasUnread ? 0.4 : 0.2),
-            blurRadius: hasUnread ? 16 : 8,
-            offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasUnread
+                ? accentColor.withOpacity(0.5)
+                : Colors.white.withOpacity(0.12),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+          color: hasUnread
+              ? accentColor.withOpacity(0.08)
+              : Colors.white.withOpacity(0.04),
+        ),
+        child: Row(
+          children: [
+            // Иконка
+            Stack(
+              clipBehavior: Clip.none,
               children: [
-                // Иконка с градиентом или фото
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
-                    gradient: imageUrl == null
-                        ? LinearGradient(
-                            colors: gradientColors,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: gradientColors.first.withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    color: accentColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      if (imageUrl != null)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
+                  child: imageUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
                           child: Image.network(
                             imageUrl,
-                            width: 56,
-                            height: 56,
+                            width: 34,
+                            height: 34,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: gradientColors,
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Center(
-                                child: Icon(icon, color: Colors.white, size: 28),
-                              ),
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Icon(icon, color: accentColor, size: 18),
                             ),
                           ),
                         )
-                      else
-                        Center(
-                          child: Icon(icon, color: Colors.white, size: 28),
+                      : Center(
+                          child: Icon(icon, color: accentColor, size: 18),
                         ),
-                      if (hasUnread)
-                        Positioned(
-                          right: -6,
-                          top: -6,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.withOpacity(0.4),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 22,
-                              minHeight: 22,
-                            ),
-                            child: Text(
-                              unreadCount > 9 ? '9+' : unreadCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
                 ),
-                const SizedBox(width: 16),
-                // Контент
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: hasUnread ? accentColor : const Color(0xFF1A1A1A),
-                        ),
+                if (hasUnread)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
                       ),
-                      if (timestamp != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          timestamp,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w500,
-                          ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: hasUnread ? accentColor.withOpacity(0.8) : Colors.grey[600],
-                            fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ],
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
-                ),
-                // Стрелка
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: accentColor,
-                  ),
-                ),
               ],
             ),
-          ),
+            const SizedBox(width: 10),
+            // Контент
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.95),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (timestamp != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        timestamp,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withOpacity(0.4),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Стрелка
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: Colors.white.withOpacity(0.3),
+            ),
+          ],
         ),
       ),
     );
@@ -715,7 +677,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
               ? '${lastMessage.sender == 'admin' ? 'Ответ: ' : ''}${lastMessage.text}'
               : lastReview.reviewText
           : 'Всего отзывов: ${_clientReviews.length}',
-      timestamp: lastReview != null ? lastReview.shopAddress : null,
+      timestamp: lastReview?.shopAddress,
       icon: Icons.rate_review,
       accentColor: Colors.amber[700]!,
       gradientColors: [Colors.amber[400]!, Colors.orange[400]!],

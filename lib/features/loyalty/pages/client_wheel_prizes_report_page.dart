@@ -14,6 +14,11 @@ class ClientWheelPrizesReportPage extends StatefulWidget {
 
 class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPage>
     with SingleTickerProviderStateMixin {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   late TabController _tabController;
   List<ClientPrize> _allPrizes = [];
   bool _isLoading = true;
@@ -106,63 +111,143 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     final issuedCount = _issuedPrizes.length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Колесо (Клиенты)'),
-        backgroundColor: const Color(0xFF1A4D4D),
-        actions: [
-          TextButton.icon(
-            onPressed: _showMonthPicker,
-            icon: const Icon(Icons.calendar_today, color: Colors.white),
-            label: Text(
-              _formatMonth(_selectedMonth),
-              style: const TextStyle(color: Colors.white),
-            ),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          tabs: [
-            Tab(text: 'Все (${_allPrizes.length})'),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Ожидает'),
-                  if (pendingCount > 0) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(10),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
                       child: Text(
-                        '$pendingCount',
-                        style: const TextStyle(
-                          fontSize: 12,
+                        'Колесо (Клиенты)',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
+                    GestureDetector(
+                      onTap: _showMonthPicker,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _gold.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.calendar_today, color: _gold, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              _formatMonth(_selectedMonth),
+                              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
-                ],
+                ),
               ),
-            ),
-            Tab(text: 'Выдано ($issuedCount)'),
-          ],
+
+              // TabBar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: _gold,
+                  indicatorWeight: 3,
+                  labelColor: _gold,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerHeight: 0,
+                  tabs: [
+                    Tab(text: 'Все (${_allPrizes.length})'),
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Ожидает'),
+                          if (pendingCount > 0) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.orange,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '$pendingCount',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Tab(text: 'Выдано ($issuedCount)'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildPrizesList(_allPrizes),
+                          _buildPrizesList(_pendingPrizes),
+                          _buildPrizesList(_issuedPrizes),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildPrizesList(_allPrizes),
-                _buildPrizesList(_pendingPrizes),
-                _buildPrizesList(_issuedPrizes),
-              ],
-            ),
     );
   }
 
@@ -170,20 +255,21 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     if (prizes.isEmpty) {
       return Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Colors.grey.shade400,
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.inbox_outlined, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
             const SizedBox(height: 16),
             Text(
               'Нет призов за этот период',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
             ),
           ],
         ),
@@ -192,6 +278,8 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
 
     return RefreshIndicator(
       onRefresh: _loadPrizes,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: prizes.length,
@@ -206,9 +294,13 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
   Widget _buildPrizeCard(ClientPrize prize) {
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -242,16 +334,17 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                     children: [
                       Text(
                         prize.prize,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                       ),
                       Text(
                         prize.clientName,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade600,
+                          color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                     ],
@@ -262,7 +355,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
             ),
 
             const SizedBox(height: 12),
-            const Divider(),
+            Divider(color: Colors.white.withOpacity(0.1)),
             const SizedBox(height: 8),
 
             // Детали
@@ -298,8 +391,8 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: isPending
-            ? Colors.orange.withOpacity(0.1)
-            : Colors.green.withOpacity(0.1),
+            ? Colors.orange.withOpacity(0.15)
+            : Colors.green.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isPending ? Colors.orange : Colors.green,
@@ -310,7 +403,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isPending ? Colors.orange.shade700 : Colors.green.shade700,
+          color: isPending ? Colors.orange : Colors.green,
         ),
       ),
     );
@@ -319,21 +412,22 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey.shade500),
+        Icon(icon, size: 18, color: Colors.white.withOpacity(0.3)),
         const SizedBox(width: 8),
         Text(
           '$label: ',
           style: TextStyle(
             fontSize: 13,
-            color: Colors.grey.shade600,
+            color: Colors.white.withOpacity(0.4),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.8),
             ),
           ),
         ),

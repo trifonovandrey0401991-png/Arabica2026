@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
-import 'kpi_employee_day_detail_page.dart';
 import '../../../core/utils/logger.dart';
 
 /// Детальная страница сотрудника со списком магазинов и дат работы

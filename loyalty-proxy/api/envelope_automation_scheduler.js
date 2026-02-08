@@ -476,11 +476,18 @@ async function assignPenaltyFromSchedule(report, settings) {
   let penalties = { penalties: [] };
 
   if (await fileExists(penaltiesFile)) {
-    penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
+    const raw = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
+    // Обратная совместимость: файл может содержать [] (массив) или {penalties: []} (объект)
+    if (Array.isArray(raw)) {
+      penalties = { penalties: raw };
+    } else {
+      penalties = raw;
+    }
   }
 
   // Проверка дубликатов
-  const exists = penalties.penalties.some(p => p.sourceId === report.id);
+  const penaltyList = penalties.penalties || [];
+  const exists = penaltyList.some(p => p.sourceId === report.id);
   if (exists) {
     console.log(`[Envelope] Штраф уже существует для: ${report.id}`);
     return;

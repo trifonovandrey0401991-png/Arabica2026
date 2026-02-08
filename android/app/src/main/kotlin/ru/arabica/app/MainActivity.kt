@@ -1,4 +1,4 @@
-package com.example.arabica2026
+package ru.arabica.app
 
 import io.flutter.embedding.android.FlutterActivity
 

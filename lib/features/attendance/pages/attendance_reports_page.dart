@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/attendance_model.dart';
 import '../models/shop_attendance_summary.dart';
 import '../models/pending_attendance_model.dart';
 import '../services/attendance_report_service.dart';
 import '../../../core/services/report_notification_service.dart';
-import '../../employees/pages/employees_page.dart';
 import 'attendance_month_page.dart';
 import 'attendance_employee_detail_page.dart';
 
@@ -34,7 +32,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   final Set<String> _expandedShops = {};
   String _searchQuery = '';
 
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00695C)];
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -87,12 +88,14 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: _gradientColors,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
@@ -115,8 +118,9 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -136,8 +140,9 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           ),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: const Icon(Icons.refresh, color: Colors.white),
@@ -203,10 +208,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.1),
+          color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.white : Colors.white30,
+            color: isSelected ? _gold : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Row(
@@ -225,14 +230,14 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             Icon(
               icon,
               size: 18,
-              color: isSelected ? _gradientColors[0] : Colors.white,
+              color: isSelected ? _gold : Colors.white,
             ),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? _gradientColors[0] : Colors.white,
+                  color: isSelected ? _gold : Colors.white,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 12,
                 ),
@@ -248,7 +253,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+        child: CircularProgressIndicator(color: _gold),
       );
     }
 
@@ -291,6 +296,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
               onPressed: _loadAllData,
               icon: const Icon(Icons.refresh),
               label: const Text('Повторить'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _gold,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -307,14 +316,18 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: TextField(
             onChanged: (value) => setState(() => _searchQuery = value),
+            style: const TextStyle(color: Colors.white),
+            cursorColor: _gold,
             decoration: InputDecoration(
               hintText: 'Поиск по имени...',
-              prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+              prefixIcon: const Icon(Icons.search, color: _gold),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
@@ -354,6 +367,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: filtered.length,
@@ -365,72 +380,79 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   Widget _buildEmployeeCard(EmployeeAttendanceSummary summary) {
     final onTimeRate = summary.onTimeRate;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AttendanceEmployeeDetailPage(
-                employeeName: summary.employeeName,
-              ),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Аватар
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: summary.hasTodayAttendance
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
-                child: Icon(
-                  summary.hasTodayAttendance ? Icons.check : Icons.close,
-                  color: summary.hasTodayAttendance ? Colors.green : Colors.red,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AttendanceEmployeeDetailPage(
+                  employeeName: summary.employeeName,
                 ),
               ),
-              const SizedBox(width: 16),
-              // Инфо
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      summary.employeeName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+            );
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Аватар
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: summary.hasTodayAttendance
+                      ? Colors.green.withOpacity(0.15)
+                      : Colors.red.withOpacity(0.15),
+                  child: Icon(
+                    summary.hasTodayAttendance ? Icons.check : Icons.close,
+                    color: summary.hasTodayAttendance ? Colors.green : Colors.red,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Инфо
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        summary.employeeName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildMiniChip(
-                          'Сегодня: ${summary.todayCount}',
-                          summary.hasTodayAttendance ? Colors.green : Colors.red,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildMiniChip(
-                          '${onTimeRate.toStringAsFixed(0)}% вовремя',
-                          _getOnTimeColor(onTimeRate),
-                        ),
-                      ],
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          _buildMiniChip(
+                            'Сегодня: ${summary.todayCount}',
+                            summary.hasTodayAttendance ? Colors.green : Colors.red,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildMiniChip(
+                            '${onTimeRate.toStringAsFixed(0)}% вовремя',
+                            _getOnTimeColor(onTimeRate),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // Стрелка
-              const Icon(Icons.chevron_right, color: Colors.grey),
-            ],
+                // Стрелка
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
+              ],
+            ),
           ),
         ),
       ),
@@ -477,6 +499,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _shopsSummary.length,
@@ -488,10 +512,13 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   Widget _buildShopCard(ShopAttendanceSummary summary) {
     final isExpanded = _expandedShops.contains(summary.shopAddress);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: Column(
         children: [
           // Заголовок магазина
@@ -506,7 +533,11 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             ),
             title: Text(
               summary.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.9),
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -580,7 +611,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             ),
             trailing: Icon(
               isExpanded ? Icons.expand_less : Icons.expand_more,
-              color: _gradientColors[0],
+              color: _gold,
             ),
             onTap: () {
               setState(() {
@@ -594,9 +625,9 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           ),
           // Месяцы
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1, color: Colors.white.withOpacity(0.1)),
             _buildMonthTile('Текущий месяц', summary.currentMonth, summary.shopAddress),
-            const Divider(height: 1, indent: 56),
+            Divider(height: 1, indent: 56, color: Colors.white.withOpacity(0.1)),
             _buildMonthTile('Прошлый месяц', summary.previousMonth, summary.shopAddress),
           ],
         ],
@@ -631,13 +662,16 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       ),
       title: Text(
         '$label: ${month.actualCount}/${month.plannedCount}',
-        style: const TextStyle(fontWeight: FontWeight.w500),
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: Colors.white.withOpacity(0.9),
+        ),
       ),
       subtitle: Text(
         '${month.displayName} ${month.year}',
-        style: const TextStyle(fontSize: 12, color: Colors.grey),
+        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
       onTap: () {
         Navigator.push(
           context,
@@ -678,6 +712,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _pendingReports.length,
@@ -691,10 +727,13 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     final timeLeft = report.timeUntilDeadline;
     final minutesLeft = timeLeft.inMinutes;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -717,9 +756,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                 children: [
                   Text(
                     report.shopName.isNotEmpty ? report.shopName : report.shopAddress,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -728,7 +768,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                   Text(
                     report.shopAddress,
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: Colors.white.withOpacity(0.5),
                       fontSize: 13,
                     ),
                     maxLines: 1,
@@ -753,12 +793,12 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(Icons.timer, size: 14, color: Colors.grey[400]),
+                      Icon(Icons.timer, size: 14, color: Colors.white.withOpacity(0.4)),
                       const SizedBox(width: 4),
                       Text(
                         'до $deadline',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.4),
                           fontSize: 12,
                         ),
                       ),
@@ -820,6 +860,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _failedReports.length,
@@ -833,10 +875,13 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         ? DateFormat('HH:mm').format(report.failedAt!)
         : '—';
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -859,9 +904,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                 children: [
                   Text(
                     report.shopName.isNotEmpty ? report.shopName : report.shopAddress,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -870,7 +916,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                   Text(
                     report.shopAddress,
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: Colors.white.withOpacity(0.5),
                       fontSize: 13,
                     ),
                     maxLines: 1,
@@ -895,12 +941,12 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(Icons.schedule, size: 14, color: Colors.grey[400]),
+                      Icon(Icons.schedule, size: 14, color: Colors.white.withOpacity(0.4)),
                       const SizedBox(width: 4),
                       Text(
                         'дедлайн: $failedAt',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.4),
                           fontSize: 12,
                         ),
                       ),

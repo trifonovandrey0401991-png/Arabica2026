@@ -157,7 +157,7 @@ arabica2026/
 | Node.js порт | 3000 |
 | WebSocket | wss://arabica26.ru/ws |
 | API базовый URL | https://arabica26.ru/api |
-| Статика | https://arabica26.ru/shift-photos/* |
+| Статика (nginx) | shift-photos/, shift-question-photos/, shift-handover-question-photos/, shift-reference-photos/, training-articles-media/, product-question-photos/, task-media/, chat-media/ |
 
 ## 1.6 Безопасность сервера
 
@@ -578,7 +578,7 @@ class AuthCredentials {
 | 19 | Тестирование | `tests/` | Сотрудник, Админ | Работает | Квизы |
 | 20 | Отзывы | `reviews/` | Клиент, Админ | Работает | Feedback |
 | 21 | Поиск товара | `product_questions/` | Клиент, Сотрудник, Админ | Работает | Диалоги |
-| 22 | Лояльность | `loyalty/` | Клиент, Админ | Работает | Баллы, геймификация (в разработке) |
+| 22 | Лояльность | `loyalty/` | Клиент, Админ | Работает | Баллы, геймификация, колесо удачи, значки |
 | 23 | Рефералы | `referrals/` | Сотрудник, Админ | Работает | Привлечение |
 | 24 | Заявки на работу | `job_application/` | Клиент, Админ | Работает | HR |
 | 25 | Чат сотрудников | `employee_chat/` | Сотрудник | Работает | Мессенджер |
@@ -875,7 +875,147 @@ ws.connect('wss://arabica26.ru/ws?phone=79001234567');
 
 ---
 
-[Продолжение модулей будет добавлено...]
+### МОДУЛЬ: training (Обучение)
+
+**Директория:** `lib/features/training/`
+
+```
+training/
+├── models/
+│   ├── training_model.dart              # Модель статьи (TrainingArticle)
+│   └── content_block.dart               # Блок контента (ContentBlock: text/image)
+├── services/
+│   └── training_article_service.dart    # REST API сервис
+└── pages/
+    ├── training_page.dart               # Главная страница обучения (список статей + поиск)
+    ├── training_article_view_page.dart  # Просмотр статьи (текст + изображения)
+    ├── training_article_editor_page.dart     # Редактор статей (админ)
+    └── training_articles_management_page.dart # Управление статьями (админ)
+```
+
+**Роли:** Сотрудник (чтение), Админ (CRUD)
+
+**Дизайн:** Тёмная изумрудная тема (`_emerald=#1A4D4D`, `_emeraldDark=#0D2E2E`, `_night=#051515`, `_gold=#D4AF37`)
+
+**Ключевые особенности:**
+- **Статьи с блочным контентом** — каждая статья содержит массив `contentBlocks` с типами `text` и `image`
+- **12 статей** с перенесённым контентом (текст + 150 изображений) с внешних источников (teletype.in, telegra.ph)
+- **Умный поиск** — строка поиска с нечётким поиском (алгоритм Левенштейна), ищет по заголовкам, группам и содержимому статей
+- **Кэширование изображений** — `cached_network_image` для оффлайн-доступа и быстрой загрузки
+- **Сжатые изображения** — 162 фото оптимизированы sharp на сервере (91MB → 14MB, экономия 84%)
+- **Видимость** — поле `visibility: "managers"` скрывает статьи от обычных сотрудников
+- **Группировка** — статьи сгруппированы по категориям с золотыми заголовками групп
+- **Полноэкранный просмотр** — нажатие на изображение открывает его в полный экран с InteractiveViewer (зум)
+
+**Структура данных статьи (JSON):**
+```json
+{
+  "id": "training_article_1765708247730",
+  "title": "Название статьи",
+  "group": "Категория",
+  "content": "Текстовый контент (для обратной совместимости)",
+  "url": "https://... (внешняя ссылка, опционально)",
+  "visibility": "all | managers",
+  "contentBlocks": [
+    { "id": "block_1", "type": "text", "content": "Текст блока..." },
+    { "id": "block_2", "type": "image", "content": "https://arabica26.ru/training-articles-media/img.jpg", "caption": "Подпись" }
+  ],
+  "createdAt": "2025-12-11T...",
+  "updatedAt": "2026-02-06T..."
+}
+```
+
+**Серверные данные:**
+- `/var/www/training-articles/` — JSON-файлы статей (по одному на статью)
+- `/var/www/training-articles-media/` — изображения статей (162 файла, ~14MB)
+- `/var/www/training-articles-media/originals-backup/` — оригинальные несжатые изображения
+
+**API Endpoints:**
+
+| Method | Path | Описание |
+|--------|------|----------|
+| GET | `/api/training-articles` | Все статьи |
+| GET | `/api/training-articles/:id` | Одна статья |
+| POST | `/api/training-articles` | Создать статью |
+| PUT | `/api/training-articles/:id` | Обновить статью |
+| DELETE | `/api/training-articles/:id` | Удалить статью |
+
+---
+
+### МОДУЛЬ: tests (Тестирование)
+
+**Директория:** `lib/features/tests/`
+
+```
+tests/
+├── models/
+│   ├── test_model.dart                  # Модель вопроса (TestQuestion)
+│   └── test_result_model.dart           # Результат теста (TestResult)
+├── services/
+│   ├── test_question_service.dart       # REST API вопросов
+│   └── test_result_service.dart         # REST API результатов + начисление баллов
+└── pages/
+    ├── test_page.dart                   # Прохождение теста (20 вопросов, 7 мин)
+    ├── test_report_page.dart            # Отчёт по тестированию (статистика + все результаты)
+    ├── test_questions_management_page.dart # Управление вопросами (админ)
+    └── test_notifications_page.dart     # Уведомления о новых тестах
+```
+
+**Роли:** Сотрудник (прохождение), Админ (управление вопросами, просмотр отчётов)
+
+**Дизайн:** Тёмная изумрудная тема (единая палитра приложения)
+
+**Ключевые особенности:**
+- **20 случайных вопросов** из общего банка вопросов
+- **Таймер 7 минут** — золотой индикатор, при <1 мин становится красным
+- **Автопереход** — после выбора ответа автоматически переходит к следующему вопросу (1.5с правильный, 2с неправильный)
+- **Подсветка ответов** — правильный = зелёный, неправильный = красный + подсветка правильного
+- **Анимации** — fade-переход между вопросами, elastic-анимация баллов в результатах
+- **Начисление баллов** — автоматическое начисление/списание баллов на основе результата
+- **Отчёт** — две вкладки: "По сотрудникам" (средний балл за месяц/всего) и "Все результаты"
+- **Bottom Sheet детали** — нажатие на сотрудника показывает статистику по месяцам и последний тест
+- **Прогресс-бар** — золотой, показывает текущий вопрос из 20
+
+**Структура данных вопроса (JSON):**
+```json
+{
+  "id": "q_1234567890",
+  "question": "Текст вопроса?",
+  "options": ["Вариант A", "Вариант B", "Вариант C", "Вариант D"],
+  "correctAnswer": "Вариант B"
+}
+```
+
+**Структура данных результата (JSON):**
+```json
+{
+  "employeeName": "Имя сотрудника",
+  "employeePhone": "79001234567",
+  "score": 16,
+  "totalQuestions": 20,
+  "percentage": 80,
+  "timeSpent": 245,
+  "formattedTime": "4:05",
+  "shopAddress": "ул. Пример, 1",
+  "points": 2.5,
+  "completedAt": "2026-02-06T21:18:00.000Z"
+}
+```
+
+**Серверные данные:**
+- `/var/www/test-questions/` — банк вопросов (questions.json)
+- `/var/www/test-results/` — результаты по месяцам (YYYY-MM.json)
+
+**API Endpoints:**
+
+| Method | Path | Описание |
+|--------|------|----------|
+| GET | `/api/test-questions` | Все вопросы |
+| POST | `/api/test-questions` | Создать вопрос |
+| PUT | `/api/test-questions/:id` | Обновить вопрос |
+| DELETE | `/api/test-questions/:id` | Удалить вопрос |
+| GET | `/api/test-results` | Результаты тестов |
+| POST | `/api/test-results` | Записать результат |
 
 ---
 
@@ -1175,7 +1315,7 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 | GET | `/api/loyalty/transactions/:phone` | История | ✅ |
 | GET | `/api/loyalty/leaderboard` | Топ клиентов | ✅ |
 
-### LOYALTY GAMIFICATION API (Геймификация лояльности) — *в разработке*
+### LOYALTY GAMIFICATION API (Геймификация лояльности)
 
 **Файл:** `loyalty-proxy/api/loyalty_gamification_api.js`
 
@@ -1185,21 +1325,30 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 | POST | `/api/loyalty-gamification/settings` | Сохранить настройки (админ) | ✅ |
 | POST | `/api/loyalty-gamification/upload-badge` | Загрузить картинку значка | ✅ |
 | GET | `/api/loyalty-gamification/client/:phone` | Данные клиента (уровень, значки, спины) | ✅ |
+| GET | `/api/loyalty-gamification/client/:phone/pending-prize` | Pending приз клиента | ✅ |
 | POST | `/api/loyalty-gamification/spin` | Крутить колесо удачи | ✅ |
+| POST | `/api/loyalty-gamification/deliver-prize` | Выдать приз клиенту (push-уведомление) | ✅ |
 | GET | `/api/loyalty-gamification/wheel-history` | История прокруток | ✅ |
 
 **Структура настроек:**
 - 10 VIP уровней (настраиваемые названия, пороги, значки)
-- Значки: Material Icons ИЛИ загруженные изображения
+- Значки: Material Icons ИЛИ загруженные изображения (зубчатая форма «наклейки»)
 - Колесо удачи: N напитков = 1 прокрутка (настраивается)
 - Секторы колеса: текст, вероятность, цвет, тип приза
+- Система призов: pending → deliver (push-уведомление клиенту)
+
+**Оптимизации:**
+- Параллельная загрузка данных (fetchByPhone, fetchSettings, fetchClientData, fetchPendingPrize одновременно)
+- 5-минутный кэш для настроек геймификации и промо-настроек
 
 **Flutter файлы:**
 - `lib/features/loyalty/models/loyalty_gamification_model.dart` — модели
 - `lib/features/loyalty/services/loyalty_gamification_service.dart` — API сервис
+- `lib/features/loyalty/pages/loyalty_page.dart` — главная страница лояльности (QR, баллы, уровень, колесо)
 - `lib/features/loyalty/pages/loyalty_gamification_settings_page.dart` — настройки (админ)
 - `lib/features/loyalty/pages/client_wheel_page.dart` — страница колеса (клиент)
-- `lib/features/loyalty/widgets/qr_badges_widget.dart` — значки вокруг QR
+- `lib/features/loyalty/pages/pending_prize_page.dart` — страница получения приза (клиент)
+- `lib/features/loyalty/widgets/qr_badges_widget.dart` — значки-рамка вокруг QR (Stack layout, 80px, по 4 сторонам)
 - `lib/features/loyalty/widgets/wheel_progress_widget.dart` — прогресс колеса
 
 ### TASKS API (Задачи)
@@ -1265,11 +1414,24 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 |--------|------|----------|------|
 | GET | `/api/product-questions` | Все вопросы | ✅ |
 | GET | `/api/product-questions/:id` | Один вопрос | ✅ |
-| POST | `/api/product-questions` | Создать | ❌ |
-| POST | `/api/product-questions/:id/answer` | Ответить | ✅ |
-| GET | `/api/product-questions/pending` | Без ответа | ✅ |
-| GET | `/api/product-question-dialogs/:id` | Диалог | ✅ |
-| POST | `/api/product-question-dialogs/:id/messages` | Сообщение | ✅ |
+| POST | `/api/product-questions` | Создать вопрос | ❌ |
+| POST | `/api/product-questions/:id/messages` | Ответить на вопрос | ✅ |
+| POST | `/api/product-questions/upload-photo` | Загрузить фото (multipart) | ❌ |
+| GET | `/api/product-questions/unanswered-count` | Кол-во неотвеченных | ✅ |
+| GET | `/api/product-questions/client/:phone` | Вопросы клиента | ❌ |
+| GET | `/api/product-questions/client/:phone/grouped` | Группировка по магазинам | ❌ |
+| POST | `/api/product-questions/:id/mark-read` | Пометить прочитанным | ✅ |
+| POST | `/api/product-questions/client/:phone/mark-all-read` | Все прочитаны | ❌ |
+| POST | `/api/product-question-dialogs` | Создать персональный диалог | ❌ |
+| GET | `/api/product-question-dialogs/:id` | Персональный диалог | ✅ |
+| GET | `/api/product-question-dialogs/client/:phone` | Диалоги клиента | ❌ |
+| GET | `/api/product-question-dialogs/shop/:addr` | Диалоги магазина | ✅ |
+| GET | `/api/product-question-dialogs/all` | Все диалоги (админ) | ✅ |
+| GET | `/api/product-question-dialogs/unviewed-counts` | Непросмотренные (админ) | ✅ |
+| POST | `/api/product-question-dialogs/:id/messages` | Сообщение в диалог | ✅ |
+| POST | `/api/product-question-dialogs/:id/mark-read` | Пометить прочитанным | ✅ |
+| POST | `/api/product-question-dialogs/:id/mark-viewed-by-admin` | Просмотрено админом | ✅ |
+| POST | `/api/product-question-dialogs/mark-shop-viewed-by-admin` | Просм. магазин (админ) | ✅ |
 
 ### EMPLOYEE CHAT API (Чат сотрудников)
 
@@ -2556,6 +2718,9 @@ async function checkManagerAccess(phone, shopAddress) {
 │
 ├── product-question-dialogs/      # Диалоги поиска
 │   └── dialog_*.json
+│
+├── product-question-photos/      # Фото к вопросам о товарах (nginx static)
+│   └── product_question_*.jpg
 │
 ├── employee-chat/                 # Чат сотрудников
 │   ├── messages/

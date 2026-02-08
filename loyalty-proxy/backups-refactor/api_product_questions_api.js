@@ -1,0 +1,1243 @@
+const fs = require('fs');
+const path = require('path');
+
+// Push-уведомления
+const {
+  notifyQuestionCreated,
+  notifyQuestionAnswered,
+  notifyPersonalDialogClientMessage,
+  notifyPersonalDialogEmployeeMessage
+} = require('./product_questions_notifications');
+
+const PRODUCT_QUESTIONS_DIR = '/var/www/product-questions';
+const PRODUCT_QUESTION_DIALOGS_DIR = '/var/www/product-question-dialogs';
+const PRODUCT_QUESTION_PHOTOS_DIR = '/var/www/product-question-photos';
+
+[PRODUCT_QUESTIONS_DIR, PRODUCT_QUESTION_DIALOGS_DIR, PRODUCT_QUESTION_PHOTOS_DIR].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
+
+function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
+  // ===== HELPER FUNCTIONS =====
+
+  /**
+   * Начисление баллов за своевременный ответ на вопрос о товаре
+   */
+  async function assignAnswerBonus({ questionId, shopAddress, senderPhone, senderName, points, questionAge }) {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const monthKey = today.substring(0, 7); // YYYY-MM
+
+    const PENALTIES_DIR = '/var/www/efficiency-penalties';
+    if (!fs.existsSync(PENALTIES_DIR)) {
+      fs.mkdirSync(PENALTIES_DIR, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(PENALTIES_DIR, `${monthKey}.json`);
+    let penalties = [];
+
+    if (fs.existsSync(penaltiesFile)) {
+      try {
+        penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+      } catch (e) {
+        console.error('Error reading penalties file:', e);
+      }
+    }
+
+    // Проверка дедупликации по sourceId
+    const sourceId = `pq_answer_${questionId}`;
+    const exists = penalties.some(p => p.sourceId === sourceId);
+
+    if (exists) {
+      console.log(`Bonus already assigned for question ${questionId}, skipping`);
+      return;
+    }
+
+    // Создаём запись с положительными баллами
+    const bonus = {
+      id: `bonus_pq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: senderPhone,
+      entityName: senderName,
+      shopAddress: shopAddress,
+      employeeName: senderName,
+      category: 'product_question_bonus',
+      categoryName: 'Ответ на вопрос о товаре',
+      date: today,
+      points: points, // +0.2
+      reason: `Ответил на вопрос за ${Math.round(questionAge)} минут`,
+      sourceId: sourceId,
+      sourceType: 'question_answer',
+      createdAt: now.toISOString()
+    };
+
+    penalties.push(bonus);
+
+    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    console.log(`✅ Bonus assigned: ${senderName} (+${points} points) for question ${questionId}`);
+  }
+
+  // ===== PRODUCT QUESTIONS =====
+
+  app.get('/api/product-questions', async (req, res) => {
+    try {
+      console.log('GET /api/product-questions');
+      const { shopAddress } = req.query;
+      const questions = [];
+
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const content = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(content);
+
+            // Фильтр по магазину - проверяем shops[] массив или старый формат
+            if (shopAddress) {
+              let matchesShop = false;
+
+              // Новый формат - проверяем shops[]
+              if (question.shops && Array.isArray(question.shops)) {
+                matchesShop = question.shops.some(shop => shop.shopAddress === shopAddress);
+              }
+              // Старый формат - проверяем shopAddress напрямую
+              else if (question.shopAddress === shopAddress) {
+                matchesShop = true;
+              }
+
+              if (!matchesShop) continue;
+            }
+
+            questions.push(question);
+          } catch (e) {
+            console.error(`Error reading ${file}:`, e);
+          }
+        }
+      }
+
+      // Сортировка по timestamp или createdAt (для совместимости со старым форматом)
+      questions.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.createdAt || 0);
+        const timeB = new Date(b.timestamp || b.createdAt || 0);
+        return timeB - timeA;
+      });
+
+      console.log(`✅ Found ${questions.length} product questions`);
+      res.json({ success: true, questions });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/product-questions/unanswered-count - Получить количество неотвеченных вопросов для сотрудников
+  // Считает вопросы, на которые ещё не ответили (isAnswered = false)
+  app.get('/api/product-questions/unanswered-count', (req, res) => {
+    try {
+      console.log('GET /api/product-questions/unanswered-count');
+
+      let unansweredCount = 0;
+      const EXPIRED_MINUTES = 30;
+      const now = new Date();
+
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(data);
+
+            // Проверяем, истёк ли срок ответа (более 30 минут)
+            const questionTime = new Date(question.timestamp);
+            const diffMinutes = (now - questionTime) / (1000 * 60);
+            const isExpired = diffMinutes >= EXPIRED_MINUTES;
+
+            // Считаем только неотвеченные и не просроченные вопросы
+            // (просроченные показываются на другой вкладке)
+            if (!isExpired) {
+              // Проверяем, есть ли хотя бы один неотвеченный магазин
+              const hasUnansweredShop = question.shops && question.shops.some(s => !s.isAnswered);
+              if (hasUnansweredShop) {
+                unansweredCount++;
+              }
+            }
+          } catch (e) {
+            console.error(`Error reading question ${file}:`, e);
+          }
+        }
+      }
+
+      console.log('✅ Unanswered questions count:', unansweredCount);
+      res.json({ success: true, count: unansweredCount });
+    } catch (error) {
+      console.error('Error getting unanswered count:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/product-questions', async (req, res) => {
+    try {
+      console.log('POST /api/product-questions - req.body:', JSON.stringify(req.body));
+      const { clientPhone, clientName, shopAddress, questionText, questionImageUrl } = req.body;
+      console.log('POST /api/product-questions:', questionText?.substring(0, 50));
+
+      if (!clientPhone || !clientName || !shopAddress || !questionText) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: clientPhone, clientName, shopAddress, questionText'
+        });
+      }
+
+      const questionId = `pq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const timestamp = new Date().toISOString();
+      const messageId = `msg_${Date.now()}`;
+
+      // Определяем, это вопрос для всей сети или для конкретного магазина
+      const isNetworkWide = shopAddress === 'Вся сеть';
+
+      // Создаем структуру вопроса с поддержкой множественных магазинов
+      const question = {
+        id: questionId,
+        clientPhone,
+        clientName,
+        originalShopAddress: shopAddress,
+        isNetworkWide,
+        questionText,
+        questionImageUrl: questionImageUrl || null,
+        timestamp,
+        shops: [
+          {
+            shopAddress,
+            shopName: shopAddress,
+            isAnswered: false,
+            answeredBy: null,
+            answeredByName: null,
+            lastAnswerTime: null
+          }
+        ],
+        messages: [
+          {
+            id: messageId,
+            senderType: 'client',
+            senderPhone: clientPhone,
+            senderName: clientName,
+            shopAddress: null,
+            text: questionText,
+            imageUrl: questionImageUrl || null,
+            timestamp
+          }
+        ]
+      };
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+
+      console.log('✅ Question created:', questionId);
+
+      // ✅ Отправка уведомлений всем сотрудникам
+      try {
+        await notifyQuestionCreated(question);
+      } catch (e) {
+        console.error('❌ Ошибка отправки уведомлений:', e);
+      }
+
+      res.json({ success: true, questionId, question });
+    } catch (error) {
+      console.error('Error creating product question:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/product-questions/:questionId', async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      console.log('GET /api/product-questions/:questionId', questionId);
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+
+      if (fs.existsSync(filePath)) {
+        const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        res.json({ success: true, question });
+      } else {
+        res.status(404).json({ success: false, error: 'Question not found' });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.put('/api/product-questions/:questionId', async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const updates = req.body;
+      console.log('PUT /api/product-questions/:questionId', questionId);
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Question not found' });
+      }
+
+      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const updated = { ...question, ...updates, updatedAt: new Date().toISOString() };
+
+      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      res.json({ success: true, question: updated });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.delete('/api/product-questions/:questionId', async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      console.log('DELETE /api/product-questions/:questionId', questionId);
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ success: false, error: 'Question not found' });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== PRODUCT QUESTION MESSAGES (для ответов сотрудников) =====
+
+  app.post('/api/product-questions/:questionId/messages', async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const { shopAddress, text, senderPhone, senderName, imageUrl } = req.body;
+      console.log('POST /api/product-questions/:questionId/messages', questionId, 'shop:', shopAddress);
+
+      if (!shopAddress || !text) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: shopAddress, text'
+        });
+      }
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Question not found' });
+      }
+
+      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const timestamp = new Date().toISOString();
+      const messageId = `msg_${Date.now()}`;
+
+      // Создаем новое сообщение от сотрудника
+      const newMessage = {
+        id: messageId,
+        senderType: 'employee',
+        senderPhone: senderPhone || null,
+        senderName: senderName || 'Сотрудник',
+        shopAddress: shopAddress,
+        text: text,
+        imageUrl: imageUrl || null,
+        timestamp
+      };
+
+      // Инициализируем массивы если они отсутствуют (для старых вопросов)
+      if (!question.messages) {
+        question.messages = [];
+      }
+      if (!question.shops) {
+        question.shops = [];
+      }
+
+      // Добавляем сообщение в массив messages
+      question.messages.push(newMessage);
+
+      // Обновляем статус в массиве shops для конкретного магазина
+      const shopIndex = question.shops.findIndex(s => s.shopAddress === shopAddress);
+      if (shopIndex !== -1) {
+        // Магазин уже есть в списке - обновляем его статус
+        question.shops[shopIndex].isAnswered = true;
+        question.shops[shopIndex].answeredBy = senderPhone;
+        question.shops[shopIndex].answeredByName = senderName || 'Сотрудник';
+        question.shops[shopIndex].lastAnswerTime = timestamp;
+        question.shops[shopIndex].viewedByAdmin = false; // Админ ещё не просмотрел этот ответ
+      } else {
+        // Магазина нет в списке - добавляем его (для случая когда сотрудник отвечает из другого магазина)
+        question.shops.push({
+          shopAddress: shopAddress,
+          shopName: shopAddress,
+          isAnswered: true,
+          answeredBy: senderPhone,
+          answeredByName: senderName || 'Сотрудник',
+          lastAnswerTime: timestamp,
+          viewedByAdmin: false // Админ ещё не просмотрел этот ответ
+        });
+      }
+
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+
+      console.log('✅ Answer added to question:', questionId, 'by shop:', shopAddress);
+
+      // ✅ Начисление баллов за своевременный ответ
+      try {
+        const questionAge = (new Date() - new Date(question.timestamp)) / (1000 * 60); // минуты
+
+        // Загружаем настройки баллов
+        const settingsFile = path.join('/var/www/points-settings', 'product_search_points_settings.json');
+        let settings = { answeredPoints: 0.2, answerTimeoutMinutes: 30 };
+        if (fs.existsSync(settingsFile)) {
+          try {
+            settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+          } catch (e) {
+            console.error('Error loading product search settings:', e);
+          }
+        }
+
+        // Если ответили вовремя (до истечения таймаута) → начислить баллы
+        if (questionAge <= (settings.answerTimeoutMinutes || 30)) {
+          await assignAnswerBonus({
+            questionId: questionId,
+            shopAddress: shopAddress,
+            senderPhone: senderPhone,
+            senderName: senderName || 'Сотрудник',
+            points: settings.answeredPoints || 0.2,
+            questionAge: questionAge
+          });
+        } else {
+          console.log(`⏰ Question age (${Math.round(questionAge)} min) exceeds timeout (${settings.answerTimeoutMinutes || 30} min), no bonus`);
+        }
+      } catch (e) {
+        console.error('Error assigning answer bonus:', e);
+      }
+
+      // ✅ Отправка уведомления клиенту
+      try {
+        await notifyQuestionAnswered(question, newMessage);
+      } catch (e) {
+        console.error('❌ Ошибка отправки уведомления клиенту:', e);
+      }
+
+      res.json({ success: true, message: newMessage });
+    } catch (error) {
+      console.error('Error adding answer to product question:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/product-questions/:questionId/mark-read - Пометить сообщения вопроса как прочитанные
+  app.post('/api/product-questions/:questionId/mark-read', (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const { readerType } = req.body; // 'client' or 'employee'
+      console.log('POST /api/product-questions/:questionId/mark-read', questionId, readerType);
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Question not found' });
+      }
+
+      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+      // Помечаем сообщения как прочитанные
+      if (question.messages && question.messages.length > 0) {
+        question.messages.forEach(msg => {
+          if (readerType === 'client' && msg.senderType === 'employee') {
+            msg.isRead = true;
+          } else if (readerType === 'employee' && msg.senderType === 'client') {
+            msg.isRead = true;
+          }
+        });
+      }
+
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      console.log('✅ Messages marked as read for question:', questionId);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error marking question messages as read:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/product-questions/client/:phone/mark-all-read - Пометить все сообщения клиента как прочитанные
+  app.post('/api/product-questions/client/:phone/mark-all-read', (req, res) => {
+    try {
+      const { phone } = req.params;
+      console.log('POST /api/product-questions/client/:phone/mark-all-read', phone);
+
+      let markedCount = 0;
+
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        files.forEach(file => {
+          try {
+            const filePath = path.join(PRODUCT_QUESTIONS_DIR, file);
+            const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+            if (question.clientPhone === phone) {
+              let hasChanges = false;
+
+              if (question.messages && question.messages.length > 0) {
+                question.messages.forEach(msg => {
+                  if (msg.senderType === 'employee' && !msg.isRead) {
+                    msg.isRead = true;
+                    hasChanges = true;
+                  }
+                });
+              }
+
+              if (hasChanges) {
+                fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+                markedCount++;
+              }
+            }
+          } catch (e) {
+            console.error(`Error processing ${file}:`, e);
+          }
+        });
+      }
+
+      console.log(`✅ Marked ${markedCount} questions as read for client ${phone}`);
+      res.json({ success: true, markedCount });
+    } catch (error) {
+      console.error('Error marking all questions as read:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== PRODUCT QUESTION DIALOGS =====
+
+  app.get('/api/product-questions/:questionId/dialog', async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      console.log('GET /api/product-questions/:questionId/dialog', questionId);
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${questionId}.json`);
+
+      if (fs.existsSync(filePath)) {
+        const dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        res.json({ success: true, dialog });
+      } else {
+        res.json({ success: true, dialog: { questionId, messages: [] } });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/product-questions/:questionId/dialog', async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const message = req.body;
+      console.log('POST /api/product-questions/:questionId/dialog', questionId);
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${questionId}.json`);
+
+      let dialog = { questionId, messages: [] };
+      if (fs.existsSync(filePath)) {
+        dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      }
+
+      message.timestamp = message.timestamp || new Date().toISOString();
+      message.id = message.id || `msg_${Date.now()}`;
+      dialog.messages.push(message);
+
+      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      res.json({ success: true, message });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== PERSONAL PRODUCT DIALOGS (6 endpoints) =====
+
+  // 1. POST /api/product-question-dialogs - Создать персональный диалог
+  app.post('/api/product-question-dialogs', async (req, res) => {
+    try {
+      const { clientPhone, clientName, shopAddress, originalQuestionId, messageText, initialMessage, imageUrl, initialImageUrl } = req.body;
+      console.log('POST /api/product-question-dialogs');
+
+      // Поддержка обоих вариантов названия поля
+      const text = messageText || initialMessage;
+      const image = imageUrl || initialImageUrl;
+
+      if (!clientPhone || !clientName || !shopAddress) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: clientPhone, clientName, shopAddress'
+        });
+      }
+
+      const dialogId = 'dialog_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      const timestamp = new Date().toISOString();
+
+      const dialog = {
+        id: dialogId,
+        clientPhone,
+        clientName,
+        shopAddress,
+        originalQuestionId: originalQuestionId || null,
+        createdAt: timestamp,
+        hasUnreadFromClient: text ? true : false,
+        hasUnreadFromEmployee: false,
+        lastMessageTime: text ? timestamp : null,
+        messages: []
+      };
+
+      // Добавляем начальное сообщение если оно есть
+      if (text) {
+        const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        dialog.messages.push({
+          id: messageId,
+          senderType: 'client',
+          senderPhone: clientPhone,
+          senderName: clientName,
+          shopAddress: null,
+          text: text,
+          imageUrl: image || null,
+          timestamp,
+          isRead: false
+        });
+      }
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
+      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+
+      // Отправить push сотрудникам только если есть сообщение
+      if (text && dialog.messages.length > 0) {
+        try {
+          await notifyQuestionCreated(dialog.messages[0]);
+        } catch (e) {
+          console.error('❌ Ошибка отправки уведомлений:', e);
+        }
+      }
+
+      console.log('✅ Personal dialog created:', dialogId);
+      res.json({ success: true, dialog });
+    } catch (error) {
+      console.error('Error creating personal dialog:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 2. GET /api/product-question-dialogs/client/:phone - Получить диалоги клиента
+  app.get('/api/product-question-dialogs/client/:phone', (req, res) => {
+    try {
+      const { phone } = req.params;
+      console.log('GET /api/product-question-dialogs/client/:phone', phone);
+
+      const dialogs = [];
+
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const dialog = JSON.parse(data);
+
+            if (dialog.clientPhone === phone) {
+              dialogs.push(dialog);
+            }
+          } catch (e) {
+            console.error(`Error reading dialog ${file}:`, e);
+          }
+        }
+      }
+
+      // Сортировать по lastMessageTime
+      dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+
+      console.log(`✅ Found ${dialogs.length} dialogs for client ${phone}`);
+      res.json({ success: true, dialogs });
+    } catch (error) {
+      console.error('Error getting client dialogs:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 3. GET /api/product-question-dialogs/all - Получить все диалоги (для администраторов)
+  app.get('/api/product-question-dialogs/all', (req, res) => {
+    try {
+      console.log('GET /api/product-question-dialogs/all');
+
+      const dialogs = [];
+
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const dialog = JSON.parse(data);
+            dialogs.push(dialog);
+          } catch (e) {
+            console.error(`Error reading dialog ${file}:`, e);
+          }
+        }
+      }
+
+      dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+
+      console.log(`✅ Found ${dialogs.length} total dialogs`);
+      res.json({ success: true, dialogs });
+    } catch (error) {
+      console.error('Error getting all dialogs:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 3.5. GET /api/product-question-dialogs/shop/:shopAddress - Получить диалоги магазина
+  app.get('/api/product-question-dialogs/shop/:shopAddress', (req, res) => {
+    try {
+      const { shopAddress } = req.params;
+      console.log('GET /api/product-question-dialogs/shop/:shopAddress', shopAddress);
+
+      const dialogs = [];
+
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const dialog = JSON.parse(data);
+
+            if (dialog.shopAddress === shopAddress) {
+              dialogs.push(dialog);
+            }
+          } catch (e) {
+            console.error(`Error reading dialog ${file}:`, e);
+          }
+        }
+      }
+
+      dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+
+      console.log(`✅ Found ${dialogs.length} dialogs for shop ${shopAddress}`);
+      res.json({ success: true, dialogs });
+    } catch (error) {
+      console.error('Error getting shop dialogs:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 3.6. GET /api/product-question-dialogs/unviewed-counts - Получить количество непросмотренных отвеченных диалогов и вопросов по магазинам
+  // ВАЖНО: этот маршрут должен быть ПЕРЕД маршрутом /:dialogId, иначе "unviewed-counts" воспринимается как dialogId
+  app.get('/api/product-question-dialogs/unviewed-counts', (req, res) => {
+    try {
+      console.log('GET /api/product-question-dialogs/unviewed-counts');
+
+      const counts = {};
+      let totalUnviewed = 0;
+
+      // 1. Считаем непросмотренные персональные диалоги
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const dialog = JSON.parse(data);
+
+            // Считаем только отвеченные и непросмотренные админом диалоги
+            if (dialog.isAnswered && !dialog.viewedByAdmin) {
+              const shop = dialog.shopAddress;
+              counts[shop] = (counts[shop] || 0) + 1;
+              totalUnviewed++;
+            }
+          } catch (e) {
+            console.error(`Error reading dialog ${file}:`, e);
+          }
+        }
+      }
+
+      // 2. Считаем непросмотренные общие вопросы (ProductQuestion)
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(data);
+
+            // Проверяем каждый магазин в вопросе
+            if (question.shops && Array.isArray(question.shops)) {
+              for (const shop of question.shops) {
+                // Если магазин ответил и админ не просмотрел
+                if (shop.isAnswered && shop.viewedByAdmin === false) {
+                  counts[shop.shopAddress] = (counts[shop.shopAddress] || 0) + 1;
+                  totalUnviewed++;
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`Error reading question ${file}:`, e);
+          }
+        }
+      }
+
+      console.log('✅ Unviewed counts:', totalUnviewed, 'total (dialogs + questions)');
+      res.json({ success: true, counts, totalUnviewed });
+    } catch (error) {
+      console.error('Error getting unviewed counts:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 4. GET /api/product-question-dialogs/:dialogId - Получить конкретный диалог
+  app.get('/api/product-question-dialogs/:dialogId', (req, res) => {
+    try {
+      const { dialogId } = req.params;
+      console.log('GET /api/product-question-dialogs/:dialogId', dialogId);
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Dialog not found' });
+      }
+
+      const data = fs.readFileSync(filePath, 'utf8');
+      const dialog = JSON.parse(data);
+
+      res.json({ success: true, dialog });
+    } catch (error) {
+      console.error('Error getting dialog:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 5. POST /api/product-question-dialogs/:dialogId/messages - Добавить сообщение в диалог
+  app.post('/api/product-question-dialogs/:dialogId/messages', async (req, res) => {
+    try {
+      const { dialogId } = req.params;
+      const { senderType, senderPhone, senderName, shopAddress, text, imageUrl } = req.body;
+      console.log('POST /api/product-question-dialogs/:dialogId/messages', dialogId);
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Dialog not found' });
+      }
+
+      const data = fs.readFileSync(filePath, 'utf8');
+      const dialog = JSON.parse(data);
+
+      const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      const timestamp = new Date().toISOString();
+
+      const newMessage = {
+        id: messageId,
+        senderType,
+        senderPhone,
+        senderName,
+        shopAddress: senderType === 'employee' ? shopAddress : null,
+        text,
+        imageUrl: imageUrl || null,
+        timestamp,
+        isRead: false
+      };
+
+      dialog.messages.push(newMessage);
+      dialog.lastMessageTime = timestamp;
+
+      if (senderType === 'client') {
+        dialog.hasUnreadFromClient = true;
+      } else {
+        dialog.hasUnreadFromEmployee = true;
+        // Когда сотрудник отвечает, диалог становится "отвеченным" и должен попасть в отчёт
+        dialog.isAnswered = true;
+        dialog.viewedByAdmin = false; // Админ ещё не просмотрел этот ответ
+        dialog.answeredAt = timestamp;
+      }
+
+      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+
+      // Отправить push уведомления для персонального диалога
+      try {
+        if (senderType === 'employee') {
+          // Сотрудник ответил → уведомить клиента
+          await notifyPersonalDialogEmployeeMessage(dialog, newMessage);
+        } else {
+          // Клиент написал → уведомить сотрудников магазина
+          await notifyPersonalDialogClientMessage(dialog, newMessage);
+        }
+      } catch (e) {
+        console.error('❌ Ошибка отправки уведомлений:', e);
+      }
+
+      console.log('✅ Message added to dialog:', dialogId);
+      res.json({ success: true, message: newMessage });
+    } catch (error) {
+      console.error('Error adding message to dialog:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 6. POST /api/product-question-dialogs/:dialogId/mark-read - Пометить диалог как прочитанный
+  app.post('/api/product-question-dialogs/:dialogId/mark-read', (req, res) => {
+    try {
+      const { dialogId } = req.params;
+      const { readerType } = req.body; // 'client' or 'employee'
+      console.log('POST /api/product-question-dialogs/:dialogId/mark-read', dialogId, readerType);
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Dialog not found' });
+      }
+
+      const data = fs.readFileSync(filePath, 'utf8');
+      const dialog = JSON.parse(data);
+
+      if (readerType === 'client') {
+        dialog.hasUnreadFromEmployee = false;
+        // Пометить сообщения от сотрудников как прочитанные
+        dialog.messages.forEach(msg => {
+          if (msg.senderType === 'employee') {
+            msg.isRead = true;
+          }
+        });
+      } else if (readerType === 'employee') {
+        dialog.hasUnreadFromClient = false;
+        // Пометить сообщения от клиента как прочитанные
+        dialog.messages.forEach(msg => {
+          if (msg.senderType === 'client') {
+            msg.isRead = true;
+          }
+        });
+      }
+
+      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+
+      console.log('✅ Dialog marked as read:', dialogId, 'by', readerType);
+      res.json({ success: true, dialog });
+    } catch (error) {
+      console.error('Error marking dialog as read:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 7. POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin - Пометить диалог как просмотренный админом
+  app.post('/api/product-question-dialogs/:dialogId/mark-viewed-by-admin', (req, res) => {
+    try {
+      const { dialogId } = req.params;
+      console.log('POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin', dialogId);
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Dialog not found' });
+      }
+
+      const data = fs.readFileSync(filePath, 'utf8');
+      const dialog = JSON.parse(data);
+
+      dialog.viewedByAdmin = true;
+      dialog.viewedByAdminAt = new Date().toISOString();
+
+      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+
+      console.log('✅ Dialog marked as viewed by admin:', dialogId);
+      res.json({ success: true, dialog });
+    } catch (error) {
+      console.error('Error marking dialog as viewed by admin:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 8. POST /api/product-question-dialogs/mark-shop-viewed-by-admin - Пометить все диалоги и вопросы магазина как просмотренные
+  app.post('/api/product-question-dialogs/mark-shop-viewed-by-admin', (req, res) => {
+    try {
+      const { shopAddress } = req.body;
+      console.log('POST /api/product-question-dialogs/mark-shop-viewed-by-admin', shopAddress);
+
+      if (!shopAddress) {
+        return res.status(400).json({ success: false, error: 'shopAddress is required' });
+      }
+
+      let markedDialogsCount = 0;
+      let markedQuestionsCount = 0;
+      const timestamp = new Date().toISOString();
+
+      // 1. Маркируем персональные диалоги
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, file);
+            const data = fs.readFileSync(filePath, 'utf8');
+            const dialog = JSON.parse(data);
+
+            if (dialog.shopAddress === shopAddress && dialog.isAnswered && !dialog.viewedByAdmin) {
+              dialog.viewedByAdmin = true;
+              dialog.viewedByAdminAt = timestamp;
+              fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+              markedDialogsCount++;
+            }
+          } catch (e) {
+            console.error(`Error processing dialog ${file}:`, e);
+          }
+        }
+      }
+
+      // 2. Маркируем общие вопросы (ProductQuestion)
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const filePath = path.join(PRODUCT_QUESTIONS_DIR, file);
+            const data = fs.readFileSync(filePath, 'utf8');
+            const question = JSON.parse(data);
+
+            let questionModified = false;
+
+            // Проверяем каждый магазин в вопросе
+            if (question.shops && Array.isArray(question.shops)) {
+              for (const shop of question.shops) {
+                if (shop.shopAddress === shopAddress && shop.isAnswered && shop.viewedByAdmin === false) {
+                  shop.viewedByAdmin = true;
+                  shop.viewedByAdminAt = timestamp;
+                  questionModified = true;
+                  markedQuestionsCount++;
+                }
+              }
+            }
+
+            if (questionModified) {
+              fs.writeFileSync(filePath, JSON.stringify(question, null, 2));
+            }
+          } catch (e) {
+            console.error(`Error processing question ${file}:`, e);
+          }
+        }
+      }
+
+      const totalMarked = markedDialogsCount + markedQuestionsCount;
+      console.log('✅ Marked', totalMarked, 'items as viewed by admin for shop:', shopAddress,
+                  '(dialogs:', markedDialogsCount, ', questions:', markedQuestionsCount, ')');
+      res.json({ success: true, markedCount: totalMarked, markedDialogsCount, markedQuestionsCount });
+    } catch (error) {
+      console.error('Error marking shop dialogs as viewed:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== CLIENT ENDPOINTS =====
+
+  // GET /api/product-questions/client/:phone - Получить все вопросы клиента (для "Мои диалоги")
+  app.get('/api/product-questions/client/:phone', (req, res) => {
+    try {
+      const { phone } = req.params;
+      console.log('GET /api/product-questions/client/:phone', phone);
+
+      const questions = [];
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(data);
+
+            if (question.clientPhone === phone) {
+              questions.push(question);
+            }
+          } catch (e) {
+            console.error(`Error reading question ${file}:`, e);
+          }
+        }
+      }
+
+      // Собираем все сообщения в единый массив
+      const allMessages = [];
+      let unreadCount = 0;
+      let lastMessage = null;
+
+      questions.forEach(question => {
+        if (question.messages && question.messages.length > 0) {
+          question.messages.forEach(msg => {
+            allMessages.push(msg);
+            // Последнее сообщение - самое новое по timestamp
+            if (!lastMessage || new Date(msg.timestamp) > new Date(lastMessage.timestamp)) {
+              lastMessage = msg;
+            }
+            // Подсчитываем непрочитанные от сотрудников
+            if (msg.senderType === 'employee' && (!msg.isRead || msg.isRead === false)) {
+              unreadCount++;
+            }
+          });
+        }
+      });
+
+      // Сортируем сообщения по timestamp
+      allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      const response = {
+        success: true,
+        hasQuestions: questions.length > 0,
+        messages: allMessages,
+        unreadCount: unreadCount,
+        lastMessage: lastMessage
+      };
+
+      console.log(`✅ Found ${questions.length} questions with ${allMessages.length} messages for client ${phone}, unread: ${unreadCount}`);
+      res.json(response);
+    } catch (error) {
+      console.error('Error getting client questions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== GROUPING ENDPOINT (1 endpoint) =====
+
+  // GET /api/product-questions/client/:phone/grouped - Группировка диалогов по магазинам
+  app.get('/api/product-questions/client/:phone/grouped', (req, res) => {
+    try {
+      const { phone } = req.params;
+      console.log('GET /api/product-questions/client/:phone/grouped', phone);
+
+      // Получить все вопросы клиента
+      const questions = [];
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(data);
+
+            if (question.clientPhone === phone) {
+              questions.push(question);
+            }
+          } catch (e) {
+            console.error(`Error reading question ${file}:`, e);
+          }
+        }
+      }
+
+      // Получить все персональные диалоги
+      const dialogs = [];
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const dialogFiles = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of dialogFiles) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const dialog = JSON.parse(data);
+
+            if (dialog.clientPhone === phone) {
+              dialogs.push(dialog);
+            }
+          } catch (e) {
+            console.error(`Error reading dialog ${file}:`, e);
+          }
+        }
+      }
+
+      // Группировать по магазинам
+      const grouped = {};
+      const networkWide = [];
+
+      questions.forEach(question => {
+        if (question.isNetworkWide) {
+          networkWide.push(question);
+        } else {
+          const shop = question.shops ? question.shops[0].shopAddress : question.shopAddress;
+          if (!grouped[shop]) {
+            grouped[shop] = {
+              shopAddress: shop,
+              questions: [],
+              dialogs: [],
+              unreadCount: 0
+            };
+          }
+          grouped[shop].questions.push(question);
+
+          // Подсчитать непрочитанные
+          if (question.messages && question.messages.length > 0) {
+            const lastMsg = question.messages[question.messages.length - 1];
+            if (lastMsg.senderType === 'employee' && !lastMsg.isRead) {
+              grouped[shop].unreadCount++;
+            }
+          }
+        }
+      });
+
+      dialogs.forEach(dialog => {
+        const shop = dialog.shopAddress;
+        if (!grouped[shop]) {
+          grouped[shop] = {
+            shopAddress: shop,
+            questions: [],
+            dialogs: [],
+            unreadCount: 0
+          };
+        }
+        grouped[shop].dialogs.push(dialog);
+
+        if (dialog.hasUnreadFromEmployee) {
+          grouped[shop].unreadCount++;
+        }
+      });
+
+      // Подсчитать общий счетчик
+      const totalUnread = Object.values(grouped).reduce((sum, group) => sum + group.unreadCount, 0) +
+        networkWide.filter(q => {
+          if (!q.messages || q.messages.length === 0) return false;
+          const lastMsg = q.messages[q.messages.length - 1];
+          return lastMsg && lastMsg.senderType === 'employee' && !lastMsg.isRead;
+        }).length;
+
+      console.log(`✅ Grouped ${questions.length} questions + ${dialogs.length} dialogs for client ${phone}`);
+      res.json({
+        success: true,
+        totalUnread,
+        networkWide: {
+          questions: networkWide,
+          unreadCount: networkWide.filter(q => {
+            if (!q.messages || q.messages.length === 0) return false;
+            const lastMsg = q.messages[q.messages.length - 1];
+            return lastMsg && lastMsg.senderType === 'employee' && !lastMsg.isRead;
+          }).length
+        },
+        byShop: grouped
+      });
+    } catch (error) {
+      console.error('Error grouping client questions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== PRODUCT QUESTION PHOTOS =====
+
+  if (uploadProductQuestionPhoto) {
+    app.post('/api/product-questions/upload-photo', uploadProductQuestionPhoto.single('photo'), async (req, res) => {
+      try {
+        console.log('POST /api/product-questions/upload-photo');
+
+        if (!req.file) {
+          return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+
+        const photoUrl = `/product-question-photos/${req.file.filename}`;
+        console.log('✅ Photo uploaded:', photoUrl);
+        res.json({ success: true, photoUrl });
+      } catch (error) {
+        console.error('Error uploading product question photo:', error);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+  }
+
+  console.log('✅ Product Questions API initialized');
+}
+
+module.exports = { setupProductQuestionsAPI };

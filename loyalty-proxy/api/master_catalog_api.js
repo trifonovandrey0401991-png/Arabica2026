@@ -4,9 +4,11 @@
  *
  * Мастер-каталог создаётся ВРУЧНУЮ - это надёжнее чем автоматическое объединение по именам.
  * Админ создаёт карточку товара и привязывает к ней коды из разных магазинов.
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Модуль машинного зрения для подсчёта counting photos
@@ -29,6 +31,16 @@ let pendingCodesCache = null;
 // Структура: { key: { data, timestamp } }
 const trainingDataCache = new Map();
 const TRAINING_CACHE_TTL = 30000; // 30 секунд
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Получить данные из кэша training
@@ -60,17 +72,17 @@ function clearTrainingCache() {
 /**
  * Загрузить продукты мастер-каталога
  */
-function loadProducts() {
+async function loadProducts() {
   try {
     if (productsCache !== null) {
       return productsCache;
     }
 
-    if (!fs.existsSync(PRODUCTS_FILE)) {
+    if (!(await fileExists(PRODUCTS_FILE))) {
       return [];
     }
 
-    const data = fs.readFileSync(PRODUCTS_FILE, 'utf8');
+    const data = await fsp.readFile(PRODUCTS_FILE, 'utf8');
     productsCache = JSON.parse(data);
     return productsCache;
   } catch (error) {
@@ -82,13 +94,13 @@ function loadProducts() {
 /**
  * Сохранить продукты мастер-каталога
  */
-function saveProducts(products) {
+async function saveProducts(products) {
   try {
-    if (!fs.existsSync(MASTER_CATALOG_DIR)) {
-      fs.mkdirSync(MASTER_CATALOG_DIR, { recursive: true });
+    if (!(await fileExists(MASTER_CATALOG_DIR))) {
+      await fsp.mkdir(MASTER_CATALOG_DIR, { recursive: true });
     }
 
-    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+    await fsp.writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2));
     productsCache = products;
     clearTrainingCache(); // Очищаем кэш training данных
     return true;
@@ -101,17 +113,17 @@ function saveProducts(products) {
 /**
  * Загрузить маппинги (код магазина → master_id)
  */
-function loadMappings() {
+async function loadMappings() {
   try {
     if (mappingsCache !== null) {
       return mappingsCache;
     }
 
-    if (!fs.existsSync(MAPPINGS_FILE)) {
+    if (!(await fileExists(MAPPINGS_FILE))) {
       return {};
     }
 
-    const data = fs.readFileSync(MAPPINGS_FILE, 'utf8');
+    const data = await fsp.readFile(MAPPINGS_FILE, 'utf8');
     mappingsCache = JSON.parse(data);
     return mappingsCache;
   } catch (error) {
@@ -123,13 +135,13 @@ function loadMappings() {
 /**
  * Сохранить маппинги
  */
-function saveMappings(mappings) {
+async function saveMappings(mappings) {
   try {
-    if (!fs.existsSync(MASTER_CATALOG_DIR)) {
-      fs.mkdirSync(MASTER_CATALOG_DIR, { recursive: true });
+    if (!(await fileExists(MASTER_CATALOG_DIR))) {
+      await fsp.mkdir(MASTER_CATALOG_DIR, { recursive: true });
     }
 
-    fs.writeFileSync(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
+    await fsp.writeFile(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
     mappingsCache = mappings;
     return true;
   } catch (error) {
@@ -141,17 +153,17 @@ function saveMappings(mappings) {
 /**
  * Загрузить pending-коды (ожидающие подтверждения)
  */
-function loadPendingCodes() {
+async function loadPendingCodes() {
   try {
     if (pendingCodesCache !== null) {
       return pendingCodesCache;
     }
 
-    if (!fs.existsSync(PENDING_CODES_FILE)) {
+    if (!(await fileExists(PENDING_CODES_FILE))) {
       return [];
     }
 
-    const data = fs.readFileSync(PENDING_CODES_FILE, 'utf8');
+    const data = await fsp.readFile(PENDING_CODES_FILE, 'utf8');
     pendingCodesCache = JSON.parse(data);
     return pendingCodesCache;
   } catch (error) {
@@ -163,13 +175,13 @@ function loadPendingCodes() {
 /**
  * Сохранить pending-коды
  */
-function savePendingCodes(codes) {
+async function savePendingCodes(codes) {
   try {
-    if (!fs.existsSync(MASTER_CATALOG_DIR)) {
-      fs.mkdirSync(MASTER_CATALOG_DIR, { recursive: true });
+    if (!(await fileExists(MASTER_CATALOG_DIR))) {
+      await fsp.mkdir(MASTER_CATALOG_DIR, { recursive: true });
     }
 
-    fs.writeFileSync(PENDING_CODES_FILE, JSON.stringify(codes, null, 2));
+    await fsp.writeFile(PENDING_CODES_FILE, JSON.stringify(codes, null, 2));
     pendingCodesCache = codes;
     return true;
   } catch (error) {
@@ -181,8 +193,8 @@ function savePendingCodes(codes) {
 /**
  * Проверить, есть ли код в мастер-каталоге
  */
-function isCodeInMasterCatalog(kod) {
-  const products = loadProducts();
+async function isCodeInMasterCatalog(kod) {
+  const products = await loadProducts();
   return products.some((p) => p.barcode === kod);
 }
 
@@ -190,9 +202,9 @@ function isCodeInMasterCatalog(kod) {
  * Получить название товара из мастер-каталога по barcode (kod)
  * Возвращает название из мастер-каталога или null если не найден
  */
-function getMasterNameByBarcode(barcode) {
+async function getMasterNameByBarcode(barcode) {
   if (!barcode) return null;
-  const products = loadProducts();
+  const products = await loadProducts();
   const product = products.find((p) => p.barcode === barcode);
   return product ? product.name : null;
 }
@@ -201,17 +213,17 @@ function getMasterNameByBarcode(barcode) {
  * Получить товар из мастер-каталога по barcode (kod)
  * Возвращает весь объект товара или null если не найден
  */
-function getMasterProductByBarcode(barcode) {
+async function getMasterProductByBarcode(barcode) {
   if (!barcode) return null;
-  const products = loadProducts();
+  const products = await loadProducts();
   return products.find((p) => p.barcode === barcode) || null;
 }
 
 /**
  * Проверить, есть ли код в pending
  */
-function isCodeInPending(kod) {
-  const pending = loadPendingCodes();
+async function isCodeInPending(kod) {
+  const pending = await loadPendingCodes();
   return pending.some((p) => p.kod === kod);
 }
 
@@ -219,13 +231,13 @@ function isCodeInPending(kod) {
  * Добавить новый код в pending (вызывается из shop_products_api.js при sync)
  * Возвращает true если код был добавлен (новый), false если уже существует
  */
-function addPendingCode({ kod, shopId, shopName, name, group }) {
+async function addPendingCode({ kod, shopId, shopName, name, group }) {
   // Проверяем, есть ли уже в мастер-каталоге
-  if (isCodeInMasterCatalog(kod)) {
+  if (await isCodeInMasterCatalog(kod)) {
     return { added: false, reason: 'in_master_catalog' };
   }
 
-  const pending = loadPendingCodes();
+  const pending = await loadPendingCodes();
   const existingIndex = pending.findIndex((p) => p.kod === kod);
 
   if (existingIndex >= 0) {
@@ -241,7 +253,7 @@ function addPendingCode({ kod, shopId, shopName, name, group }) {
         group,
         firstSeenAt: new Date().toISOString(),
       });
-      savePendingCodes(pending);
+      await savePendingCodes(pending);
       console.log(`[Master Catalog API] Добавлен источник ${shopId} для pending-кода ${kod}`);
     }
 
@@ -265,7 +277,7 @@ function addPendingCode({ kod, shopId, shopName, name, group }) {
   };
 
   pending.push(newPending);
-  savePendingCodes(pending);
+  await savePendingCodes(pending);
 
   console.log(`[Master Catalog API] Новый pending-код: ${kod} (${name}) от магазина ${shopName}`);
 
@@ -282,8 +294,8 @@ function generateId() {
 /**
  * Обновить маппинги после изменения продукта
  */
-function updateMappingsForProduct(product) {
-  const mappings = loadMappings();
+async function updateMappingsForProduct(product) {
+  const mappings = await loadMappings();
 
   // Удаляем старые маппинги для этого продукта
   Object.keys(mappings).forEach((key) => {
@@ -301,7 +313,7 @@ function updateMappingsForProduct(product) {
     });
   }
 
-  saveMappings(mappings);
+  await saveMappings(mappings);
 }
 
 /**
@@ -310,10 +322,12 @@ function updateMappingsForProduct(product) {
 function setupMasterCatalogAPI(app) {
   console.log('[Master Catalog API] Инициализация...');
 
-  // Создаём директорию если не существует
-  if (!fs.existsSync(MASTER_CATALOG_DIR)) {
-    fs.mkdirSync(MASTER_CATALOG_DIR, { recursive: true });
-  }
+  // Создаём директорию если не существует (async IIFE)
+  (async () => {
+    if (!(await fileExists(MASTER_CATALOG_DIR))) {
+      await fsp.mkdir(MASTER_CATALOG_DIR, { recursive: true });
+    }
+  })();
 
   // ============ CRUD ПРОДУКТОВ ============
 
@@ -321,11 +335,11 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog
    * Получить все продукты мастер-каталога
    */
-  app.get('/api/master-catalog', (req, res) => {
+  app.get('/api/master-catalog', async (req, res) => {
     try {
       const { group, search, limit, offset } = req.query;
 
-      let products = loadProducts();
+      let products = await loadProducts();
 
       // Фильтр по группе
       if (group) {
@@ -381,7 +395,7 @@ function setupMasterCatalogAPI(app) {
    *     }
    *   }
    */
-  app.post('/api/master-catalog', (req, res) => {
+  app.post('/api/master-catalog', async (req, res) => {
     try {
       const { name, group, barcode, shopCodes, createdBy } = req.body;
 
@@ -389,7 +403,7 @@ function setupMasterCatalogAPI(app) {
         return res.status(400).json({ success: false, error: 'Название товара обязательно' });
       }
 
-      const products = loadProducts();
+      const products = await loadProducts();
 
       // Проверяем уникальность barcode
       if (barcode) {
@@ -415,10 +429,10 @@ function setupMasterCatalogAPI(app) {
       };
 
       products.push(newProduct);
-      saveProducts(products);
+      await saveProducts(products);
 
       // Обновляем маппинги
-      updateMappingsForProduct(newProduct);
+      await updateMappingsForProduct(newProduct);
 
       console.log(`[Master Catalog API] Создан продукт: ${newProduct.name}`);
 
@@ -433,10 +447,10 @@ function setupMasterCatalogAPI(app) {
    * PUT /api/master-catalog/:id
    * Обновить продукт
    */
-  app.put('/api/master-catalog/:id', (req, res) => {
+  app.put('/api/master-catalog/:id', async (req, res) => {
     try {
       const { name, group, barcode, shopCodes } = req.body;
-      const products = loadProducts();
+      const products = await loadProducts();
       const index = products.findIndex((p) => p.id === req.params.id);
 
       if (index === -1) {
@@ -462,10 +476,10 @@ function setupMasterCatalogAPI(app) {
 
       products[index].updatedAt = new Date().toISOString();
 
-      saveProducts(products);
+      await saveProducts(products);
 
       // Обновляем маппинги
-      updateMappingsForProduct(products[index]);
+      await updateMappingsForProduct(products[index]);
 
       console.log(`[Master Catalog API] Обновлён продукт: ${products[index].name}`);
 
@@ -480,9 +494,9 @@ function setupMasterCatalogAPI(app) {
    * DELETE /api/master-catalog/:id
    * Удалить продукт
    */
-  app.delete('/api/master-catalog/:id', (req, res) => {
+  app.delete('/api/master-catalog/:id', async (req, res) => {
     try {
-      const products = loadProducts();
+      const products = await loadProducts();
       const index = products.findIndex((p) => p.id === req.params.id);
 
       if (index === -1) {
@@ -490,16 +504,16 @@ function setupMasterCatalogAPI(app) {
       }
 
       const deleted = products.splice(index, 1)[0];
-      saveProducts(products);
+      await saveProducts(products);
 
       // Удаляем маппинги
-      const mappings = loadMappings();
+      const mappings = await loadMappings();
       Object.keys(mappings).forEach((key) => {
         if (mappings[key] === deleted.id) {
           delete mappings[key];
         }
       });
-      saveMappings(mappings);
+      await saveMappings(mappings);
 
       console.log(`[Master Catalog API] Удалён продукт: ${deleted.name}`);
 
@@ -522,7 +536,7 @@ function setupMasterCatalogAPI(app) {
    *     "kod": "46210586"
    *   }
    */
-  app.post('/api/master-catalog/:id/link-shop-code', (req, res) => {
+  app.post('/api/master-catalog/:id/link-shop-code', async (req, res) => {
     try {
       const { shopId, kod } = req.body;
 
@@ -530,7 +544,7 @@ function setupMasterCatalogAPI(app) {
         return res.status(400).json({ success: false, error: 'shopId и kod обязательны' });
       }
 
-      const products = loadProducts();
+      const products = await loadProducts();
       const product = products.find((p) => p.id === req.params.id);
 
       if (!product) {
@@ -538,7 +552,7 @@ function setupMasterCatalogAPI(app) {
       }
 
       // Проверяем, не привязан ли этот код к другому продукту
-      const mappings = loadMappings();
+      const mappings = await loadMappings();
       const mappingKey = `${shopId}:${kod}`;
 
       if (mappings[mappingKey] && mappings[mappingKey] !== product.id) {
@@ -554,8 +568,8 @@ function setupMasterCatalogAPI(app) {
       product.shopCodes[shopId] = kod;
       product.updatedAt = new Date().toISOString();
 
-      saveProducts(products);
-      updateMappingsForProduct(product);
+      await saveProducts(products);
+      await updateMappingsForProduct(product);
 
       console.log(`[Master Catalog API] Привязан код ${shopId}:${kod} к продукту ${product.name}`);
 
@@ -570,11 +584,11 @@ function setupMasterCatalogAPI(app) {
    * DELETE /api/master-catalog/:id/unlink-shop-code/:shopId
    * Отвязать код магазина от продукта
    */
-  app.delete('/api/master-catalog/:id/unlink-shop-code/:shopId', (req, res) => {
+  app.delete('/api/master-catalog/:id/unlink-shop-code/:shopId', async (req, res) => {
     try {
       const { id, shopId } = req.params;
 
-      const products = loadProducts();
+      const products = await loadProducts();
       const product = products.find((p) => p.id === id);
 
       if (!product) {
@@ -589,8 +603,8 @@ function setupMasterCatalogAPI(app) {
       delete product.shopCodes[shopId];
       product.updatedAt = new Date().toISOString();
 
-      saveProducts(products);
-      updateMappingsForProduct(product);
+      await saveProducts(products);
+      await updateMappingsForProduct(product);
 
       console.log(`[Master Catalog API] Отвязан код ${shopId} от продукта ${product.name}`);
 
@@ -607,9 +621,9 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog/groups/list
    * Получить список групп товаров
    */
-  app.get('/api/master-catalog/groups/list', (req, res) => {
+  app.get('/api/master-catalog/groups/list', async (req, res) => {
     try {
-      const products = loadProducts();
+      const products = await loadProducts();
       const groupsSet = new Set();
 
       products.forEach((p) => {
@@ -635,7 +649,7 @@ function setupMasterCatalogAPI(app) {
    *   shopId: ID магазина
    *   kod: код товара в магазине
    */
-  app.get('/api/master-catalog/by-shop-code', (req, res) => {
+  app.get('/api/master-catalog/by-shop-code', async (req, res) => {
     try {
       const { shopId, kod } = req.query;
 
@@ -643,7 +657,7 @@ function setupMasterCatalogAPI(app) {
         return res.status(400).json({ success: false, error: 'shopId и kod обязательны' });
       }
 
-      const mappings = loadMappings();
+      const mappings = await loadMappings();
       const mappingKey = `${shopId}:${kod}`;
       const masterId = mappings[mappingKey];
 
@@ -651,7 +665,7 @@ function setupMasterCatalogAPI(app) {
         return res.json({ success: true, product: null, message: 'Продукт не найден в мастер-каталоге' });
       }
 
-      const products = loadProducts();
+      const products = await loadProducts();
       const product = products.find((p) => p.id === masterId);
 
       res.json({ success: true, product: product || null });
@@ -667,10 +681,10 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog/stats
    * Статистика мастер-каталога
    */
-  app.get('/api/master-catalog/stats', (req, res) => {
+  app.get('/api/master-catalog/stats', async (req, res) => {
     try {
-      const products = loadProducts();
-      const mappings = loadMappings();
+      const products = await loadProducts();
+      const mappings = await loadMappings();
 
       // Группы
       const groupsSet = new Set();
@@ -713,9 +727,9 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog/pending-codes
    * Получить список кодов ожидающих подтверждения
    */
-  app.get('/api/master-catalog/pending-codes', (req, res) => {
+  app.get('/api/master-catalog/pending-codes', async (req, res) => {
     try {
-      const pending = loadPendingCodes();
+      const pending = await loadPendingCodes();
 
       // Сортируем по дате (новые первыми)
       pending.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -742,7 +756,7 @@ function setupMasterCatalogAPI(app) {
    *     "group": "Сигареты"
    *   }
    */
-  app.post('/api/master-catalog/approve-code', (req, res) => {
+  app.post('/api/master-catalog/approve-code', async (req, res) => {
     try {
       const { kod, name, group } = req.body;
 
@@ -751,7 +765,7 @@ function setupMasterCatalogAPI(app) {
       }
 
       // Проверяем что код в pending
-      const pending = loadPendingCodes();
+      const pending = await loadPendingCodes();
       const pendingIndex = pending.findIndex((p) => p.kod === kod);
 
       if (pendingIndex === -1) {
@@ -761,13 +775,13 @@ function setupMasterCatalogAPI(app) {
       const pendingCode = pending[pendingIndex];
 
       // Проверяем что нет в мастер-каталоге
-      const products = loadProducts();
+      const products = await loadProducts();
       const existing = products.find((p) => p.barcode === kod);
 
       if (existing) {
         // Удаляем из pending и возвращаем существующий
         pending.splice(pendingIndex, 1);
-        savePendingCodes(pending);
+        await savePendingCodes(pending);
         return res.json({
           success: true,
           message: 'Код уже в мастер-каталоге',
@@ -795,14 +809,14 @@ function setupMasterCatalogAPI(app) {
       };
 
       products.push(newProduct);
-      saveProducts(products);
+      await saveProducts(products);
 
       // Обновляем маппинги
-      updateMappingsForProduct(newProduct);
+      await updateMappingsForProduct(newProduct);
 
       // Удаляем из pending
       pending.splice(pendingIndex, 1);
-      savePendingCodes(pending);
+      await savePendingCodes(pending);
 
       console.log(`[Master Catalog API] Код ${kod} подтверждён как: ${name}`);
 
@@ -817,11 +831,11 @@ function setupMasterCatalogAPI(app) {
    * DELETE /api/master-catalog/pending-codes/:kod
    * Отклонить код (удалить из pending)
    */
-  app.delete('/api/master-catalog/pending-codes/:kod', (req, res) => {
+  app.delete('/api/master-catalog/pending-codes/:kod', async (req, res) => {
     try {
       const { kod } = req.params;
 
-      const pending = loadPendingCodes();
+      const pending = await loadPendingCodes();
       const index = pending.findIndex((p) => p.kod === kod);
 
       if (index === -1) {
@@ -829,7 +843,7 @@ function setupMasterCatalogAPI(app) {
       }
 
       const deleted = pending.splice(index, 1)[0];
-      savePendingCodes(pending);
+      await savePendingCodes(pending);
 
       console.log(`[Master Catalog API] Код ${kod} отклонён`);
 
@@ -853,7 +867,7 @@ function setupMasterCatalogAPI(app) {
    *     "skipExisting": true  // пропускать существующие (по barcode)
    *   }
    */
-  app.post('/api/master-catalog/bulk-import', (req, res) => {
+  app.post('/api/master-catalog/bulk-import', async (req, res) => {
     try {
       const { products: inputProducts, skipExisting = true } = req.body;
 
@@ -861,7 +875,7 @@ function setupMasterCatalogAPI(app) {
         return res.status(400).json({ success: false, error: 'products должен быть массивом' });
       }
 
-      const existingProducts = loadProducts();
+      const existingProducts = await loadProducts();
       const existingBarcodes = new Set(existingProducts.filter((p) => p.barcode).map((p) => p.barcode));
 
       let added = 0;
@@ -908,7 +922,7 @@ function setupMasterCatalogAPI(app) {
         added++;
       });
 
-      saveProducts(existingProducts);
+      await saveProducts(existingProducts);
 
       console.log(`[Master Catalog API] Bulk import: добавлено ${added}, пропущено ${skipped}, ошибок ${errors}`);
 
@@ -929,11 +943,11 @@ function setupMasterCatalogAPI(app) {
    * POST /api/master-catalog/pending-codes/:kod/mark-notified
    * Пометить pending-код как отправивший уведомление
    */
-  app.post('/api/master-catalog/pending-codes/:kod/mark-notified', (req, res) => {
+  app.post('/api/master-catalog/pending-codes/:kod/mark-notified', async (req, res) => {
     try {
       const { kod } = req.params;
 
-      const pending = loadPendingCodes();
+      const pending = await loadPendingCodes();
       const pendingCode = pending.find((p) => p.kod === kod);
 
       if (!pendingCode) {
@@ -941,7 +955,7 @@ function setupMasterCatalogAPI(app) {
       }
 
       pendingCode.notificationSent = true;
-      savePendingCodes(pending);
+      await savePendingCodes(pending);
 
       res.json({ success: true });
     } catch (error) {
@@ -959,7 +973,7 @@ function setupMasterCatalogAPI(app) {
    * Body:
    *   { "isAiActive": true/false }
    */
-  app.patch('/api/master-catalog/:id/ai-status', (req, res) => {
+  app.patch('/api/master-catalog/:id/ai-status', async (req, res) => {
     try {
       const { isAiActive } = req.body;
 
@@ -967,7 +981,7 @@ function setupMasterCatalogAPI(app) {
         return res.status(400).json({ success: false, error: 'isAiActive должен быть boolean' });
       }
 
-      const products = loadProducts();
+      const products = await loadProducts();
       const product = products.find((p) => p.id === req.params.id);
 
       if (!product) {
@@ -977,7 +991,7 @@ function setupMasterCatalogAPI(app) {
       product.isAiActive = isAiActive;
       product.updatedAt = new Date().toISOString();
 
-      saveProducts(products);
+      await saveProducts(products);
 
       console.log(`[Master Catalog API] AI статус для ${product.name}: ${isAiActive ? 'активна' : 'неактивна'}`);
 
@@ -996,7 +1010,7 @@ function setupMasterCatalogAPI(app) {
    * Поддерживает пагинацию: limit, offset
    * Поддерживает кэширование (TTL 30 сек) для ускорения повторных запросов
    */
-  app.get('/api/master-catalog/for-training', (req, res) => {
+  app.get('/api/master-catalog/for-training', async (req, res) => {
     try {
       const { productGroup, shopAddress, limit, offset } = req.query;
       // shopAddress - если передан, возвращаем perShopDisplayStats только для этого магазина
@@ -1017,7 +1031,7 @@ function setupMasterCatalogAPI(app) {
         // Кэш пуст - вычисляем данные
         const startTime = Date.now();
 
-        let products = loadProducts();
+        let products = await loadProducts();
 
         // Фильтр по группе
         if (productGroup) {
@@ -1241,9 +1255,9 @@ function setupMasterCatalogAPI(app) {
    * Получить продукт по ID
    * ВАЖНО: Этот маршрут должен быть ПОСЛЕ всех конкретных путей!
    */
-  app.get('/api/master-catalog/:id', (req, res) => {
+  app.get('/api/master-catalog/:id', async (req, res) => {
     try {
-      const products = loadProducts();
+      const products = await loadProducts();
       const product = products.find((p) => p.id === req.params.id);
 
       if (!product) {

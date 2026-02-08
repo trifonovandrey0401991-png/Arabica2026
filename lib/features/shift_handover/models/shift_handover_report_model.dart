@@ -264,7 +264,7 @@ class ShiftHandoverReport {
   /// Получить уникальные адреса магазинов из отчетов
   static Future<List<String>> getUniqueShopAddresses() async {
     final reports = await loadAllLocal();
-    final addresses = reports.map((r) => r.shopAddress).toSet().toList();
+    final addresses = reports.map((r) => r.shopAddress).where((a) => a.trim().isNotEmpty).toSet().toList();
     addresses.sort();
     return addresses;
   }

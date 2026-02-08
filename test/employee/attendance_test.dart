@@ -9,10 +9,13 @@ void main() {
     group('ET-ATT: Basic Attendance', () {
       test('ET-ATT-001: Отметка "Я на работе" - успешная', () async {
         // Arrange
+        // ignore: unused_local_variable
         final employee = MockEmployeeData.validEmployee;
         final shop = MockShopData.validShop;
         // Геолокация в радиусе магазина
+        // ignore: unused_local_variable
         final currentLat = shop['latitude']! + 0.0001;
+        // ignore: unused_local_variable
         final currentLng = shop['longitude']! + 0.0001;
 
         // Act
@@ -33,6 +36,7 @@ void main() {
 
       test('ET-ATT-002: Повторная отметка за день - блокировка', () async {
         // Arrange
+        // ignore: unused_local_variable
         final employee = MockEmployeeData.validEmployee;
         // Сотрудник уже отметился сегодня
 
@@ -48,7 +52,9 @@ void main() {
 
       test('ET-ATT-003: Опоздание на смену', () async {
         // Arrange
+        // ignore: unused_local_variable
         final employee = MockEmployeeData.validEmployee;
+        // ignore: unused_local_variable
         final shop = MockShopData.validShop;
         // Время после начала смены
 
@@ -66,10 +72,13 @@ void main() {
 
       test('ET-ATT-004: Вне радиуса магазина', () async {
         // Arrange
+        // ignore: unused_local_variable
         final employee = MockEmployeeData.validEmployee;
         final shop = MockShopData.validShop;
         // Геолокация далеко от магазина (> 100м)
+        // ignore: unused_local_variable
         final currentLat = shop['latitude']! + 0.01; // ~1км
+        // ignore: unused_local_variable
         final currentLng = shop['longitude']! + 0.01;
 
         // Act

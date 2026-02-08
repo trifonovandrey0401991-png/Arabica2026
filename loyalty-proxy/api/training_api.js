@@ -1,13 +1,34 @@
-const fs = require('fs');
+/**
+ * Training API
+ * Статьи обучения для сотрудников
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const TRAINING_ARTICLES_DIR = `${DATA_DIR}/training-articles`;
 
-if (!fs.existsSync(TRAINING_ARTICLES_DIR)) {
-  fs.mkdirSync(TRAINING_ARTICLES_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+// Initialize directory on module load
+(async () => {
+  try {
+    await fsp.mkdir(TRAINING_ARTICLES_DIR, { recursive: true });
+  } catch (e) {
+    console.error('Failed to create training-articles directory:', e);
+  }
+})();
 
 function setupTrainingAPI(app) {
   // ===== TRAINING ARTICLES =====
@@ -17,12 +38,13 @@ function setupTrainingAPI(app) {
       console.log('GET /api/training-articles');
       const articles = [];
 
-      if (fs.existsSync(TRAINING_ARTICLES_DIR)) {
-        const files = fs.readdirSync(TRAINING_ARTICLES_DIR).filter(f => f.endsWith('.json'));
+      if (await fileExists(TRAINING_ARTICLES_DIR)) {
+        const allFiles = await fsp.readdir(TRAINING_ARTICLES_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = fs.readFileSync(path.join(TRAINING_ARTICLES_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(TRAINING_ARTICLES_DIR, file), 'utf8');
             articles.push(JSON.parse(content));
           } catch (e) {
             console.error(`Error reading ${file}:`, e);
@@ -49,8 +71,10 @@ function setupTrainingAPI(app) {
       article.createdAt = article.createdAt || new Date().toISOString();
       article.updatedAt = new Date().toISOString();
 
+      await fsp.mkdir(TRAINING_ARTICLES_DIR, { recursive: true });
+
       const filePath = path.join(TRAINING_ARTICLES_DIR, `${article.id}.json`);
-      fs.writeFileSync(filePath, JSON.stringify(article, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(article, null, 2), 'utf8');
 
       res.json({ success: true, article });
     } catch (error) {
@@ -66,14 +90,15 @@ function setupTrainingAPI(app) {
 
       const filePath = path.join(TRAINING_ARTICLES_DIR, `${articleId}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Article not found' });
       }
 
-      const article = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const article = JSON.parse(content);
       const updated = { ...article, ...updates, updatedAt: new Date().toISOString() };
 
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
       res.json({ success: true, article: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -87,8 +112,8 @@ function setupTrainingAPI(app) {
 
       const filePath = path.join(TRAINING_ARTICLES_DIR, `${articleId}.json`);
 
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Article not found' });

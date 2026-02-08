@@ -20,10 +20,16 @@ const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const MESSAGE_RETENTION_DAYS = 90;
 const MAX_GROUP_PARTICIPANTS = 100;
 
-// Ensure directory exists
-if (!fs.existsSync(EMPLOYEE_CHATS_DIR)) {
-  fs.mkdirSync(EMPLOYEE_CHATS_DIR, { recursive: true });
-}
+// Initialize directory on module load (async)
+(async () => {
+  try {
+    await fsPromises.mkdir(EMPLOYEE_CHATS_DIR, { recursive: true });
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      console.error('Failed to create employee chats directory:', e);
+    }
+  }
+})();
 
 // Firebase Admin for push notifications - use shared config
 let admin = null;

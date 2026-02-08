@@ -1,6 +1,8 @@
 /**
  * API для управления менеджерами магазинов (мультитенантность)
  *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ *
  * Структура данных shop-managers.json:
  * {
  *   "developers": ["79XXXXXXXXXX"],  // Телефоны разработчиков (видят всё)
@@ -22,24 +24,34 @@
  * }
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Инициализация файла shop-managers.json
  */
-function initShopManagersFile() {
-  if (!fs.existsSync(SHOP_MANAGERS_FILE)) {
+async function initShopManagersFile() {
+  if (!(await fileExists(SHOP_MANAGERS_FILE))) {
     const defaultData = {
       developers: [],
       managers: [],
       storeManagers: []
     };
-    fs.writeFileSync(SHOP_MANAGERS_FILE, JSON.stringify(defaultData, null, 2), 'utf8');
+    await fsp.writeFile(SHOP_MANAGERS_FILE, JSON.stringify(defaultData, null, 2), 'utf8');
     console.log('Created shop-managers.json with default structure');
   }
 }
@@ -47,10 +59,10 @@ function initShopManagersFile() {
 /**
  * Загрузить данные shop-managers
  */
-function loadShopManagers() {
+async function loadShopManagers() {
   try {
-    initShopManagersFile();
-    const content = fs.readFileSync(SHOP_MANAGERS_FILE, 'utf8');
+    await initShopManagersFile();
+    const content = await fsp.readFile(SHOP_MANAGERS_FILE, 'utf8');
     return JSON.parse(content);
   } catch (error) {
     console.error('Error loading shop-managers.json:', error);
@@ -61,9 +73,9 @@ function loadShopManagers() {
 /**
  * Сохранить данные shop-managers
  */
-function saveShopManagers(data) {
+async function saveShopManagers(data) {
   try {
-    fs.writeFileSync(SHOP_MANAGERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(SHOP_MANAGERS_FILE, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (error) {
     console.error('Error saving shop-managers.json:', error);
@@ -82,8 +94,8 @@ function normalizePhone(phone) {
 /**
  * Проверить, является ли телефон разработчиком
  */
-function isDeveloper(phone) {
-  const data = loadShopManagers();
+async function isDeveloper(phone) {
+  const data = await loadShopManagers();
   const normalizedPhone = normalizePhone(phone);
   return data.developers.some(dev => normalizePhone(dev) === normalizedPhone);
 }
@@ -91,8 +103,8 @@ function isDeveloper(phone) {
 /**
  * Получить данные управляющего (admin) по телефону
  */
-function getManagerData(phone) {
-  const data = loadShopManagers();
+async function getManagerData(phone) {
+  const data = await loadShopManagers();
   const normalizedPhone = normalizePhone(phone);
   return data.managers.find(m => normalizePhone(m.phone) === normalizedPhone) || null;
 }
@@ -100,8 +112,8 @@ function getManagerData(phone) {
 /**
  * Получить данные заведующей магазина по телефону
  */
-function getStoreManagerData(phone) {
-  const data = loadShopManagers();
+async function getStoreManagerData(phone) {
+  const data = await loadShopManagers();
   const normalizedPhone = normalizePhone(phone);
   return data.storeManagers.find(sm => normalizePhone(sm.phone) === normalizedPhone) || null;
 }
@@ -109,11 +121,11 @@ function getStoreManagerData(phone) {
 /**
  * Получить роль пользователя для мультитенантности
  */
-function getUserMultitenantRole(phone) {
+async function getUserMultitenantRole(phone) {
   const normalizedPhone = normalizePhone(phone);
 
   // 1. Проверка на разработчика
-  if (isDeveloper(normalizedPhone)) {
+  if (await isDeveloper(normalizedPhone)) {
     return {
       role: 'developer',
       managedShopIds: [], // Видит все
@@ -122,7 +134,7 @@ function getUserMultitenantRole(phone) {
   }
 
   // 2. Проверка на управляющего (admin)
-  const managerData = getManagerData(normalizedPhone);
+  const managerData = await getManagerData(normalizedPhone);
   if (managerData) {
     return {
       role: 'admin',
@@ -133,11 +145,16 @@ function getUserMultitenantRole(phone) {
   }
 
   // 3. Проверка на заведующую магазина
-  const storeManagerData = getStoreManagerData(normalizedPhone);
+  const storeManagerData = await getStoreManagerData(normalizedPhone);
   if (storeManagerData) {
+    // Поддержка множественных магазинов (managedShopIds) и обратная совместимость (shopId)
+    const managedShopIds = storeManagerData.managedShopIds ||
+      (storeManagerData.shopId ? [storeManagerData.shopId] : []);
+
     return {
       role: 'manager',
-      primaryShopId: storeManagerData.shopId,
+      primaryShopId: storeManagerData.shopId || (managedShopIds.length > 0 ? managedShopIds[0] : null),
+      managedShopIds: managedShopIds,
       canSeeAllManagerShops: storeManagerData.canSeeAllManagerShops || false
     };
   }
@@ -152,7 +169,7 @@ function getUserMultitenantRole(phone) {
 function setupShopManagersAPI(app) {
 
   // GET /api/shop-managers - получить конфигурацию (только для developer)
-  app.get('/api/shop-managers', (req, res) => {
+  app.get('/api/shop-managers', async (req, res) => {
     try {
       const { phone } = req.query;
 
@@ -163,11 +180,11 @@ function setupShopManagersAPI(app) {
       const normalizedPhone = normalizePhone(phone);
 
       // Только developer может видеть полную конфигурацию
-      if (!isDeveloper(normalizedPhone)) {
+      if (!(await isDeveloper(normalizedPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       res.json({ success: true, data });
 
     } catch (error) {
@@ -177,15 +194,15 @@ function setupShopManagersAPI(app) {
   });
 
   // GET /api/shop-managers/role/:phone - получить мультитенантную роль
-  app.get('/api/shop-managers/role/:phone', (req, res) => {
+  app.get('/api/shop-managers/role/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
-      const role = getUserMultitenantRole(phone);
+      const role = await getUserMultitenantRole(phone);
 
       res.json({
         success: true,
         role: role,
-        isDeveloper: isDeveloper(phone),
+        isDeveloper: await isDeveloper(phone),
         isManager: role?.role === 'admin',
         isStoreManager: role?.role === 'manager'
       });
@@ -197,20 +214,20 @@ function setupShopManagersAPI(app) {
   });
 
   // POST /api/shop-managers/developers - добавить разработчика (только developer)
-  app.post('/api/shop-managers/developers', (req, res) => {
+  app.post('/api/shop-managers/developers', async (req, res) => {
     try {
       const { adminPhone, developerPhone } = req.body;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(developerPhone);
 
       if (!data.developers.includes(normalizedPhone)) {
         data.developers.push(normalizedPhone);
-        saveShopManagers(data);
+        await saveShopManagers(data);
       }
 
       res.json({ success: true });
@@ -222,19 +239,19 @@ function setupShopManagersAPI(app) {
   });
 
   // DELETE /api/shop-managers/developers/:phone - удалить разработчика
-  app.delete('/api/shop-managers/developers/:phone', (req, res) => {
+  app.delete('/api/shop-managers/developers/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone } = req.query;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(phone);
       data.developers = data.developers.filter(d => normalizePhone(d) !== normalizedPhone);
-      saveShopManagers(data);
+      await saveShopManagers(data);
 
       res.json({ success: true });
 
@@ -245,15 +262,15 @@ function setupShopManagersAPI(app) {
   });
 
   // POST /api/shop-managers/managers - добавить/обновить управляющего
-  app.post('/api/shop-managers/managers', (req, res) => {
+  app.post('/api/shop-managers/managers', async (req, res) => {
     try {
       const { adminPhone, manager } = req.body;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(manager.phone);
 
       // Найти существующего или создать нового
@@ -274,7 +291,7 @@ function setupShopManagersAPI(app) {
         data.managers.push(managerData);
       }
 
-      saveShopManagers(data);
+      await saveShopManagers(data);
       res.json({ success: true, manager: managerData });
 
     } catch (error) {
@@ -284,19 +301,19 @@ function setupShopManagersAPI(app) {
   });
 
   // DELETE /api/shop-managers/managers/:phone - удалить управляющего
-  app.delete('/api/shop-managers/managers/:phone', (req, res) => {
+  app.delete('/api/shop-managers/managers/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone } = req.query;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(phone);
       data.managers = data.managers.filter(m => normalizePhone(m.phone) !== normalizedPhone);
-      saveShopManagers(data);
+      await saveShopManagers(data);
 
       res.json({ success: true });
 
@@ -307,16 +324,16 @@ function setupShopManagersAPI(app) {
   });
 
   // PUT /api/shop-managers/managers/:phone/shops - обновить магазины управляющего
-  app.put('/api/shop-managers/managers/:phone/shops', (req, res) => {
+  app.put('/api/shop-managers/managers/:phone/shops', async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone, shopIds } = req.body;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(phone);
       const manager = data.managers.find(m => normalizePhone(m.phone) === normalizedPhone);
 
@@ -325,7 +342,7 @@ function setupShopManagersAPI(app) {
       }
 
       manager.managedShops = shopIds || [];
-      saveShopManagers(data);
+      await saveShopManagers(data);
 
       res.json({ success: true, manager });
 
@@ -336,16 +353,16 @@ function setupShopManagersAPI(app) {
   });
 
   // PUT /api/shop-managers/managers/:phone/employees - обновить сотрудников управляющего
-  app.put('/api/shop-managers/managers/:phone/employees', (req, res) => {
+  app.put('/api/shop-managers/managers/:phone/employees', async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone, employeePhones } = req.body;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(phone);
       const manager = data.managers.find(m => normalizePhone(m.phone) === normalizedPhone);
 
@@ -354,7 +371,7 @@ function setupShopManagersAPI(app) {
       }
 
       manager.employees = (employeePhones || []).map(p => normalizePhone(p));
-      saveShopManagers(data);
+      await saveShopManagers(data);
 
       res.json({ success: true, manager });
 
@@ -365,15 +382,15 @@ function setupShopManagersAPI(app) {
   });
 
   // POST /api/shop-managers/store-managers - добавить/обновить заведующую магазина
-  app.post('/api/shop-managers/store-managers', (req, res) => {
+  app.post('/api/shop-managers/store-managers', async (req, res) => {
     try {
       const { adminPhone, storeManager } = req.body;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(storeManager.phone);
 
       const existingIndex = data.storeManagers.findIndex(
@@ -392,7 +409,7 @@ function setupShopManagersAPI(app) {
         data.storeManagers.push(storeManagerData);
       }
 
-      saveShopManagers(data);
+      await saveShopManagers(data);
       res.json({ success: true, storeManager: storeManagerData });
 
     } catch (error) {
@@ -401,22 +418,100 @@ function setupShopManagersAPI(app) {
     }
   });
 
+  // GET /api/shop-managers/store-managers - список всех заведующих (для admin/developer)
+  app.get('/api/shop-managers/store-managers', async (req, res) => {
+    try {
+      const { phone } = req.query;
+
+      if (!phone) {
+        return res.status(400).json({ success: false, error: 'Phone required' });
+      }
+
+      const normalizedPhone = normalizePhone(phone);
+      const isDev = await isDeveloper(normalizedPhone);
+      const managerData = await getManagerData(normalizedPhone);
+
+      if (!isDev && !managerData) {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
+      const data = await loadShopManagers();
+      const storeManagers = (data.storeManagers || []).map(sm => ({
+        ...sm,
+        // Обеспечиваем наличие managedShopIds
+        managedShopIds: sm.managedShopIds || (sm.shopId ? [sm.shopId] : [])
+      }));
+
+      res.json({ success: true, storeManagers });
+
+    } catch (error) {
+      console.error('Error in GET /api/shop-managers/store-managers:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/shop-managers/store-managers/:phone/shops - обновить магазины заведующей
+  app.put('/api/shop-managers/store-managers/:phone/shops', async (req, res) => {
+    try {
+      const { phone } = req.params;
+      const { adminPhone, managedShopIds } = req.body;
+
+      if (!adminPhone) {
+        return res.status(400).json({ success: false, error: 'adminPhone required' });
+      }
+
+      const normalizedAdminPhone = normalizePhone(adminPhone);
+      const isDev = await isDeveloper(normalizedAdminPhone);
+      const managerData = await getManagerData(normalizedAdminPhone);
+
+      if (!isDev && !managerData) {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
+      const data = await loadShopManagers();
+      const normalizedPhone = normalizePhone(phone);
+      let sm = data.storeManagers.find(s => normalizePhone(s.phone) === normalizedPhone);
+
+      if (!sm) {
+        // Заведующей нет в storeManagers — создаём новую запись
+        sm = { phone: normalizedPhone, managedShopIds: [] };
+        if (!data.storeManagers) data.storeManagers = [];
+        data.storeManagers.push(sm);
+        console.log(`📝 Created new storeManager entry for ${normalizedPhone}`);
+      }
+
+      sm.managedShopIds = managedShopIds || [];
+      // Обратная совместимость — shopId = первый из списка
+      if (managedShopIds && managedShopIds.length > 0) {
+        sm.shopId = managedShopIds[0];
+      }
+
+      await saveShopManagers(data);
+      console.log(`✅ Store manager ${normalizedPhone} shops updated: ${(managedShopIds || []).length} shops`);
+      res.json({ success: true, storeManager: sm });
+
+    } catch (error) {
+      console.error('Error in PUT /api/shop-managers/store-managers/:phone/shops:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // DELETE /api/shop-managers/store-managers/:phone - удалить заведующую
-  app.delete('/api/shop-managers/store-managers/:phone', (req, res) => {
+  app.delete('/api/shop-managers/store-managers/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone } = req.query;
 
-      if (!isDeveloper(adminPhone)) {
+      if (!(await isDeveloper(adminPhone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const data = loadShopManagers();
+      const data = await loadShopManagers();
       const normalizedPhone = normalizePhone(phone);
       data.storeManagers = data.storeManagers.filter(
         sm => normalizePhone(sm.phone) !== normalizedPhone
       );
-      saveShopManagers(data);
+      await saveShopManagers(data);
 
       res.json({ success: true });
 

@@ -1,8 +1,10 @@
 // =====================================================
 // RECOUNT POINTS API (Баллы пересчёта)
+//
+// REFACTORED: Converted from sync to async I/O (2026-02-05)
 // =====================================================
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -22,31 +24,44 @@ const DEFAULT_SETTINGS = {
   questionsCount: 30
 };
 
-// Убедиться что директории существуют
-function ensureDirectories() {
-  if (!fs.existsSync(RECOUNT_POINTS_DIR)) {
-    fs.mkdirSync(RECOUNT_POINTS_DIR, { recursive: true });
-  }
-  const settingsDir = path.dirname(RECOUNT_SETTINGS_FILE);
-  if (!fs.existsSync(settingsDir)) {
-    fs.mkdirSync(settingsDir, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 
-module.exports = function setupRecountPointsAPI(app) {
-  ensureDirectories();
+// Убедиться что директории существуют
+async function ensureDirectories() {
+  if (!(await fileExists(RECOUNT_POINTS_DIR))) {
+    await fsp.mkdir(RECOUNT_POINTS_DIR, { recursive: true });
+  }
+  const settingsDir = path.dirname(RECOUNT_SETTINGS_FILE);
+  if (!(await fileExists(settingsDir))) {
+    await fsp.mkdir(settingsDir, { recursive: true });
+  }
+}
 
+// Ensure directories exist (async IIFE)
+(async () => {
+  await ensureDirectories();
+})();
+
+module.exports = function setupRecountPointsAPI(app) {
   // Функция получения имени сотрудника по телефону из employees
-  function getEmployeeNameByPhone(phone) {
-    if (!phone || !fs.existsSync(EMPLOYEES_DIR)) return null;
+  async function getEmployeeNameByPhone(phone) {
+    if (!phone || !(await fileExists(EMPLOYEES_DIR))) return null;
 
     const normalizedPhone = phone.replace(/[\s+]/g, '');
-    const employeeFiles = fs.readdirSync(EMPLOYEES_DIR);
+    const employeeFiles = await fsp.readdir(EMPLOYEES_DIR);
 
     for (const file of employeeFiles) {
       if (!file.endsWith('.json')) continue;
       try {
-        const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
         const employee = JSON.parse(content);
         const empPhone = (employee.phone || '').replace(/[\s+]/g, '');
         if (empPhone === normalizedPhone) {
@@ -59,6 +74,19 @@ module.exports = function setupRecountPointsAPI(app) {
     return null;
   }
 
+  // Хелпер для получения настроек
+  async function getSettings() {
+    try {
+      if (await fileExists(RECOUNT_SETTINGS_FILE)) {
+        const content = await fsp.readFile(RECOUNT_SETTINGS_FILE, 'utf8');
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(content) };
+      }
+    } catch (e) {
+      console.error('Ошибка чтения настроек:', e);
+    }
+    return DEFAULT_SETTINGS;
+  }
+
   // =====================================================
   // GET /api/recount-points - получить баллы всех сотрудников
   // =====================================================
@@ -66,26 +94,30 @@ module.exports = function setupRecountPointsAPI(app) {
     try {
       console.log('📥 GET /api/recount-points');
 
-      if (!fs.existsSync(RECOUNT_POINTS_DIR)) {
+      if (!(await fileExists(RECOUNT_POINTS_DIR))) {
         return res.json({ success: true, points: [] });
       }
 
-      const files = fs.readdirSync(RECOUNT_POINTS_DIR);
+      const files = await fsp.readdir(RECOUNT_POINTS_DIR);
       const points = [];
 
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
 
-        const content = fs.readFileSync(path.join(RECOUNT_POINTS_DIR, file), 'utf8');
-        const data = JSON.parse(content);
+        try {
+          const content = await fsp.readFile(path.join(RECOUNT_POINTS_DIR, file), 'utf8');
+          const data = JSON.parse(content);
 
-        // Обогащаем актуальным именем из employees
-        const actualName = getEmployeeNameByPhone(data.phone);
-        if (actualName) {
-          data.employeeName = actualName;
+          // Обогащаем актуальным именем из employees
+          const actualName = await getEmployeeNameByPhone(data.phone);
+          if (actualName) {
+            data.employeeName = actualName;
+          }
+
+          points.push(data);
+        } catch (e) {
+          console.error(`Error reading ${file}:`, e);
         }
-
-        points.push(data);
       }
 
       // Сортируем по имени
@@ -110,28 +142,28 @@ module.exports = function setupRecountPointsAPI(app) {
 
       const filePath = path.join(RECOUNT_POINTS_DIR, `${normalizedPhone}.json`);
 
-      if (!fs.existsSync(filePath)) {
+      if (!(await fileExists(filePath))) {
         // Если нет записи - создаём с дефолтными баллами
-        const settings = getSettings();
+        const settings = await getSettings();
         const newPoints = {
           id: `rp_${Date.now()}`,
           employeeId: normalizedPhone,
-          employeeName: getEmployeeNameByPhone(normalizedPhone) || '',
+          employeeName: await getEmployeeNameByPhone(normalizedPhone) || '',
           phone: normalizedPhone,
           points: settings.defaultPoints,
           updatedAt: new Date().toISOString(),
           updatedBy: null
         };
 
-        fs.writeFileSync(filePath, JSON.stringify(newPoints, null, 2), 'utf8');
+        await fsp.writeFile(filePath, JSON.stringify(newPoints, null, 2), 'utf8');
         return res.json({ success: true, points: newPoints });
       }
 
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = await fsp.readFile(filePath, 'utf8');
       const data = JSON.parse(content);
 
       // Обогащаем актуальным именем из employees
-      const actualName = getEmployeeNameByPhone(normalizedPhone);
+      const actualName = await getEmployeeNameByPhone(normalizedPhone);
       if (actualName) {
         data.employeeName = actualName;
       }
@@ -177,8 +209,8 @@ module.exports = function setupRecountPointsAPI(app) {
       };
 
       // Если файл существует - обновляем
-      if (fs.existsSync(filePath)) {
-        const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (await fileExists(filePath)) {
+        const existing = JSON.parse(await fsp.readFile(filePath, 'utf8'));
         data = {
           ...existing,
           points: numPoints,
@@ -203,7 +235,7 @@ module.exports = function setupRecountPointsAPI(app) {
         });
       }
 
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 
       console.log(`✅ Баллы обновлены: ${normalizedPhone} -> ${numPoints}`);
       res.json({ success: true, points: data });
@@ -220,43 +252,47 @@ module.exports = function setupRecountPointsAPI(app) {
     try {
       console.log('📤 POST /api/recount-points/init');
 
-      if (!fs.existsSync(EMPLOYEES_DIR)) {
+      if (!(await fileExists(EMPLOYEES_DIR))) {
         return res.json({ success: true, count: 0, message: 'Нет сотрудников' });
       }
 
-      const settings = getSettings();
-      const employeeFiles = fs.readdirSync(EMPLOYEES_DIR);
+      const settings = await getSettings();
+      const employeeFiles = await fsp.readdir(EMPLOYEES_DIR);
       let count = 0;
 
       for (const file of employeeFiles) {
         if (!file.endsWith('.json')) continue;
 
-        const empContent = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
-        const employee = JSON.parse(empContent);
+        try {
+          const empContent = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
+          const employee = JSON.parse(empContent);
 
-        // Пропускаем админов
-        if (employee.isAdmin) continue;
+          // Пропускаем админов
+          if (employee.isAdmin) continue;
 
-        const phone = employee.phone?.replace(/[\s+]/g, '');
-        if (!phone) continue;
+          const phone = employee.phone?.replace(/[\s+]/g, '');
+          if (!phone) continue;
 
-        const pointsFile = path.join(RECOUNT_POINTS_DIR, `${phone}.json`);
+          const pointsFile = path.join(RECOUNT_POINTS_DIR, `${phone}.json`);
 
-        // Если файл уже существует - не перезаписываем
-        if (fs.existsSync(pointsFile)) continue;
+          // Если файл уже существует - не перезаписываем
+          if (await fileExists(pointsFile)) continue;
 
-        const pointsData = {
-          id: `rp_${Date.now()}_${count}`,
-          employeeId: phone,
-          employeeName: employee.name || '',
-          phone: phone,
-          points: settings.defaultPoints,
-          updatedAt: new Date().toISOString(),
-          updatedBy: 'Система (инициализация)'
-        };
+          const pointsData = {
+            id: `rp_${Date.now()}_${count}`,
+            employeeId: phone,
+            employeeName: employee.name || '',
+            phone: phone,
+            points: settings.defaultPoints,
+            updatedAt: new Date().toISOString(),
+            updatedBy: 'Система (инициализация)'
+          };
 
-        fs.writeFileSync(pointsFile, JSON.stringify(pointsData, null, 2), 'utf8');
-        count++;
+          await fsp.writeFile(pointsFile, JSON.stringify(pointsData, null, 2), 'utf8');
+          count++;
+        } catch (e) {
+          console.error(`Error processing ${file}:`, e);
+        }
       }
 
       console.log(`✅ Инициализировано баллов: ${count}`);
@@ -274,7 +310,7 @@ module.exports = function setupRecountPointsAPI(app) {
     try {
       console.log('📥 GET /api/recount-settings');
 
-      const settings = getSettings();
+      const settings = await getSettings();
       res.json({ success: true, settings });
     } catch (error) {
       console.error('❌ Ошибка получения настроек:', error);
@@ -325,11 +361,11 @@ module.exports = function setupRecountPointsAPI(app) {
       }
 
       const settingsDir = path.dirname(RECOUNT_SETTINGS_FILE);
-      if (!fs.existsSync(settingsDir)) {
-        fs.mkdirSync(settingsDir, { recursive: true });
+      if (!(await fileExists(settingsDir))) {
+        await fsp.mkdir(settingsDir, { recursive: true });
       }
 
-      fs.writeFileSync(RECOUNT_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(RECOUNT_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
 
       console.log('✅ Настройки обновлены');
       res.json({ success: true, settings });
@@ -367,12 +403,12 @@ module.exports = function setupRecountPointsAPI(app) {
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
 
-      if (!fs.existsSync(reportFile)) {
+      if (!(await fileExists(reportFile))) {
         console.log(`❌ Файл отчёта не найден: ${reportFile}`);
         return res.status(404).json({ success: false, error: 'Отчёт не найден' });
       }
 
-      const report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+      const report = JSON.parse(await fsp.readFile(reportFile, 'utf8'));
 
       // Инициализируем массив верификаций если его нет
       if (!report.photoVerifications) {
@@ -389,7 +425,7 @@ module.exports = function setupRecountPointsAPI(app) {
       }
 
       // Получаем настройки для начисления баллов
-      const settings = getSettings();
+      const settings = await getSettings();
       const pointsChange = status === 'approved'
         ? settings.correctPhotoBonus
         : -settings.incorrectPhotoPenalty;
@@ -410,15 +446,15 @@ module.exports = function setupRecountPointsAPI(app) {
       }
 
       // Сохраняем отчёт
-      fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
+      await fsp.writeFile(reportFile, JSON.stringify(report, null, 2), 'utf8');
 
       // Обновляем баллы сотрудника
       if (employeePhone) {
         const normalizedPhone = employeePhone.replace(/[\s+]/g, '');
         const pointsFile = path.join(RECOUNT_POINTS_DIR, `${normalizedPhone}.json`);
 
-        if (fs.existsSync(pointsFile)) {
-          const pointsData = JSON.parse(fs.readFileSync(pointsFile, 'utf8'));
+        if (await fileExists(pointsFile)) {
+          const pointsData = JSON.parse(await fsp.readFile(pointsFile, 'utf8'));
           const newPoints = Math.max(0, Math.min(100, pointsData.points + pointsChange));
 
           pointsData.points = newPoints;
@@ -436,7 +472,7 @@ module.exports = function setupRecountPointsAPI(app) {
             date: new Date().toISOString()
           });
 
-          fs.writeFileSync(pointsFile, JSON.stringify(pointsData, null, 2), 'utf8');
+          await fsp.writeFile(pointsFile, JSON.stringify(pointsData, null, 2), 'utf8');
           console.log(`✅ Баллы изменены: ${normalizedPhone} ${pointsChange > 0 ? '+' : ''}${pointsChange} -> ${newPoints}`);
         }
       }
@@ -452,19 +488,6 @@ module.exports = function setupRecountPointsAPI(app) {
       res.status(500).json({ success: false, error: error.message });
     }
   });
-
-  // Хелпер для получения настроек
-  function getSettings() {
-    try {
-      if (fs.existsSync(RECOUNT_SETTINGS_FILE)) {
-        const content = fs.readFileSync(RECOUNT_SETTINGS_FILE, 'utf8');
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(content) };
-      }
-    } catch (e) {
-      console.error('Ошибка чтения настроек:', e);
-    }
-    return DEFAULT_SETTINGS;
-  }
 
   console.log('✅ Recount Points API initialized');
 };

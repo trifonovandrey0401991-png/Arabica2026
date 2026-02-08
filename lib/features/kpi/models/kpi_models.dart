@@ -479,7 +479,7 @@ class KPIEmployeeShopDaysData {
 
   /// Получить все магазины
   List<String> get allShops {
-    return shopDays.map((d) => d.shopAddress).toSet().toList()..sort();
+    return shopDays.map((d) => d.shopAddress).where((a) => a.trim().isNotEmpty).toSet().toList()..sort();
   }
 }
 

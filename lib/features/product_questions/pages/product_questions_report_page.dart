@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 
 /// Страница отчёта по поиску товаров - статистика по магазинам
 class ProductQuestionsReportPage extends StatefulWidget {
@@ -11,6 +12,11 @@ class ProductQuestionsReportPage extends StatefulWidget {
 }
 
 class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = true;
   List<ProductQuestion> _allQuestions = [];
   Map<String, ShopQuestionStats> _shopStats = {};
@@ -29,14 +35,20 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
     });
 
     try {
-      // Загружаем все вопросы (общие, не персональные диалоги)
-      final questions = await ProductQuestionService.getQuestions();
+      final allQuestions = await ProductQuestionService.getQuestions();
+      final questions = await MultitenancyFilterService.filterByShopAddress(
+        allQuestions,
+        (question) => question.shopAddress,
+      );
 
-      // Загружаем количество непросмотренных админом диалогов по магазинам
-      // (диалоги, на которые сотрудник ответил, но админ ещё не просмотрел)
-      final unviewedCounts = await ProductQuestionService.getUnviewedByAdminCounts();
+      final allUnviewedCounts = await ProductQuestionService.getUnviewedByAdminCounts();
+      final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
+      final unviewedCounts = allowedAddresses == null
+          ? allUnviewedCounts
+          : Map.fromEntries(
+              allUnviewedCounts.entries.where((e) => allowedAddresses.contains(e.key)),
+            );
 
-      // Группируем по магазинам и считаем статистику
       final stats = <String, ShopQuestionStats>{};
 
       for (final question in questions) {
@@ -49,7 +61,6 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
         stats[shopAddress]!.addQuestion(question);
       }
 
-      // Добавляем магазины из непросмотренных диалогов, которых нет в stats
       for (final shopAddress in unviewedCounts.keys) {
         if (!stats.containsKey(shopAddress)) {
           stats[shopAddress] = ShopQuestionStats(shopAddress: shopAddress);
@@ -80,148 +91,257 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отчет (Поиск товаров)'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Обновить',
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _shopStats.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Нет данных о вопросах',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _shopStats.length,
-                  itemBuilder: (context, index) {
-                    final shopAddress = _shopStats.keys.elementAt(index);
-                    final stats = _shopStats[shopAddress]!;
-                    final isExpanded = _expandedShop == shopAddress;
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Отчет (Поиск товаров)',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _loadData,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                    final unreadCount = _unreadByShop[shopAddress] ?? 0;
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: Column(
-                        children: [
-                          // Основная строка магазина
-                          ListTile(
-                            leading: Stack(
-                              clipBehavior: Clip.none,
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : _shopStats.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
-                                  Icons.store,
-                                  color: Color(0xFF004D40),
-                                ),
-                                if (unreadCount > 0)
-                                  Positioned(
-                                    right: -6,
-                                    top: -6,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 18,
-                                        minHeight: 18,
-                                      ),
-                                      child: Text(
-                                        unreadCount.toString(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    shape: BoxShape.circle,
                                   ),
-                              ],
-                            ),
-                            title: Text(
-                              shopAddress,
-                              style: const TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                            subtitle: const Text('За всё время'),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildStatsChip(
-                                  total: stats.totalAll,
-                                  answered: stats.answeredAll,
-                                  unanswered: stats.unansweredAll,
+                                  child: Icon(Icons.search_off, size: 40, color: Colors.white.withOpacity(0.3)),
                                 ),
-                                const SizedBox(width: 8),
-                                Icon(
-                                  isExpanded ? Icons.expand_less : Icons.expand_more,
-                                  color: Colors.grey,
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Нет данных о вопросах',
+                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
                                 ),
                               ],
                             ),
-                            onTap: () async {
-                              if (!isExpanded) {
-                                // При раскрытии магазина помечаем его диалоги как просмотренные админом
-                                await ProductQuestionService.markShopViewedByAdmin(shopAddress);
-                                // Обновляем счётчики непросмотренных админом диалогов
-                                final unviewedCounts = await ProductQuestionService.getUnviewedByAdminCounts();
-                                setState(() {
-                                  _expandedShop = shopAddress;
-                                  _unreadByShop = unviewedCounts;
-                                });
-                              } else {
-                                setState(() {
-                                  _expandedShop = null;
-                                });
-                              }
-                            },
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadData,
+                            color: _gold,
+                            backgroundColor: _emeraldDark,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _shopStats.length,
+                              itemBuilder: (context, index) {
+                                final shopAddress = _shopStats.keys.elementAt(index);
+                                final stats = _shopStats[shopAddress]!;
+                                final isExpanded = _expandedShop == shopAddress;
+                                final unreadCount = _unreadByShop[shopAddress] ?? 0;
+
+                                return _buildShopCard(shopAddress, stats, isExpanded, unreadCount);
+                              },
+                            ),
                           ),
-                          // Развёрнутая информация - статистика за текущий месяц
-                          if (isExpanded)
-                            Container(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Divider(),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.calendar_month,
-                                        size: 20,
-                                        color: Color(0xFF004D40),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'За текущий месяц (${_getCurrentMonthName()}):',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _buildDetailedStats(stats),
-                                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShopCard(String shopAddress, ShopQuestionStats stats, bool isExpanded, int unreadCount) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          // Основная строка магазина
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () async {
+                if (!isExpanded) {
+                  await ProductQuestionService.markShopViewedByAdmin(shopAddress);
+                  final allCounts = await ProductQuestionService.getUnviewedByAdminCounts();
+                  final allowed = await MultitenancyFilterService.getAllowedShopAddresses();
+                  final unviewedCounts = allowed == null
+                      ? allCounts
+                      : Map.fromEntries(
+                          allCounts.entries.where((e) => allowed.contains(e.key)),
+                        );
+                  setState(() {
+                    _expandedShop = shopAddress;
+                    _unreadByShop = unviewedCounts;
+                  });
+                } else {
+                  setState(() {
+                    _expandedShop = null;
+                  });
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: _emerald,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.store, color: Colors.white, size: 22),
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: -6,
+                            top: -6,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Text(
+                                unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            shopAddress,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                          Text(
+                            'За всё время',
+                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                          ),
                         ],
                       ),
-                    );
-                  },
+                    ),
+                    _buildStatsChip(
+                      total: stats.totalAll,
+                      answered: stats.answeredAll,
+                      unanswered: stats.unansweredAll,
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
+                  ],
                 ),
+              ),
+            ),
+          ),
+          // Развёрнутая информация
+          if (isExpanded)
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(color: Colors.white.withOpacity(0.1)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_month, size: 20, color: _gold),
+                      const SizedBox(width: 8),
+                      Text(
+                        'За текущий месяц (${_getCurrentMonthName()}):',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDetailedStats(stats),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -231,36 +351,39 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
     required int unanswered,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!),
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             '$total',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 13,
             ),
           ),
-          const Text(' / ', style: TextStyle(color: Colors.grey)),
+          Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13)),
           Text(
             '$answered',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.green,
+              fontSize: 13,
             ),
           ),
-          const Text(' / ', style: TextStyle(color: Colors.grey)),
+          Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13)),
           Text(
             '$unanswered',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: unanswered > 0 ? Colors.red : Colors.grey,
+              color: unanswered > 0 ? Colors.red : Colors.white.withOpacity(0.3),
+              fontSize: 13,
             ),
           ),
         ],
@@ -271,14 +394,13 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
   Widget _buildDetailedStats(ShopQuestionStats stats) {
     return Column(
       children: [
-        // Статистика за текущий месяц
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildStatItem(
               label: 'Всего',
               value: stats.totalMonth.toString(),
-              color: Colors.blue,
+              color: Colors.blue[300]!,
               icon: Icons.help_outline,
             ),
             _buildStatItem(
@@ -290,25 +412,27 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
             _buildStatItem(
               label: 'Не отвечено',
               value: stats.unansweredMonth.toString(),
-              color: stats.unansweredMonth > 0 ? Colors.red : Colors.grey,
+              color: stats.unansweredMonth > 0 ? Colors.red : Colors.white.withOpacity(0.3),
               icon: Icons.error_outline,
             ),
           ],
         ),
         const SizedBox(height: 16),
-        // Формат X/Y/Z за месяц
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF004D40).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: _emerald.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 'Итого за месяц: ',
-                style: TextStyle(fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withOpacity(0.7),
+                ),
               ),
               _buildStatsChip(
                 total: stats.totalMonth,
@@ -342,9 +466,9 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
         ),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: Colors.grey,
+            color: Colors.white.withOpacity(0.4),
           ),
         ),
       ],
@@ -365,12 +489,10 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
 class ShopQuestionStats {
   final String shopAddress;
 
-  // За всё время
   int totalAll = 0;
   int answeredAll = 0;
   int unansweredAll = 0;
 
-  // За текущий месяц
   int totalMonth = 0;
   int answeredMonth = 0;
   int unansweredMonth = 0;
@@ -380,7 +502,6 @@ class ShopQuestionStats {
   void addQuestion(ProductQuestion question) {
     totalAll++;
 
-    // Проверяем, отвечен ли вопрос (есть хотя бы один ответ от сотрудника)
     final hasAnswer = question.messages.any((msg) => msg.senderType == 'employee');
 
     if (hasAnswer) {
@@ -389,7 +510,6 @@ class ShopQuestionStats {
       unansweredAll++;
     }
 
-    // Проверяем, относится ли вопрос к текущему месяцу
     final now = DateTime.now();
     try {
       final questionDate = DateTime.parse(question.timestamp);

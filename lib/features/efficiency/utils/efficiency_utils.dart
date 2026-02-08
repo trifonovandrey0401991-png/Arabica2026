@@ -44,8 +44,8 @@ class EfficiencyUtils {
   }
 
   /// Константы цветов для эффективности
-  static const primaryColor = Color(0xFF004D40);
-  static const secondaryColor = Color(0xFFE0F2F1);
+  static const primaryColor = Color(0xFF1A4D4D);
+  static const secondaryColor = Color(0xFFD4AF37);
 
   /// Получить иконку для категории эффективности
   static IconData getCategoryIcon(EfficiencyCategory category) {

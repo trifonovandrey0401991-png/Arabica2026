@@ -41,6 +41,12 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
   ];
 
+  // Dark emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   @override
   void initState() {
     super.initState();
@@ -93,29 +99,75 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = '${widget.date.day} ${_months[widget.date.month]}';
     final isMorning = widget.shiftType == 'morning';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${widget.shiftName} - $dateStr'),
-        backgroundColor: isMorning ? Colors.orange.shade700 : Colors.indigo.shade700,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isMorning
-                ? [Colors.orange.shade50, Colors.white]
-                : [Colors.indigo.shade50, Colors.white],
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _buildContent(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context, isMorning),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: _gold))
+                    : _buildContent(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context, bool isMorning) {
+    final dateStr = '${widget.date.day} ${_months[widget.date.month]}';
+    final shiftColor = isMorning
+        ? Colors.orange.withOpacity(0.25)
+        : Colors.indigo.withOpacity(0.25);
+    final shiftBorderColor = isMorning
+        ? Colors.orange.withOpacity(0.3)
+        : Colors.indigo.withOpacity(0.3);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.8), size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: shiftColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: shiftBorderColor),
+              ),
+              child: Text(
+                '${widget.shiftName} - $dateStr',
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -126,11 +178,11 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.quiz_outlined, size: 64, color: Colors.grey[400]),
+            Icon(Icons.quiz_outlined, size: 64, color: Colors.white.withOpacity(0.25)),
             const SizedBox(height: 16),
             Text(
               'Нет вопросов для отображения',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
             ),
           ],
         ),
@@ -142,11 +194,11 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.store_outlined, size: 64, color: Colors.grey[400]),
+            Icon(Icons.store_outlined, size: 64, color: Colors.white.withOpacity(0.25)),
             const SizedBox(height: 16),
             Text(
               'Нет магазинов для отображения',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
             ),
           ],
         ),
@@ -173,24 +225,18 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
       margin: const EdgeInsets.fromLTRB(8, 8, 8, 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem(Icons.store, 'Всего', '$totalCount', Colors.blue),
-          Container(width: 1, height: 24, color: Colors.grey.shade300),
-          _buildStatItem(Icons.check_circle, 'Прошли', '$passedCount', Colors.green),
-          Container(width: 1, height: 24, color: Colors.grey.shade300),
-          _buildStatItem(Icons.cancel, 'Не прошли', '$notPassedCount', Colors.red),
+          _buildStatItem(Icons.store, 'Всего', '$totalCount', Colors.blue.shade300),
+          Container(width: 1, height: 24, color: Colors.white.withOpacity(0.1)),
+          _buildStatItem(Icons.check_circle, 'Прошли', '$passedCount', Colors.green.shade300),
+          Container(width: 1, height: 24, color: Colors.white.withOpacity(0.1)),
+          _buildStatItem(Icons.cancel, 'Не прошли', '$notPassedCount', Colors.red.shade300),
         ],
       ),
     );
@@ -207,7 +253,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
         ),
         const SizedBox(width: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5))),
       ],
     );
   }
@@ -241,9 +287,9 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
     return Container(
       height: _headerHeight,
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -253,13 +299,13 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
             height: _headerHeight,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              border: Border(right: BorderSide(color: Colors.grey.shade400, width: 2)),
+              color: Colors.white.withOpacity(0.04),
+              border: Border(right: BorderSide(color: Colors.white.withOpacity(0.15), width: 2)),
             ),
             alignment: Alignment.center,
-            child: const Text(
+            child: Text(
               'Вопрос',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white.withOpacity(0.9)),
             ),
           ),
           // Скроллируемые заголовки магазинов
@@ -287,9 +333,11 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
       width: _shopColumnWidth,
       height: _headerHeight,
       decoration: BoxDecoration(
-        color: hasPassed ? Colors.green.shade50 : Colors.red.shade50,
+        color: hasPassed
+            ? Colors.green.withOpacity(0.12)
+            : Colors.red.withOpacity(0.12),
         border: Border(
-          right: BorderSide(color: Colors.grey.shade300),
+          right: BorderSide(color: Colors.white.withOpacity(0.08)),
         ),
       ),
       child: Column(
@@ -299,7 +347,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
             padding: const EdgeInsets.only(top: 2),
             child: Icon(
               hasPassed ? Icons.check_circle : Icons.cancel,
-              color: hasPassed ? Colors.green : Colors.red,
+              color: hasPassed ? Colors.green.shade300 : Colors.red.shade300,
               size: 12,
             ),
           ),
@@ -314,7 +362,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 8,
-                    color: hasPassed ? Colors.green.shade700 : Colors.red.shade700,
+                    color: hasPassed ? Colors.green.shade300 : Colors.red.shade300,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -331,8 +379,8 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
   Widget _buildTableBody() {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.vertical,
@@ -353,8 +401,8 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
     return Container(
       height: _rowHeight,
       decoration: BoxDecoration(
-        color: isEven ? Colors.white : Colors.grey.shade50,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: isEven ? Colors.white.withOpacity(0.03) : Colors.transparent,
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06))),
       ),
       child: Row(
         children: [
@@ -364,13 +412,13 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
             height: _rowHeight,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
-              color: isEven ? Colors.white : Colors.grey.shade50,
-              border: Border(right: BorderSide(color: Colors.grey.shade400, width: 2)),
+              color: isEven ? Colors.white.withOpacity(0.03) : Colors.transparent,
+              border: Border(right: BorderSide(color: Colors.white.withOpacity(0.15), width: 2)),
             ),
             alignment: Alignment.centerLeft,
             child: Text(
               question.question,
-              style: const TextStyle(fontSize: 11),
+              style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8)),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -399,12 +447,12 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
 
     Color bgColor = Colors.transparent;
     String displayAnswer = '-';
-    Color textColor = Colors.black87;
+    Color textColor = Colors.white.withOpacity(0.7);
 
     if (report == null) {
       // Магазин не прошёл пересменку
-      bgColor = Colors.red.shade100;
-      textColor = Colors.red;
+      bgColor = Colors.red.withOpacity(0.15);
+      textColor = Colors.red.shade300;
     } else {
       // Ищем ответ на этот вопрос
       final answer = report.answers.firstWhere(
@@ -416,11 +464,11 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
         displayAnswer = answer.textAnswer!;
         // Если Да/Нет, подсвечиваем
         if (displayAnswer.toLowerCase() == 'да') {
-          bgColor = Colors.green.shade100;
-          textColor = Colors.green.shade800;
+          bgColor = Colors.green.withOpacity(0.15);
+          textColor = Colors.green.shade300;
         } else if (displayAnswer.toLowerCase() == 'нет') {
-          bgColor = Colors.orange.shade100;
-          textColor = Colors.orange.shade800;
+          bgColor = Colors.orange.withOpacity(0.15);
+          textColor = Colors.orange.shade300;
         }
       } else if (answer.numberAnswer != null) {
         displayAnswer = answer.numberAnswer!.toStringAsFixed(
@@ -434,7 +482,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
       height: _rowHeight,
       decoration: BoxDecoration(
         color: bgColor,
-        border: Border(right: BorderSide(color: Colors.grey.shade200)),
+        border: Border(right: BorderSide(color: Colors.white.withOpacity(0.06))),
       ),
       alignment: Alignment.center,
       child: Text(

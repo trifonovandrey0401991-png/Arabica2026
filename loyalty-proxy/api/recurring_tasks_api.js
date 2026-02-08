@@ -1,9 +1,11 @@
 /**
  * API для циклических задач
  * Файл для размещения на сервере: /root/arabica_app/loyalty-proxy/api/recurring_tasks_api.js
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Директории хранения
@@ -13,12 +15,24 @@ const RECURRING_TASKS_DIR = `${DATA_DIR}/recurring-tasks`;
 const RECURRING_INSTANCES_DIR = `${DATA_DIR}/recurring-task-instances`;
 const EFFICIENCY_DIR = `${DATA_DIR}/efficiency-penalties`;
 
-// Создаем директории если не существуют
-[RECURRING_TASKS_DIR, RECURRING_INSTANCES_DIR, EFFICIENCY_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
   }
-});
+}
+
+// Создаем директории если не существуют (async IIFE)
+(async () => {
+  for (const dir of [RECURRING_TASKS_DIR, RECURRING_INSTANCES_DIR, EFFICIENCY_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+})();
 
 // ==================== УТИЛИТЫ ====================
 
@@ -39,10 +53,11 @@ function getYearMonth(date) {
   return date.substring(0, 7); // YYYY-MM
 }
 
-function loadJsonFile(filePath, defaultValue = []) {
+async function loadJsonFile(filePath, defaultValue = []) {
   try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (await fileExists(filePath)) {
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
     }
   } catch (e) {
     console.error('Error loading file:', filePath, e);
@@ -50,8 +65,8 @@ function loadJsonFile(filePath, defaultValue = []) {
   return defaultValue;
 }
 
-function saveJsonFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+async function saveJsonFile(filePath, data) {
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // ==================== ШАБЛОНЫ ЗАДАЧ ====================
@@ -59,43 +74,43 @@ function saveJsonFile(filePath, data) {
 const TEMPLATES_FILE = path.join(RECURRING_TASKS_DIR, 'all.json');
 const SCHEDULER_STATE_FILE = path.join(RECURRING_TASKS_DIR, 'scheduler-state.json');
 
-function loadTemplates() {
-  return loadJsonFile(TEMPLATES_FILE, []);
+async function loadTemplates() {
+  return await loadJsonFile(TEMPLATES_FILE, []);
 }
 
-function saveTemplates(templates) {
-  saveJsonFile(TEMPLATES_FILE, templates);
+async function saveTemplates(templates) {
+  await saveJsonFile(TEMPLATES_FILE, templates);
 }
 
-function loadSchedulerState() {
-  return loadJsonFile(SCHEDULER_STATE_FILE, {
+async function loadSchedulerState() {
+  return await loadJsonFile(SCHEDULER_STATE_FILE, {
     lastGenerationDate: null,
     lastExpiredCheck: null
   });
 }
 
-function saveSchedulerState(state) {
-  saveJsonFile(SCHEDULER_STATE_FILE, state);
+async function saveSchedulerState(state) {
+  await saveJsonFile(SCHEDULER_STATE_FILE, state);
 }
 
 // ==================== ЭКЗЕМПЛЯРЫ ЗАДАЧ ====================
 
-function loadInstances(yearMonth) {
+async function loadInstances(yearMonth) {
   const filePath = path.join(RECURRING_INSTANCES_DIR, yearMonth + '.json');
-  return loadJsonFile(filePath, []);
+  return await loadJsonFile(filePath, []);
 }
 
-function saveInstances(yearMonth, instances) {
+async function saveInstances(yearMonth, instances) {
   const filePath = path.join(RECURRING_INSTANCES_DIR, yearMonth + '.json');
-  saveJsonFile(filePath, instances);
+  await saveJsonFile(filePath, instances);
 }
 
 // ==================== ГЕНЕРАЦИЯ ЗАДАЧ ====================
 
 // Генерация экземпляров для одного шаблона (при создании)
-function generateInstancesForTemplate(template, date) {
+async function generateInstancesForTemplate(template, date) {
   const yearMonth = getYearMonth(date);
-  let instances = loadInstances(yearMonth);
+  let instances = await loadInstances(yearMonth);
   let generatedCount = 0;
 
   for (const assignee of template.assignees) {
@@ -134,7 +149,7 @@ function generateInstancesForTemplate(template, date) {
   }
 
   if (generatedCount > 0) {
-    saveInstances(yearMonth, instances);
+    await saveInstances(yearMonth, instances);
     console.log('Generated', generatedCount, 'instances for new template:', template.id);
   }
 
@@ -144,10 +159,10 @@ function generateInstancesForTemplate(template, date) {
 async function generateDailyTasks(date) {
   console.log('Generating recurring tasks for date:', date);
 
-  const templates = loadTemplates();
+  const templates = await loadTemplates();
   const dayOfWeek = new Date(date + 'T00:00:00').getDay(); // 0-6 (Вс-Сб)
   const yearMonth = getYearMonth(date);
-  let instances = loadInstances(yearMonth);
+  let instances = await loadInstances(yearMonth);
 
   let generatedCount = 0;
 
@@ -195,7 +210,7 @@ async function generateDailyTasks(date) {
     }
   }
 
-  saveInstances(yearMonth, instances);
+  await saveInstances(yearMonth, instances);
   console.log('Generated', generatedCount, 'recurring task instances for', date);
   return generatedCount;
 }
@@ -204,7 +219,7 @@ async function checkExpiredTasks() {
   const now = new Date();
   const today = getToday();
   const yearMonth = getYearMonth(today);
-  let instances = loadInstances(yearMonth);
+  let instances = await loadInstances(yearMonth);
 
   let expiredCount = 0;
   const penalties = [];
@@ -236,13 +251,13 @@ async function checkExpiredTasks() {
   }
 
   if (expiredCount > 0) {
-    saveInstances(yearMonth, instances);
+    await saveInstances(yearMonth, instances);
 
     // Сохраняем штрафы
     const penaltiesFile = path.join(EFFICIENCY_DIR, yearMonth + '.json');
-    let existingPenalties = loadJsonFile(penaltiesFile, []);
+    let existingPenalties = await loadJsonFile(penaltiesFile, []);
     existingPenalties = existingPenalties.concat(penalties);
-    saveJsonFile(penaltiesFile, existingPenalties);
+    await saveJsonFile(penaltiesFile, existingPenalties);
 
     console.log('Expired', expiredCount, 'recurring task instances, created', penalties.length, 'penalties');
   }
@@ -259,19 +274,19 @@ function startScheduler() {
   setInterval(async () => {
     try {
       const today = getToday();
-      const state = loadSchedulerState();
+      const state = await loadSchedulerState();
 
       // Генерация задач в новый день
       if (state.lastGenerationDate !== today) {
         await generateDailyTasks(today);
         state.lastGenerationDate = today;
-        saveSchedulerState(state);
+        await saveSchedulerState(state);
       }
 
       // Проверка expired каждые 5 минут
       await checkExpiredTasks();
       state.lastExpiredCheck = new Date().toISOString();
-      saveSchedulerState(state);
+      await saveSchedulerState(state);
 
     } catch (e) {
       console.error('Scheduler error:', e);
@@ -282,12 +297,12 @@ function startScheduler() {
   setTimeout(async () => {
     try {
       const today = getToday();
-      const state = loadSchedulerState();
+      const state = await loadSchedulerState();
 
       if (state.lastGenerationDate !== today) {
         await generateDailyTasks(today);
         state.lastGenerationDate = today;
-        saveSchedulerState(state);
+        await saveSchedulerState(state);
       }
       await checkExpiredTasks();
     } catch (e) {
@@ -302,9 +317,9 @@ function setupRecurringTasksAPI(app) {
   console.log('Setting up Recurring Tasks API...');
 
   // GET /api/recurring-tasks - Список всех шаблонов
-  app.get('/api/recurring-tasks', (req, res) => {
+  app.get('/api/recurring-tasks', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       res.json({ success: true, tasks: templates });
     } catch (e) {
       console.error('Error getting recurring tasks:', e);
@@ -313,13 +328,13 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/instances/list - Список экземпляров
-  app.get('/api/recurring-tasks/instances/list', (req, res) => {
+  app.get('/api/recurring-tasks/instances/list', async (req, res) => {
     try {
       const { assigneeId, assigneePhone, date, status, yearMonth } = req.query;
 
       // Определяем месяц для загрузки
       const month = yearMonth || getYearMonth(date || getToday());
-      let instances = loadInstances(month);
+      let instances = await loadInstances(month);
 
       // Фильтрация
       if (assigneeId) {
@@ -343,7 +358,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/instances/:id/complete - Выполнить задачу
-  app.post('/api/recurring-tasks/instances/:id/complete', (req, res) => {
+  app.post('/api/recurring-tasks/instances/:id/complete', async (req, res) => {
     try {
       const { responseText, responsePhotos } = req.body;
       const instanceId = req.params.id;
@@ -358,7 +373,7 @@ function setupRecurringTasksAPI(app) {
       let index = -1;
 
       for (const month of [currentMonth, prevMonth]) {
-        instances = loadInstances(month);
+        instances = await loadInstances(month);
         index = instances.findIndex(i => i.id === instanceId);
         if (index !== -1) {
           foundMonth = month;
@@ -379,7 +394,7 @@ function setupRecurringTasksAPI(app) {
       instances[index].responsePhotos = responsePhotos || [];
       instances[index].completedAt = new Date().toISOString();
 
-      saveInstances(foundMonth, instances);
+      await saveInstances(foundMonth, instances);
       console.log('Completed recurring task instance:', instanceId);
       res.json({ success: true, instance: instances[index] });
     } catch (e) {
@@ -389,9 +404,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/:id - Шаблон по ID (должен быть после instances/list!)
-  app.get('/api/recurring-tasks/:id', (req, res) => {
+  app.get('/api/recurring-tasks/:id', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const task = templates.find(t => t.id === req.params.id);
       if (!task) {
         return res.status(404).json({ success: false, error: 'Task not found' });
@@ -404,7 +419,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks - Создать шаблон
-  app.post('/api/recurring-tasks', (req, res) => {
+  app.post('/api/recurring-tasks', async (req, res) => {
     try {
       const {
         title,
@@ -422,7 +437,7 @@ function setupRecurringTasksAPI(app) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
 
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const now = new Date().toISOString();
 
       const newTask = {
@@ -442,7 +457,7 @@ function setupRecurringTasksAPI(app) {
       };
 
       templates.push(newTask);
-      saveTemplates(templates);
+      await saveTemplates(templates);
 
       console.log('Created recurring task:', newTask.id);
 
@@ -450,7 +465,7 @@ function setupRecurringTasksAPI(app) {
       const today = getToday();
       const dayOfWeek = new Date(today + 'T00:00:00').getDay();
       if (newTask.daysOfWeek.includes(dayOfWeek)) {
-        generateInstancesForTemplate(newTask, today);
+        await generateInstancesForTemplate(newTask, today);
       }
 
       res.json({ success: true, task: newTask });
@@ -461,9 +476,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id - Обновить шаблон
-  app.put('/api/recurring-tasks/:id', (req, res) => {
+  app.put('/api/recurring-tasks/:id', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
       if (index === -1) {
@@ -494,7 +509,7 @@ function setupRecurringTasksAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      saveTemplates(templates);
+      await saveTemplates(templates);
       console.log('Updated recurring task:', req.params.id);
       res.json({ success: true, task: templates[index] });
     } catch (e) {
@@ -504,9 +519,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id/toggle-pause - Пауза/возобновить
-  app.put('/api/recurring-tasks/:id/toggle-pause', (req, res) => {
+  app.put('/api/recurring-tasks/:id/toggle-pause', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
       if (index === -1) {
@@ -516,7 +531,7 @@ function setupRecurringTasksAPI(app) {
       templates[index].isPaused = !templates[index].isPaused;
       templates[index].updatedAt = new Date().toISOString();
 
-      saveTemplates(templates);
+      await saveTemplates(templates);
       console.log('Toggled pause for recurring task:', req.params.id, 'isPaused:', templates[index].isPaused);
       res.json({ success: true, task: templates[index] });
     } catch (e) {
@@ -526,9 +541,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // DELETE /api/recurring-tasks/:id - Удалить шаблон
-  app.delete('/api/recurring-tasks/:id', (req, res) => {
+  app.delete('/api/recurring-tasks/:id', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
       if (index === -1) {
@@ -536,7 +551,7 @@ function setupRecurringTasksAPI(app) {
       }
 
       templates.splice(index, 1);
-      saveTemplates(templates);
+      await saveTemplates(templates);
 
       console.log('Deleted recurring task:', req.params.id);
       res.json({ success: true });

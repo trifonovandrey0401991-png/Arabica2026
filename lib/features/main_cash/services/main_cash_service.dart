@@ -17,8 +17,8 @@ class MainCashService {
         return [];
       }
 
-      // Загружаем все отчеты конвертов
-      final envelopeReports = await EnvelopeReportService.getReports();
+      // Загружаем отчеты конвертов (с фильтрацией по роли пользователя)
+      final envelopeReports = await EnvelopeReportService.getReportsForCurrentUser();
       Logger.debug('Загружено отчетов конвертов: ${envelopeReports.length}');
 
       // Загружаем все выемки
@@ -185,7 +185,7 @@ class MainCashService {
   /// Получить список всех уникальных адресов магазинов из отчетов
   static Future<List<String>> getShopAddressesWithData() async {
     try {
-      final envelopeReports = await EnvelopeReportService.getReports();
+      final envelopeReports = await EnvelopeReportService.getReportsForCurrentUser();
       final addresses = <String>{};
 
       for (final report in envelopeReports) {

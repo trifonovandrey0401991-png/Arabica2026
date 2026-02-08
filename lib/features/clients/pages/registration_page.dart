@@ -7,6 +7,7 @@ import '../../loyalty/services/loyalty_storage.dart';
 import '../../loyalty/services/loyalty_service.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../referrals/services/referral_service.dart';
+import '../../auth/services/auth_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/firebase_service.dart';
 
@@ -22,15 +23,21 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _nameController = TextEditingController();
+  final _pinController = TextEditingController();
+  final _pinConfirmController = TextEditingController();
   final _referralCodeController = TextEditingController();
   bool _isLoading = false;
   String? _referralValidationMessage;
   bool _isReferralValid = false;
+  bool _obscurePin = true;
+  bool _obscurePinConfirm = true;
 
   @override
   void dispose() {
     _phoneController.dispose();
     _nameController.dispose();
+    _pinController.dispose();
+    _pinConfirmController.dispose();
     _referralCodeController.dispose();
     super.dispose();
   }
@@ -165,6 +172,71 @@ class _RegistrationPageState extends State<RegistrationPage> {
             }
           }
 
+          // Регистрируем PIN-код в системе авторизации
+          final pin = _pinController.text.trim();
+          Logger.debug('🔐 Попытка регистрации PIN: phone=${existingUser.phone}, pin.length=${pin.length}');
+          if (pin.isNotEmpty) {
+            try {
+              Logger.debug('🔐 Вызываем AuthService.registerSimple...');
+              final authResult = await AuthService().registerSimple(
+                phone: existingUser.phone,
+                name: existingUser.name,
+                pin: pin,
+              );
+              if (authResult.success) {
+                Logger.success('✅ PIN-код успешно сохранён для существующего пользователя');
+              } else {
+                // Проверка на "уже зарегистрирован" - вызываем loginOnServer
+                final errorText = authResult.error ?? '';
+                Logger.debug('🔐 Ошибка регистрации: "$errorText"');
+                final isAlreadyRegistered = errorText.contains('уже зарегистрирован') ||
+                                            errorText.contains('already registered') ||
+                                            errorText.contains('Используйте функцию входа');
+                Logger.debug('🔐 isAlreadyRegistered: $isAlreadyRegistered');
+
+                if (isAlreadyRegistered) {
+                  // Пользователь уже зарегистрирован - пробуем войти через сервер
+                  Logger.debug('🔐 Пользователь уже зарегистрирован, пробуем loginOnServer...');
+                  final loginResult = await AuthService().loginOnServer(
+                    phone: existingUser.phone,
+                    pin: pin,
+                  );
+                  if (loginResult.success) {
+                    Logger.success('✅ Успешный вход с существующим PIN через сервер');
+                  } else {
+                    Logger.warning('❌ Ошибка входа через сервер: ${loginResult.error}');
+                    // Показываем ошибку пользователю и выходим
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(loginResult.error ?? 'Неверный PIN-код'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                    return; // Не переходим на главную при ошибке
+                  }
+                } else {
+                  Logger.warning('❌ Ошибка сохранения PIN: ${authResult.error}');
+                  // Показываем ошибку пользователю
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(authResult.error ?? 'Ошибка регистрации'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  return; // Не переходим на главную при ошибке
+                }
+              }
+            } catch (e) {
+              Logger.warning('❌ Ошибка регистрации PIN: $e');
+            }
+          } else {
+            Logger.warning('⚠️ PIN пустой, пропускаем регистрацию PIN');
+          }
+
           // Показываем сообщение и переходим в приложение
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -249,6 +321,71 @@ class _RegistrationPageState extends State<RegistrationPage> {
           } catch (e) {
             Logger.warning('Не удалось сохранить данные нового клиента на сервере: $e');
           }
+        }
+
+        // Регистрируем PIN-код в системе авторизации
+        final pin = _pinController.text.trim();
+        Logger.debug('🔐 Попытка регистрации PIN (новый пользователь): phone=${loyaltyInfo.phone}, pin.length=${pin.length}');
+        if (pin.isNotEmpty) {
+          try {
+            Logger.debug('🔐 Вызываем AuthService.registerSimple для нового пользователя...');
+            final authResult = await AuthService().registerSimple(
+              phone: loyaltyInfo.phone,
+              name: loyaltyInfo.name,
+              pin: pin,
+            );
+            if (authResult.success) {
+              Logger.success('✅ PIN-код успешно сохранён для нового пользователя');
+            } else {
+              // Проверка на "уже зарегистрирован" - вызываем loginOnServer
+              final errorText = authResult.error ?? '';
+              Logger.debug('🔐 Ошибка регистрации (новый): "$errorText"');
+              final isAlreadyRegistered = errorText.contains('уже зарегистрирован') ||
+                                          errorText.contains('already registered') ||
+                                          errorText.contains('Используйте функцию входа');
+              Logger.debug('🔐 isAlreadyRegistered: $isAlreadyRegistered');
+
+              if (isAlreadyRegistered) {
+                // Пользователь уже зарегистрирован - пробуем войти через сервер
+                Logger.debug('🔐 Пользователь уже зарегистрирован, пробуем loginOnServer...');
+                final loginResult = await AuthService().loginOnServer(
+                  phone: loyaltyInfo.phone,
+                  pin: pin,
+                );
+                if (loginResult.success) {
+                  Logger.success('✅ Успешный вход с существующим PIN через сервер');
+                } else {
+                  Logger.warning('❌ Ошибка входа через сервер: ${loginResult.error}');
+                  // Показываем ошибку пользователю и выходим
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(loginResult.error ?? 'Неверный PIN-код'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  return; // Не переходим на главную при ошибке
+                }
+              } else {
+                Logger.warning('❌ Ошибка сохранения PIN: ${authResult.error}');
+                // Показываем ошибку пользователю
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(authResult.error ?? 'Ошибка регистрации'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+                return; // Не переходим на главную при ошибке
+              }
+            }
+          } catch (e) {
+            Logger.warning('❌ Ошибка регистрации PIN: $e');
+          }
+        } else {
+          Logger.warning('⚠️ PIN пустой, пропускаем регистрацию PIN для нового пользователя');
         }
 
         if (mounted) {
@@ -360,15 +497,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
         color: isValid ? const Color(0xFF2E7D32) : Colors.orange[700],
         fontWeight: FontWeight.w500,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isSmallScreen = screenHeight < 700;
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -384,136 +518,86 @@ class _RegistrationPageState extends State<RegistrationPage> {
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: isSmallScreen ? 16 : 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Логотип Arabica (без обрезки)
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      color: Colors.white.withOpacity(0.1),
-                      border: Border.all(
-                        color: _accentGold.withOpacity(0.3),
-                        width: 2,
+          child: Column(
+            children: [
+              // Верхняя часть с логотипом (заполняет всё доступное пространство)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Логотип Arabica (большой)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          color: Colors.white.withOpacity(0.1),
+                          border: Border.all(
+                            color: _accentGold.withOpacity(0.4),
+                            width: 2,
+                          ),
+                        ),
+                        child: Image.asset(
+                          'assets/images/arabica_logo.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.contain,
+                        ),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 20,
-                          spreadRadius: 2,
+                      const SizedBox(height: 16),
+
+                      // Приветственный текст
+                      const Text(
+                        'Добро пожаловать!',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/images/arabica_logo.png',
-                      width: isSmallScreen ? 100 : 120,
-                      height: isSmallScreen ? 100 : 120,
-                      fit: BoxFit.contain,
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Кофейни Arabica',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: isSmallScreen ? 16 : 24),
+                ),
+              ),
 
-                  // Приветственный текст
-                  Text(
-                    'Добро пожаловать!',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 24 : 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
+              // Карточка формы (внизу)
+              SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white.withOpacity(0.95),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: isSmallScreen ? 20 : 32),
-
-                  // Карточка формы с glassmorphism эффектом
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      color: Colors.white.withOpacity(0.95),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 30,
-                          spreadRadius: 0,
-                          offset: const Offset(0, 10),
-                        ),
-                        BoxShadow(
-                          color: _primaryColor.withOpacity(0.1),
-                          blurRadius: 40,
-                          spreadRadius: -10,
-                          offset: const Offset(0, -5),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(isSmallScreen ? 24 : 32),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Заголовок карточки
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: _primaryColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person_add_alt_1_rounded,
-                                    size: 28,
-                                    color: _primaryColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Регистрация',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: _primaryColor,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Создайте аккаунт для участия в программе лояльности',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                                height: 1.3,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 28),
-
-                            // Поле номера телефона
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Поле номера телефона
                             TextFormField(
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                               ),
@@ -537,7 +621,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 10),
 
                             // Поле имени
                             TextFormField(
@@ -545,7 +629,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               keyboardType: TextInputType.name,
                               textCapitalization: TextCapitalization.words,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                               ),
@@ -564,14 +648,92 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 10),
+
+                            // Поле PIN-кода
+                            TextFormField(
+                              controller: _pinController,
+                              keyboardType: TextInputType.number,
+                              obscureText: _obscurePin,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: _primaryDark,
+                                letterSpacing: 4,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(4),
+                              ],
+                              decoration: _buildInputDecoration(
+                                labelText: 'Придумайте PIN-код',
+                                hintText: '••••',
+                                icon: Icons.lock_outline_rounded,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePin ? Icons.visibility_off : Icons.visibility,
+                                    color: _primaryColor,
+                                  ),
+                                  onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Введите PIN-код';
+                                }
+                                if (value.length != 4) {
+                                  return 'PIN должен содержать 4 цифры';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Подтверждение PIN-кода
+                            TextFormField(
+                              controller: _pinConfirmController,
+                              keyboardType: TextInputType.number,
+                              obscureText: _obscurePinConfirm,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: _primaryDark,
+                                letterSpacing: 4,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(4),
+                              ],
+                              decoration: _buildInputDecoration(
+                                labelText: 'Повторите PIN-код',
+                                hintText: '••••',
+                                icon: Icons.lock_outline_rounded,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePinConfirm ? Icons.visibility_off : Icons.visibility,
+                                    color: _primaryColor,
+                                  ),
+                                  onPressed: () => setState(() => _obscurePinConfirm = !_obscurePinConfirm),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Подтвердите PIN-код';
+                                }
+                                if (value != _pinController.text) {
+                                  return 'PIN-коды не совпадают';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
 
                             // Поле кода приглашения (необязательное)
                             TextFormField(
                               controller: _referralCodeController,
                               keyboardType: TextInputType.number,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                               ),
@@ -604,7 +766,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 _validateReferralCode(value);
                               },
                             ),
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 14),
 
                             // Кнопка регистрации с градиентом
                             Container(
@@ -629,7 +791,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
@@ -661,25 +823,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                       ),
                               ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
                     ),
                   ),
-                  SizedBox(height: isSmallScreen ? 16 : 24),
-
-                  // Декоративный текст внизу
-                  Text(
-                    'Собирайте баллы • Получайте подарки',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.6),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
