@@ -4,7 +4,6 @@ const fetch = require('node-fetch');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const multer = require('multer');
-const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 
@@ -80,7 +79,6 @@ const setupRecountPointsAPI = require("./api/recount_points_api");
 const app = express();
 const setupRatingWheelAPI = require("./api/rating_wheel_api");
 const setupReferralsAPI = require("./api/referrals_api");
-const { invalidateStatsCache, checkReferralLimit } = require("./api/referrals_api");
 const { setupTasksAPI } = require("./api/tasks_api");
 const { setupRecurringTasksAPI } = require("./api/recurring_tasks_api");
 const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = require("./api/report_notifications_api");
@@ -141,7 +139,7 @@ const { setupEmployeeRegistrationAPI } = require('./api/employee_registration_ap
 const { getNextReferralCode } = require('./api/employees_api');
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
-const { sessionMiddleware, initSessionMiddleware, addTokenToIndex, removeTokenFromIndex } = require("./utils/session_middleware");
+const { sessionMiddleware, initSessionMiddleware } = require("./utils/session_middleware");
 
 // ============================================
 // SECURITY: API Key Authentication
