@@ -20,15 +20,7 @@ async function fileExists(filePath) {
   }
 }
 
-async function ensureDir(dirPath) {
-  if (!(await fileExists(dirPath))) {
-    await fsp.mkdir(dirPath, { recursive: true });
-  }
-}
-const { exec, spawn } = require('child_process');
-const util = require('util');
-const ordersModule = require('./modules/orders');
-const execPromise = util.promisify(exec);
+const { spawn } = require('child_process');
 const { preloadAdminCache, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -352,33 +344,6 @@ const mediaFileFilter = (req, file, cb) => {
   }
 };
 
-// ============================================
-// SECURITY: Path Traversal Protection
-// ============================================
-/**
- * Sanitize ID to prevent path traversal attacks
- * Removes any characters that could be used for directory traversal
- * @param {string} id - The ID to sanitize
- * @returns {string} - Sanitized ID safe for file paths
- */
-function sanitizeId(id) {
-  if (!id || typeof id !== 'string') return '';
-  // Remove path traversal characters and keep only safe chars
-  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
-}
-
-/**
- * Validate that resolved path stays within base directory
- * @param {string} baseDir - Base directory path
- * @param {string} filePath - Full file path to validate
- * @returns {boolean} - True if path is safe
- */
-function isPathSafe(baseDir, filePath) {
-  const resolvedBase = path.resolve(baseDir);
-  const resolvedPath = path.resolve(filePath);
-  return resolvedPath.startsWith(resolvedBase);
-}
-
 // Настройка multer для загрузки фото
 const storage = multer.diskStorage({
   destination: async function (req, file, cb) {
@@ -597,16 +562,10 @@ app.post('/upload-photo', upload.single('file'), (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-// Recount Reports API - MIGRATED TO api/recount_api.js (2026-02-08)
-
 // Статическая раздача фото
 app.use('/shift-photos', express.static(`${DATA_DIR}/shift-photos`));
 app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question-photos`));
 app.use('/coffee-machine-photos', express.static(`${DATA_DIR}/coffee-machine-photos`));
-
-// Attendance helper functions - MIGRATED TO api/attendance_api.js (2026-02-08)
-
-// Attendance API routes - MIGRATED TO api/attendance_api.js (2026-02-08)
 
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({
@@ -653,84 +612,7 @@ app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), (req, res
   }
 });
 
-// Employee Registration inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Employees API - MIGRATED TO api/employees_api.js (2026-02-08)
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
-
-// Shop Settings/Shops migration comments - MIGRATED TO api/ module (2026-02-08)
-// RKO inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Endpoint для редактора координат
-app.get('/rko_coordinates_editor.html', async (req, res) => {
-  res.sendFile(`${DATA_DIR}/html/rko_coordinates_editor.html`);
-});
-
-// Endpoint для координат HTML
-app.get('/coordinates.html', async (req, res) => {
-  res.sendFile(`${DATA_DIR}/html/coordinates.html`);
-});
-
-// Endpoint для тестового PDF
-app.get('/test_rko_corrected.pdf', async (req, res) => {
-  res.sendFile(`${DATA_DIR}/html/test_rko_corrected.pdf`);
-});
-
-// Endpoint для изображения шаблона
-app.get('/rko_template.jpg', async (req, res) => {
-  res.sendFile(`${DATA_DIR}/html/rko_template.jpg`);
-});
-
-// Endpoint для финального тестового PDF
-app.get('/test_rko_final.pdf', async (req, res) => {
-  res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile(`${DATA_DIR}/html/test_rko_final.pdf`);
-});
-
-// Endpoint для нового тестового PDF с исправленными координатами
-app.get('/test_rko_new_coords.pdf', async (req, res) => {
-  res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile(`${DATA_DIR}/html/test_rko_new_coords.pdf`);
-});
-
-// Endpoint для тестового РКО КО-2 с фиксированными высотами
-app.get('/test_rko_ko2_fixed.docx', async (req, res) => {
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  res.setHeader('Content-Disposition', 'inline; filename="test_rko_ko2_fixed.docx"');
-  res.sendFile(`${DATA_DIR}/html/test_rko_ko2_fixed.docx`);
-});
-
-// Withdrawals/Work Schedule migration comments - MIGRATED TO api/ module (2026-02-08)
-
-// Suppliers inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Recount Questions inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Shift Questions inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Shift Handover Questions inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Envelope Questions inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Envelope Reports inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Envelope Pending/Failed inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Clients API inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Client Messages inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Shift Reports migration comment - MIGRATED TO api/ module (2026-02-08)
-// Training Articles inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Test Questions inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Test Results inline code - MIGRATED TO api/ module (2026-02-08)
-
-// Reviews inline code - MIGRATED TO api/ module (2026-02-08)
-// Recipes inline code - MIGRATED TO api/ module (2026-02-08)
-// Menu API migration comment - MIGRATED TO api/ module (2026-02-08)
-// Orders inline code - MIGRATED TO api/ module (2026-02-08)
 
 // POST /api/fcm-tokens - сохранение FCM токена
 app.post('/api/fcm-tokens', async (req, res) => {
@@ -763,13 +645,6 @@ app.post('/api/fcm-tokens', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-// Bonus/Penalties inline code - MIGRATED TO api/ module (2026-02-08)
-
-// ============================================
-// Efficiency Penalties API - MIGRATED TO api/efficiency_penalties_api.js (2026-02-08)
-// Helper functions (loadShiftReportsForPeriod, etc.) and 2 routes moved to module.
-// ============================================
 
 // Initialize Job Applications API
 setupJobApplicationsAPI(app);
@@ -919,10 +794,6 @@ const gracefulShutdown = (signal) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// ============================================
-// Loyalty Promo API - MIGRATED TO api/loyalty_promo_api.js (2026-02-08)
-// ============================================
 
 // ==================== APP VERSION ====================
 const APP_VERSION_FILE = `${DATA_DIR}/app-version.json`;
