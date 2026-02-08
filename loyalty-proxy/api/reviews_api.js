@@ -1,203 +1,220 @@
 /**
  * Reviews API
- * Отзывы клиентов о магазинах
+ * Отзывы клиентов о магазинах (с чатом)
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const REVIEWS_DIR = `${DATA_DIR}/reviews`;
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Initialize directory on module load
+// Ensure directory exists at startup
 (async () => {
   try {
-    await fsp.mkdir(REVIEWS_DIR, { recursive: true });
+    if (!(await fileExists(REVIEWS_DIR))) {
+      await fsp.mkdir(REVIEWS_DIR, { recursive: true });
+    }
   } catch (e) {
     console.error('Failed to create reviews directory:', e);
   }
 })();
 
-function setupReviewsAPI(app) {
-  // ===== REVIEWS =====
-
+function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
+  // GET /api/reviews - получить отзывы (фильтр по phone)
   app.get('/api/reviews', async (req, res) => {
     try {
-      console.log('GET /api/reviews');
-      const { shopAddress, rating, fromDate, toDate } = req.query;
+      const { phone } = req.query;
       const reviews = [];
-
       if (await fileExists(REVIEWS_DIR)) {
-        const allFiles = await fsp.readdir(REVIEWS_DIR);
-        const files = allFiles.filter(f => f.endsWith('.json'));
-
+        const files = (await fsp.readdir(REVIEWS_DIR)).filter(f => f.endsWith('.json'));
         for (const file of files) {
           try {
             const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
             const review = JSON.parse(content);
-
-            if (shopAddress && review.shopAddress !== shopAddress) continue;
-            if (rating && review.rating !== parseInt(rating)) continue;
-            if (fromDate && review.createdAt < fromDate) continue;
-            if (toDate && review.createdAt > toDate) continue;
-
-            reviews.push(review);
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
-          }
-        }
-      }
-
-      reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      res.json({ success: true, reviews });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.post('/api/reviews', async (req, res) => {
-    try {
-      const review = req.body;
-      console.log('POST /api/reviews:', review.shopAddress, review.rating);
-
-      if (!review.id) {
-        review.id = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      }
-
-      review.createdAt = review.createdAt || new Date().toISOString();
-
-      await fsp.mkdir(REVIEWS_DIR, { recursive: true });
-
-      const filePath = path.join(REVIEWS_DIR, `${review.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(review, null, 2), 'utf8');
-
-      res.json({ success: true, review });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/reviews/:reviewId', async (req, res) => {
-    try {
-      const { reviewId } = req.params;
-      console.log('GET /api/reviews/:reviewId', reviewId);
-
-      const filePath = path.join(REVIEWS_DIR, `${reviewId}.json`);
-
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const review = JSON.parse(content);
-        res.json({ success: true, review });
-      } else {
-        res.status(404).json({ success: false, error: 'Review not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.put('/api/reviews/:reviewId', async (req, res) => {
-    try {
-      const { reviewId } = req.params;
-      const updates = req.body;
-      console.log('PUT /api/reviews/:reviewId', reviewId);
-
-      const filePath = path.join(REVIEWS_DIR, `${reviewId}.json`);
-
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Review not found' });
-      }
-
-      const content = await fsp.readFile(filePath, 'utf8');
-      const review = JSON.parse(content);
-      const updated = { ...review, ...updates, updatedAt: new Date().toISOString() };
-
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
-      res.json({ success: true, review: updated });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.delete('/api/reviews/:reviewId', async (req, res) => {
-    try {
-      const { reviewId } = req.params;
-      console.log('DELETE /api/reviews/:reviewId', reviewId);
-
-      const filePath = path.join(REVIEWS_DIR, `${reviewId}.json`);
-
-      if (await fileExists(filePath)) {
-        await fsp.unlink(filePath);
-        res.json({ success: true });
-      } else {
-        res.status(404).json({ success: false, error: 'Review not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // ===== REVIEWS STATS =====
-
-  app.get('/api/reviews/stats/:shopAddress', async (req, res) => {
-    try {
-      const { shopAddress } = req.params;
-      console.log('GET /api/reviews/stats:', shopAddress);
-
-      const reviews = [];
-
-      if (await fileExists(REVIEWS_DIR)) {
-        const allFiles = await fsp.readdir(REVIEWS_DIR);
-        const files = allFiles.filter(f => f.endsWith('.json'));
-
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
-            const review = JSON.parse(content);
-
-            if (review.shopAddress === shopAddress) {
+            if (!phone || review.clientPhone === phone) {
               reviews.push(review);
             }
           } catch (e) {
-            console.error(`Error reading ${file}:`, e);
+            console.error(`Ошибка чтения ${file}:`, e);
           }
         }
       }
-
-      const totalReviews = reviews.length;
-      const averageRating = totalReviews > 0
-        ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / totalReviews
-        : 0;
-
-      const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-      reviews.forEach(r => {
-        if (r.rating >= 1 && r.rating <= 5) {
-          ratingDistribution[r.rating]++;
-        }
-      });
-
-      res.json({
-        success: true,
-        stats: {
-          shopAddress,
-          totalReviews,
-          averageRating: Math.round(averageRating * 10) / 10,
-          ratingDistribution
-        }
-      });
+      res.json({ success: true, reviews });
     } catch (error) {
+      console.error('Ошибка получения отзывов:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/reviews - создать отзыв
+  app.post('/api/reviews', async (req, res) => {
+    try {
+      const review = {
+        id: `review_${Date.now()}`,
+        clientPhone: req.body.clientPhone,
+        clientName: req.body.clientName,
+        shopAddress: req.body.shopAddress,
+        reviewType: req.body.reviewType,
+        reviewText: req.body.reviewText,
+        messages: [],
+        createdAt: new Date().toISOString(),
+        hasUnreadFromClient: true,
+        hasUnreadFromAdmin: false,
+      };
+      const reviewFile = path.join(REVIEWS_DIR, `${review.id}.json`);
+      await fsp.writeFile(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+
+      // Отправить push-уведомление админам
+      if (sendPushNotification) {
+        const reviewEmoji = review.reviewType === 'positive' ? '👍' : '👎';
+        await sendPushNotification(
+          `Новый ${reviewEmoji} отзыв`,
+          `${review.clientName} - ${review.shopAddress}`,
+          {
+            type: 'review_created',
+            reviewId: review.id,
+            reviewType: review.reviewType,
+            shopAddress: review.shopAddress,
+          }
+        );
+      }
+
+      res.json({ success: true, review });
+    } catch (error) {
+      console.error('Ошибка создания отзыва:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/reviews/:id - получить отзыв по ID
+  app.get('/api/reviews/:id', async (req, res) => {
+    try {
+      const safeId = sanitizeId(req.params.id);
+      const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+      if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
+        return res.status(400).json({ success: false, error: 'Invalid review ID' });
+      }
+      if (!await fileExists(reviewFile)) {
+        return res.status(404).json({ success: false, error: 'Отзыв не найден' });
+      }
+      const review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
+      res.json({ success: true, review });
+    } catch (error) {
+      console.error('Ошибка получения отзыва:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/reviews/:id/messages - добавить сообщение в отзыв
+  app.post('/api/reviews/:id/messages', async (req, res) => {
+    try {
+      const safeId = sanitizeId(req.params.id);
+      const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+      if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
+        return res.status(400).json({ success: false, error: 'Invalid review ID' });
+      }
+      if (!await fileExists(reviewFile)) {
+        return res.status(404).json({ success: false, error: 'Отзыв не найден' });
+      }
+      const review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
+      const message = {
+        id: `message_${Date.now()}`,
+        sender: req.body.sender,
+        senderName: req.body.senderName,
+        text: req.body.text,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      };
+      review.messages = review.messages || [];
+      review.messages.push(message);
+
+      // Установить флаги непрочитанности и отправить push в зависимости от отправителя
+      if (message.sender === 'client') {
+        review.hasUnreadFromClient = true;
+
+        if (sendPushNotification) {
+          await sendPushNotification(
+            'Новое сообщение в отзыве',
+            `${review.clientName}: ${message.text.substring(0, 50)}${message.text.length > 50 ? '...' : ''}`,
+            {
+              type: 'review_message',
+              reviewId: review.id,
+              shopAddress: review.shopAddress,
+            }
+          );
+        }
+      } else if (message.sender === 'admin') {
+        review.hasUnreadFromAdmin = true;
+
+        if (sendPushToPhone) {
+          await sendPushToPhone(
+            review.clientPhone,
+            'Ответ на ваш отзыв',
+            message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
+            {
+              type: 'review_message',
+              reviewId: review.id,
+            }
+          );
+        }
+      }
+
+      await fsp.writeFile(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+      res.json({ success: true, message });
+    } catch (error) {
+      console.error('Ошибка добавления сообщения:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/reviews/:id/mark-read - Отметить диалог как прочитанный
+  app.post('/api/reviews/:id/mark-read', async (req, res) => {
+    try {
+      const safeId = sanitizeId(req.params.id);
+      const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+      if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
+        return res.status(400).json({ success: false, error: 'Invalid review ID' });
+      }
+      if (!await fileExists(reviewFile)) {
+        return res.status(404).json({ success: false, error: 'Отзыв не найден' });
+      }
+
+      const review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
+      const { readerType } = req.body;
+
+      if (!readerType) {
+        return res.status(400).json({ success: false, error: 'readerType обязателен' });
+      }
+
+      if (readerType === 'admin') {
+        review.hasUnreadFromClient = false;
+        if (review.messages) {
+          review.messages.forEach(msg => {
+            if (msg.sender === 'client') {
+              msg.isRead = true;
+            }
+          });
+        }
+      } else if (readerType === 'client') {
+        review.hasUnreadFromAdmin = false;
+        if (review.messages) {
+          review.messages.forEach(msg => {
+            if (msg.sender === 'admin') {
+              msg.isRead = true;
+            }
+          });
+        }
+      }
+
+      await fsp.writeFile(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Ошибка отметки диалога как прочитанного:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

@@ -1,17 +1,14 @@
 /**
  * Menu API
- *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * Extracted from index.js inline routes
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const MENU_DIR = `${DATA_DIR}/menu`;
 
-// Async helper
 async function fileExists(filePath) {
   try {
     await fsp.access(filePath);
@@ -19,6 +16,11 @@ async function fileExists(filePath) {
   } catch {
     return false;
   }
+}
+
+function sanitizeId(id) {
+  if (!id || typeof id !== 'string') return '';
+  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
 }
 
 // Ensure directory exists at startup
@@ -33,126 +35,142 @@ async function fileExists(filePath) {
 })();
 
 function setupMenuAPI(app) {
-  // ===== MENU =====
-
+  // GET /api/menu - получить все позиции меню
   app.get('/api/menu', async (req, res) => {
     try {
       console.log('GET /api/menu');
-      const { shopAddress, category } = req.query;
+
       const items = [];
 
-      if (await fileExists(MENU_DIR)) {
-        const files = (await fsp.readdir(MENU_DIR)).filter(f => f.endsWith('.json'));
+      if (!await fileExists(MENU_DIR)) {
+        return res.json({ success: true, items: [] });
+      }
 
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(MENU_DIR, file), 'utf8');
-            const item = JSON.parse(content);
+      const files = (await fsp.readdir(MENU_DIR)).filter(f => f.endsWith('.json'));
 
-            if (shopAddress && item.shopAddress !== shopAddress) continue;
-            if (category && item.category !== category) continue;
-
-            items.push(item);
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
-          }
+      for (const file of files) {
+        try {
+          const filePath = path.join(MENU_DIR, file);
+          const content = await fsp.readFile(filePath, 'utf8');
+          const item = JSON.parse(content);
+          items.push(item);
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
         }
       }
 
-      items.sort((a, b) => (a.order || 0) - (b.order || 0));
+      // Сортируем по категории и названию
+      items.sort((a, b) => {
+        const catCompare = (a.category || '').localeCompare(b.category || '');
+        if (catCompare !== 0) return catCompare;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
       res.json({ success: true, items });
     } catch (error) {
+      console.error('Ошибка получения меню:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
+  // GET /api/menu/:id - получить позицию меню по ID
+  app.get('/api/menu/:id', async (req, res) => {
+    try {
+      const id = sanitizeId(req.params.id);
+      console.log('GET /api/menu/:id', id);
+
+      const itemFile = path.join(MENU_DIR, `${id}.json`);
+
+      if (!await fileExists(itemFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Позиция меню не найдена'
+        });
+      }
+
+      const content = await fsp.readFile(itemFile, 'utf8');
+      const item = JSON.parse(content);
+
+      res.json({ success: true, item });
+    } catch (error) {
+      console.error('Ошибка получения позиции меню:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/menu - создать позицию меню
   app.post('/api/menu', async (req, res) => {
     try {
       const item = req.body;
       console.log('POST /api/menu:', item.name);
 
+      // Генерируем ID если его нет
       if (!item.id) {
         item.id = `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
 
-      item.createdAt = item.createdAt || new Date().toISOString();
-      item.updatedAt = new Date().toISOString();
-
-      const filePath = path.join(MENU_DIR, `${item.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(item, null, 2), 'utf8');
+      const itemFile = path.join(MENU_DIR, `${item.id}.json`);
+      await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
 
       res.json({ success: true, item });
     } catch (error) {
+      console.error('Ошибка создания позиции меню:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.put('/api/menu/:itemId', async (req, res) => {
+  // PUT /api/menu/:id - обновить позицию меню
+  app.put('/api/menu/:id', async (req, res) => {
     try {
-      const { itemId } = req.params;
+      const id = sanitizeId(req.params.id);
       const updates = req.body;
-      console.log('PUT /api/menu:', itemId);
+      console.log('PUT /api/menu/:id', id);
 
-      const filePath = path.join(MENU_DIR, `${itemId}.json`);
+      const itemFile = path.join(MENU_DIR, `${id}.json`);
 
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Menu item not found' });
+      if (!await fileExists(itemFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Позиция меню не найдена'
+        });
       }
 
-      const content = await fsp.readFile(filePath, 'utf8');
+      const content = await fsp.readFile(itemFile, 'utf8');
       const item = JSON.parse(content);
-      const updated = { ...item, ...updates, updatedAt: new Date().toISOString() };
 
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
-      res.json({ success: true, item: updated });
+      // Обновляем поля
+      Object.assign(item, updates);
+      item.id = id; // Сохраняем оригинальный ID
+
+      await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
+
+      res.json({ success: true, item });
     } catch (error) {
+      console.error('Ошибка обновления позиции меню:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.delete('/api/menu/:itemId', async (req, res) => {
+  // DELETE /api/menu/:id - удалить позицию меню
+  app.delete('/api/menu/:id', async (req, res) => {
     try {
-      const { itemId } = req.params;
-      console.log('DELETE /api/menu:', itemId);
+      const id = sanitizeId(req.params.id);
+      console.log('DELETE /api/menu/:id', id);
 
-      const filePath = path.join(MENU_DIR, `${itemId}.json`);
+      const itemFile = path.join(MENU_DIR, `${id}.json`);
 
-      if (await fileExists(filePath)) {
-        await fsp.unlink(filePath);
-        res.json({ success: true });
-      } else {
-        res.status(404).json({ success: false, error: 'Menu item not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // ===== MENU CATEGORIES =====
-
-  app.get('/api/menu-categories', async (req, res) => {
-    try {
-      console.log('GET /api/menu-categories');
-      const categories = new Set();
-
-      if (await fileExists(MENU_DIR)) {
-        const files = (await fsp.readdir(MENU_DIR)).filter(f => f.endsWith('.json'));
-
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(MENU_DIR, file), 'utf8');
-            const item = JSON.parse(content);
-            if (item.category) {
-              categories.add(item.category);
-            }
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
-          }
-        }
+      if (!await fileExists(itemFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Позиция меню не найдена'
+        });
       }
 
-      res.json({ success: true, categories: Array.from(categories).sort() });
+      await fsp.unlink(itemFile);
+
+      res.json({ success: true, message: 'Позиция меню удалена' });
     } catch (error) {
+      console.error('Ошибка удаления позиции меню:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

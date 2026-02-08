@@ -120,6 +120,8 @@ const { setupShopManagersAPI } = require("./api/shop_managers_api");
 const { setupLoyaltyGamificationAPI } = require("./api/loyalty_gamification_api");
 const { setupCoffeeMachineAPI } = require("./api/coffee_machine_api");
 const { startCoffeeMachineAutomation } = require("./api/coffee_machine_automation_scheduler");
+const { setupShopsAPI } = require('./api/shops_api');
+const { setupMenuAPI } = require('./api/menu_api');
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
 const { sessionMiddleware, initSessionMiddleware, addTokenToIndex, removeTokenFromIndex } = require("./utils/session_middleware");
@@ -2032,158 +2034,9 @@ app.delete('/api/employees/:id', async (req, res) => {
 });
 
 // ========== API для магазинов ==========
-
+// MIGRATED TO api/shops_api.js (2026-02-08)
+// Constant kept for GPS check dependency (attendance/gps-check route)
 const SHOPS_DIR = `${DATA_DIR}/shops`;
-
-// Дефолтные магазины (создаются при первом запуске)
-const DEFAULT_SHOPS = [
-  { id: 'shop_1', name: 'Арабика Винсады', address: 'с.Винсады,ул Подгорная 156д (На Выезде)', icon: 'store_outlined', latitude: 44.091173, longitude: 42.952451 },
-  { id: 'shop_2', name: 'Арабика Лермонтов', address: 'Лермонтов,ул Пятигорская 19', icon: 'store_outlined', latitude: 44.100923, longitude: 42.967543 },
-  { id: 'shop_3', name: 'Арабика Лермонтов (Площадь)', address: 'Лермонтов,Комсомольская 1 (На Площади)', icon: 'store_outlined', latitude: 44.104619, longitude: 42.970543 },
-  { id: 'shop_4', name: 'Арабика Лермонтов (Остановка)', address: 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )', icon: 'store_outlined', latitude: 44.105379, longitude: 42.978421 },
-  { id: 'shop_5', name: 'Арабика Ессентуки', address: 'Ессентуки , ул пятигорская 149/1 (Золотушка)', icon: 'store_mall_directory_outlined', latitude: 44.055559, longitude: 42.911012 },
-  { id: 'shop_6', name: 'Арабика Иноземцево', address: 'Иноземцево , ул Гагарина 1', icon: 'store_outlined', latitude: 44.080153, longitude: 43.081593 },
-  { id: 'shop_7', name: 'Арабика Пятигорск (Ромашка)', address: 'Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)', icon: 'store_outlined', latitude: 44.061053, longitude: 43.063672 },
-  { id: 'shop_8', name: 'Арабика Пятигорск', address: 'Пятигорск,ул Коллективная 26а', icon: 'store_outlined', latitude: 44.032997, longitude: 43.042525 },
-];
-
-// Инициализация директории магазинов
-async function initShopsDir() {
-  if (!await fileExists(SHOPS_DIR)) {
-    await fsp.mkdir(SHOPS_DIR, { recursive: true });
-    // Создаем дефолтные магазины
-    for (const shop of DEFAULT_SHOPS) {
-      const shopFile = path.join(SHOPS_DIR, `${shop.id}.json`);
-      await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
-    }
-    console.log('✅ Директория магазинов создана с дефолтными данными');
-  }
-}
-initShopsDir();
-
-// GET /api/shops - получить все магазины
-app.get('/api/shops', async (req, res) => {
-  try {
-    console.log('GET /api/shops');
-
-    const shops = [];
-    const files = (await fsp.readdir(SHOPS_DIR)).filter(f => f.endsWith('.json'));
-
-    for (const file of files) {
-      try {
-        const content = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
-        shops.push(JSON.parse(content));
-      } catch (e) {
-        console.error(`Ошибка чтения файла ${file}:`, e.message);
-      }
-    }
-
-    res.json({ success: true, shops });
-  } catch (error) {
-    console.error('Ошибка получения магазинов:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/shops/:id - получить магазин по ID
-app.get('/api/shops/:id', async (req, res) => {
-  try {
-    const id = sanitizeId(req.params.id);
-    console.log('GET /api/shops/' + id);
-
-    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    if (!await fileExists(shopFile)) {
-      return res.status(404).json({ success: false, error: 'Магазин не найден' });
-    }
-
-    const shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
-    res.json({ success: true, shop });
-  } catch (error) {
-    console.error('Ошибка получения магазина:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// POST /api/shops - создать магазин
-app.post('/api/shops', async (req, res) => {
-  try {
-    const { name, address, latitude, longitude, icon } = req.body;
-    console.log('POST /api/shops', req.body);
-
-    const id = 'shop_' + Date.now();
-    const shop = {
-      id,
-      name: name || '',
-      address: address || '',
-      icon: icon || 'store_outlined',
-      latitude: latitude || null,
-      longitude: longitude || null,
-      createdAt: new Date().toISOString(),
-    };
-
-    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
-
-    console.log('✅ Магазин создан:', id);
-    res.json({ success: true, shop });
-  } catch (error) {
-    console.error('Ошибка создания магазина:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// PUT /api/shops/:id - обновить магазин
-app.put('/api/shops/:id', async (req, res) => {
-  try {
-    const id = sanitizeId(req.params.id);
-    const updates = req.body;
-    console.log('PUT /api/shops/' + id, updates);
-
-    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    if (!await fileExists(shopFile)) {
-      return res.status(404).json({ success: false, error: 'Магазин не найден' });
-    }
-
-    const shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
-
-    // Обновляем только переданные поля
-    if (updates.name !== undefined) shop.name = updates.name;
-    if (updates.address !== undefined) shop.address = updates.address;
-    if (updates.latitude !== undefined) shop.latitude = updates.latitude;
-    if (updates.longitude !== undefined) shop.longitude = updates.longitude;
-    if (updates.icon !== undefined) shop.icon = updates.icon;
-    shop.updatedAt = new Date().toISOString();
-
-    await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
-
-    console.log('✅ Магазин обновлен:', id);
-    res.json({ success: true, shop });
-  } catch (error) {
-    console.error('Ошибка обновления магазина:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// DELETE /api/shops/:id - удалить магазин
-app.delete('/api/shops/:id', async (req, res) => {
-  try {
-    const id = sanitizeId(req.params.id);
-    console.log('DELETE /api/shops/' + id);
-
-    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    if (!await fileExists(shopFile)) {
-      return res.status(404).json({ success: false, error: 'Магазин не найден' });
-    }
-
-    await fsp.unlink(shopFile);
-
-    console.log('✅ Магазин удален:', id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Ошибка удаления магазина:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // ========== API для настроек магазинов (РКО) ==========
 
@@ -7644,155 +7497,8 @@ app.get('/api/shift-handover/failed', async (req, res) => {
 });
 
 // ============================================
-// Menu API
+// Menu API - MIGRATED TO api/menu_api.js (2026-02-08)
 // ============================================
-const MENU_DIR = `${DATA_DIR}/menu`;
-
-(async () => {
-  if (!await fileExists(MENU_DIR)) {
-    await fsp.mkdir(MENU_DIR, { recursive: true });
-  }
-})();
-
-// GET /api/menu - получить все позиции меню
-app.get('/api/menu', async (req, res) => {
-  try {
-    console.log('GET /api/menu');
-
-    const items = [];
-
-    if (!await fileExists(MENU_DIR)) {
-      return res.json({ success: true, items: [] });
-    }
-
-    const files = (await fsp.readdir(MENU_DIR)).filter(f => f.endsWith('.json'));
-
-    for (const file of files) {
-      try {
-        const filePath = path.join(MENU_DIR, file);
-        const content = await fsp.readFile(filePath, 'utf8');
-        const item = JSON.parse(content);
-        items.push(item);
-      } catch (e) {
-        console.error(`Ошибка чтения файла ${file}:`, e);
-      }
-    }
-
-    // Сортируем по категории и названию
-    items.sort((a, b) => {
-      const catCompare = (a.category || '').localeCompare(b.category || '');
-      if (catCompare !== 0) return catCompare;
-      return (a.name || '').localeCompare(b.name || '');
-    });
-
-    res.json({ success: true, items });
-  } catch (error) {
-    console.error('Ошибка получения меню:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/menu/:id - получить позицию меню по ID
-app.get('/api/menu/:id', async (req, res) => {
-  try {
-    const id = sanitizeId(req.params.id);
-    console.log('GET /api/menu/:id', id);
-
-    const itemFile = path.join(MENU_DIR, `${id}.json`);
-
-    if (!await fileExists(itemFile)) {
-      return res.status(404).json({
-        success: false,
-        error: 'Позиция меню не найдена'
-      });
-    }
-
-    const content = await fsp.readFile(itemFile, 'utf8');
-    const item = JSON.parse(content);
-
-    res.json({ success: true, item });
-  } catch (error) {
-    console.error('Ошибка получения позиции меню:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// POST /api/menu - создать позицию меню
-app.post('/api/menu', async (req, res) => {
-  try {
-    const item = req.body;
-    console.log('POST /api/menu:', item.name);
-
-    // Генерируем ID если его нет
-    if (!item.id) {
-      item.id = `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-
-    const itemFile = path.join(MENU_DIR, `${item.id}.json`);
-    await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
-
-    res.json({ success: true, item });
-  } catch (error) {
-    console.error('Ошибка создания позиции меню:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// PUT /api/menu/:id - обновить позицию меню
-app.put('/api/menu/:id', async (req, res) => {
-  try {
-    const id = sanitizeId(req.params.id);
-    const updates = req.body;
-    console.log('PUT /api/menu/:id', id);
-
-    const itemFile = path.join(MENU_DIR, `${id}.json`);
-
-    if (!await fileExists(itemFile)) {
-      return res.status(404).json({
-        success: false,
-        error: 'Позиция меню не найдена'
-      });
-    }
-
-    const content = await fsp.readFile(itemFile, 'utf8');
-    const item = JSON.parse(content);
-
-    // Обновляем поля
-    Object.assign(item, updates);
-    item.id = id; // Сохраняем оригинальный ID
-
-    await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
-
-    res.json({ success: true, item });
-  } catch (error) {
-    console.error('Ошибка обновления позиции меню:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// DELETE /api/menu/:id - удалить позицию меню
-app.delete('/api/menu/:id', async (req, res) => {
-  try {
-    const id = sanitizeId(req.params.id);
-    console.log('DELETE /api/menu/:id', id);
-
-    const itemFile = path.join(MENU_DIR, `${id}.json`);
-
-    if (!await fileExists(itemFile)) {
-      return res.status(404).json({
-        success: false,
-        error: 'Позиция меню не найдена'
-      });
-    }
-
-    await fsp.unlink(itemFile);
-
-    res.json({ success: true, message: 'Позиция меню удалена' });
-  } catch (error) {
-    console.error('Ошибка удаления позиции меню:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // ============================================
 // Orders API
@@ -8505,6 +8211,10 @@ setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
 setupLoyaltyGamificationAPI(app);
 setupCoffeeMachineAPI(app);
+
+// Migrated modules (inline routes removed from index.js)
+setupShopsAPI(app);
+setupMenuAPI(app);
 
 // Auth API (регистрация, вход, сброс PIN)
 app.use('/api/auth', authApiRouter);

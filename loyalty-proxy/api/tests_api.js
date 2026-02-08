@@ -1,24 +1,16 @@
 /**
- * Tests API
+ * Tests API (Questions + Results + Point Assignment)
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 
-const TEST_QUESTIONS_DIR = '/var/www/test-questions';
-const TEST_RESULTS_DIR = '/var/www/test-results';
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const TEST_QUESTIONS_DIR = `${DATA_DIR}/test-questions`;
+const TEST_RESULTS_DIR = `${DATA_DIR}/test-results`;
 
 // Ensure directories exist
 (async () => {
@@ -29,92 +21,192 @@ async function fileExists(filePath) {
   }
 })();
 
+/**
+ * Начисление баллов за прохождение теста
+ * Использует линейную интерполяцию для расчета баллов
+ */
+async function assignTestPoints(result) {
+  try {
+    const now = new Date(result.completedAt || Date.now());
+    const today = now.toISOString().split('T')[0];
+    const monthKey = today.substring(0, 7); // YYYY-MM
+
+    // Загрузка настроек баллов
+    const settingsFile = `${DATA_DIR}/points-settings/test_points_settings.json`;
+    let settings = {
+      maxPoints: 5,
+      minPoints: -2,
+      zeroThreshold: 12
+    };
+
+    if (await fileExists(settingsFile)) {
+      try {
+        const settingsData = await fsp.readFile(settingsFile, 'utf8');
+        settings = JSON.parse(settingsData);
+      } catch (e) {
+        console.error('Error loading test settings:', e);
+      }
+    }
+
+    // Расчет баллов через линейную интерполяцию
+    const { score, totalQuestions } = result;
+    let points = 0;
+
+    if (totalQuestions === 0) {
+      points = 0;
+    } else if (score <= 0) {
+      points = settings.minPoints;
+    } else if (score >= totalQuestions) {
+      points = settings.maxPoints;
+    } else if (score <= settings.zeroThreshold) {
+      // Интерполяция от minPoints до 0
+      points = settings.minPoints + (0 - settings.minPoints) * (score / settings.zeroThreshold);
+    } else {
+      // Интерполяция от 0 до maxPoints
+      const range = totalQuestions - settings.zeroThreshold;
+      points = (settings.maxPoints - 0) * ((score - settings.zeroThreshold) / range);
+    }
+
+    // Округление до 2 знаков
+    points = Math.round(points * 100) / 100;
+
+    // Дедупликация
+    const sourceId = `test_${result.id}`;
+    const PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+    if (!await fileExists(PENALTIES_DIR)) {
+      await fsp.mkdir(PENALTIES_DIR, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(PENALTIES_DIR, `${monthKey}.json`);
+    let penalties = [];
+
+    if (await fileExists(penaltiesFile)) {
+      try {
+        penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
+        if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+      } catch (e) {
+        console.error('Error reading penalties file:', e);
+      }
+    }
+
+    const exists = penalties.some(p => p.sourceId === sourceId);
+    if (exists) {
+      console.log(`Points already assigned for test ${result.id}, skipping`);
+      return { success: true, skipped: true };
+    }
+
+    // Создание записи
+    const entry = {
+      id: `test_pts_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: result.employeePhone,
+      entityName: result.employeeName,
+      shopAddress: result.shopAddress || '',
+      employeeName: result.employeeName,
+      category: points >= 0 ? 'test_bonus' : 'test_penalty',
+      categoryName: 'Прохождение теста',
+      date: today,
+      points: points,
+      reason: `Тест: ${score}/${totalQuestions} правильных (${Math.round((score/totalQuestions)*100)}%)`,
+      sourceId: sourceId,
+      sourceType: 'test_result',
+      createdAt: now.toISOString()
+    };
+
+    penalties.push(entry);
+    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+
+    console.log(`✅ Test points assigned: ${result.employeeName} (${points >= 0 ? '+' : ''}${points} points)`);
+    return { success: true, points: points };
+  } catch (error) {
+    console.error('Error assigning test points:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 function setupTestsAPI(app) {
   // ===== TEST QUESTIONS =====
 
   app.get('/api/test-questions', async (req, res) => {
     try {
-      console.log('GET /api/test-questions');
       const questions = [];
-
       if (await fileExists(TEST_QUESTIONS_DIR)) {
         const files = (await fsp.readdir(TEST_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
-
         for (const file of files) {
           try {
             const content = await fsp.readFile(path.join(TEST_QUESTIONS_DIR, file), 'utf8');
             questions.push(JSON.parse(content));
           } catch (e) {
-            console.error(`Error reading ${file}:`, e);
+            console.error(`Ошибка чтения ${file}:`, e);
           }
         }
       }
-
-      questions.sort((a, b) => (a.order || 0) - (b.order || 0));
       res.json({ success: true, questions });
     } catch (error) {
+      console.error('Ошибка получения вопросов тестирования:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
   app.post('/api/test-questions', async (req, res) => {
     try {
-      const question = req.body;
-      console.log('POST /api/test-questions:', question.text?.substring(0, 50));
-
-      if (!question.id) {
-        question.id = `testq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      }
-
-      question.createdAt = question.createdAt || new Date().toISOString();
-      question.updatedAt = new Date().toISOString();
-
-      const filePath = path.join(TEST_QUESTIONS_DIR, `${question.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
-
+      const question = {
+        id: `test_question_${Date.now()}`,
+        question: req.body.question,
+        answerA: req.body.answerA,
+        answerB: req.body.answerB,
+        answerC: req.body.answerC,
+        correctAnswer: req.body.correctAnswer,
+        createdAt: new Date().toISOString(),
+      };
+      const questionFile = path.join(TEST_QUESTIONS_DIR, `${question.id}.json`);
+      await fsp.writeFile(questionFile, JSON.stringify(question, null, 2), 'utf8');
       res.json({ success: true, question });
     } catch (error) {
+      console.error('Ошибка создания вопроса тестирования:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.put('/api/test-questions/:questionId', async (req, res) => {
+  app.put('/api/test-questions/:id', async (req, res) => {
     try {
-      const { questionId } = req.params;
-      const updates = req.body;
-      console.log('PUT /api/test-questions:', questionId);
-
-      const filePath = path.join(TEST_QUESTIONS_DIR, `${questionId}.json`);
-
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Question not found' });
+      const safeId = sanitizeId(req.params.id);
+      const questionFile = path.join(TEST_QUESTIONS_DIR, `${safeId}.json`);
+      if (!isPathSafe(TEST_QUESTIONS_DIR, questionFile)) {
+        return res.status(400).json({ success: false, error: 'Invalid question ID' });
       }
-
-      const content = await fsp.readFile(filePath, 'utf8');
-      const question = JSON.parse(content);
-      const updated = { ...question, ...updates, updatedAt: new Date().toISOString() };
-
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
-      res.json({ success: true, question: updated });
+      if (!await fileExists(questionFile)) {
+        return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+      }
+      const question = JSON.parse(await fsp.readFile(questionFile, 'utf8'));
+      if (req.body.question) question.question = req.body.question;
+      if (req.body.answerA) question.answerA = req.body.answerA;
+      if (req.body.answerB) question.answerB = req.body.answerB;
+      if (req.body.answerC) question.answerC = req.body.answerC;
+      if (req.body.correctAnswer) question.correctAnswer = req.body.correctAnswer;
+      question.updatedAt = new Date().toISOString();
+      await fsp.writeFile(questionFile, JSON.stringify(question, null, 2), 'utf8');
+      res.json({ success: true, question });
     } catch (error) {
+      console.error('Ошибка обновления вопроса тестирования:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.delete('/api/test-questions/:questionId', async (req, res) => {
+  app.delete('/api/test-questions/:id', async (req, res) => {
     try {
-      const { questionId } = req.params;
-      console.log('DELETE /api/test-questions:', questionId);
-
-      const filePath = path.join(TEST_QUESTIONS_DIR, `${questionId}.json`);
-
-      if (await fileExists(filePath)) {
-        await fsp.unlink(filePath);
-        res.json({ success: true });
-      } else {
-        res.status(404).json({ success: false, error: 'Question not found' });
+      const safeId = sanitizeId(req.params.id);
+      const questionFile = path.join(TEST_QUESTIONS_DIR, `${safeId}.json`);
+      if (!isPathSafe(TEST_QUESTIONS_DIR, questionFile)) {
+        return res.status(400).json({ success: false, error: 'Invalid question ID' });
       }
+      if (!await fileExists(questionFile)) {
+        return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+      }
+      await fsp.unlink(questionFile);
+      res.json({ success: true });
     } catch (error) {
+      console.error('Ошибка удаления вопроса тестирования:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -124,69 +216,59 @@ function setupTestsAPI(app) {
   app.get('/api/test-results', async (req, res) => {
     try {
       console.log('GET /api/test-results');
-      const { phone, shopAddress } = req.query;
       const results = [];
-
       if (await fileExists(TEST_RESULTS_DIR)) {
         const files = (await fsp.readdir(TEST_RESULTS_DIR)).filter(f => f.endsWith('.json'));
-
         for (const file of files) {
           try {
             const content = await fsp.readFile(path.join(TEST_RESULTS_DIR, file), 'utf8');
             const result = JSON.parse(content);
-
-            if (phone && result.phone !== phone) continue;
-            if (shopAddress && result.shopAddress !== shopAddress) continue;
-
             results.push(result);
           } catch (e) {
-            console.error(`Error reading ${file}:`, e);
+            console.error(`Ошибка чтения ${file}:`, e);
           }
         }
       }
-
+      // Сортировка по дате (новые сначала)
       results.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+      console.log(`✅ Найдено результатов тестов: ${results.length}`);
       res.json({ success: true, results });
     } catch (error) {
+      console.error('Ошибка получения результатов тестов:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
   app.post('/api/test-results', async (req, res) => {
     try {
-      const result = req.body;
-      console.log('POST /api/test-results:', result.employeeName);
+      console.log('POST /api/test-results', req.body);
+      const result = {
+        id: req.body.id || `test_result_${Date.now()}`,
+        employeeName: req.body.employeeName,
+        employeePhone: req.body.employeePhone,
+        score: req.body.score,
+        totalQuestions: req.body.totalQuestions,
+        timeSpent: req.body.timeSpent,
+        completedAt: req.body.completedAt || new Date().toISOString(),
+        shopAddress: req.body.shopAddress,
+      };
 
-      if (!result.id) {
-        result.id = `testres_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      }
+      const resultFile = path.join(TEST_RESULTS_DIR, `${result.id}.json`);
+      await fsp.writeFile(resultFile, JSON.stringify(result, null, 2), 'utf8');
 
-      result.completedAt = result.completedAt || new Date().toISOString();
+      console.log(`✅ Результат теста сохранен: ${result.employeeName} - ${result.score}/${result.totalQuestions}`);
 
-      const filePath = path.join(TEST_RESULTS_DIR, `${result.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(result, null, 2), 'utf8');
+      // Начисление баллов за тест
+      const pointsResult = await assignTestPoints(result);
 
-      res.json({ success: true, result });
+      res.json({
+        success: true,
+        result,
+        pointsAssigned: pointsResult.success,
+        points: pointsResult.points
+      });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/test-results/:resultId', async (req, res) => {
-    try {
-      const { resultId } = req.params;
-      console.log('GET /api/test-results/:resultId', resultId);
-
-      const filePath = path.join(TEST_RESULTS_DIR, `${resultId}.json`);
-
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const result = JSON.parse(content);
-        res.json({ success: true, result });
-      } else {
-        res.status(404).json({ success: false, error: 'Result not found' });
-      }
-    } catch (error) {
+      console.error('Ошибка сохранения результата теста:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
