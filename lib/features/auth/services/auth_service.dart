@@ -163,19 +163,9 @@ class AuthService {
         // Устанавливаем session token для всех API запросов
         ApiConstants.sessionToken = session.sessionToken;
 
-        // Получаем pinHash и salt от сервера для локального хранения
-        final serverPinHash = data['pinHash'] as String?;
-        final serverSalt = data['salt'] as String?;
-
-        if (serverPinHash != null && serverSalt != null) {
-          // Сохраняем credentials локально
-          final credentials = AuthCredentials(
-            pinHash: serverPinHash,
-            salt: serverSalt,
-            createdAt: DateTime.now(),
-          );
-          await _storage.saveCredentials(credentials);
-        }
+        // Создаём локальные credentials для офлайн-входа
+        // (сервер больше не возвращает pinHash/salt — безопаснее)
+        await _storage.createCredentials(pin);
 
         return AuthResult.success(session: session);
       } else {

@@ -18,7 +18,6 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   // Цветовая схема
   static const _primaryColor = Color(0xFF004D40);
   static const _accentColor = Color(0xFF00897B);
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00796B)];
   static const _orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
   static const _redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
   static const _greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];

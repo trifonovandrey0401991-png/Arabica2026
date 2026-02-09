@@ -7,6 +7,7 @@ import '../services/management_message_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/media_message_widget.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница диалога "Связь с Руководством" для админа
 class AdminManagementDialogPage extends StatefulWidget {
@@ -410,12 +411,12 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
                             color: Colors.black87,
                             child: const Icon(Icons.videocam, color: Colors.white),
                           )
-                        : Image.network(
-                            _pendingMediaUrl!,
+                        : AppCachedImage(
+                            imageUrl: _pendingMediaUrl!,
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorWidget: (_, __, ___) => Container(
                               width: 60,
                               height: 60,
                               color: Colors.grey,

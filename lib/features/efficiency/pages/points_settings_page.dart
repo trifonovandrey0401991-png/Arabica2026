@@ -30,7 +30,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
   static const Color _night = Color(0xFF051515);
   static const Color _gold = Color(0xFFD4AF37);
 
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   // Categories with colors
   final List<_PointsCategory> _categories = [

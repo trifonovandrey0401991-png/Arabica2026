@@ -18,7 +18,6 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
   static const Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
-  List<ProductQuestion> _allQuestions = [];
   Map<String, ShopQuestionStats> _shopStats = {};
   Map<String, int> _unreadByShop = {};
   String? _expandedShop;
@@ -68,7 +67,6 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
       }
 
       setState(() {
-        _allQuestions = questions;
         _shopStats = stats;
         _unreadByShop = unviewedCounts;
         _isLoading = false;

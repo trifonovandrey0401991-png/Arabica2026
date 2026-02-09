@@ -25,8 +25,6 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
 
   // Цвета для градиентов
   static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
-  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
-  static const _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
 
   /// Количество вкладок зависит от роли: админ видит 3 вкладки, остальные - 2
   int get _tabCount => _isAdmin ? 3 : 2;

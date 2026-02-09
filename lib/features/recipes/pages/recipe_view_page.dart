@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/recipe_model.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class RecipeViewPage extends StatelessWidget {
   final Recipe recipe;
@@ -36,12 +37,12 @@ class RecipeViewPage extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: recipe.photoUrlOrId!.startsWith('http')
-                        ? Image.network(
-                            recipe.photoUrlOrId!,
+                        ? AppCachedImage(
+                            imageUrl: recipe.photoUrlOrId!,
                             height: 300,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Image.asset(
+                            errorWidget: (_, __, ___) => Image.asset(
                               'assets/images/no_photo.png',
                               height: 300,
                               width: double.infinity,

@@ -9,6 +9,7 @@ import '../../shifts/services/shift_report_service.dart';
 import '../../shifts/models/shift_report_model.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Детальная страница одного дня работы сотрудника в магазине
 class KPIEmployeeDayDetailPage extends StatefulWidget {
@@ -510,16 +511,10 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                   ),
                                                   child: ClipRRect(
                                                     borderRadius: BorderRadius.circular(8),
-                                                    child: Image.network(
-                                                      answer.referencePhotoUrl!,
+                                                    child: AppCachedImage(
+                                                      imageUrl: answer.referencePhotoUrl!,
                                                       fit: BoxFit.cover,
-                                                      loadingBuilder: (context, child, loadingProgress) {
-                                                        if (loadingProgress == null) return child;
-                                                        return const Center(
-                                                          child: CircularProgressIndicator(),
-                                                        );
-                                                      },
-                                                      errorBuilder: (context, error, stackTrace) {
+                                                      errorWidget: (context, error, stackTrace) {
                                                         Logger.error('Ошибка загрузки эталонного фото, URL: ${answer.referencePhotoUrl}', error);
                                                         return const Center(
                                                           child: Icon(Icons.error, size: 24),
@@ -554,10 +549,10 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                             borderRadius: BorderRadius.circular(8),
                                             child: answer.photoPath != null
                                                 ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                                    ? Image.network(
-                                                        answer.photoPath!,
+                                                    ? AppCachedImage(
+                                                        imageUrl: answer.photoPath!,
                                                         fit: BoxFit.cover,
-                                                        errorBuilder: (context, error, stackTrace) {
+                                                        errorWidget: (context, error, stackTrace) {
                                                           Logger.error('Ошибка загрузки фото сотрудника', error);
                                                           return const Center(
                                                             child: Icon(Icons.error, size: 24),
@@ -581,16 +576,10 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                           if (snapshot.hasData) {
                                                             final photoUrl = snapshot.data!;
                                                             Logger.debug('KPI: Загрузка фото сотрудника из: $photoUrl');
-                                                            return Image.network(
-                                                              photoUrl,
+                                                            return AppCachedImage(
+                                                              imageUrl: photoUrl,
                                                               fit: BoxFit.cover,
-                                                              loadingBuilder: (context, child, loadingProgress) {
-                                                                if (loadingProgress == null) return child;
-                                                                return const Center(
-                                                                  child: CircularProgressIndicator(),
-                                                                );
-                                                              },
-                                                              errorBuilder: (context, error, stackTrace) {
+                                                              errorWidget: (context, error, stackTrace) {
                                                                 Logger.error('Ошибка загрузки фото из Google Drive, URL: $photoUrl, photoDriveId: ${answer.photoDriveId}', error);
                                                                 return const Center(
                                                                   child: Icon(Icons.error, size: 24),
@@ -633,10 +622,10 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                   borderRadius: BorderRadius.circular(8),
                                   child: answer.photoPath != null
                                       ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                          ? Image.network(
-                                              answer.photoPath!,
+                                          ? AppCachedImage(
+                                              imageUrl: answer.photoPath!,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
+                                              errorWidget: (context, error, stackTrace) {
                                                 Logger.error('Ошибка загрузки фото сотрудника', error);
                                                 return const Center(
                                                   child: Icon(Icons.error, size: 64),
@@ -658,10 +647,10 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                               future: Future.value(PhotoUploadService.getPhotoUrl(answer.photoDriveId!)),
                                               builder: (context, snapshot) {
                                                 if (snapshot.hasData) {
-                                                  return Image.network(
-                                                    snapshot.data!,
+                                                  return AppCachedImage(
+                                                    imageUrl: snapshot.data!,
                                                     fit: BoxFit.cover,
-                                                    errorBuilder: (context, error, stackTrace) {
+                                                    errorWidget: (context, error, stackTrace) {
                                                       Logger.error('Ошибка загрузки фото из Google Drive, URL: ${snapshot.data}', error);
                                                       return const Center(
                                                         child: Icon(Icons.error, size: 64),

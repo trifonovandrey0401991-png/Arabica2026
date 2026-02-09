@@ -7,6 +7,7 @@ import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 import 'shift_photo_gallery_page.dart';
 import '../../../core/utils/logger.dart';
+import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 
 /// Страница просмотра отчета пересменки
 class ShiftReportViewPage extends StatefulWidget {
@@ -330,16 +331,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    answer.referencePhotoUrl!,
+                                  child: AppCachedImage(
+                                    imageUrl: answer.referencePhotoUrl!,
                                     fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(color: _gold),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
+                                    errorWidget: (context, error, stackTrace) {
                                       Logger.error('Ошибка загрузки эталонного фото: URL: ${answer.referencePhotoUrl}', error);
                                       return Center(
                                         child: Column(
@@ -398,10 +393,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                     borderRadius: BorderRadius.circular(12),
                                     child: answer.photoPath != null
                                         ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                            ? Image.network(
-                                                answer.photoPath!,
+                                            ? AppCachedImage(
+                                                imageUrl: answer.photoPath!,
                                                 fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) {
+                                                errorWidget: (context, error, stackTrace) {
                                                   return Center(
                                                     child: Icon(Icons.error, color: Colors.red.withOpacity(0.7)),
                                                   );
@@ -418,16 +413,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                                   if (snapshot.hasData) {
                                                     final photoUrl = snapshot.data!;
                                                     Logger.debug('Загрузка фото сотрудника из: $photoUrl');
-                                                    return Image.network(
-                                                      photoUrl,
+                                                    return AppCachedImage(
+                                                      imageUrl: photoUrl,
                                                       fit: BoxFit.cover,
-                                                      loadingBuilder: (context, child, loadingProgress) {
-                                                        if (loadingProgress == null) return child;
-                                                        return Center(
-                                                          child: CircularProgressIndicator(color: _gold),
-                                                        );
-                                                      },
-                                                      errorBuilder: (context, error, stackTrace) {
+                                                      errorWidget: (context, error, stackTrace) {
                                                         Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
                                                         return Center(
                                                           child: Column(
@@ -491,10 +480,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                       borderRadius: BorderRadius.circular(12),
                       child: answer.photoPath != null
                           ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                              ? Image.network(
-                                  answer.photoPath!,
+                              ? AppCachedImage(
+                                  imageUrl: answer.photoPath!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
+                                  errorWidget: (context, error, stackTrace) {
                                     return Center(
                                       child: Icon(Icons.error, color: Colors.red.withOpacity(0.7)),
                                     );
@@ -511,16 +500,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                     if (snapshot.hasData) {
                                       final photoUrl = snapshot.data!;
                                       Logger.debug('Загрузка фото сотрудника из: $photoUrl');
-                                      return Image.network(
-                                        photoUrl,
+                                      return AppCachedImage(
+                                        imageUrl: photoUrl,
                                         fit: BoxFit.cover,
-                                        loadingBuilder: (context, child, loadingProgress) {
-                                          if (loadingProgress == null) return child;
-                                          return Center(
-                                            child: CircularProgressIndicator(color: _gold),
-                                          );
-                                        },
-                                        errorBuilder: (context, error, stackTrace) {
+                                        errorWidget: (context, error, stackTrace) {
                                           Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
                                           return Center(
                                             child: Column(

@@ -13,6 +13,7 @@ import '../../efficiency/models/points_settings_model.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import 'recount_report_view_page.dart';
 import 'recount_summary_report_page.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Модель строки сводного отчёта (дата + смена) - аналог ShiftSummaryItem
 class RecountSummaryItem {
@@ -2843,12 +2844,12 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     const SizedBox(height: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        foundAnswer.photoUrl!,
+                      child: AppCachedImage(
+                        imageUrl: foundAnswer.photoUrl!,
                         height: 150,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorWidget: (_, __, ___) => Container(
                           height: 60,
                           color: Colors.white.withOpacity(0.06),
                           child: Center(

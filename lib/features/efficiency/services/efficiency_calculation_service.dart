@@ -18,8 +18,29 @@ class EfficiencyCalculationService {
   static RegularTaskPointsSettings? _regularTaskSettings;
   static RecurringTaskPointsSettings? _recurringTaskSettings;
 
+  // Защита от параллельных вызовов loadAllSettings
+  static Future<void>? _loadingFuture;
+
   /// Загрузить все настройки баллов
   static Future<void> loadAllSettings() async {
+    // Уже загружены — пропускаем
+    if (_testSettings != null) return;
+
+    // Загрузка уже идёт — ждём её завершения
+    if (_loadingFuture != null) {
+      await _loadingFuture;
+      return;
+    }
+
+    _loadingFuture = _doLoadAllSettings();
+    try {
+      await _loadingFuture;
+    } finally {
+      _loadingFuture = null;
+    }
+  }
+
+  static Future<void> _doLoadAllSettings() async {
     Logger.debug('Loading all points settings...');
 
     try {
@@ -80,6 +101,7 @@ class EfficiencyCalculationService {
     _ordersSettings = null;
     _regularTaskSettings = null;
     _recurringTaskSettings = null;
+    _loadingFuture = null;
   }
 
   /// Получить настройки (с автозагрузкой)

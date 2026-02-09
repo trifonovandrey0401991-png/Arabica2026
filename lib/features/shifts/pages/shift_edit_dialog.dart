@@ -23,7 +23,6 @@ class ShiftEditDialog extends StatefulWidget {
 }
 
 class _ShiftEditDialogState extends State<ShiftEditDialog> {
-  static const Color _emerald = Color(0xFF1A4D4D);
   static const Color _emeraldDark = Color(0xFF0D2E2E);
   static const Color _night = Color(0xFF051515);
   static const Color _gold = Color(0xFFD4AF37);

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/product_question_model.dart';
 import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница персонального чата для сотрудника с клиентом
 class ProductQuestionEmployeeDialogPage extends StatefulWidget {
@@ -287,21 +288,13 @@ class _ProductQuestionEmployeeDialogPageState extends State<ProductQuestionEmplo
             if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  message.imageUrl!.startsWith('http')
+                child: AppCachedImage(
+                  imageUrl: message.imageUrl!.startsWith('http')
                       ? message.imageUrl!
                       : 'https://arabica26.ru${message.imageUrl}',
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 150,
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator()),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
+                  errorWidget: (context, error, stackTrace) {
                     return Container(
                       height: 100,
                       color: Colors.grey[300],

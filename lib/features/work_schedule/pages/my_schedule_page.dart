@@ -52,7 +52,6 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
   // Вкладка "Общий"
   WorkSchedule? _generalSchedule;
-  List<Shop> _allShops = [];
   bool _isLoadingGeneral = false;
 
   @override
@@ -986,50 +985,42 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildOutgoingRequestCard(ShiftTransferRequest request) {
     final shiftDate = request.shiftDate;
 
-    Color statusColor;
     IconData statusIcon;
     String statusText;
     List<Color> statusGradient;
 
     switch (request.status) {
       case ShiftTransferStatus.pending:
-        statusColor = Colors.orange;
         statusIcon = Icons.hourglass_empty;
         statusText = 'Ожидает ответа';
         statusGradient = [Colors.orange, Colors.amber];
         break;
       case ShiftTransferStatus.hasAcceptances:
-        statusColor = Colors.blue;
         statusIcon = Icons.people;
         statusText = 'Есть принявшие (${request.acceptedBy.length})';
         statusGradient = [Colors.blue, Colors.lightBlue];
         break;
       case ShiftTransferStatus.accepted:
-        statusColor = Colors.blue;
         statusIcon = Icons.schedule;
         statusText = 'Ожидает одобрения админа';
         statusGradient = [Colors.blue, Colors.lightBlue];
         break;
       case ShiftTransferStatus.approved:
-        statusColor = Colors.green;
         statusIcon = Icons.check_circle;
         statusText = 'Одобрено! Смена передана';
         statusGradient = [const Color(0xFF00b09b), const Color(0xFF96c93d)];
         break;
       case ShiftTransferStatus.rejected:
-        statusColor = Colors.red;
         statusIcon = Icons.cancel;
         statusText = 'Отклонено сотрудником';
         statusGradient = [Colors.red, Colors.redAccent];
         break;
       case ShiftTransferStatus.declined:
-        statusColor = Colors.red;
         statusIcon = Icons.block;
         statusText = 'Отклонено администратором';
         statusGradient = [Colors.red[700]!, Colors.red];
         break;
       case ShiftTransferStatus.expired:
-        statusColor = Colors.grey;
         statusIcon = Icons.timer_off;
         statusText = 'Истёк срок';
         statusGradient = [Colors.grey, Colors.blueGrey];
@@ -1801,7 +1792,6 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       if (mounted) {
         setState(() {
           _generalSchedule = schedule;
-          _allShops = shops;
           _isLoadingGeneral = false;
         });
         Logger.debug('📅 Состояние обновлено, _generalSchedule записей: ${_generalSchedule?.entries.length}');

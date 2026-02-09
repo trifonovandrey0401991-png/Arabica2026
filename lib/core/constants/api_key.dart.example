@@ -1,0 +1,4 @@
+/// API ключ для аутентификации к серверу Arabica
+/// Скопируйте этот файл как api_key.dart и укажите ваш API ключ
+/// Генерация ключа: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+const String arabicaApiKey = 'YOUR_API_KEY_HERE';

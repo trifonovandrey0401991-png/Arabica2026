@@ -4,6 +4,7 @@ import 'dart:io';
 import '../models/recipe_model.dart';
 import '../services/recipe_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class RecipeFormPage extends StatefulWidget {
   final Recipe? recipe; // Если передан, то редактирование, иначе создание
@@ -19,7 +20,6 @@ class RecipeFormPage extends StatefulWidget {
 
 class _RecipeFormPageState extends State<RecipeFormPage> {
   static const _primaryColor = Color(0xFF004D40);
-  static const _primaryColorLight = Color(0xFF00695C);
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -30,7 +30,6 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
 
   File? _selectedPhoto;
   String? _photoUrl;
-  bool _isLoading = false;
   bool _isSaving = false;
 
   @override
@@ -537,11 +536,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                               width: double.infinity,
                             )
                           : _photoUrl != null
-                              ? Image.network(
-                                  _photoUrl!,
+                              ? AppCachedImage(
+                                  imageUrl: _photoUrl!,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
-                                  errorBuilder: (_, __, ___) => _buildPhotoPlaceholder(),
+                                  errorWidget: (_, __, ___) => _buildPhotoPlaceholder(),
                                 )
                               : _buildPhotoPlaceholder(),
                     )

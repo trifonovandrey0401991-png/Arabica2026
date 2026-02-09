@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../models/shift_question_model.dart';
 import '../models/shift_report_model.dart';
+import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import '../models/shift_shortage_model.dart';
 import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
@@ -42,7 +43,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   List<ShiftQuestion>? _questions;
   bool _isLoading = true;
-  List<ShiftAnswer> _answers = [];
+  final List<ShiftAnswer> _answers = [];
   int _currentQuestionIndex = 0;
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _numberController = TextEditingController();
@@ -52,7 +53,6 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   // AI верификация товаров
   bool? _aiVerificationPassed;
-  bool _aiVerificationSkipped = false;
   List<ShiftShortage> _aiShortages = [];
 
   /// Нормализовать адрес магазина для сравнения
@@ -475,7 +475,6 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
     if (result == null) {
       // Пользователь пропустил AI верификацию
-      _aiVerificationSkipped = true;
       Logger.debug('AI верификация пропущена пользователем');
       return true;
     }
@@ -520,7 +519,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
         if (answer.photoPath != null && answer.photoDriveId == null) {
           try {
-            final fileName = '${reportId}_${i}.jpg';
+            final fileName = '${reportId}_$i.jpg';
             Logger.info('Загрузка фото сотрудника на сервер: $fileName');
             Logger.debug('   Путь к фото: ${answer.photoPath}');
 
@@ -903,16 +902,10 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                       ),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          referencePhotoUrl,
+                                        child: AppCachedImage(
+                                          imageUrl: referencePhotoUrl,
                                           fit: BoxFit.contain,
-                                          loadingBuilder: (context, child, loadingProgress) {
-                                            if (loadingProgress == null) return child;
-                                            return const Center(
-                                              child: CircularProgressIndicator(color: _gold),
-                                            );
-                                          },
-                                          errorBuilder: (context, error, stackTrace) {
+                                          errorWidget: (context, error, stackTrace) {
                                             Logger.error('Ошибка загрузки эталонного фото', error);
                                             return Center(
                                               child: Column(
@@ -966,10 +959,10 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: kIsWeb
-                                  ? Image.network(
-                                      _photoPath!,
+                                  ? AppCachedImage(
+                                      imageUrl: _photoPath!,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
+                                      errorWidget: (context, error, stackTrace) {
                                         return Center(
                                           child: Icon(Icons.error, size: 64, color: Colors.white.withOpacity(0.5)),
                                         );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/order_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class EmployeeOrderDetailPage extends StatefulWidget {
   final Map<String, dynamic> orderData;
@@ -34,24 +35,12 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
 
     // Если есть URL сетевого изображения
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      return Image.network(
-        imageUrl,
+      return AppCachedImage(
+        imageUrl: imageUrl,
         width: size,
         height: size,
         fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          );
-        },
-        errorBuilder: (_, __, ___) => _buildPlaceholderImage(size),
+        errorWidget: (_, __, ___) => _buildPlaceholderImage(size),
       );
     }
 

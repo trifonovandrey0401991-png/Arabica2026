@@ -25,13 +25,13 @@ class RecountSummaryReportPage extends StatefulWidget {
 
 class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
   // Map: shopAddress -> RecountReport
-  Map<String, RecountReport> _reportsByShop = {};
+  final Map<String, RecountReport> _reportsByShop = {};
 
   // Уникальные товары из всех отчётов
   List<String> _products = [];
 
   // Map: productName -> Map<shopAddress, difference>
-  Map<String, Map<String, int?>> _pivotData = {};
+  final Map<String, Map<String, int?>> _pivotData = {};
 
   // Контроллеры для синхронного скролла
   final ScrollController _headerScrollController = ScrollController();

@@ -13,6 +13,7 @@ import '../models/recount_question_model.dart';
 import '../models/recount_answer_model.dart';
 import '../models/recount_report_model.dart';
 import '../services/recount_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 import '../services/recount_points_service.dart';
 import '../services/recount_question_service.dart';
 import '../../shops/services/shop_service.dart';
@@ -43,7 +44,6 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   static const Color _gold = Color(0xFFD4AF37);
   static const Color _goldLight = Color(0xFFE8C860);
 
-  List<RecountQuestion>? _allQuestions;
   List<RecountQuestion>? _selectedQuestions; // 30 выбранных вопросов
   Set<int> _photoRequiredIndices = {}; // Индексы вопросов, для которых требуется фото
   bool _isLoading = true;
@@ -156,7 +156,6 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       }
 
       setState(() {
-        _allQuestions = allQuestions;
         _selectedQuestions = selectedQuestions;
         _photoRequiredIndices = photoIndices;
         _isLoading = false;
@@ -1344,7 +1343,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
                                       child: kIsWeb
-                                          ? Image.network(_photoPath!, fit: BoxFit.cover)
+                                          ? AppCachedImage(imageUrl: _photoPath!, fit: BoxFit.cover)
                                           : Image.file(File(_photoPath!), fit: BoxFit.cover),
                                     ),
                                   )

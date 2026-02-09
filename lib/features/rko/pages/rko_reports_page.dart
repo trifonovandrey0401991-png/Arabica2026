@@ -687,7 +687,6 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     final shopName = rko['shopName']?.toString() ?? '';
     final shopAddress = rko['shopAddress']?.toString() ?? '';
     final amount = rko['amount']?.toString() ?? '';
-    final rkoType = rko['rkoType']?.toString() ?? '';
     final shiftType = rko['shiftType']?.toString() ?? '';
     final deadline = rko['deadline']?.toString() ?? '';
 

@@ -14,6 +14,7 @@ import '../../ai_training/widgets/z_report_recognition_dialog.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../efficiency/services/points_settings_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class EnvelopeFormPage extends StatefulWidget {
   final String employeeName;
@@ -30,7 +31,6 @@ class EnvelopeFormPage extends StatefulWidget {
 }
 
 class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
-  final _formKey = GlobalKey<FormState>();
   final _imagePicker = ImagePicker();
 
   int _currentStep = 0;
@@ -56,7 +56,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   String? _oooEnvelopePhotoUrl;
 
   // ООО расходы
-  List<ExpenseItem> _oooExpenses = [];
+  final List<ExpenseItem> _oooExpenses = [];
 
   // ООО - чеки не переданные в ОФД
   final _oooOfdNotSentController = TextEditingController();
@@ -68,7 +68,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   String? _ipZReportPhotoUrl;
   final _ipRevenueController = TextEditingController();
   final _ipCashController = TextEditingController();
-  List<ExpenseItem> _expenses = [];
+  final List<ExpenseItem> _expenses = [];
   File? _ipEnvelopePhoto;
   String? _ipEnvelopePhotoUrl;
 
@@ -1034,7 +1034,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       children: [
                         photo != null
                             ? Image.file(photo, fit: BoxFit.cover)
-                            : Image.network(photoUrl!, fit: BoxFit.cover),
+                            : AppCachedImage(imageUrl: photoUrl!, fit: BoxFit.cover),
                         // Бейдж
                         Positioned(
                           top: 8,
@@ -1061,10 +1061,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       ? Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.network(
-                              referencePhotoUrl,
+                            AppCachedImage(
+                              imageUrl: referencePhotoUrl,
                               fit: BoxFit.contain,
-                              errorBuilder: (context, error, stack) => Center(
+                              errorWidget: (context, error, stack) => Center(
                                 child: Icon(Icons.broken_image, size: 48, color: Colors.grey[400]),
                               ),
                             ),
@@ -1174,12 +1174,12 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    referencePhotoUrl,
+                  child: AppCachedImage(
+                    imageUrl: referencePhotoUrl,
                     height: 150,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stack) {
+                    errorWidget: (context, error, stack) {
                       return Container(
                         height: 80,
                         color: Colors.grey[200],
@@ -1188,16 +1188,6 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                             'Не удалось загрузить образец',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
-                        ),
-                      );
-                    },
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        height: 150,
-                        color: Colors.grey[100],
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       );
                     },
@@ -1229,7 +1219,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         else if (photoUrl != null)
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(photoUrl, height: 300, fit: BoxFit.cover),
+            child: AppCachedImage(imageUrl: photoUrl, height: 300, fit: BoxFit.cover),
           )
         else
           Container(
@@ -1522,9 +1512,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     TextEditingController controller,
     String label,
     IconData icon,
-    bool isMoney, {
-    String? helperText,
-  }) {
+    bool isMoney,
+  ) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
 import '../../shops/models/shop_model.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class ProductQuestionAnswerPage extends StatefulWidget {
   final String questionId;
@@ -25,7 +26,6 @@ class ProductQuestionAnswerPage extends StatefulWidget {
 
 class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
   ProductQuestion? _question;
-  List<Shop> _shops = [];
   String? _selectedShopAddress;
   final TextEditingController _answerController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -75,7 +75,6 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
       final question = await ProductQuestionService.getQuestion(widget.questionId);
       
       setState(() {
-        _shops = shops;
         _question = question;
         // Используем переданный shopAddress
         if (widget.shopAddress != null && widget.shopAddress!.isNotEmpty) {
@@ -416,13 +415,13 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
                                     const SizedBox(height: 8),
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        message.imageUrl!.startsWith('http')
+                                      child: AppCachedImage(
+                                        imageUrl: message.imageUrl!.startsWith('http')
                                             ? message.imageUrl!
                                             : 'https://arabica26.ru${message.imageUrl}',
                                         width: double.infinity,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
+                                        errorWidget: (context, error, stackTrace) {
                                           return Container(
                                             height: 200,
                                             color: Colors.grey[300],

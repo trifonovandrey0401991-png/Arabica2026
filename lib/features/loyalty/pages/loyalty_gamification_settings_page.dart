@@ -5,6 +5,7 @@ import 'package:image_cropper/image_cropper.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница настроек геймификации программы лояльности
 class LoyaltyGamificationSettingsPage extends StatefulWidget {
@@ -537,12 +538,12 @@ class _LoyaltyGamificationSettingsPageState
                           )
                         : ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              _getBadgeImageUrl(level.badge.value),
+                            child: AppCachedImage(
+                              imageUrl: _getBadgeImageUrl(level.badge.value),
                               width: 40,
                               height: 40,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              errorWidget: (_, __, ___) => const Icon(
                                 Icons.image,
                                 color: Colors.white,
                                 size: 28,

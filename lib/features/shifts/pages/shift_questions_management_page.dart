@@ -7,6 +7,7 @@ import '../models/shift_question_model.dart';
 import '../services/shift_question_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../../core/utils/logger.dart';
+import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 
 /// Страница управления вопросами пересменки
 class ShiftQuestionsManagementPage extends StatefulWidget {
@@ -1357,7 +1358,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
   List<Shop> _allShops = [];
   Set<String> _selectedShopAddresses = {}; // Выбранные адреса магазинов
   Map<String, String> _referencePhotoUrls = {}; // URL эталонных фото для каждого магазина
-  Map<String, File?> _referencePhotoFiles = {}; // Локальные файлы эталонных фото
+  final Map<String, File?> _referencePhotoFiles = {}; // Локальные файлы эталонных фото
   bool _isLoadingShops = true;
   bool _isUploadingPhotos = false;
 
@@ -2334,10 +2335,10 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                       borderRadius: BorderRadius.circular(12),
                       child: photoFile != null
                           ? kIsWeb
-                              ? Image.network(
-                                  photoFile.path,
+                              ? AppCachedImage(
+                                  imageUrl: photoFile.path,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
+                                  errorWidget: (context, error, stackTrace) {
                                     return Center(
                                       child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
                                     );
@@ -2348,23 +2349,10 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                   fit: BoxFit.cover,
                                 )
                           : photoUrl != null
-                              ? Image.network(
-                                  photoUrl,
+                              ? AppCachedImage(
+                                  imageUrl: photoUrl,
                                   fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value: loadingProgress.expectedTotalBytes != null
-                                            ? loadingProgress.cumulativeBytesLoaded /
-                                                loadingProgress.expectedTotalBytes!
-                                            : null,
-                                        strokeWidth: 2,
-                                        valueColor: const AlwaysStoppedAnimation<Color>(_gold),
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
+                                  errorWidget: (context, error, stackTrace) {
                                     return Center(
                                       child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
                                     );

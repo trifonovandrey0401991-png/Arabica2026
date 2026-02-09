@@ -25,7 +25,7 @@ class ShiftAiVerificationPage extends StatefulWidget {
 class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
   bool _isLoading = true;
   ShiftAiVerificationResult? _result;
-  List<ShiftShortage> _confirmedShortages = [];
+  final List<ShiftShortage> _confirmedShortages = [];
 
   @override
   void initState() {

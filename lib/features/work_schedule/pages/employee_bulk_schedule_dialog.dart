@@ -433,13 +433,13 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
               onTap: () => _onCellTap(shop, day),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isMorningOrDay ? _getCellColor(entry!.shiftType) : Colors.white,
+                  color: isMorningOrDay ? _getCellColor(entry.shiftType) : Colors.white,
                   border: Border(right: BorderSide(color: Colors.grey[300]!, width: 0.5)),
                 ),
                 child: Center(
                   child: isMorningOrDay
                     ? Text(
-                        _getAbbreviation(entry!),
+                        _getAbbreviation(entry),
                         style: const TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.bold,
@@ -480,11 +480,11 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
                 });
               },
               child: Container(
-                color: isEvening ? _getCellColor(entry!.shiftType) : Colors.white,
+                color: isEvening ? _getCellColor(entry.shiftType) : Colors.white,
                 child: Center(
                   child: isEvening
                     ? Text(
-                        _getAbbreviation(entry!),
+                        _getAbbreviation(entry),
                         style: const TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.bold,

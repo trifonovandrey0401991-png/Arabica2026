@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Виджет отображения значков (ачивок) вокруг QR-кода
 class QrBadgesWidget extends StatefulWidget {
@@ -173,12 +174,12 @@ class _StickerBadge extends StatelessWidget {
               )
             : ClipPath(
                 clipper: _StickerClipper(teethCount: 12),
-                child: Image.network(
-                  _getImageUrl(level.badge.value),
+                child: AppCachedImage(
+                  imageUrl: _getImageUrl(level.badge.value),
                   width: size,
                   height: size,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => CustomPaint(
+                  errorWidget: (_, __, ___) => CustomPaint(
                     painter: _StickerPainter(
                       color: level.color,
                       teethCount: 12,

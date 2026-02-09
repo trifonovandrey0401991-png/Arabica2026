@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'app_cached_image.dart';
 
 /// Виджет для отображения медиа в сообщениях (фото или видео)
 class MediaMessageWidget extends StatelessWidget {
@@ -41,18 +42,10 @@ class MediaMessageWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight ?? 200),
-          child: Image.network(
-            mediaUrl!,
+          child: AppCachedImage(
+            imageUrl: mediaUrl!,
             fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                height: 100,
-                color: Colors.grey[200],
-                child: const Center(child: CircularProgressIndicator()),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) => Container(
+            errorWidget: (context, error, stackTrace) => Container(
               height: 100,
               color: Colors.grey[300],
               child: const Center(
@@ -138,14 +131,10 @@ class _FullScreenImagePage extends StatelessWidget {
       ),
       body: Center(
         child: InteractiveViewer(
-          child: Image.network(
-            imageUrl,
+          child: AppCachedImage(
+            imageUrl: imageUrl,
             fit: BoxFit.contain,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return const Center(child: CircularProgressIndicator(color: Colors.white));
-            },
-            errorBuilder: (context, error, stackTrace) => const Center(
+            errorWidget: (context, error, stackTrace) => const Center(
               child: Icon(Icons.broken_image, color: Colors.white, size: 64),
             ),
           ),

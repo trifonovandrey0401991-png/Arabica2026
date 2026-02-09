@@ -21,9 +21,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
   static const _primaryColor = Color(0xFF004D40);
 
   List<Shop> _shops = [];
-  bool _isLoadingShops = false;
   String? _employeeName;
-  bool _isLoadingEmployee = true;
 
   @override
   void initState() {
@@ -39,13 +37,12 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
   }
 
   Future<void> _loadShops() async {
-    setState(() => _isLoadingShops = true);
     try {
       _shops = await ShopService.getShopsForCurrentUser();
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
     }
-    if (mounted) setState(() => _isLoadingShops = false);
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadEmployeeName() async {
@@ -67,7 +64,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
     } catch (e) {
       Logger.error('Ошибка загрузки имени сотрудника', e);
     }
-    if (mounted) setState(() => _isLoadingEmployee = false);
+    if (mounted) setState(() {});
   }
 
   /// Открыть страницу выбора магазина для "ЗП после смены"

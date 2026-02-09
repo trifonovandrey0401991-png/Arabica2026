@@ -1,8 +1,8 @@
 # Arabica - Полная архитектурная документация
 
-**Версия:** 2.3.0
-**Дата обновления:** 2026-02-08
-**Автор:** Claude Code (полный архитектурный анализ + аудит безопасности)
+**Версия:** 2.4.0
+**Дата обновления:** 2026-02-09
+**Автор:** Claude Code (полный архитектурный анализ + аудит безопасности + полный аудит 09.02.2026)
 **Назначение:** Исчерпывающая документация для любого IT-специалиста
 
 ---
@@ -12,7 +12,7 @@
 1. [Общая архитектура системы](#1-общая-архитектура-системы)
 2. [Запуск приложения (App Flow)](#2-запуск-приложения)
 3. [Система авторизации](#3-система-авторизации)
-4. [Flutter модули (33 штуки)](#4-flutter-модули)
+4. [Flutter модули (35 штук)](#4-flutter-модули)
 5. [Сервер (loyalty-proxy)](#5-сервер-loyalty-proxy)
 6. [Потоки данных](#6-потоки-данных)
 7. [Автоматизация (Schedulers)](#7-автоматизация-schedulers)
@@ -20,7 +20,9 @@
 9. [Роли и матрица доступа](#9-роли-и-матрица-доступа)
 10. [Структура данных (/var/www/)](#10-структура-данных)
 11. [Слабые места и рекомендации](#11-слабые-места-и-рекомендации)
-12. [Глоссарий](#12-глоссарий)
+12. [Карта связей модулей](#12-карта-связей-модулей)
+13. [Результаты аудита 09.02.2026](#13-результаты-аудита)
+14. [Глоссарий](#14-глоссарий)
 
 ---
 
@@ -80,7 +82,7 @@
 │  │                    Node.js + Express (PM2)                             │  │
 │  │                      loyalty-proxy/index.js                            │  │
 │  │  ┌─────────────┬─────────────┬─────────────┬─────────────────────┐    │  │
-│  │  │  49 API     │ 7 Schedulers│  WebSocket  │  Static Files       │    │  │
+│  │  │  56 API     │ 8 Schedulers│  WebSocket  │  Static Files       │    │  │
 │  │  │  modules    │ (cron jobs) │  (chat)     │  (photos, media)    │    │  │
 │  │  └─────────────┴─────────────┴─────────────┴─────────────────────┘    │  │
 │  └───────────────────────────────┬───────────────────────────────────────┘  │
@@ -133,7 +135,7 @@ arabica2026/
 │       ├── widgets/
 │       └── providers/
 ├── loyalty-proxy/                  # Node.js сервер
-│   ├── index.js                    # Точка входа (~8700 строк)
+│   ├── index.js                    # Точка входа (middleware, schedulers, routes)
 │   ├── api/                        # 49 API модулей
 │   ├── modules/                    # Вспомогательные модули
 │   ├── services/                   # Сервисы (Telegram bot)
@@ -553,7 +555,7 @@ class AuthCredentials {
 
 # 4. FLUTTER МОДУЛИ
 
-## 4.1 Обзор модулей (33 штуки)
+## 4.1 Обзор модулей (35 штук)
 
 | # | Модуль | Директория | Роли | Статус | Описание |
 |---|--------|------------|------|--------|----------|
@@ -588,8 +590,10 @@ class AuthCredentials {
 | 29 | Поставщики | `suppliers/` | Админ | Работает | Закупки |
 | 30 | Очистка данных | `data_cleanup/` | Админ | Работает | Maintenance |
 | 31 | KPI | `kpi/` | Админ | Работает | Аналитика |
-| 32 | ИИ распознавание | `ai_training/` | Админ | Работает | Z-отчёты, сигареты, шаблоны фото |
+| 32 | ИИ распознавание | `ai_training/` | Админ | В разработке | Z-отчёты, сигареты, шаблоны фото |
 | 33 | Управление сетью | `network_management/` | Developer | Работает | Настройки |
+| 34 | Кофемашины | `coffee_machine/` | Сотрудник, Админ | Работает | OCR счётчиков, шаблоны, автоматизация |
+| 35 | Передача смен | `shift_transfers/` | Сотрудник, Админ | Работает | Обмен сменами между сотрудниками |
 
 ---
 
@@ -1025,7 +1029,7 @@ tests/
 
 ```
 loyalty-proxy/
-├── index.js                              # Точка входа (~8700 строк)
+├── index.js                              # Точка входа (middleware, schedulers, routes)
 │
 ├── api/                                  # 49 API модулей
 │   ├── auth_api.js                       # Авторизация (600 строк)
@@ -1112,9 +1116,9 @@ loyalty-proxy/
 
 **Общая статистика:**
 - ~37000 строк JavaScript кода
-- 49 API файлов
-- 7 Scheduler'ов
-- 300+ endpoints
+- 56 API файлов (49 в api/ + 7 в корне loyalty-proxy/)
+- 8 Scheduler'ов
+- 503+ endpoints
 
 ## 5.2 ПОЛНАЯ ТАБЛИЦА API ENDPOINTS (240+)
 
@@ -2937,11 +2941,11 @@ async function checkManagerAccess(phone, shopAddress) {
 
 # 11. СЛАБЫЕ МЕСТА И РЕКОМЕНДАЦИИ
 
-> **Дата аудита:** 2026-02-08
+> **Дата аудита:** 2026-02-08 (первичный) + 2026-02-09 (полный аудит)
 > **Дата исправлений:** 2026-02-08 (Category 1 + Category 2 + Phase 3 fixes applied)
-> **Методология:** Полный статический анализ всего кода (449 Dart файлов, ~37000 строк JS, 54 API модуля)
+> **Методология:** Полный статический анализ всего кода (449 Dart файлов, ~37000 строк JS, 56 API модулей)
 
-### Новые компоненты безопасности (добавлены 2026-02-08):
+### Компоненты безопасности (добавлены 2026-02-08):
 
 | Компонент | Файл | Описание |
 |-----------|------|----------|
@@ -2953,50 +2957,75 @@ async function checkManagerAccess(phone, shopAddress) {
 | RKO File Validation | `loyalty-proxy/index.js` | Отдельный `uploadRKO` multer с `docFileFilter` (DOCX/DOC/PDF). `safeFileName` + `isPathSafe()` |
 | File Helpers | `loyalty-proxy/utils/file_helpers.js` | Общие утилиты: `fileExists`, `ensureDir`, `loadJsonFile`, `saveJsonFile`, `sanitizeId`, `isPathSafe`, `sanitizePhone` |
 | Path Traversal Protection | 10 API модулей | `sanitizeId()` в index.js (25 эндпоинтов), `sanitizePhone()` в clients/loyalty/orders/gamification, `sanitizeFileName()` в rko/cigarette, `sanitizeDate()` в media |
-| API Smoke Test | `loyalty-proxy/tests/smoke-test.js` | Автоматический тест 61 GET/POST эндпоинта. Baseline + post-deploy сравнение |
+| API Smoke Test | `loyalty-proxy/tests/smoke-test.js` | Автоматический тест 73 GET + 13 POST эндпоинтов. Baseline + post-deploy сравнение |
+| Load Test | `loyalty-proxy/tests/load-test.js` | Нагрузочное тестирование: 5 сценариев, p95 метрики, WebSocket нагрузка |
 
-## 11.1 Критические проблемы (БЛОКЕРЫ)
+## 11.1 Критические проблемы (из аудита 08-09.02.2026)
 
-**Статус: 7 из 8 критических блокеров РЕШЕНЫ (2026-02-08). Осталось: File locking (частично).**
+**Статус: 7 из 8 блокеров от 08.02 РЕШЕНЫ. Новых 12 критических + 24 важных от аудита 09.02.**
 
 | № | Проблема | Статус | Описание | Приоритет |
 |---|----------|--------|----------|-----------|
-| 1 | API аутентификация отключена | ✅ **РЕШЕНО** | API Key включён на сервере (`API_KEY_ENABLED=true`), Flutter отправляет `X-API-Key` во всех запросах (через `jsonHeaders` getter). Все bare `http.get/delete` вызовы исправлены | ✅ Готово |
-| 2 | Нет серверной проверки ролей | ✅ **РЕШЕНО** | Добавлен `session_middleware.js` — неблокирующий middleware, заполняет `req.user = {phone, name, isAdmin}` из session token. In-memory token index для O(1) lookup | ✅ Готово |
-| 3 | Hardcoded Telegram Bot Token | ✅ **РЕШЕНО** | Hardcoded fallback удалён. Используется только `process.env.TELEGRAM_BOT_TOKEN`. Рекомендуется ревокация старого токена | ✅ (ревокация P0) |
-| 4 | WebSocket без аутентификации | ✅ **РЕШЕНО** | WebSocket принимает `token` query param, верифицирует через `verifyToken()`. Невалидный token = close(4003). Обратно совместимо (без token работает как раньше) | ✅ Готово |
-| 5 | Публичная загрузка файлов | ✅ **РЕШЕНО** | РКО upload использует отдельный `uploadRKO` multer с `docFileFilter` (DOCX/DOC/PDF). Добавлена `safeFileName` санитизация + `isPathSafe()` проверка path traversal | ✅ Готово |
-| 6 | PIN — однократный SHA-256 | ✅ **РЕШЕНО** | Добавлен bcryptjs с автоматической миграцией. Новые PIN хешируются bcrypt. При логине SHA-256 PIN автоматически мигрируется на bcrypt. Обратно совместимо | ✅ Готово |
-| 7 | ~~File locking~~ | Частично | `file_lock.js` существует, но используется НЕ во всех модулях | P1 |
-| 8 | ~~Бэкапы~~ | ✅ РЕШЕНО | `backup-script.sh` для cron (7 дней хранения) | ✅ Готово |
+| 1 | API аутентификация отключена | ✅ **РЕШЕНО** | API Key включён (`API_KEY_ENABLED=true`), Flutter отправляет `X-API-Key` | ✅ |
+| 2 | Нет серверной проверки ролей | ✅ **РЕШЕНО** | `session_middleware.js` заполняет `req.user = {phone, name, isAdmin}` | ✅ |
+| 3 | Hardcoded Telegram Bot Token | ✅ **РЕШЕНО** | Только `process.env.TELEGRAM_BOT_TOKEN` | ✅ |
+| 4 | WebSocket без аутентификации | ✅ **РЕШЕНО** | `verifyToken()` в handshake, close(4003) | ✅ |
+| 5 | Публичная загрузка файлов | ✅ **РЕШЕНО** | `uploadRKO` с `docFileFilter`, `safeFileName` | ✅ |
+| 6 | PIN — однократный SHA-256 | ✅ **РЕШЕНО** | bcryptjs + авто-миграция | ✅ |
+| 7 | File locking не используется | ⚠️ Частично | `file_lock.js` существует, 197 `writeFile` без блокировки | P1 |
+| 8 | Бэкапы | ✅ **РЕШЕНО** | `backup-script.sh` для cron | ✅ |
+
+### Новые проблемы (аудит 09.02.2026):
+
+| № | Файл | Описание | Уровень |
+|---|------|----------|---------|
+| N1 | `api_constants.dart:7` | API ключ захардкожен в исходниках — извлекается из APK | 🔴 |
+| N2 | `index.js:148` | `API_KEY_ENABLED=false` по умолчанию — если env не задан, API публичен | 🔴 |
+| N3 | Все API файлы | Нет проверки `req.user.isAdmin` на write-операциях | 🔴 |
+| N4 | `auth_api.js:282` | Регистрация возвращает `pinHash` и `salt` в ответе | 🔴 |
+| N5 | `auth_api.js:657` | GET `/api/auth/session/:phone` без аутентификации | 🔴 |
+| N6 | `product_questions_penalty_scheduler.js` | `getHours()` = LOCAL time, не Moscow — неправильные штрафы | 🔴 |
+| N7 | `clients_api.js` | Broadcast body mismatch: Flutter → `{text, imageUrl}`, сервер ← `{message, phones}` | 🔴 |
+| N8 | `auth_service.dart` | Вызывает `/api/auth/refresh-session` — endpoint НЕ существует на сервере | 🔴 |
+| N9 | `admin_cache.js:80` | Синхронные `readdirSync`/`readFileSync` блокируют event loop | 🔴 |
+| N10 | `efficiency_calc.js:301` | ~6500 файловых чтений на single-employee запрос | 🔴 |
+| N11 | 15+ API файлов | Нет пагинации — эндпоинты возвращают ВСЕ записи | 🔴 |
+| N12 | `efficiency_calc.js` | 5 из 10 категорий не работают (envelope, reviews, orders, productSearch, tasks) | 🔴 |
 
 ## 11.2 Безопасность
 
 | № | Уязвимость | Риск | Статус |
 |---|------------|------|--------|
-| 1 | API Key по умолчанию выключен | **КРИТИЧЕСКИЙ** — все API публичны | ✅ РЕШЕНО — API Key включён, Flutter отправляет X-API-Key |
-| 2 | CORS допускает HTTP origin | Средний — возможен MITM | ✅ РЕШЕНО — HTTP origin удалён |
-| 3 | Нет CSRF защиты | Средний — Cross-site атаки | НЕ РЕШЕНО |
-| 4 | PIN — SHA-256 без итераций | **КРИТИЧЕСКИЙ** — перебор за мс | ✅ РЕШЕНО — bcryptjs с авто-миграцией |
-| 5 | User enumeration через /api/auth | Средний — утечка списка пользователей | НЕ РЕШЕНО |
-| 6 | bodyParser limit 50MB | Средний — DDoS вектор | ✅ РЕШЕНО — лимит 10MB |
-| 7 | helmet/compression опциональные | Низкий — деградирует молча | ✅ РЕШЕНО — compression в package.json |
-| 8 | OTP в plaintext JSON файлах | Низкий — локальный доступ | НЕ РЕШЕНО |
-| 9 | Firebase SA в require() | Низкий — нет env var подхода | НЕ РЕШЕНО |
-| 10 | Rate limiting на auth | ✅ Есть: 50 req/min | РЕШЕНО |
-| 11 | sanitizeId/isPathSafe | ✅ Во всех модулях | ✅ РЕШЕНО (index.js 25 ep, clients, loyalty, orders, gamification, rko, media) |
+| 1 | API Key по умолчанию выключен | **КРИТИЧЕСКИЙ** | ✅ РЕШЕНО (но N2: env fallback!) |
+| 2 | CORS допускает HTTP origin | Средний | ✅ РЕШЕНО |
+| 3 | Нет CSRF защиты | Средний | НЕ РЕШЕНО |
+| 4 | PIN — SHA-256 без итераций | **КРИТИЧЕСКИЙ** | ✅ РЕШЕНО (bcryptjs) |
+| 5 | User enumeration через /api/auth | Средний | НЕ РЕШЕНО |
+| 6 | bodyParser limit 50MB | Средний | ✅ РЕШЕНО (10MB) |
+| 7 | Регистрация возвращает pinHash/salt | **КРИТИЧЕСКИЙ** | ⚠️ НЕ РЕШЕНО (N4) |
+| 8 | OTP в plaintext JSON файлах | Низкий | НЕ РЕШЕНО |
+| 9 | WebSocket auth опциональна | **ВАЖНО** | ⚠️ Обратно совместимо (без token всё ещё работает) |
+| 10 | Biometric enable/disable без auth | Средний | НЕ РЕШЕНО |
+| 11 | Upload-photo в publicPaths | **ВАЖНО** | НЕ РЕШЕНО |
+| 12 | application/octet-stream в upload | Средний | НЕ РЕШЕНО |
+| 13 | Слабый salt из DateTime.now() | Средний | НЕ РЕШЕНО |
+| 14 | Нет certificate pinning в Flutter | Средний | НЕ РЕШЕНО |
+| 15 | sanitizeId/isPathSafe | ✅ Во всех модулях | ✅ РЕШЕНО |
 
 ## 11.3 Архитектурные проблемы
 
 | № | Проблема | Влияние |
 |---|----------|---------|
-| 1 | index.js — 7611 строк, 165 inline-маршрутов | Невозможно тестировать, высокий риск при изменениях |
-| 2 | Файловое хранилище JSON без транзакций | Race conditions при конкурентных запросах, O(n) чтение |
-| 3 | Flutter — кастомный InheritedWidget | Не масштабируется, сложно для новых разработчиков |
-| 4 | 657 ручных Navigator.push | Дублирование, нет deep linking |
+| 1 | ~~index.js — 7611 строк~~ | ✅ Рефакторинг: 26 модулей вынесены в api/, мёртвый код удалён |
+| 2 | Файловое хранилище JSON без транзакций | Race conditions, O(n) чтение. 197 writeFile без lock |
+| 3 | 200+ setState перестраивают целые страницы | Медленный UI, нет state management |
+| 4 | Нет lazy loading ни на клиенте, ни на сервере | Все данные грузятся сразу |
 | 5 | Страницы >3000 строк | cigarette_training_page.dart: 3992 строк |
-| 6 | Silent error handling в Flutter | Пользователь не видит ошибок, сложная отладка |
-| 7 | ~~compression в middleware, но не в package.json~~ | ✅ РЕШЕНО — compression в package.json |
+| 6 | Silent error handling в Flutter | Пользователь не видит ошибок |
+| 7 | 30+ Image.network без кэширования | Каждый скролл = повторная загрузка |
+| 8 | MainMenuPage — 10+ API вызовов при открытии | Медленный старт |
+| 9 | Sort/filter в build() | Пересчёт на каждом rebuild |
+| 10 | Нет сжатия фото при загрузке (3-10MB) | Трафик, место на диске |
 
 ## 11.4 Dead Code
 
@@ -3005,41 +3034,306 @@ async function checkManagerAccess(phone, shopAddress) {
 | ~~`_verifyRegistrationInBackground()`~~ | ✅ Удалено |
 | ~~`_checkUserRoleInBackground()`~~ | ✅ Удалено |
 | ~~5 backup-файлов в git~~ | ✅ Удалены + .gitignore |
+| `ApiConstants.kpiEndpoint` | `api_constants.dart` — не используется |
+| `MenuService` | `menu/services/` — мёртвый код |
+| Deprecated `ReferralSettings` | `referrals/` — можно удалить |
+| 9 `_settings` полей в pages | Неиспользуемые поля |
 | TODO: "Обновить PIN на сервере" | auth_service.dart |
 
 ## 11.5 Рекомендации по приоритету
 
-### P0 — Немедленно (1-2 дня):
-1. ✅ Включить `API_KEY_ENABLED=true` в env vars сервера + установить ключ — **РЕШЕНО**
-2. ✅ Установить apiKey в Flutter `api_constants.dart` — **РЕШЕНО**
-3. ✅ Удалить hardcoded Telegram token — **РЕШЕНО** (fallback убран, только process.env)
-4. Ревокировать текущий Telegram bot token (скомпрометирован через git history)
-5. ✅ Добавить session-based auth middleware — **РЕШЕНО** (`session_middleware.js`)
+### Неделя 1 — 🔴 Критические (блокеры):
+| # | Задача | Файл(ы) | Оценка |
+|---|--------|---------|--------|
+| 1 | Добавить `isAdmin` проверку на все write-эндпоинты | Все api/ файлы | 3-4 часа |
+| 2 | Удалить pinHash/salt из ответа регистрации | `auth_api.js` | 15 мин |
+| 3 | Вынести API ключ из Flutter кода в build config | `api_constants.dart` | 1 час |
+| 4 | Сделать `API_KEY_ENABLED=true` по умолчанию | `index.js` | 15 мин |
+| 5 | Исправить product_questions scheduler — Moscow time | `product_questions_penalty_scheduler.js` | 30 мин |
+| 6 | Подключить file_lock.js ко всем API | Все api/ файлы | 2-3 часа |
+| 7 | Исправить clients broadcast body mismatch | `client_service.dart` / `clients_api.js` | 30 мин |
+| 8 | Добавить `/api/auth/refresh-session` endpoint | `auth_api.js` | 30 мин |
 
-### P1 — Краткосрочно (1-2 недели):
-6. ✅ Server-side role-based access control middleware — **РЕШЕНО** (req.user заполняется, готов для RBAC)
-7. ✅ Bcrypt/scrypt для PIN вместо SHA-256 — **РЕШЕНО** (bcryptjs + авто-миграция)
-8. ✅ Token auth для WebSocket — **РЕШЕНО** (verifyToken в WebSocket handshake)
-9. ✅ Валидация файлов при upload — **РЕШЕНО** (docFileFilter для RKO, safeFileName, isPathSafe)
-10. ✅ Удалить backup-файлы из git + .gitignore — **РЕШЕНО**
+### Неделя 2 — 🟠 Важные:
+| # | Задача | Файл(ы) | Оценка |
+|---|--------|---------|--------|
+| 9 | Пагинация на 15+ list endpoints | Все api/ файлы | 2-3 часа |
+| 10 | Исправить 5 сломанных категорий efficiency_calc | `efficiency_calc.js` | 2 часа |
+| 11 | Заменить Image.network → CachedNetworkImage (30+ мест) | Flutter pages | 1 час |
+| 12 | Сжатие фото в PhotoUploadService | `photo_upload_service.dart` | 30 мин |
+| 13 | Расширить окно генерации envelope/coffee_machine schedulers | 2 файла | 1 час |
+| 14 | Сделать admin_cache.js async | `admin_cache.js` | 1 час |
+| 15 | Сделать WebSocket auth обязательной | `employee_chat_websocket.js` | 30 мин |
+| 16 | Убрать /upload-photo из publicPaths | `index.js` | 5 мин |
+| 17 | Добавить кэш employees/shops на сервере | Новый модуль | 2 часа |
 
-### P2 — Среднесрочно (1-2 месяца):
-11. Вынести inline-маршруты из index.js в модули (модули уже созданы, но не подключены — 18 файлов в api/)
-12. ✅ Добавить compression в package.json — **РЕШЕНО** (уже было)
-13. ✅ sanitizeId/isPathSafe во всех модулях — **РЕШЕНО** (Phase 3: index.js 25 ep + 6 API модулей)
-14. CSRF protection
-15. Structured logging
+### Неделя 3+ — 🟡 Рекомендации:
+| # | Задача |
+|---|--------|
+| 18 | Certificate pinning в Flutter |
+| 19 | `--obfuscate` для Flutter build |
+| 20 | Автоматическая ротация/очистка данных |
+| 21 | Rate limit на auth endpoints (10/мин) |
+| 22 | Batch API для MainMenuPage |
+| 23 | Batch API для MyEfficiencyPage |
+| 24 | Кэширование settings в efficiency_calc.js batch |
+| 25 | Стандартизация формата pending/failed endpoints |
+| 26 | Очистка onlineStatus Map в WebSocket |
+| 27 | Прекомпиляция sort/filter вне build() |
+| 28 | Удалить мёртвый код (MenuService, ReferralSettings) |
+| 29 | Исправить 45 warnings из flutter analyze |
+| 30 | Добавить get-by-ID endpoints для отчётов |
+| 31 | Стабилизировать penalty file format |
 
-### P3 — Долгосрочно (3-6 месяцев):
-16. Миграция на SQLite/PostgreSQL
-17. State management (Riverpod/Bloc)
-18. Router (go_router)
-19. Рефакторинг страниц >1000 строк
-20. CI/CD pipeline
+### Долгосрочно (P3 — 3-6 месяцев):
+32. Миграция на SQLite/PostgreSQL
+33. State management (Riverpod/Bloc)
+34. Router (go_router)
+35. Рефакторинг страниц >1000 строк
+36. CI/CD pipeline
 
 ---
 
-# 12. ГЛОССАРИЙ
+# 12. КАРТА СВЯЗЕЙ МОДУЛЕЙ
+
+## 12.1 Flutter модуль → API → Файлы → Scheduler → Push
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Flutter модуль         → API endpoints           → /var/www/ файлы        │
+│  (+ Scheduler)          (метод, путь)              (хранение)              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  auth/                  POST /api/auth/register   → auth-sessions/          │
+│                         POST /api/auth/login        auth-pins/              │
+│                         POST /api/auth/request-otp  auth-otp/              │
+│                         POST /api/auth/verify-otp                           │
+│                         POST /api/auth/reset-pin                            │
+│                         POST /api/auth/logout                               │
+│                         ⚠️ refresh-session (не существует!)                │
+│                                                                              │
+│  attendance/            GET/POST /api/attendance   → attendance/             │
+│  📅 attendance_sched    GET /api/attendance/pending  attendance-pending/     │
+│  → push сотруднику      GET /api/attendance/check                           │
+│                                                                              │
+│  shifts/                GET/POST /api/shift-reports → shift-reports/        │
+│  📅 shift_sched         PUT /api/shift-reports/:id   shift-pending/         │
+│  → push сотруднику      POST /api/shift-questions    shift-questions/       │
+│  → push админу          GET /api/pending-shift-reports shift-photos/        │
+│                                                                              │
+│  shift_handover/        GET/POST /api/shift-handover-reports                │
+│  📅 handover_sched      → shift-handover-reports/ + shift-handover-pending/ │
+│  → push сотруднику      GET/POST/PUT/DELETE /api/shift-handover-questions   │
+│  → push админу                                                              │
+│                                                                              │
+│  recount/               GET/POST /api/recount-reports → recount-reports/    │
+│  📅 recount_sched       → recount-pending/                                  │
+│  → push сотруднику                                                          │
+│                                                                              │
+│  envelope/              GET/POST /api/envelope-reports → envelope-reports/  │
+│  📅 envelope_sched      → envelope-pending/                                 │
+│  → push сотруднику                                                          │
+│                                                                              │
+│  rko/                   GET/POST /api/rko          → rko/ + rko-pending/   │
+│  📅 rko_sched           rko_metadata.json                                   │
+│  → push сотруднику                                                          │
+│                                                                              │
+│  coffee_machine/        GET/POST /api/coffee-machine-reports                │
+│  📅 coffee_sched        → coffee-machine-reports/ + coffee-machine-pending/ │
+│  → push сотруднику       coffee-machine-templates/ + shop-configs/          │
+│                                                                              │
+│  employees/             GET/POST/PUT/DELETE /api/employees → employees/     │
+│  work_schedule/         GET/POST /api/work-schedule → work-schedules/      │
+│  shops/                 GET/POST/PUT/DELETE /api/shops → shops/             │
+│                                                                              │
+│  efficiency/            GET /api/efficiency/reports-batch                    │
+│                         GET/POST /api/efficiency-penalties                   │
+│                         → efficiency-penalties/ + points-settings/           │
+│                                                                              │
+│  fortune_wheel/         GET/POST /api/fortune-wheel/* → fortune-wheel/     │
+│  rating/                GET /api/rating-wheel/* → (вычисляется)             │
+│                                                                              │
+│  tasks/                 GET/POST/PUT/DELETE /api/tasks → tasks/             │
+│  product_questions/     GET/POST /api/product-questions                      │
+│  📅 pq_penalty_sched    → product-questions/ + product-question-dialogs/    │
+│  → push сотруднику                                                          │
+│                                                                              │
+│  employee_chat/         REST + WebSocket /ws → employee-chats/ + groups/   │
+│  training/              GET/POST /api/training-articles → training-articles/│
+│  tests/                 GET/POST /api/test-* → test-questions/ + results/  │
+│  reviews/               GET/POST /api/reviews → client-reviews/            │
+│                                                                              │
+│  clients/               GET/POST /api/clients → clients/                   │
+│  loyalty/               GET/POST /api/loyalty/* → loyalty/                 │
+│  loyalty_gamification/  GET/POST /api/loyalty-gamification/* → settings     │
+│  orders/                GET/POST /api/orders → orders/                     │
+│  referrals/             GET/POST /api/referrals → referrals/               │
+│  recipes/               GET/POST/PUT/DELETE /api/recipes → recipes/        │
+│  suppliers/             GET/POST/PUT/DELETE /api/suppliers → suppliers/     │
+│  job_application/       GET/POST /api/job-applications → job-applications/ │
+│  bonuses/               GET/POST /api/bonuses → bonuses/                   │
+│  main_cash/             GET/POST /api/withdrawals → withdrawals/           │
+│  data_cleanup/          GET/POST /api/admin/* → (очистка файлов)           │
+│  kpi/                   (только Flutter, вычисляется из efficiency)         │
+│  ai_training/           POST /api/z-report-* + /api/cigarette-vision/*     │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 12.2 Потоки push-уведомлений
+
+```
+8 Schedulers (каждые 5 мин) ──┐
+                               ├──→ Firebase FCM ──→ Сотрудник (штраф/напоминание)
+API endpoints (POST confirm) ──┤                 ──→ Админ (новый отчёт на проверку)
+                               ├──→ WebSocket ────→ Чат real-time
+Client broadcast ──────────────┘
+```
+
+---
+
+# 13. РЕЗУЛЬТАТЫ АУДИТА 09.02.2026
+
+## 13.1 Сводка
+
+| Метрика | Значение |
+|---------|----------|
+| 🔴 Критических проблем | 12 |
+| 🟠 Важных проблем | 24 |
+| 🟡 Рекомендаций | 31 |
+| ✅ Модулей без проблем | 22 / 35 |
+| flutter analyze | 0 ошибок, 45 warnings, 135 infos |
+
+## 13.2 Цепочки данных (35 модулей)
+
+| Модуль | URL | Модель | Сохранение | Push | Проблемы |
+|--------|-----|--------|------------|------|----------|
+| auth | ⚠️ 7/8 | ⚠️ | ✅ | N/A | 🔴 refresh-session не существует |
+| employees | ✅ | ✅ | ⚠️ | N/A | Flutter не отправляет position/department/email |
+| shops | ✅ | ⚠️ | ✅ | N/A | Flutter игнорирует поле icon |
+| attendance | ✅ | ✅ | ✅ | ✅ | ✅ |
+| work_schedule | ✅ | ✅ | ✅ | ✅ | ✅ |
+| shifts | ✅ | ✅ | ✅ | ✅ | ✅ |
+| shift_handover | ✅ | ✅ | ✅ | ✅ | ✅ |
+| recount | ✅ | ✅ | ✅ | ✅ | Сервер маскирует ошибки (пустой массив вместо 500) |
+| envelope | ✅ | ✅ | ✅ | ✅ | 🟠 pending/failed bare JSON array |
+| rko | ✅ | ✅ | ✅ | N/A | ✅ |
+| coffee_machine | ✅ | ✅ | ✅ | ✅ | 🟠 pending/failed bare JSON array |
+| main_cash | ✅ | ✅ | ✅ | ✅ | ✅ |
+| bonuses | ✅ | ✅ | ✅ | N/A | ✅ |
+| efficiency | ✅ | ✅ | ✅ | N/A | ✅ |
+| kpi | N/A | ✅ | N/A | N/A | мёртвый kpiEndpoint |
+| clients | ✅ | ⚠️ | ✅ | ✅ | 🔴 broadcast body mismatch |
+| loyalty | ✅ | ✅ | ✅ | N/A | ✅ |
+| loyalty_gamification | ✅ | ✅ | ✅ | ✅ | ✅ |
+| fortune_wheel | ✅ | ✅ | ✅ | N/A | ✅ |
+| referrals | ✅ | ✅ | ✅ | N/A | deprecated ReferralSettings |
+| reviews | ✅ | ✅ | ✅ | ✅ | 🟠 markMessageAsRead → 404 |
+| orders | ⚠️ | ⚠️ | ✅ | ⚠️ | raw Map, нет push |
+| training | ⚠️ | ✅ | ✅ | N/A | Нет admin check на сервере |
+| tests | ✅ | ✅ | ✅ | N/A | ✅ |
+| tasks | ⚠️ | ✅ | ✅ | ✅ | getEmployeePhoneById сканирует всех |
+| product_questions | ⚠️ | ✅ | ✅ | ✅ | calculateProductSearchPoints ошибка полей |
+| recipes | ✅ | ✅ | ✅ | N/A | ✅ |
+| ai_training | — | — | — | N/A | В разработке |
+| employee_chat | ⚠️ | ✅ | ✅ | WS | Нет auth на сервере |
+| menu | ✅ | ✅ | ✅ | N/A | MenuService мёртвый код |
+| suppliers | ⚠️ | ✅ | ✅ | N/A | getNextReferralCode → 500 |
+| job_application | ⚠️ | ✅ | ✅ | N/A | Нет auth на PATCH |
+| data_cleanup | ⚠️ | ✅ | ✅ | N/A | execSync, нет auth |
+| coffee_machine | ✅ | ✅ | ✅ | ✅ | ✅ (backend ОК) |
+| shift_transfers | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+## 13.3 Schedulers
+
+| # | Scheduler | Время | Штраф | Надёжность | Проблема |
+|---|-----------|-------|-------|------------|----------|
+| 1 | shift | UTC+3 ✅ | -3 | Robust | 🟡 Зависимость от TZ сервера |
+| 2 | recount | UTC+3 ✅ | -3 | Robust | 🟡 Читает ВСЕ файлы отчётов |
+| 3 | rko | UTC+3 ✅ | -3 | Robust | 🟡 metadata читается N раз |
+| 4 | shift_handover | UTC+3 ✅ | -3 | Robust | 🟠 `getHours()` вместо Moscow |
+| 5 | attendance | UTC+3 ✅ | -2 | Robust | 🟡 Hour overflow (23+3=26) |
+| 6 | envelope | UTC+3 ✅ | -5 | Moderate | 🟠 5-мин окно генерации |
+| 7 | coffee_machine | UTC+3 ✅ | -3 | Moderate | 🟠 5-мин окно генерации |
+| 8 | product_questions | ❌ LOCAL | -1 | Robust | 🔴 `getHours()` = LOCAL time! |
+
+## 13.4 Влияние на Fortune Wheel
+
+| Категория | Статус | Учитывается |
+|-----------|--------|-------------|
+| shifts | ✅ Работает | Да |
+| recount | ✅ Работает | Да |
+| envelope | ❌ Не загружается | Нет |
+| attendance | ✅ Работает | Да |
+| reviews | ❌ Неправильное поле | Нет |
+| rko | ✅ Работает | Да |
+| orders | ❌ Неправильная структура | Нет |
+| productSearch | ❌ Неправильные поля | Нет |
+| tests | ✅ Работает | Да |
+| tasks | ❌ Баллы не записываются | Нет |
+
+**Результат:** Рейтинг считается по 5 из 10 категорий — несправедливо для сотрудников.
+
+## 13.5 Масштабируемость
+
+| # | Проблема | Уровень | При 100 магазинах |
+|---|----------|---------|-------------------|
+| 1 | Файловая система как БД | 🔴 | ~5 сек на список, блокировка event loop |
+| 2 | Нет кэширования employees/shops | 🟠 | Тысячи лишних чтений/мин |
+| 3 | 197 writeFile без блокировки | 🔴 | Гарантированная порча данных |
+| 4 | Нет автоматической очистки | 🟠 | 500K+ файлов через 12 месяцев |
+| 5 | 2GB RAM + 2GB swap | 🟠 | OOM при batch efficiency |
+| 6 | 8 schedulers × 5 мин одновременно | 🟡 | ~800 файл.операций/5мин |
+| 7 | WebSocket broadcast O(N) | 🟡 | O(N²) distribution |
+| 8 | Upload 10-20MB без проверки | 🟡 | Диск заполнится |
+
+## 13.6 Производительность (Backend)
+
+| # | Уровень | Файл | Описание |
+|---|---------|------|----------|
+| B-1 | 🔴 | `admin_cache.js:80-103` | Sync I/O при cache miss блокирует event loop |
+| B-6 | 🔴 | `efficiency_calc.js:301-826` | ~6500 файловых чтений на single-employee |
+| B-7 | 🟠 | `efficiency_calc.js:1077` | Batch cache не покрывает 4 категории |
+| B-9 | 🟠 | `tasks_api.js:54-77` | getEmployeePhoneById сканирует ВСЕХ |
+| B-10 | 🟠 | `clients_api.js:571` | Broadcast пишет по 1 файлу (100 = 10 сек) |
+| B-11 | 🔴 | 15+ API файлов | Нет пагинации — ВСЕ записи |
+| B-12 | 🟠 | `pending_api.js:511` | generateDailyPendingShifts на КАЖДОМ GET |
+| B-13 | 🟠 | `shifts_api.js:298` | PUT сканирует ВСЕ daily файлы |
+
+## 13.7 Производительность (Flutter)
+
+| # | Уровень | Описание |
+|---|---------|----------|
+| F-1 | 🟠 | 200+ setState перестраивают целые страницы |
+| F-3 | 🟠 | Sort/filter в build() — пересчёт на каждом rebuild |
+| F-4 | 🔴 | Нет lazy loading — грузит ВСЕ данные сразу |
+| F-5 | 🟠 | 30+ Image.network без кэширования |
+| F-6 | 🟠 | Нет сжатия фото при загрузке (3-10MB) |
+| F-7 | 🟠 | MainMenuPage — 10+ API вызовов одновременно |
+| F-8 | 🟠 | MyEfficiencyPage — 5-7 последовательных вызовов |
+
+## 13.8 Критические потоки
+
+| Поток | Статус | Проблемы |
+|-------|--------|----------|
+| 1. Регистрация → PIN → Вход | ⚠️ | refresh-session не существует |
+| 2. Пересменка → Фото → Отправить | ✅ | Работает |
+| 3. Пересчёт → Заполнить → Штраф | ✅ | Работает |
+| 4. Клиент → Бонусы → QR | ✅ | Работает |
+| 5. Задача → Выполнить → Баллы | ⚠️ | Баллы не записываются при approve |
+| 6. Расписание → Авто → Публикация | ✅ | Работает |
+| 7. Кофемашина → OCR → Отчёт | ✅ | Работает |
+| 8. Эффективность → KPI → Рейтинг | ⚠️ | 5 из 10 категорий не работают |
+
+## 13.9 Нагрузочные тесты
+
+Созданы в `loyalty-proxy/tests/`:
+- **`load-test.js`** — 5 сценариев: 50 параллельных GET employees, 50 GET shift-reports, 20 POST attendance, 10 GET efficiency batch, 30 WebSocket connections. Метрики: min/avg/max/p95, throughput, errors. Запуск: `SESSION_TOKEN=xxx node tests/load-test.js`
+- **`smoke-test.js`** — 73 GET + 13 POST endpoints. Классификация: OK/BROKEN/ERROR. Сохранение в JSON. Запуск: `SESSION_TOKEN=xxx node tests/smoke-test.js`
+
+---
+
+# 14. ГЛОССАРИЙ
 
 ## Термины приложения
 
@@ -3100,7 +3394,7 @@ async function checkManagerAccess(phone, shopAddress) {
 
 **Конец документации**
 
-*Последнее обновление: 2026-02-08*
+*Последнее обновление: 2026-02-09*
 *Автор: Claude Code*
-*Версия: 2.3.0 (после полного аудита безопасности)*
+*Версия: 2.4.0 (после полного аудита 09.02.2026: безопасность + цепочки данных + schedulers + масштабируемость + производительность + flutter analyze)*
 

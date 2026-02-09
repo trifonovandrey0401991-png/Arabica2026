@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb, compute;
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 
@@ -10,6 +12,31 @@ import '../utils/logger.dart';
 import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 // http и dart:convert оставлены для multipart загрузки фото и веб-специфичных XMLHttpRequest
+
+/// Сжатие изображения в isolate (top-level для compute)
+List<int> _compressImageIsolate(List<int> bytes) {
+  try {
+    final image = img.decodeImage(Uint8List.fromList(bytes));
+    if (image == null) return bytes;
+
+    const maxDimension = 1920;
+    img.Image result;
+
+    if (image.width > maxDimension || image.height > maxDimension) {
+      if (image.width > image.height) {
+        result = img.copyResize(image, width: maxDimension);
+      } else {
+        result = img.copyResize(image, height: maxDimension);
+      }
+    } else {
+      result = image;
+    }
+
+    return img.encodeJpg(result, quality: 85);
+  } catch (e) {
+    return bytes;
+  }
+}
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)
 class PhotoUploadService {
@@ -43,11 +70,19 @@ class PhotoUploadService {
         }
       }
 
+      final originalSize = bytes.length;
       Logger.debug('📤 Начинаем загрузку фото на сервер: $fileName');
-      Logger.debug('📦 Размер файла: ${bytes.length} байт (${(bytes.length / 1024).toStringAsFixed(2)} KB)');
-      if (bytes.length > 1000000) {
-        final sizeMB = (bytes.length / 1024 / 1024).toStringAsFixed(2);
-        Logger.debug('⚠️ Внимание: Размер файла очень большой ($sizeMB MB)');
+      Logger.debug('📦 Размер оригинала: ${originalSize} байт (${(originalSize / 1024).toStringAsFixed(2)} KB)');
+
+      // Сжатие фото если больше 1 MB (resize + JPEG quality 85%)
+      if (!kIsWeb && originalSize > 1024 * 1024) {
+        try {
+          bytes = await compute(_compressImageIsolate, bytes);
+          final saved = originalSize - bytes.length;
+          Logger.debug('📦 После сжатия: ${bytes.length} байт (сэкономлено ${(saved / 1024).toStringAsFixed(0)} KB)');
+        } catch (e) {
+          Logger.debug('⚠️ Сжатие не удалось, загружаем оригинал: $e');
+        }
       }
 
       Logger.debug('🔗 URL загрузки: ${ApiConstants.serverUrl}/upload-photo');

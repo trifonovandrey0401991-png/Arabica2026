@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/employee_chat_message_model.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Доступные реакции
 const List<String> availableReactions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -96,33 +97,12 @@ class ChatMessageBubble extends StatelessWidget {
                               margin: const EdgeInsets.only(bottom: 6),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  message.imageUrl!,
+                                child: AppCachedImage(
+                                  imageUrl: message.imageUrl!,
                                   width: 220,
                                   height: 220,
                                   fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Container(
-                                      width: 220,
-                                      height: 220,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.06),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded /
-                                                  loadingProgress.expectedTotalBytes!
-                                              : null,
-                                          color: Colors.white.withOpacity(0.6),
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
+                                  errorWidget: (context, error, stackTrace) {
                                     return Container(
                                       width: 220,
                                       height: 220,
@@ -450,22 +430,10 @@ class ChatMessageBubble extends StatelessWidget {
                       maxScale: 4.0,
                       child: Hero(
                         tag: 'image_${message.id}',
-                        child: Image.network(
-                          message.imageUrl!,
+                        child: AppCachedImage(
+                          imageUrl: message.imageUrl!,
                           fit: BoxFit.contain,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
+                          errorWidget: (context, error, stackTrace) {
                             return const Center(
                               child: Icon(
                                 Icons.broken_image_rounded,

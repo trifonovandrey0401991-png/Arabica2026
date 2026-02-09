@@ -34,7 +34,7 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
   late int _selectedStartDay;
   late int _selectedEndDay;
   bool _replaceExisting = false;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {

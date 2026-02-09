@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/shift_report_model.dart';
 import '../../../core/services/photo_upload_service.dart';
+import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 
 /// Страница галереи фото из отчетов
 class ShiftPhotoGalleryPage extends StatefulWidget {
@@ -20,8 +21,6 @@ class ShiftPhotoGalleryPage extends StatefulWidget {
 }
 
 class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
   static const Color _night = Color(0xFF051515);
   static const Color _gold = Color(0xFFD4AF37);
 
@@ -153,10 +152,10 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                   return Center(
                     child: kIsWeb
                         ? (photo.startsWith('data:') || photo.startsWith('http'))
-                            ? Image.network(
-                                photo,
+                            ? AppCachedImage(
+                                imageUrl: photo,
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
+                                errorWidget: (context, error, stackTrace) {
                                   return Center(
                                     child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
                                   );
@@ -166,10 +165,10 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                 future: Future.value(PhotoUploadService.getPhotoUrl(photo)),
                                 builder: (context, snapshot) {
                                   if (snapshot.hasData) {
-                                    return Image.network(
-                                      snapshot.data!,
+                                    return AppCachedImage(
+                                      imageUrl: snapshot.data!,
                                       fit: BoxFit.contain,
-                                      errorBuilder: (context, error, stackTrace) {
+                                      errorWidget: (context, error, stackTrace) {
                                         return Center(
                                           child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
                                         );
@@ -182,10 +181,10 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                 },
                               )
                         : (photo.startsWith('http') || photo.contains('drive.google.com'))
-                            ? Image.network(
-                                photo,
+                            ? AppCachedImage(
+                                imageUrl: photo,
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
+                                errorWidget: (context, error, stackTrace) {
                                   return Center(
                                     child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
                                   );
@@ -200,10 +199,10 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                     future: Future.value(PhotoUploadService.getPhotoUrl(photo)),
                                     builder: (context, snapshot) {
                                       if (snapshot.hasData) {
-                                        return Image.network(
-                                          snapshot.data!,
+                                        return AppCachedImage(
+                                          imageUrl: snapshot.data!,
                                           fit: BoxFit.contain,
-                                          errorBuilder: (context, error, stackTrace) {
+                                          errorWidget: (context, error, stackTrace) {
                                             return Center(
                                               child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
                                             );

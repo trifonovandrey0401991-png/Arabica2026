@@ -7,6 +7,7 @@ import '../services/employee_service.dart';
 import 'employees_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class EmployeeRegistrationPage extends StatefulWidget {
   final String? employeePhone; // Если указан - редактирование существующей регистрации
@@ -378,87 +379,6 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         });
       }
     }
-  }
-
-  Widget _buildPhotoField({
-    required String label,
-    required String photoType,
-    Uint8List? photoBytes,
-    String? photoUrl,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _isLoading
-                    ? null
-                    : () => _pickImage(ImageSource.camera, photoType),
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Сфотографировать'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _isLoading
-                    ? null
-                    : () => _pickImage(ImageSource.gallery, photoType),
-                icon: const Icon(Icons.photo_library),
-                label: const Text('Выбрать из галереи'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (photoBytes != null || photoUrl != null) ...[
-          const SizedBox(height: 8),
-          Container(
-            height: 150,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: photoBytes != null
-                  ? Image.memory(
-                      photoBytes,
-                      fit: BoxFit.cover,
-                    )
-                  : photoUrl != null
-                      ? Image.network(
-                          photoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(
-                              child: Icon(Icons.error, color: Colors.red),
-                            );
-                          },
-                        )
-                      : null,
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
-      ],
-    );
   }
 
   static const _primaryColor = Color(0xFF004D40);
@@ -1041,10 +961,10 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                     borderRadius: BorderRadius.circular(12),
                     child: photoBytes != null
                         ? Image.memory(photoBytes, fit: BoxFit.cover)
-                        : Image.network(
-                            photoUrl!,
+                        : AppCachedImage(
+                            imageUrl: photoUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
+                            errorWidget: (_, __, ___) => const Center(
                               child: Icon(Icons.broken_image, color: Colors.grey),
                             ),
                           ),

@@ -7,11 +7,6 @@ class TaskStyles {
   static const primaryColor = Color(0xFF1A4D4D);
   static const accentColor = Color(0xFFD4AF37);
 
-  // Дополнительные цвета палитры
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-
   // Градиенты для статусов
   static const orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
   static const greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/media_upload_service.dart';
+import 'app_cached_image.dart';
 
 /// Кнопка для выбора и загрузки медиа (фото/видео)
 class MediaPickerButton extends StatelessWidget {
@@ -165,20 +166,11 @@ class MediaMessageWidget extends StatelessWidget {
                 ),
               )
             else
-              Image.network(
-                url,
+              AppCachedImage(
+                imageUrl: url,
                 width: maxWidth,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    width: maxWidth,
-                    height: 150,
-                    color: Colors.grey[300],
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => Container(
+                errorWidget: (context, error, stackTrace) => Container(
                   width: maxWidth,
                   height: 100,
                   color: Colors.grey[300],
@@ -226,10 +218,10 @@ class MediaMessageWidget extends StatelessWidget {
                     ],
                   )
                 : InteractiveViewer(
-                    child: Image.network(
-                      url,
+                    child: AppCachedImage(
+                      imageUrl: url,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
+                      errorWidget: (context, error, stackTrace) =>
                           const Icon(Icons.broken_image, color: Colors.white, size: 64),
                     ),
                   ),

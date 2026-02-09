@@ -33,7 +33,6 @@ class RKOAmountInputPage extends StatefulWidget {
 
 class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   static const _primaryColor = Color(0xFF004D40);
-  static const _primaryColorLight = Color(0xFF00695C);
 
   final _amountController = TextEditingController();
   Shop? _selectedShop;

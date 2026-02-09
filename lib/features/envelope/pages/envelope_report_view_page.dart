@@ -5,6 +5,7 @@ import '../models/envelope_report_model.dart';
 import '../services/envelope_report_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../employees/services/user_role_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class EnvelopeReportViewPage extends StatefulWidget {
   final EnvelopeReport report;
@@ -224,17 +225,10 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               ],
             ),
             InteractiveViewer(
-              child: Image.network(
-                url,
+              child: AppCachedImage(
+                imageUrl: url,
                 fit: BoxFit.contain,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const SizedBox(
-                    height: 300,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => const SizedBox(
+                errorWidget: (context, error, stackTrace) => const SizedBox(
                   height: 200,
                   child: Center(child: Icon(Icons.error, size: 48)),
                 ),

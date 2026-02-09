@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
+import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 
 /// Страница просмотра отчета сдачи смены
 class ShiftHandoverReportViewPage extends StatefulWidget {
@@ -571,18 +572,10 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                               ),
                                               child: ClipRRect(
                                                 borderRadius: BorderRadius.circular(12),
-                                                child: Image.network(
-                                                  answer.referencePhotoUrl!,
+                                                child: AppCachedImage(
+                                                  imageUrl: answer.referencePhotoUrl!,
                                                   fit: BoxFit.cover,
-                                                  loadingBuilder: (context, child, loadingProgress) {
-                                                    if (loadingProgress == null) return child;
-                                                    return Center(
-                                                      child: CircularProgressIndicator(
-                                                        color: _gold.withOpacity(0.7),
-                                                      ),
-                                                    );
-                                                  },
-                                                  errorBuilder: (context, error, stackTrace) {
+                                                  errorWidget: (context, error, stackTrace) {
                                                     return Center(
                                                       child: Column(
                                                         mainAxisAlignment: MainAxisAlignment.center,
@@ -631,10 +624,10 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                                 borderRadius: BorderRadius.circular(12),
                                                 child: answer.photoPath != null
                                                     ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                                        ? Image.network(
-                                                            answer.photoPath!,
+                                                        ? AppCachedImage(
+                                                            imageUrl: answer.photoPath!,
                                                             fit: BoxFit.cover,
-                                                            errorBuilder: (context, error, stackTrace) {
+                                                            errorWidget: (context, error, stackTrace) {
                                                               return Center(
                                                                 child: Icon(Icons.error, color: Colors.white.withOpacity(0.4)),
                                                               );
@@ -645,18 +638,10 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                                             fit: BoxFit.cover,
                                                           )
                                                     : answer.photoUrl != null
-                                                        ? Image.network(
-                                                            answer.photoUrl!,
+                                                        ? AppCachedImage(
+                                                            imageUrl: answer.photoUrl!,
                                                             fit: BoxFit.cover,
-                                                            loadingBuilder: (context, child, loadingProgress) {
-                                                              if (loadingProgress == null) return child;
-                                                              return Center(
-                                                                child: CircularProgressIndicator(
-                                                                  color: _gold.withOpacity(0.7),
-                                                                ),
-                                                              );
-                                                            },
-                                                            errorBuilder: (context, error, stackTrace) {
+                                                            errorWidget: (context, error, stackTrace) {
                                                               return Center(
                                                                 child: Column(
                                                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -702,10 +687,10 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                   borderRadius: BorderRadius.circular(12),
                                   child: answer.photoPath != null
                                       ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                          ? Image.network(
-                                              answer.photoPath!,
+                                          ? AppCachedImage(
+                                              imageUrl: answer.photoPath!,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
+                                              errorWidget: (context, error, stackTrace) {
                                                 return Center(
                                                   child: Icon(Icons.error, color: Colors.white.withOpacity(0.4)),
                                                 );
@@ -716,18 +701,10 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                               fit: BoxFit.cover,
                                             )
                                       : answer.photoUrl != null
-                                          ? Image.network(
-                                              answer.photoUrl!,
+                                          ? AppCachedImage(
+                                              imageUrl: answer.photoUrl!,
                                               fit: BoxFit.cover,
-                                              loadingBuilder: (context, child, loadingProgress) {
-                                                if (loadingProgress == null) return child;
-                                                return Center(
-                                                  child: CircularProgressIndicator(
-                                                    color: _gold.withOpacity(0.7),
-                                                  ),
-                                                );
-                                              },
-                                              errorBuilder: (context, error, stackTrace) {
+                                              errorWidget: (context, error, stackTrace) {
                                                 return Center(
                                                   child: Column(
                                                     mainAxisAlignment: MainAxisAlignment.center,

@@ -42,7 +42,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
   ShiftType? _selectedShiftType;
   Shop? _selectedShop;
   bool _isLoading = false;
-  Map<String, ShopSettings> _shopSettingsCache = {};
+  final Map<String, ShopSettings> _shopSettingsCache = {};
 
   @override
   void initState() {

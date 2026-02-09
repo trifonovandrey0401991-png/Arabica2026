@@ -8,6 +8,7 @@ import '../services/shift_handover_question_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../envelope/models/envelope_question_model.dart';
 import '../../envelope/services/envelope_question_service.dart';
+import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 
 /// Страница управления вопросами сдачи смены
 class ShiftHandoverQuestionsManagementPage extends StatefulWidget {
@@ -1261,8 +1262,8 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
   List<Shop> _allShops = [];
   Set<String> _selectedShopAddresses = {};
   Map<String, String> _referencePhotoUrls = {};
-  Map<String, File?> _referencePhotoFiles = {};
-  Map<String, Uint8List?> _referencePhotoBytes = {}; // Для веб-платформы
+  final Map<String, File?> _referencePhotoFiles = {};
+  final Map<String, Uint8List?> _referencePhotoBytes = {}; // Для веб-платформы
   bool _isLoadingShops = true;
   bool _isUploadingPhotos = false;
 
@@ -2240,23 +2241,10 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                                   fit: BoxFit.cover,
                                 )
                               : photoUrl != null
-                                  ? Image.network(
-                                      photoUrl,
+                                  ? AppCachedImage(
+                                      imageUrl: photoUrl,
                                       fit: BoxFit.cover,
-                                      loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null) return child;
-                                        return Center(
-                                          child: CircularProgressIndicator(
-                                            value: loadingProgress.expectedTotalBytes != null
-                                                ? loadingProgress.cumulativeBytesLoaded /
-                                                    loadingProgress.expectedTotalBytes!
-                                                : null,
-                                            strokeWidth: 2,
-                                            valueColor: const AlwaysStoppedAnimation<Color>(_gold),
-                                          ),
-                                        );
-                                      },
-                                      errorBuilder: (context, error, stackTrace) {
+                                      errorWidget: (context, error, stackTrace) {
                                         return Center(
                                           child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
                                         );
@@ -2845,12 +2833,12 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                                           height: double.infinity,
                                         )
                                       : _referencePhotoUrl != null
-                                          ? Image.network(
-                                              _referencePhotoUrl!,
+                                          ? AppCachedImage(
+                                              imageUrl: _referencePhotoUrl!,
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
-                                              errorBuilder: (_, __, ___) => const Center(
+                                              errorWidget: (_, __, ___) => const Center(
                                                 child: Icon(Icons.error, size: 48, color: Colors.red),
                                               ),
                                             )

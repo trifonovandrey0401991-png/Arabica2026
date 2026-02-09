@@ -32,7 +32,6 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
   Map<String, EmployeeReferralPoints> _referralPointsByEmployee = {};
-  bool _isLoadingReferrals = false;
 
   @override
   void initState() {
@@ -132,8 +131,6 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   Future<void> _loadReferralPoints() async {
     if (_filteredEmployees.isEmpty) return;
 
-    setState(() => _isLoadingReferrals = true);
-
     try {
       // Загружаем всех сотрудников чтобы получить Map: имя -> ID
       final employees = await EmployeeService.getEmployees();
@@ -165,12 +162,11 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
       if (mounted) {
         setState(() {
           _referralPointsByEmployee = pointsMap;
-          _isLoadingReferrals = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoadingReferrals = false);
+        setState(() {});
       }
     }
   }

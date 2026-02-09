@@ -30,7 +30,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
   bool _isLoading = true;
 
   // Map: shopAddress -> ShiftReport
-  Map<String, ShiftReport> _reportsByShop = {};
+  final Map<String, ShiftReport> _reportsByShop = {};
 
   // Контроллеры для синхронного скролла
   final ScrollController _headerScrollController = ScrollController();

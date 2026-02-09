@@ -1099,10 +1099,6 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
     );
   }
 
-  String _formatUrl(String url) {
-    // Убираем https:// или http:// для краткости
-    return url.replaceFirst(RegExp(r'^https?://'), '');
-  }
 }
 
 /// Диалог для добавления/редактирования статьи обучения

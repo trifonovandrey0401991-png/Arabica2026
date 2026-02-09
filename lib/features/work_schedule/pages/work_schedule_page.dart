@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -51,7 +50,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
   // Уведомления для админа
   List<ShiftTransferRequest> _adminNotifications = [];
-  int _adminUnreadCount = 0;
   bool _isLoadingNotifications = false;
 
   // Валидация графика
@@ -132,12 +130,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
   Future<void> _loadAdminUnreadCount() async {
     try {
-      final count = await ShiftTransferService.getAdminUnreadCount();
-      if (mounted) {
-        setState(() {
-          _adminUnreadCount = count;
-        });
-      }
+      await ShiftTransferService.getAdminUnreadCount();
     } catch (e) {
       Logger.error('Ошибка загрузки счётчика админа', e);
     }
@@ -599,19 +592,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     }
   }
 
-  Future<void> _showBulkOperations() async {
-    await showDialog(
-      context: context,
-      builder: (context) => ScheduleBulkOperationsDialog(
-        schedule: _schedule!,
-        employees: _employees,
-        shops: _shops,
-        selectedMonth: _selectedMonth,
-        onOperationComplete: () => _loadData(),
-      ),
-    );
-  }
-
   /// Валидация текущего графика
   void _validateCurrentSchedule() {
     if (_schedule == null || _shops.isEmpty) {
@@ -898,7 +878,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   List<DateTime> _getDaysInMonth() {
-    final firstDay = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
     final lastDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
     final maxDay = lastDay.day;
     final actualStartDay = _startDay.clamp(1, maxDay);
@@ -1023,60 +1002,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           children: [
             Icon(icon, size: 18),
             const SizedBox(width: 6),
-            Text(label),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Создаёт стильную вкладку с иконкой, текстом и бейджем
-  Widget _buildStyledTabWithBadge(IconData icon, String label, int badgeCount) {
-    return Tab(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(icon, size: 18),
-                if (badgeCount > 0)
-                  Positioned(
-                    right: -8,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 2,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        badgeCount > 99 ? '99+' : '$badgeCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 8),
             Text(label),
           ],
         ),
@@ -1523,9 +1448,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             controller: _gridVerticalController,
                             child: Column(
                               children: _employees.asMap().entries.map((entry) {
-                                final index = entry.key;
                                 final employee = entry.value;
-                                final isEven = index % 2 == 0;
                                 return SizedBox(
                                   height: 40,
                                   child: Row(
@@ -1548,178 +1471,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     );
   }
 
-  /// Виджет статистики для заголовка календаря
-  Widget _buildStatsChip({
-    required IconData icon,
-    required String label,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTable(List<DateTime> days, Map<String, List<Employee>> employeesByShop) {
-    // Получаем всех сотрудников в один список
-    final allEmployees = employeesByShop.values.expand((list) => list).toList();
-    
-    return Table(
-      border: TableBorder(
-        top: BorderSide(color: Colors.grey[400]!, width: 1.5),
-        bottom: BorderSide(color: Colors.grey[400]!, width: 1.5),
-        left: BorderSide(color: Colors.grey[400]!, width: 1.5),
-        right: BorderSide(color: Colors.grey[400]!, width: 1.5),
-        horizontalInside: BorderSide(color: Colors.grey[300]!, width: 1),
-        verticalInside: BorderSide(color: Colors.grey[300]!, width: 1),
-      ),
-      columnWidths: {
-        0: const FixedColumnWidth(180), // Колонка с именами сотрудников
-        for (var i = 0; i < days.length; i++) i + 1: const FixedColumnWidth(70),
-      },
-      children: [
-        // Заголовок с датами
-        TableRow(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            border: Border(
-              bottom: BorderSide(color: Colors.grey[400]!, width: 2),
-            ),
-          ),
-          children: [
-            TableCell(
-              verticalAlignment: TableCellVerticalAlignment.middle,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  border: Border(
-                    right: BorderSide(color: Colors.grey[400]!, width: 2),
-                  ),
-                ),
-                child: const Text(
-                  'Сотрудник',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            ...days.map((day) {
-              final isValid = _isDayValid(day);
-              return TableCell(
-                verticalAlignment: TableCellVerticalAlignment.middle,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isValid ? Colors.green[100] : Colors.grey[300],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${day.day}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _getWeekdayName(day.weekday),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
-        ),
-        // Строки для каждого сотрудника
-        ...allEmployees.asMap().entries.map((entry) {
-          final index = entry.key;
-          final employee = entry.value;
-          final isEven = index % 2 == 0;
-          
-          return TableRow(
-            decoration: BoxDecoration(
-              color: isEven ? Colors.white : Colors.grey[50],
-            ),
-            children: [
-              TableCell(
-                verticalAlignment: TableCellVerticalAlignment.middle,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isEven ? Colors.white : Colors.grey[50],
-                    border: Border(
-                      right: BorderSide(color: Colors.grey[400]!, width: 2),
-                    ),
-                  ),
-                  child: Text(
-                    employee.name,
-                    style: const TextStyle(
-                      fontSize: 12,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              ...days.map((day) => TableCell(
-                    verticalAlignment: TableCellVerticalAlignment.middle,
-                    child: _buildCell(employee, day),
-                  )),
-            ],
-          );
-        }),
-      ],
-    );
-  }
-
   Widget _buildCell(Employee employee, DateTime date) {
     final entry = _getEntryForEmployeeAndDate(employee.id, date);
     final isEmpty = entry == null;
@@ -1735,7 +1486,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     Widget? errorIcon;
 
     if (hasError) {
-      if (cellError!.isCritical) {
+      if (cellError.isCritical) {
         // Критичная ошибка: красная рамка
         borderColor = Colors.red;
         errorIcon = const Icon(Icons.error, color: Colors.red, size: 12);
@@ -1769,11 +1520,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         decoration: BoxDecoration(
           color: isEmpty
               ? (isEven ? Colors.white : Colors.grey[50])
-              : getCellBackgroundColor(entry!.shiftType),
+              : getCellBackgroundColor(entry.shiftType),
           border: Border.all(
             color: hasError
                 ? borderColor!
-                : (isEmpty ? Colors.grey[300]! : entry!.shiftType.color.withOpacity(0.5)),
+                : (isEmpty ? Colors.grey[300]! : entry.shiftType.color.withOpacity(0.5)),
             width: hasError ? 2.0 : (isEmpty ? 0.5 : 1.0),
           ),
         ),
@@ -2135,47 +1886,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     );
   }
 
-  /// Строит вкладку "Заявки на передачу смен" для администратора
-  Widget _buildAdminNotificationsTab() {
-    if (_isLoadingNotifications) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_adminNotifications.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Нет заявок на передачу смен',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Здесь появятся заявки, требующие вашего одобрения',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadAdminNotifications,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _adminNotifications.length,
-        itemBuilder: (context, index) {
-          final request = _adminNotifications[index];
-          return _buildAdminNotificationCard(request);
-        },
-      ),
-    );
-  }
-
   /// Карточка заявки на передачу смены для администратора
   Widget _buildAdminNotificationCard(ShiftTransferRequest request) {
     final isUnread = !request.isReadByAdmin;
@@ -2521,274 +2231,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         }
       }
     }
-  }
-
-  /// Строит вкладку "Очистить график"
-  Widget _buildClearScheduleTab() {
-    final hasData = _schedule != null && _schedule!.entries.isNotEmpty;
-    final entryCount = _schedule?.entries.length ?? 0;
-
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            // Иконка с анимированным фоном
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.orange.withOpacity(0.1),
-                    Colors.red.withOpacity(0.1),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.orange.withOpacity(0.3),
-                  width: 2,
-                ),
-              ),
-              child: Icon(
-                Icons.cleaning_services_rounded,
-                size: 56,
-                color: Colors.orange[700],
-              ),
-            ),
-            const SizedBox(height: 32),
-            // Заголовок
-            const Text(
-              'Очистка графика работы',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            // Подзаголовок с месяцем
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF004D40).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.calendar_month,
-                    size: 20,
-                    color: const Color(0xFF004D40),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF004D40),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            // Карточка со статистикой
-            if (hasData)
-              Container(
-                width: double.infinity,
-                constraints: const BoxConstraints(maxWidth: 400),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white,
-                      Colors.grey[50]!,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Colors.grey[200]!,
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildClearStatItem(
-                          icon: Icons.event_note,
-                          value: '$entryCount',
-                          label: 'смен',
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(width: 32),
-                        _buildClearStatItem(
-                          icon: Icons.people,
-                          value: '${_employees.length}',
-                          label: 'сотрудников',
-                          color: const Color(0xFF004D40),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 24),
-            // Карточка с предупреждениями
-            Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(maxWidth: 400),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.orange.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(15),
-                        topRight: Radius.circular(15),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Это действие удалит ВСЕ смены из текущего месяца',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(15),
-                        bottomRight: Radius.circular(15),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.red[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Это действие НЕОБРАТИМО',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red[700],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 40),
-            // Кнопка очистки
-            Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(maxWidth: 400),
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: hasData
-                    ? [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: ElevatedButton(
-                onPressed: hasData
-                    ? () {
-                        Logger.info('КНОПКА ОЧИСТИТЬ ГРАФИК НАЖАТА!');
-                        Logger.info('   Записей в графике: ${_schedule!.entries.length}');
-                        _confirmClearSchedule();
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[600],
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey[300],
-                  disabledForegroundColor: Colors.grey[500],
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      hasData ? Icons.delete_sweep : Icons.check_circle_outline,
-                      size: 26,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      hasData ? 'Очистить график' : 'График уже пуст',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
   }
 
   /// Виджет статистики для вкладки очистки

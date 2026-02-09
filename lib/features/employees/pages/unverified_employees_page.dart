@@ -17,7 +17,7 @@ class UnverifiedEmployeesPage extends StatefulWidget {
 class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
   late Future<List<Employee>> _employeesFuture;
   String _searchQuery = '';
-  Map<String, EmployeeRegistration?> _registrations = {};
+  final Map<String, EmployeeRegistration?> _registrations = {};
 
   @override
   void initState() {

@@ -73,7 +73,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
   String _selectedType = 'ooo'; // 'ooo' или 'ip'
   List<Supplier> _allSuppliers = [];
   List<Supplier> _filteredSuppliers = [];
-  List<ExpenseFormData> _expenses = [];
+  final List<ExpenseFormData> _expenses = [];
   bool _isLoadingSuppliers = true;
   bool _isSaving = false;
 

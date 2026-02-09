@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/training_model.dart';
 import '../models/content_block.dart';
 import '../services/training_article_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница редактора статьи обучения с поддержкой блоков контента
 class TrainingArticleEditorPage extends StatefulWidget {
@@ -782,28 +783,12 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                block.content,
+              child: AppCachedImage(
+                imageUrl: block.content,
                 width: double.infinity,
                 height: 200,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    width: double.infinity,
-                    height: 200,
-                    color: Colors.grey[100],
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                            : null,
-                        color: _primaryColor,
-                      ),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => Container(
+                errorWidget: (context, url, error) => Container(
                   width: double.infinity,
                   height: 200,
                   color: Colors.grey[100],

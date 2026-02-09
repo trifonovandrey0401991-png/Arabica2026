@@ -3,6 +3,7 @@ import '../../../core/utils/logger.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../orders/pages/cart_page.dart';
 import '../../recipes/models/recipe_model.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class MenuItem {
   final String id;
@@ -166,33 +167,12 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
   /// Строит виджет изображения для MenuItem
   Widget _buildItemImage(MenuItem item, {double? height, double? width, BoxFit fit = BoxFit.cover}) {
     if (item.hasNetworkPhoto) {
-      return Image.network(
-        item.imageUrl!,
+      return AppCachedImage(
+        imageUrl: item.imageUrl!,
         height: height,
         width: width,
         fit: fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            height: height,
-            width: width,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF004D40).withOpacity(0.1),
-                  const Color(0xFF00695C).withOpacity(0.1),
-                ],
-              ),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF004D40),
-                strokeWidth: 2,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(height: height, width: width),
+        errorWidget: (_, __, ___) => _buildNoPhotoPlaceholder(height: height, width: width),
       );
     } else if (item.photoId.isNotEmpty) {
       final imagePath = 'assets/images/${item.photoId}.jpg';

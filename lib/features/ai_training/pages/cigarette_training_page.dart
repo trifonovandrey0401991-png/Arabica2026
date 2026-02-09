@@ -12,6 +12,7 @@ import 'cigarette_annotation_page.dart';
 import 'photo_templates_page.dart';
 import 'training_settings_page.dart';
 import 'pending_codes_page.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница обучения ИИ распознаванию сигарет - Премиум версия
 class CigaretteTrainingPage extends StatefulWidget {
@@ -1930,25 +1931,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.network(
-                '${ApiConstants.serverUrl}${sample.imageUrl}',
+              child: AppCachedImage(
+                imageUrl: '${ApiConstants.serverUrl}${sample.imageUrl}',
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
+                errorWidget: (context, error, stackTrace) => Container(
                   color: Colors.grey[800],
                   child: const Icon(Icons.broken_image, color: Colors.white38, size: 40),
                 ),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                          : null,
-                      color: Colors.amber,
-                      strokeWidth: 2,
-                    ),
-                  );
-                },
               ),
             ),
           ),
@@ -2059,12 +2048,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: Image.network(
-                    '${ApiConstants.serverUrl}${sample.imageUrl}',
+                  child: AppCachedImage(
+                    imageUrl: '${ApiConstants.serverUrl}${sample.imageUrl}',
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                    errorWidget: (context, error, stackTrace) => Container(
                       color: Colors.grey[800],
                       child: const Icon(Icons.broken_image, color: Colors.white38, size: 40),
                     ),
@@ -2724,13 +2713,6 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     if (progress >= 50) return _orangeGradient;
     if (progress >= 25) return _blueGradient;
     return _redGradient;
-  }
-
-  Color _getProgressColor(double progress) {
-    if (progress >= 100) return _greenGradient[0];
-    if (progress >= 50) return _orangeGradient[0];
-    if (progress >= 25) return _blueGradient[0];
-    return _redGradient[0];
   }
 
   Widget _buildGradientButton({
@@ -3624,25 +3606,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             fit: StackFit.expand,
             children: [
               // Фото
-              Image.network(
-                '${ApiConstants.serverUrl}${sample.imageUrl}',
+              AppCachedImage(
+                imageUrl: '${ApiConstants.serverUrl}${sample.imageUrl}',
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorWidget: (_, __, ___) => Container(
                   color: Colors.grey[800],
                   child: const Icon(Icons.broken_image, color: Colors.grey),
                 ),
-                loadingBuilder: (_, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: Colors.grey[800],
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white54,
-                      ),
-                    ),
-                  );
-                },
               ),
 
               // Градиент снизу
@@ -3769,10 +3739,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.5,
               ),
-              child: Image.network(
-                '${ApiConstants.serverUrl}${sample.imageUrl}',
+              child: AppCachedImage(
+                imageUrl: '${ApiConstants.serverUrl}${sample.imageUrl}',
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(
+                errorWidget: (_, __, ___) => Container(
                   height: 200,
                   color: Colors.grey[800],
                   child: const Center(

@@ -11,6 +11,7 @@ import 'employee_preferences_dialog.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class EmployeeRegistrationViewPage extends StatefulWidget {
   final String employeePhone;
@@ -368,41 +369,10 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                   bottomLeft: Radius.circular(16),
                   bottomRight: Radius.circular(16),
                 ),
-                child: Image.network(
-                  photoUrl,
+                child: AppCachedImage(
+                  imageUrl: photoUrl,
                   fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) {
-                      Logger.success('Фото загружено: $photoUrl');
-                      return child;
-                    }
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                const Color(0xFF004D40).withOpacity(0.7),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Загрузка фото...',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
+                  errorWidget: (context, error, stackTrace) {
                     Logger.error('Ошибка загрузки фото $photoUrl', error);
                     return Container(
                       color: Colors.grey[100],

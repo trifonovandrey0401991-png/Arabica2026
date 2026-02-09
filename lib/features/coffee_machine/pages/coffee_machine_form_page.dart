@@ -54,7 +54,6 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   File? _computerPhoto;
   int? _computerAiNumber;
   final _computerController = TextEditingController();
-  bool _computerWasEdited = false;
   bool _computerOcrDone = false;
   String? _computerBase64;
 
@@ -348,7 +347,6 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     setState(() {
       if (isComputer) {
         _computerController.text = number.toString();
-        _computerWasEdited = false;
       } else {
         _machineControllers[templateId]?.text = number.toString();
         _machineWasEdited[templateId] = false;
@@ -466,7 +464,6 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               setState(() {
                 if (isComputer) {
                   _computerController.text = text;
-                  _computerWasEdited = true;
                 } else {
                   _machineControllers[templateId]?.text = text;
                   _machineWasEdited[templateId] = true;

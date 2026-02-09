@@ -274,7 +274,7 @@ class EmployeesPage extends StatefulWidget {
 class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateMixin {
   late Future<List<Employee>> _employeesFuture;
   String _searchQuery = '';
-  Map<String, bool> _verificationStatus = {}; // Кэш статуса верификации по телефону
+  final Map<String, bool> _verificationStatus = {}; // Кэш статуса верификации по телефону
   bool _isLoadingVerification = false;
   late AnimationController _animationController;
   @override

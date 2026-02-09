@@ -18,7 +18,6 @@ class ProductQuestionShopsListPage extends StatefulWidget {
 class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListPage> {
   ProductQuestionGroupedData? _groupedData;
   bool _isLoading = true;
-  String? _clientPhone;
   Timer? _refreshTimer;
 
   @override
@@ -45,10 +44,6 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
       });
       return;
     }
-
-    setState(() {
-      _clientPhone = phone;
-    });
 
     try {
       final data = await ProductQuestionService.getClientGroupedDialogs(phone);

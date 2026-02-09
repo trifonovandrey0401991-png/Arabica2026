@@ -27,7 +27,6 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
 
   // Цвета
   static const _primaryColor = Color(0xFF1A4D4D);
-  static const _accentColor = Color(0xFF00897B);
   static const _successGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
   static const _errorColor = Color(0xFFE53935);
 

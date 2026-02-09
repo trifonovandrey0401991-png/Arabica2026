@@ -7,6 +7,7 @@ import '../models/recount_report_model.dart';
 import '../services/recount_service.dart';
 import '../services/recount_points_service.dart';
 import '../../ai_training/services/cigarette_vision_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница просмотра отчета пересчета с возможностью оценки
 class RecountReportViewPage extends StatefulWidget {
@@ -30,15 +31,15 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
   int? _selectedRating;
   bool _isRating = false;
   String? _adminName;
-  Map<int, String> _photoVerificationStatus = {}; // photoIndex -> status
-  Set<int> _verifyingPhotos = {}; // фото в процессе верификации
-  Map<int, String> _aiErrorDecisions = {}; // questionIndex -> decision
-  Set<int> _processingAiDecisions = {}; // в процессе отправки решения
+  final Map<int, String> _photoVerificationStatus = {}; // photoIndex -> status
+  final Set<int> _verifyingPhotos = {}; // фото в процессе верификации
+  final Map<int, String> _aiErrorDecisions = {}; // questionIndex -> decision
+  final Set<int> _processingAiDecisions = {}; // в процессе отправки решения
 
   // Pending counting samples для обучения ИИ
   Map<String, List<dynamic>> _pendingSamplesByProduct = {}; // productId -> samples
-  Map<String, String> _approvedSamples = {}; // sampleId -> 'approved' или 'rejected'
-  Set<String> _processingSamples = {}; // в процессе approve/reject
+  final Map<String, String> _approvedSamples = {}; // sampleId -> 'approved' или 'rejected'
+  final Set<String> _processingSamples = {}; // в процессе approve/reject
 
   @override
   void initState() {
@@ -1365,10 +1366,10 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
                                   child: answer.photoUrl != null
-                                      ? Image.network(
-                                          answer.photoUrl!,
+                                      ? AppCachedImage(
+                                          imageUrl: answer.photoUrl!,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
+                                          errorWidget: (context, error, stackTrace) {
                                             return const Center(
                                               child: Icon(Icons.error),
                                             );
@@ -1376,10 +1377,10 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                         )
                                       : answer.photoPath != null
                                           ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                              ? Image.network(
-                                                  answer.photoPath!,
+                                              ? AppCachedImage(
+                                                  imageUrl: answer.photoPath!,
                                                   fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) {
+                                                  errorWidget: (context, error, stackTrace) {
                                                     return const Center(
                                                       child: Icon(Icons.error),
                                                     );

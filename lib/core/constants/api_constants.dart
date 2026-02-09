@@ -1,9 +1,12 @@
+import 'api_key.dart';
+
 class ApiConstants {
   // URL
   static const String serverUrl = 'https://arabica26.ru';
 
   // API Key для аутентификации запросов к серверу
-  static const String? apiKey = '58c4d46b9bb324d03c5d96781223821f3528c5efa4604090a8e95ac540173585';
+  // Ключ хранится в api_key.dart (файл в .gitignore, не попадает в git)
+  static const String? apiKey = arabicaApiKey;
 
   // Session token (устанавливается при логине, очищается при логауте)
   static String? _sessionToken;

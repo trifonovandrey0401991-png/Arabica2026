@@ -316,7 +316,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       final longitude = shop.longitude ?? 43.0577;
 
       // Создаем отметку прихода с указанным временем
-      Logger.debug('📝 Создание тестовой отметки прихода: ${_kpiSelectedEmployee}, дата/время (UTC): ${dateTime.toIso8601String()}');
+      Logger.debug('📝 Создание тестовой отметки прихода: $_kpiSelectedEmployee, дата/время (UTC): ${dateTime.toIso8601String()}');
       final result = await AttendanceService.markAttendance(
         employeeName: _kpiSelectedEmployee!,
         shopAddress: _kpiSelectedShop!,

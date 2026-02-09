@@ -7,6 +7,7 @@ import '../../../core/utils/logger.dart';
 import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_personal_dialog_page.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница чата клиента по поиску товара (единый чат со всеми магазинами)
 class ProductQuestionClientDialogPage extends StatefulWidget {
@@ -385,21 +386,13 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                 if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      message.imageUrl!.startsWith('http')
+                    child: AppCachedImage(
+                      imageUrl: message.imageUrl!.startsWith('http')
                           ? message.imageUrl!
                           : 'https://arabica26.ru${message.imageUrl}',
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          height: 150,
-                          color: Colors.grey[300],
-                          child: const Center(child: CircularProgressIndicator()),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
+                      errorWidget: (context, error, stackTrace) {
                         return Container(
                           height: 100,
                           color: Colors.grey[300],

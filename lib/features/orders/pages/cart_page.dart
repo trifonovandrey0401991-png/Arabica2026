@@ -6,6 +6,7 @@ import '../../employees/pages/employees_page.dart';
 import '../../menu/pages/menu_page.dart';
 import 'orders_page.dart';
 import '../../../core/utils/logger.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница корзины
 class CartPage extends StatelessWidget {
@@ -31,20 +32,12 @@ class CartPage extends StatelessWidget {
   /// Строит виджет изображения для товара в корзине
   Widget _buildCartItemImage(MenuItem item) {
     if (item.hasNetworkPhoto) {
-      return Image.network(
-        item.imageUrl!,
+      return AppCachedImage(
+        imageUrl: item.imageUrl!,
         width: 60,
         height: 60,
         fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return const SizedBox(
-            width: 60,
-            height: 60,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          );
-        },
-        errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(),
+        errorWidget: (_, __, ___) => _buildNoPhotoPlaceholder(),
       );
     } else if (item.photoId.isNotEmpty) {
       final imagePath = 'assets/images/${item.photoId}.jpg';

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница просмотра и удаления обучающих фото для шаблона кофемашины
 class CoffeeMachineTrainingPhotosPage extends StatefulWidget {
@@ -258,12 +259,12 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
               width: double.infinity,
               child: Stack(
                 children: [
-                  Image.network(
-                    _photoUrl(photoUrl),
+                  AppCachedImage(
+                    imageUrl: _photoUrl(photoUrl),
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorWidget: (_, __, ___) => Container(
                       height: 180,
                       color: Colors.white.withOpacity(0.04),
                       child: const Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 40)),

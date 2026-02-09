@@ -21,10 +21,6 @@ class _AITrainingPageState extends State<AITrainingPage>
   late Animation<double> _pulseAnimation;
   bool _isAdmin = false;
 
-  // Цвета
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00897B);
-
   @override
   void initState() {
     super.initState();

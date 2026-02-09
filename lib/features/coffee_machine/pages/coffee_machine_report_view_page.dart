@@ -6,6 +6,7 @@ import '../services/coffee_machine_report_service.dart';
 import '../../../core/constants/api_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/services/user_role_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Детальный просмотр отчёта по счётчику кофемашин
 class CoffeeMachineReportViewPage extends StatefulWidget {
@@ -273,12 +274,12 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               borderRadius: BorderRadius.circular(8),
               child: reading.selectedRegion != null
                   ? _buildPhotoWithRegion(reading.photoUrl!, reading.selectedRegion!)
-                  : Image.network(
-                      _photoUrl(reading.photoUrl),
+                  : AppCachedImage(
+                      imageUrl: _photoUrl(reading.photoUrl),
                       height: 150,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorWidget: (_, __, ___) => Container(
                         height: 80,
                         color: Colors.white.withOpacity(0.04),
                         child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
@@ -329,12 +330,12 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
           height: height,
           child: Stack(
             children: [
-              Image.network(
-                _photoUrl(photoUrl),
+              AppCachedImage(
+                imageUrl: _photoUrl(photoUrl),
                 height: height,
                 width: width,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorWidget: (_, __, ___) => Container(
                   height: 80,
                   color: Colors.white.withOpacity(0.04),
                   child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
@@ -440,12 +441,12 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
             const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                _photoUrl(report.computerPhotoUrl),
+              child: AppCachedImage(
+                imageUrl: _photoUrl(report.computerPhotoUrl),
                 height: 150,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorWidget: (_, __, ___) => Container(
                   height: 80,
                   color: Colors.white.withOpacity(0.04),
                   child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),

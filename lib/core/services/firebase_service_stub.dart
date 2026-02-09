@@ -49,7 +49,6 @@ class RemoteNotification {
 /// Firebase Messaging не поддерживается на веб-платформе
 class FirebaseService {
   static bool _initialized = false;
-  static BuildContext? _globalContext;
 
   /// Инициализация Firebase Messaging (заглушка для веб)
   static Future<void> initialize() async {
@@ -61,31 +60,6 @@ class FirebaseService {
 
   /// Установить глобальный контекст для навигации
   static void setGlobalContext(BuildContext context) {
-    _globalContext = context;
-  }
-
-  /// Сохранить FCM токен на сервере (заглушка)
-  static Future<void> _saveTokenToServer(String token) async {
-    // Заглушка - ничего не делает на веб
-  }
-
-  /// Показать локальное уведомление (заглушка)
-  static Future<void> _showLocalNotification(RemoteMessage message) async {
-    // Заглушка - ничего не делает на веб
-  }
-
-  /// Обработка нажатия на уведомление (заглушка)
-  static void _onNotificationTapped(NotificationResponse response) {
-    // Заглушка - ничего не делает на веб
-  }
-
-  /// Обработка навигации при открытии уведомления (заглушка)
-  static void _handleNotificationTap(RemoteMessage message) {
-    // Заглушка - ничего не делает на веб
-  }
-
-  /// Навигация к диалогу при открытии уведомления (заглушка)
-  static void _handleNotificationNavigation(Map<String, dynamic> data) {
     // Заглушка - ничего не делает на веб
   }
 }

@@ -6,6 +6,7 @@ import '../models/client_message_model.dart';
 import '../services/client_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница переписки с клиентом
 class ClientChatPage extends StatefulWidget {
@@ -344,12 +345,12 @@ class _ClientChatPageState extends State<ClientChatPage> {
                             color: Colors.black87,
                             child: const Icon(Icons.videocam, color: Colors.white),
                           )
-                        : Image.network(
-                            _pendingMediaUrl!,
+                        : AppCachedImage(
+                            imageUrl: _pendingMediaUrl!,
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorWidget: (_, __, ___) => Container(
                               width: 60,
                               height: 60,
                               color: Colors.grey,

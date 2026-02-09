@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/client_dialog_model.dart';
 import '../services/client_dialog_service.dart';
 import '../../../shared/models/unified_dialog_message_model.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class ClientDialogPage extends StatefulWidget {
   final String shopAddress;
@@ -180,8 +181,8 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  message.getImageUrl()!,
+                child: AppCachedImage(
+                  imageUrl: message.getImageUrl()!,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),

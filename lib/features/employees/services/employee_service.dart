@@ -4,15 +4,54 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class EmployeeService {
-  /// Получить всех сотрудников
+  // Кэш списка сотрудников (30 сек TTL)
+  static List<Employee>? _cachedEmployees;
+  static DateTime? _cacheTime;
+  static const _cacheDuration = Duration(seconds: 30);
+  // Защита от параллельных вызовов
+  static Future<List<Employee>>? _loadingFuture;
+
+  /// Получить всех сотрудников (с кэшированием на 30 сек)
   static Future<List<Employee>> getEmployees() async {
+    // Кэш ещё свежий — возвращаем
+    if (_cachedEmployees != null &&
+        _cacheTime != null &&
+        DateTime.now().difference(_cacheTime!) < _cacheDuration) {
+      return _cachedEmployees!;
+    }
+
+    // Загрузка уже идёт — ждём её результат
+    if (_loadingFuture != null) {
+      return await _loadingFuture!;
+    }
+
+    _loadingFuture = _doGetEmployees();
+    try {
+      return await _loadingFuture!;
+    } finally {
+      _loadingFuture = null;
+    }
+  }
+
+  static Future<List<Employee>> _doGetEmployees() async {
     Logger.debug('📥 Загрузка сотрудников с сервера...');
 
-    return await BaseHttpService.getList<Employee>(
+    final employees = await BaseHttpService.getList<Employee>(
       endpoint: ApiConstants.employeesEndpoint,
       fromJson: (json) => Employee.fromJson(json),
       listKey: 'employees',
     );
+
+    _cachedEmployees = employees;
+    _cacheTime = DateTime.now();
+    return employees;
+  }
+
+  /// Очистить кэш сотрудников
+  static void clearCache() {
+    _cachedEmployees = null;
+    _cacheTime = null;
+    _loadingFuture = null;
   }
 
   /// Получить сотрудника по ID
@@ -48,12 +87,14 @@ class EmployeeService {
     if (preferredShops != null) requestBody['preferredShops'] = preferredShops;
     if (shiftPreferences != null) requestBody['shiftPreferences'] = shiftPreferences;
 
-    return await BaseHttpService.post<Employee>(
+    final result = await BaseHttpService.post<Employee>(
       endpoint: ApiConstants.employeesEndpoint,
       body: requestBody,
       fromJson: (json) => Employee.fromJson(json),
       itemKey: 'employee',
     );
+    clearCache();
+    return result;
   }
 
   /// Обновить сотрудника
@@ -80,21 +121,25 @@ class EmployeeService {
     if (preferredShops != null) body['preferredShops'] = preferredShops;
     if (shiftPreferences != null) body['shiftPreferences'] = shiftPreferences;
 
-    return await BaseHttpService.put<Employee>(
+    final result = await BaseHttpService.put<Employee>(
       endpoint: '${ApiConstants.employeesEndpoint}/$id',
       body: body,
       fromJson: (json) => Employee.fromJson(json),
       itemKey: 'employee',
     );
+    clearCache();
+    return result;
   }
 
   /// Удалить сотрудника
   static Future<bool> deleteEmployee(String id) async {
     Logger.debug('📤 Удаление сотрудника: $id');
 
-    return await BaseHttpService.delete(
+    final result = await BaseHttpService.delete(
       endpoint: '${ApiConstants.employeesEndpoint}/$id',
     );
+    clearCache();
+    return result;
   }
 }
 

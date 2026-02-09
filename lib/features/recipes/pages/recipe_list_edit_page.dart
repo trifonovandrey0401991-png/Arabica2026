@@ -3,6 +3,7 @@ import '../models/recipe_model.dart';
 import '../services/recipe_service.dart';
 import 'recipe_form_page.dart';
 import '../../../core/utils/logger.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class RecipeListEditPage extends StatefulWidget {
   const RecipeListEditPage({super.key});
@@ -584,12 +585,12 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
   Widget _buildRecipeImage(Recipe recipe) {
     if (recipe.photoUrlOrId != null) {
       if (recipe.photoUrlOrId!.startsWith('http')) {
-        return Image.network(
-          recipe.photoUrlOrId!,
+        return AppCachedImage(
+          imageUrl: recipe.photoUrlOrId!,
           width: 70,
           height: 70,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildNoPhoto(),
+          errorWidget: (_, __, ___) => _buildNoPhoto(),
         );
       } else {
         return Image.asset(

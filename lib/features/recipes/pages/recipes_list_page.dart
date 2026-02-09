@@ -5,6 +5,7 @@ import 'recipe_list_edit_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 import '../../../core/utils/logger.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class RecipesListPage extends StatefulWidget {
   const RecipesListPage({super.key});
@@ -15,7 +16,6 @@ class RecipesListPage extends StatefulWidget {
 
 class _RecipesListPageState extends State<RecipesListPage> with TickerProviderStateMixin {
   static const _primaryColor = Color(0xFF004D40);
-  static const _primaryColorLight = Color(0xFF00695C);
 
   TabController? _tabController;
   late Future<List<Recipe>> _recipesFuture;
@@ -499,12 +499,12 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
   Widget _buildRecipeImage(Recipe recipe) {
     if (recipe.photoUrlOrId != null) {
       if (recipe.photoUrlOrId!.startsWith('http')) {
-        return Image.network(
-          recipe.photoUrlOrId!,
+        return AppCachedImage(
+          imageUrl: recipe.photoUrlOrId!,
           width: 80,
           height: 80,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildNoPhoto(),
+          errorWidget: (_, __, ___) => _buildNoPhoto(),
         );
       } else {
         return Image.asset(

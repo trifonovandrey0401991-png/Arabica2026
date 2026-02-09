@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class ProductQuestionDialogPage extends StatefulWidget {
   final String questionId;
@@ -197,13 +198,13 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
                               const SizedBox(height: 8),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  message.imageUrl!.startsWith('http')
+                                child: AppCachedImage(
+                                  imageUrl: message.imageUrl!.startsWith('http')
                                       ? message.imageUrl!
                                       : 'https://arabica26.ru${message.imageUrl}',
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
+                                  errorWidget: (context, error, stackTrace) {
                                     return Container(
                                       height: 200,
                                       color: Colors.grey[300],

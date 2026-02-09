@@ -20,7 +20,6 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
   List<Shop> _shops = [];
   bool _isLoading = true;
   bool _isMarking = false;
-  Position? _currentPosition;
   String? _errorMessage;
 
   @override

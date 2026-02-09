@@ -44,15 +44,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
 
   // Данные для всех магазинов
   List<ShopRevenue> _allShopsRevenues = [];
-  Map<String, List<DailyRevenue>> _allShopsDailyRevenues = {};
-
   // Данные для таблицы по неделям (один магазин)
   bool _showWeeklyTable = false;
   List<MonthlyRevenueTable> _weeklyRevenues = [];
 
   // Данные для таблицы по неделям (все магазины)
   Map<String, List<MonthlyRevenueTable>> _allShopsWeeklyRevenues = {};
-  Set<String> _collapsedShops = {}; // Свёрнутые магазины
+  final Set<String> _collapsedShops = {}; // Свёрнутые магазины
 
   @override
   void initState() {
@@ -340,7 +338,6 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       if (!mounted) return;
       setState(() {
         _allShopsRevenues = revenues;
-        _allShopsDailyRevenues = dailyRevenues;
         _isLoading = false;
       });
     } catch (e) {

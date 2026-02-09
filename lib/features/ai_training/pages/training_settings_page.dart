@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/cigarette_training_model.dart';
 import '../services/cigarette_vision_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница настроек обучения ИИ
 /// Позволяет изменять количество требуемых фото и удалять некачественные фото
@@ -20,7 +21,6 @@ class TrainingSettingsPage extends StatefulWidget {
 }
 
 class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
-  TrainingSettings? _settings;
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -41,7 +41,6 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
     if (mounted) {
       setState(() {
-        _settings = settings;
         if (settings != null) {
           _requiredRecountPhotos = settings.requiredRecountPhotos;
           _requiredDisplayPhotosPerShop = settings.requiredDisplayPhotosPerShop;
@@ -1037,20 +1036,13 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         fit: StackFit.expand,
         children: [
           // Изображение
-          Image.network(
-            imageUrl,
+          AppCachedImage(
+            imageUrl: imageUrl,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
+            errorWidget: (context, error, stackTrace) {
               return Container(
                 color: Colors.grey[200],
                 child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: Colors.grey[200],
-                child: const Center(child: CircularProgressIndicator()),
               );
             },
           ),

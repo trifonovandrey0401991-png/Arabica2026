@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/envelope_question_model.dart';
 import '../services/envelope_question_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница управления вопросами формирования конверта
 class EnvelopeQuestionsManagementPage extends StatefulWidget {
@@ -467,17 +468,10 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
               ],
             ),
             InteractiveViewer(
-              child: Image.network(
-                question.referencePhotoUrl!,
+              child: AppCachedImage(
+                imageUrl: question.referencePhotoUrl!,
                 fit: BoxFit.contain,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const SizedBox(
-                    height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
+                errorWidget: (context, error, stackTrace) {
                   return const SizedBox(
                     height: 200,
                     child: Center(
@@ -700,10 +694,10 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                         ),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(8),
-                                          child: Image.network(
-                                            question.referencePhotoUrl!,
+                                          child: AppCachedImage(
+                                            imageUrl: question.referencePhotoUrl!,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => const Icon(
+                                            errorWidget: (_, __, ___) => const Icon(
                                               Icons.broken_image,
                                               color: Colors.grey,
                                             ),

@@ -35,7 +35,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
   int _currentSetIndex = 0;
 
   // Изображения для каждого набора
-  Map<String, Uint8List> _setImages = {};
+  final Map<String, Uint8List> _setImages = {};
 
   String? _selectedField;
   String _cashRegisterType = CashRegisterTypes.atol;

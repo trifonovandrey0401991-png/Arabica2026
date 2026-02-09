@@ -13,6 +13,7 @@ import '../../features/product_questions/pages/product_question_shops_list_page.
 import '../../features/reviews/models/review_model.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/pages/client_reviews_list_page.dart';
+import '../../shared/widgets/app_cached_image.dart';
 import '../../core/utils/logger.dart';
 import '../../features/employee_chat/models/employee_chat_model.dart';
 import '../../features/employee_chat/pages/employee_chat_page.dart';
@@ -510,12 +511,12 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                   child: imageUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            imageUrl,
+                          child: AppCachedImage(
+                            imageUrl: imageUrl,
                             width: 34,
                             height: 34,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
+                            errorWidget: (_, __, ___) => Center(
                               child: Icon(icon, color: accentColor, size: 18),
                             ),
                           ),

@@ -486,20 +486,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
     );
   }
 
-  /// Стандартное меню для админов (прокручивается)
-  Widget _buildDefaultMenu() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: GridView.count(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 1.0,
-        children: _getMenuItems(),
-      ),
-    );
-  }
-
   /// Меню для админов - 4 широкие строки на весь экран
   Widget _buildAdminMenu() {
     return Padding(
@@ -734,7 +720,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
           const headerHeight = 20.0;
           const aiButtonHeight = 52.0;
           const aiButtonTopMargin = 10.0;
-          const cols = 3;
 
           final sections = _getEmployeeSections();
 
@@ -1964,101 +1949,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
     );
   }
 
-  List<Widget> _getMenuItems() {
-    final role = _userRole?.role ?? UserRole.client;
-    final items = <Widget>[];
-
-    // Для админа и разработчика - административные функции + Клиент
-    if (role == UserRole.admin || role == UserRole.developer) {
-      // "Управление" видит только разработчик
-      if (role == UserRole.developer) {
-        items.add(_buildTile(Icons.tune_rounded, 'Управление', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage()));
-        }));
-      }
-
-      items.add(_buildTile(
-        Icons.analytics_outlined, 'Отчёты', () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
-          _loadTotalReportsCount();
-        },
-        badge: _totalReportsCount,
-      ));
-
-      items.add(_buildTile(Icons.grid_view_rounded, 'Панель', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage()));
-      }));
-
-      items.add(_buildTile(Icons.person_outline, 'Клиент', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage()));
-      }));
-
-      return items;
-    }
-
-    // Для остальных ролей - полное меню (на случай если используется)
-    items.add(_buildTile(Icons.coffee_rounded, 'Меню', () async {
-      final shop = await _showShopDialog(context);
-      if (!mounted || shop == null) return;
-      final cats = await _loadCategories(shop.address);
-      if (!mounted) return;
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => MenuGroupsPage(groups: cats, selectedShop: shop.address),
-      ));
-    }));
-
-    items.add(_buildTile(Icons.shopping_bag_outlined, 'Корзина', () {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
-    }));
-
-    items.add(_buildTile(Icons.receipt_long_outlined, 'Заказы', () {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersPage()));
-    }));
-
-    items.add(_buildTile(Icons.place_outlined, 'Кофейни', () {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopsOnMapPage()));
-    }));
-
-    items.add(_buildTile(Icons.card_membership_outlined, 'Лояльность', () async {
-      final enabled = await FirebaseService.areNotificationsEnabled();
-      if (!enabled && context.mounted) {
-        final result = await NotificationRequiredDialog.show(context);
-        if (result == true) {
-          await Future.delayed(const Duration(milliseconds: 500));
-          final ok = await FirebaseService.areNotificationsEnabled();
-          if (ok && context.mounted) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
-          }
-        }
-        return;
-      }
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
-    }));
-
-    items.add(_buildTile(Icons.star_outline_rounded, 'Отзывы', () {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewTypeSelectionPage()));
-    }));
-
-    items.add(_buildTile(
-      Icons.chat_bubble_outline_rounded, 'Диалоги', () async {
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const MyDialogsPage()));
-        _loadMyDialogsCount();
-      },
-      badge: _myDialogsUnreadCount,
-    ));
-
-    items.add(_buildTile(Icons.search_rounded, 'Поиск', () {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchShopSelectionPage()));
-    }));
-
-    if (role == UserRole.employee) {
-      items.add(_buildTile(Icons.grid_view_rounded, 'Панель', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage()));
-      }));
-    }
-
-    return items;
-  }
 
   /// ═══════════════════════════════════════════════════════════════
   /// КОМПАКТНАЯ ПЛИТКА ДЛЯ КЛИЕНТОВ - помещается на экран
@@ -2131,87 +2021,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 style: TextStyle(
                   color: _emerald,
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// ═══════════════════════════════════════════════════════════════
-  /// МИНИМАЛИСТИЧНАЯ ПЛИТКА - для админов и сотрудников
-  /// ═══════════════════════════════════════════════════════════════
-  Widget _buildTile(IconData icon, String label, VoidCallback onTap, {int? badge}) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Основная кнопка
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1,
-            ),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(20),
-              splashColor: Colors.white.withOpacity(0.1),
-              highlightColor: Colors.white.withOpacity(0.05),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: Icon(
-                          icon,
-                          size: 44,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 0.3,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        // Бейдж
-        if (badge != null && badge > 0)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                badge > 99 ? '99+' : badge.toString(),
-                style: TextStyle(
-                  color: _emerald,
-                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),

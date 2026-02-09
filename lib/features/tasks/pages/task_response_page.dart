@@ -6,6 +6,7 @@ import '../models/task_model.dart';
 import '../services/task_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 /// Страница ответа на задачу (для работника)
 class TaskResponsePage extends StatefulWidget {
@@ -390,10 +391,10 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            fullUrl,
+                          child: AppCachedImage(
+                            imageUrl: fullUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorWidget: (_, __, ___) => Container(
                               color: Colors.white.withOpacity(0.06),
                               child: Icon(Icons.broken_image, color: Colors.white.withOpacity(0.3)),
                             ),
@@ -419,10 +420,10 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
         child: Stack(
           children: [
             InteractiveViewer(
-              child: Image.network(
-                imageUrl,
+              child: AppCachedImage(
+                imageUrl: imageUrl,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Center(
+                errorWidget: (_, __, ___) => const Center(
                   child: Icon(Icons.broken_image, size: 64, color: Colors.white),
                 ),
               ),

@@ -35,7 +35,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   CalendarFormat _calendarFormat = CalendarFormat.month;
-  Map<DateTime, KPIShopDayData> _dayDataCache = {};
+  final Map<DateTime, KPIShopDayData> _dayDataCache = {};
   bool _isLoading = false;
   List<Shop> _shops = [];
 
@@ -306,43 +306,6 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
 
     // Всегда показываем диалог с актуальными данными
     _showDayDetail(normalizedDate);
-  }
-
-  Future<void> _loadDayData(DateTime date) async {
-    if (_selectedShop == null) return;
-
-    // Очищаем кэш для этой даты перед загрузкой
-    KPIService.clearCacheForDate(_selectedShop!.address, date);
-    // Удаляем из локального кэша
-    final normalizedDate = DateTime(date.year, date.month, date.day);
-    _dayDataCache.remove(normalizedDate);
-
-    // Показываем индикатор загрузки только если данных совсем нет
-    if (_dayDataCache.isEmpty) {
-      setState(() => _isLoading = true);
-    }
-
-    try {
-      final dayData = await KPIService.getShopDayData(
-        _selectedShop!.address,
-        date,
-      );
-
-      if (mounted) {
-        setState(() {
-          _dayDataCache[normalizedDate] = dayData;
-          _isLoading = false;
-        });
-        _showDayDetail(normalizedDate);
-      }
-    } catch (e) {
-      Logger.error('Ошибка загрузки данных за день', e);
-      if (mounted) {
-        setState(() => _isLoading = false);
-        // Показываем диалог даже при ошибке (может быть пустым)
-        _showDayDetail(normalizedDate);
-      }
-    }
   }
 
   void _showDayDetail(DateTime date) async {

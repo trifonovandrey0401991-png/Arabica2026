@@ -11,6 +11,7 @@ import '../services/shift_handover_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import '../../envelope/pages/envelope_form_page.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
@@ -35,7 +36,7 @@ class ShiftHandoverQuestionsPage extends StatefulWidget {
 class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage> {
   List<ShiftHandoverQuestion>? _questions;
   bool _isLoading = true;
-  List<ShiftHandoverAnswer> _answers = [];
+  final List<ShiftHandoverAnswer> _answers = [];
   int _currentQuestionIndex = 0;
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _numberController = TextEditingController();
@@ -482,7 +483,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
 
         if (answer.photoPath != null && answer.photoDriveId == null) {
           try {
-            final fileName = '${reportId}_${i}.jpg';
+            final fileName = '${reportId}_$i.jpg';
             Logger.info('Загрузка фото сотрудника на сервер: $fileName');
             Logger.debug('   Путь к фото: ${answer.photoPath}');
 
@@ -1288,23 +1289,10 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      referencePhotoUrl,
+                    child: AppCachedImage(
+                      imageUrl: referencePhotoUrl,
                       fit: BoxFit.contain,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            color: _gold.withOpacity(0.6),
-                            strokeWidth: 2.5,
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
+                      errorWidget: (context, error, stackTrace) {
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -1385,10 +1373,10 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: kIsWeb
-                        ? Image.network(
-                            _photoPath!,
+                        ? AppCachedImage(
+                            imageUrl: _photoPath!,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
+                            errorWidget: (context, error, stackTrace) {
                               return Center(
                                 child: Icon(Icons.error_outline, size: 40, color: Colors.white.withOpacity(0.3)),
                               );

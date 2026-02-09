@@ -43,7 +43,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
   WorkSchedule? _schedule;
   Map<String, ShopSettings> _shopSettingsCache = {};
   List<ShopAbbreviation> _allAbbreviations = [];
-  Map<DateTime, String?> _selectedAbbreviations = {}; // Дата -> выбранная аббревиатура
+  final Map<DateTime, String?> _selectedAbbreviations = {}; // Дата -> выбранная аббревиатура
   bool _isLoading = false;
   bool _isSaving = false;
 
@@ -167,7 +167,6 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
   }
 
   List<DateTime> _getDaysInMonth() {
-    final firstDay = DateTime(widget.selectedMonth.year, widget.selectedMonth.month, 1);
     final lastDay = DateTime(widget.selectedMonth.year, widget.selectedMonth.month + 1, 0);
     final maxDay = lastDay.day;
     final actualStartDay = widget.startDay.clamp(1, maxDay);

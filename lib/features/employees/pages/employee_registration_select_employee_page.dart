@@ -16,8 +16,8 @@ class EmployeeRegistrationSelectEmployeePage extends StatefulWidget {
 class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistrationSelectEmployeePage> {
   late Future<List<Employee>> _employeesFuture;
   String _searchQuery = '';
-  Map<String, bool> _verificationStatus = {};
-  Map<String, bool> _hasRegistration = {}; // Кэш наличия регистрации (независимо от статуса верификации)
+  final Map<String, bool> _verificationStatus = {};
+  final Map<String, bool> _hasRegistration = {}; // Кэш наличия регистрации (независимо от статуса верификации)
 
   @override
   void initState() {

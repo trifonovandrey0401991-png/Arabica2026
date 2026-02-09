@@ -42,8 +42,6 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
   bool _isLoading = true;
   String? _userPhone;
   String? _employeeId;
-  String? _employeeName;
-
   // Фильтр по месяцу
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
@@ -71,7 +69,6 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     }
 
     _employeeId = widget.employeeId ?? prefs.getString('user_phone') ?? _userPhone;
-    _employeeName = widget.employeeName ?? prefs.getString('userName') ?? prefs.getString('user_name');
 
     _loadAssignments();
   }
@@ -176,28 +173,6 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       case TaskStatus.declined:
         return Icons.block;
     }
-  }
-
-  void _showFloatingSnackBar(String message, {bool isError = false, bool isSuccess = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : (isSuccess ? Icons.check_circle : Icons.info_outline),
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: isError ? Colors.red[700] : (isSuccess ? Colors.green[700] : _emerald),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
   }
 
   @override

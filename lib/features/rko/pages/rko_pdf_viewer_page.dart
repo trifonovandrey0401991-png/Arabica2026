@@ -29,7 +29,6 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
   bool _isLoading = false;
 
   bool get _isDocx => widget.fileName.toLowerCase().endsWith('.docx');
-  bool get _isPdf => widget.fileName.toLowerCase().endsWith('.pdf');
 
   @override
   void initState() {
