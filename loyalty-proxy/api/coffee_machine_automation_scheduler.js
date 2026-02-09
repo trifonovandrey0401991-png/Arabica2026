@@ -335,18 +335,18 @@ async function assignPenalty(report, settings) {
   }
 
   const penaltiesFile = path.join(penaltiesDir, `${year}-${month}.json`);
-  let penalties = { penalties: [] };
+  let penalties = [];
 
   if (await fileExists(penaltiesFile)) {
     const raw = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
-    penalties = Array.isArray(raw) ? { penalties: raw } : raw;
+    penalties = Array.isArray(raw) ? raw : (raw.penalties || []);
   }
 
   // Проверка дубликатов
-  const exists = (penalties.penalties || []).some(p => p.sourceId === report.id);
+  const exists = penalties.some(p => p.sourceId === report.id);
   if (exists) return;
 
-  penalties.penalties.push(penalty);
+  penalties.push(penalty);
   await writeJsonFile(penaltiesFile, penalties);
 
   console.log(`[CoffeeMachine] Штраф назначен: ${entry.employeeName} (${penalty.points} баллов)`);

@@ -266,6 +266,40 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
     }
   });
 
+  // GET /api/recount-reports/:id - получить один отчёт пересчёта по ID
+  app.get('/api/recount-reports/:id', async (req, res) => {
+    try {
+      const reportId = decodeURIComponent(req.params.id);
+      console.log(`GET /api/recount-reports/${reportId}`);
+
+      const reportsDir = `${DATA_DIR}/recount-reports`;
+      const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
+
+      if (await fileExists(reportFile)) {
+        const content = await fsp.readFile(reportFile, 'utf8');
+        const report = JSON.parse(content);
+        return res.json({ success: true, report });
+      }
+
+      // Попробуем найти по частичному совпадению (как в rating endpoint)
+      if (await fileExists(reportsDir)) {
+        const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
+        const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
+        if (matchingFile) {
+          const content = await fsp.readFile(path.join(reportsDir, matchingFile), 'utf8');
+          const report = JSON.parse(content);
+          return res.json({ success: true, report });
+        }
+      }
+
+      res.status(404).json({ success: false, error: 'Отчёт пересчёта не найден' });
+    } catch (error) {
+      console.error('Ошибка получения отчёта пересчёта:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // GET /api/pending-recount-reports - ожидающие (pending) пересчёты
   app.get('/api/pending-recount-reports', async (req, res) => {
     try {
@@ -394,6 +428,10 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       if (!exists) {
         const penalty = {
           id: `ep_${Date.now()}`,
+          type: 'employee',
+          entityId: report.employeePhone || report.employeeId,
+          entityName: report.employeeName,
+          shopAddress: report.shopAddress || null,
           employeeId: report.employeePhone || report.employeeId,
           employeeName: report.employeeName,
           category: 'recount',

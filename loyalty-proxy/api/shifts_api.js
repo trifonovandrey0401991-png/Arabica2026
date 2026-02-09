@@ -289,6 +289,48 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
     }
   });
 
+  // GET - Get single shift report by ID
+  app.get('/api/shift-reports/:id', async (req, res) => {
+    try {
+      const reportId = decodeURIComponent(req.params.id);
+      let report = null;
+
+      // 1. Ищем в daily-файлах (формат scheduler'а: YYYY-MM-DD.json)
+      if (await fileExists(SHIFT_REPORTS_DIR)) {
+        const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f));
+        for (const file of files) {
+          try {
+            const content = await fsp.readFile(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
+            const reports = JSON.parse(content);
+            if (Array.isArray(reports)) {
+              const found = reports.find(r => r.id === reportId);
+              if (found) { report = found; break; }
+            }
+          } catch (e) {}
+        }
+      }
+
+      // 2. Если не нашли в daily — ищем в individual файлах
+      if (!report) {
+        const reportFile = path.join(SHIFT_REPORTS_DIR, `${sanitizeId(reportId)}.json`);
+        if (await fileExists(reportFile)) {
+          const content = await fsp.readFile(reportFile, 'utf8');
+          const data = JSON.parse(content);
+          if (data && data.id) report = data;
+        }
+      }
+
+      if (!report) {
+        return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+      }
+
+      res.json({ success: true, report });
+    } catch (error) {
+      console.error('Ошибка получения отчета пересменки:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // PUT - Update shift report (confirm/rate)
   app.put('/api/shift-reports/:id', async (req, res) => {
     try {
@@ -386,6 +428,10 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
             const employeePhone = existingReport.employeePhone || existingReport.phone;
             const penalty = {
               id: `ep_${Date.now()}`,
+              type: 'employee',
+              entityId: employeePhone || existingReport.employeeId,
+              entityName: existingReport.employeeName,
+              shopAddress: existingReport.shopAddress || null,
               employeeId: employeePhone || existingReport.employeeId,
               employeeName: existingReport.employeeName,
               category: 'shift',
