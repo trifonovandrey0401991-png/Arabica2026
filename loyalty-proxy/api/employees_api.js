@@ -150,6 +150,19 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         });
       }
 
+      // Валидация формата телефона (если указан)
+      if (req.body.phone) {
+        const phoneClean = req.body.phone.replace(/[\s+\-()]/g, '');
+        if (!/^\d{10,15}$/.test(phoneClean)) {
+          return res.status(400).json({ success: false, error: 'Неверный формат телефона' });
+        }
+      }
+
+      // Валидация формата email (если указан)
+      if (req.body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email)) {
+        return res.status(400).json({ success: false, error: 'Неверный формат email' });
+      }
+
       // Генерируем ID если не указан
       const id = req.body.id || `employee_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -216,6 +229,19 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
           success: false,
           error: 'Имя сотрудника обязательно'
         });
+      }
+
+      // Валидация формата телефона (если указан)
+      if (req.body.phone) {
+        const phoneClean = req.body.phone.replace(/[\s+\-()]/g, '');
+        if (!/^\d{10,15}$/.test(phoneClean)) {
+          return res.status(400).json({ success: false, error: 'Неверный формат телефона' });
+        }
+      }
+
+      // Валидация формата email (если указан)
+      if (req.body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email)) {
+        return res.status(400).json({ success: false, error: 'Неверный формат email' });
       }
 
       // Читаем существующие данные для сохранения createdAt

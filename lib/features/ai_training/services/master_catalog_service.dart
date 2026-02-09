@@ -306,6 +306,99 @@ class MasterCatalogService {
       return [];
     }
   }
+
+  // ============ ПРИВЯЗКА КОДОВ К СУЩЕСТВУЮЩИМ ТОВАРАМ ============
+
+  /// Поиск товаров для привязки pending-кода (лёгкий, с фото и баркодами)
+  static Future<List<AssignSearchProduct>> searchForAssign(String query) async {
+    try {
+      if (query.length < 2) return [];
+
+      final url = '${ApiConstants.serverUrl}$_endpoint/search-for-assign?search=${Uri.encodeComponent(query)}';
+      Logger.debug('GET $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data['products'] as List? ?? [];
+        return list.map((json) => AssignSearchProduct.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      Logger.error('Error searching for assign', e);
+      return [];
+    }
+  }
+
+  /// Привязать pending-код к существующему товару
+  static Future<bool> assignCodeToProduct({
+    required String kod,
+    required String targetProductId,
+  }) async {
+    try {
+      final url = '${ApiConstants.serverUrl}$_endpoint/assign-code-to-product';
+      Logger.debug('POST $url (kod: $kod, target: $targetProductId)');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'kod': kod,
+          'targetProductId': targetProductId,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      Logger.error('Error assigning code: ${response.statusCode}');
+      return false;
+    } catch (e) {
+      Logger.error('Error assigning code to product', e);
+      return false;
+    }
+  }
+}
+
+/// Продукт из лёгкого поиска для привязки кода
+class AssignSearchProduct {
+  final String id;
+  final String name;
+  final String group;
+  final String? barcode;
+  final List<String> barcodes;
+  final List<String> ids;
+  final int barcodesCount;
+  final String? productPhotoUrl;
+
+  AssignSearchProduct({
+    required this.id,
+    required this.name,
+    this.group = '',
+    this.barcode,
+    this.barcodes = const [],
+    this.ids = const [],
+    this.barcodesCount = 1,
+    this.productPhotoUrl,
+  });
+
+  factory AssignSearchProduct.fromJson(Map<String, dynamic> json) {
+    return AssignSearchProduct(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      group: json['group'] ?? '',
+      barcode: json['barcode'],
+      barcodes: (json['barcodes'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      ids: (json['ids'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      barcodesCount: json['barcodesCount'] ?? 1,
+      productPhotoUrl: json['productPhotoUrl'] as String?,
+    );
+  }
 }
 
 /// Статистика мастер-каталога

@@ -15,6 +15,7 @@ import '../../features/bonuses/pages/bonus_penalty_management_page.dart';
 import '../../features/data_cleanup/pages/data_cleanup_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
+import '../../features/execution_chain/pages/execution_chain_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -158,6 +159,14 @@ class DataManagementPage extends StatelessWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const BonusPenaltyManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.link_rounded,
+                      title: 'Цепочка Выполнений',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ExecutionChainPage()),
                       ),
                     ),
                     _buildRow(

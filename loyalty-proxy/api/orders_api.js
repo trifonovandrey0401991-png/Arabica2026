@@ -23,7 +23,7 @@ function setupOrdersAPI(app) {
   // POST /api/orders - создать заказ
   app.post('/api/orders', async (req, res) => {
     try {
-      console.log('POST /api/orders', req.body);
+      console.log('POST /api/orders clientPhone:', clientPhone, 'shop:', shopAddress);
       const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;
       const normalizedPhone = clientPhone.replace(/[\s+]/g, '');
 

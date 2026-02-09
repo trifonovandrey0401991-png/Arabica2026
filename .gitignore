@@ -80,6 +80,9 @@ TOV.DBF
 
 # Прочие временные файлы
 TEST_PROGRESS.md
+loyalty-proxy/tests/smoke-results-*.json
+AUDIT_PROMPT.md
+ULTIMATE_AUDIT_PROMPT.md
 
 # Backup файлы (создаются при ручных бэкапах)
 *.backup-*

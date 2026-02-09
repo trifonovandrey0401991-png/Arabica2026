@@ -64,6 +64,8 @@ import '../../core/services/app_update_service.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/network_management/pages/network_management_page.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
+import '../../features/execution_chain/services/execution_chain_service.dart';
+import '../../features/execution_chain/models/execution_chain_model.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -94,6 +96,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   // Баллы эффективности за текущий месяц
   double? _efficiencyPoints;
+
+  // Кэш цепочки выполнений (обновляется каждые 30 секунд)
+  ExecutionChainStatus? _chainStatus;
+  DateTime? _chainStatusLoadedAt;
 
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - только изумруд и белый
@@ -1376,69 +1382,79 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return [
       // 1. Я на работе
       _buildCompactTile(Icons.access_time_outlined, 'Я на работе', () async {
-        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        try {
-          final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
-          if (!context.mounted) return;
-          if (hasAttendance) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: const Text('Вы уже отметились сегодня'), backgroundColor: Colors.orange.shade700),
-            );
-            return;
+        await _executeWithChainCheck('attendance', () async {
+          final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+          final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+          try {
+            final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
+            if (!context.mounted) return;
+            if (hasAttendance) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: const Text('Вы уже отметились сегодня'), backgroundColor: Colors.orange.shade700),
+              );
+              return;
+            }
+          } catch (e) {
+            Logger.warning('Ошибка проверки отметки: $e');
           }
-        } catch (e) {
-          Logger.warning('Ошибка проверки отметки: $e');
-        }
-        if (!context.mounted) return;
-        await _markAttendanceAutomatically(context, employeeName);
+          if (!context.mounted) return;
+          await _markAttendanceAutomatically(context, employeeName);
+        });
       }),
       // 2. Пересменка
       _buildCompactTile(Icons.swap_horiz_rounded, 'Пересменка', () async {
-        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftShopSelectionPage(employeeName: employeeName)));
+        await _executeWithChainCheck('shift', () async {
+          final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+          final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+          if (!context.mounted) return;
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftShopSelectionPage(employeeName: employeeName)));
+        });
       }),
       // 3. Сдать смену
       _buildCompactTile(Icons.check_circle_outline_rounded, 'Сдать смену', () async {
-        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName)));
+        await _executeWithChainCheck('shift_handover', () async {
+          final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+          final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+          if (!context.mounted) return;
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName)));
+        });
       }),
       // 4. Пересчёт
-      _buildCompactTile(Icons.inventory_2_outlined, 'Пересчёт', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountShopSelectionPage()));
+      _buildCompactTile(Icons.inventory_2_outlined, 'Пересчёт', () async {
+        await _executeWithChainCheck('recount', () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountShopSelectionPage()));
+        });
       }),
       // 5. РКО
       _buildCompactTile(Icons.receipt_long_outlined, 'РКО', () async {
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
-          if (phone == null || phone.isEmpty) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: const Text('Не удалось определить телефон сотрудника'), backgroundColor: Colors.red.shade700),
-              );
+        await _executeWithChainCheck('rko', () async {
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+            if (phone == null || phone.isEmpty) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: const Text('Не удалось определить телефон сотрудника'), backgroundColor: Colors.red.shade700),
+                );
+              }
+              return;
             }
-            return;
-          }
-          final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
-          if (registration == null || !registration.isVerified) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: const Text('Только верифицированные сотрудники могут создавать РКО'), backgroundColor: Colors.orange.shade700),
-              );
+            final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+            final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+            if (registration == null || !registration.isVerified) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: const Text('Только верифицированные сотрудники могут создавать РКО'), backgroundColor: Colors.orange.shade700),
+                );
+              }
+              return;
             }
-            return;
+            if (!context.mounted) return;
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOTypeSelectionPage()));
+          } catch (e) {
+            Logger.error('Ошибка проверки верификации', e);
           }
-          if (!context.mounted) return;
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOTypeSelectionPage()));
-        } catch (e) {
-          Logger.error('Ошибка проверки верификации', e);
-        }
+        });
       }),
       // 6. Задачи
       _buildCompactTile(Icons.task_alt_outlined, 'Задачи', () async {
@@ -1550,7 +1566,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
               title: Text('Тестирование', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () {
                 Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const TestPage()));
+                _executeWithChainCheck('testing', () async {
+                  if (!context.mounted) return;
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const TestPage()));
+                });
               },
             ),
             ListTile(
@@ -1565,6 +1584,221 @@ class _MainMenuPageState extends State<MainMenuPage> {
         ),
       ),
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ЦЕПОЧКА ВЫПОЛНЕНИЙ - блокировка действий
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Загрузить статус цепочки (кэш 30 секунд)
+  Future<ExecutionChainStatus?> _loadChainStatus() async {
+    // Используем кэш если он свежий (< 30 сек)
+    if (_chainStatus != null && _chainStatusLoadedAt != null) {
+      final age = DateTime.now().difference(_chainStatusLoadedAt!);
+      if (age.inSeconds < 30) return _chainStatus;
+    }
+
+    try {
+      final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+      final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+
+      final prefs = await SharedPreferences.getInstance();
+      final shopAddress = prefs.getString('selectedShopAddress') ?? '';
+
+      _chainStatus = await ExecutionChainService.getStatus(
+        employeeName: employeeName,
+        shopAddress: shopAddress,
+      );
+      _chainStatusLoadedAt = DateTime.now();
+    } catch (e) {
+      Logger.warning('Ошибка загрузки статуса цепочки: $e');
+    }
+    return _chainStatus;
+  }
+
+  /// Сбросить кэш цепочки (после выполнения действия)
+  void _invalidateChainCache() {
+    _chainStatus = null;
+    _chainStatusLoadedAt = null;
+  }
+
+  /// Выполнить действие с проверкой цепочки
+  Future<void> _executeWithChainCheck(String stepId, Future<void> Function() action) async {
+    Logger.debug('🔗 Chain check for step: $stepId');
+    final status = await _loadChainStatus();
+    Logger.debug('🔗 Chain status: ${status == null ? "null" : "enabled=${status.enabled}, canExecute=${ status.canExecute(stepId)}"}');
+
+    // Если цепочка выключена, не загружена, или шаг не в цепочке — просто выполняем
+    if (status == null || !status.enabled || status.canExecute(stepId)) {
+      await action();
+      // Сбрасываем кэш после выполнения (действие могло завершить шаг)
+      _invalidateChainCache();
+      return;
+    }
+
+    // Шаг заблокирован — показать диалог
+    final blockingStep = status.getBlockingStep(stepId);
+    if (blockingStep != null && mounted) {
+      _showChainBlockDialog(blockingStep);
+    }
+  }
+
+  /// Диалог блокировки цепочки
+  void _showChainBlockDialog(ExecutionChainStep blockingStep) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: _gold.withOpacity(0.3)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.link_rounded, color: _gold, size: 24),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text('Цепочка действий',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Сначала выполните:',
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: _gold.withOpacity(0.1),
+                border: Border.all(color: _gold.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(_getStepIcon(blockingStep.id), color: _gold, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      blockingStep.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Закрыть', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _navigateToStep(blockingStep.id);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _gold,
+              foregroundColor: _night,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Перейти'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Иконка для шага цепочки
+  IconData _getStepIcon(String stepId) {
+    switch (stepId) {
+      case 'attendance': return Icons.access_time_outlined;
+      case 'testing': return Icons.quiz_outlined;
+      case 'shift': return Icons.swap_horiz_rounded;
+      case 'recount': return Icons.inventory_2_outlined;
+      case 'shift_handover': return Icons.check_circle_outline_rounded;
+      case 'coffee_machine': return Icons.coffee_outlined;
+      case 'envelope': return Icons.mail_outlined;
+      case 'rko': return Icons.receipt_long_outlined;
+      default: return Icons.help_outline;
+    }
+  }
+
+  /// Навигация к шагу цепочки
+  Future<void> _navigateToStep(String stepId) async {
+    switch (stepId) {
+      case 'attendance':
+        // Повторяем логику "Я на работе"
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        await _markAttendanceAutomatically(context, employeeName);
+        _invalidateChainCache();
+        break;
+      case 'testing':
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const TestPage()));
+        _invalidateChainCache();
+        break;
+      case 'shift':
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ShiftShopSelectionPage(employeeName: employeeName),
+        ));
+        _invalidateChainCache();
+        break;
+      case 'recount':
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountShopSelectionPage()));
+        _invalidateChainCache();
+        break;
+      case 'shift_handover':
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName),
+        ));
+        _invalidateChainCache();
+        break;
+      case 'coffee_machine':
+        // Кофемашина доступна через "Сдать смену"
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName),
+        ));
+        _invalidateChainCache();
+        break;
+      case 'envelope':
+        // Конверт доступен через "Сдать смену"
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName),
+        ));
+        _invalidateChainCache();
+        break;
+      case 'rko':
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOTypeSelectionPage()));
+        _invalidateChainCache();
+        break;
+    }
   }
 
   /// Диалог показа кода приглашения

@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/widgets/shop_icon.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_products_service.dart';
 
@@ -35,6 +39,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   // Данные магазинов
   List<Shop> _shops = [];
   Map<String, ShopSyncInfo> _shopsSyncInfo = {};
+  Map<String, String> _productPhotos = {};
 
   // Поиск
   String? _selectedShopId;
@@ -66,18 +71,21 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       final results = await Future.wait([
         Shop.loadShopsFromGoogleSheets(),
         ShopProductsService.getShopsWithProducts(),
+        _loadProductPhotos(),
       ]);
 
       final shops = results[0] as List<Shop>;
       final syncInfoList = results[1] as List<ShopSyncInfo>;
+      final photos = results[2] as Map<String, String>;
 
       setState(() {
         _shops = shops;
         _shopsSyncInfo = {for (var s in syncInfoList) s.shopId: s};
+        _productPhotos = photos;
         _isLoading = false;
       });
 
-      Logger.debug('📦 Загружено ${shops.length} магазинов, ${syncInfoList.length} с DBF');
+      Logger.debug('📦 Загружено ${shops.length} магазинов, ${syncInfoList.length} с DBF, ${photos.length} фото');
     } catch (e) {
       Logger.error('Ошибка загрузки данных', e);
       setState(() => _isLoading = false);
@@ -309,6 +317,34 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       bigrams.add(s.substring(i, i + 2));
     }
     return bigrams;
+  }
+
+  /// Загрузить фото товаров из обучения ИИ
+  static Future<Map<String, String>> _loadProductPhotos() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/master-catalog/product-photos'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['photos'] != null) {
+          return Map<String, String>.from(data['photos']);
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки фото товаров', e);
+    }
+    return {};
+  }
+
+  /// Получить URL фото товара по коду
+  String? _getProductPhotoUrl(String kod) {
+    final url = _productPhotos[kod];
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('http')) return url;
+    return 'https://arabica26.ru$url';
   }
 
   /// Получить название магазина по ID
@@ -638,6 +674,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   /// Карточка товара
   Widget _buildProductCard(ShopProduct product) {
     final shopName = _getShopName(product.shopId);
+    final photoUrl = _getProductPhotoUrl(product.kod);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -646,15 +683,26 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Иконка товара
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(8),
+            // Фото или иконка товара
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: photoUrl != null
+                    ? AppCachedImage(
+                        imageUrl: photoUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, error, stackTrace) => Container(
+                          color: Colors.grey[200],
+                          child: Icon(Icons.inventory_2, color: Colors.grey[600]),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.inventory_2, color: Colors.grey[600]),
+                      ),
               ),
-              child: Icon(Icons.inventory_2, color: Colors.grey[600]),
             ),
             const SizedBox(width: 12),
             // Информация о товаре

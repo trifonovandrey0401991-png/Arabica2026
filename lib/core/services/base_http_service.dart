@@ -58,8 +58,12 @@ class BaseHttpService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
-          final items = result[listKey] as List<dynamic>;
-          final list = items
+          final rawItems = result[listKey];
+          if (rawItems == null || rawItems is! List) {
+            Logger.error('❌ Missing or invalid "$listKey" in response from $endpoint');
+            return [];
+          }
+          final list = rawItems
               .map((json) => fromJson(json as Map<String, dynamic>))
               .toList();
           Logger.debug('✅ Loaded ${list.length} items from $endpoint');
@@ -102,8 +106,13 @@ class BaseHttpService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
+          final rawItem = result[itemKey];
+          if (rawItem == null || rawItem is! Map<String, dynamic>) {
+            Logger.error('❌ Missing or invalid "$itemKey" in response from $endpoint');
+            return null;
+          }
           Logger.debug('✅ Loaded item from $endpoint');
-          return fromJson(result[itemKey] as Map<String, dynamic>);
+          return fromJson(rawItem);
         } else {
           Logger.error('❌ API error: ${result['error']}');
         }
@@ -144,8 +153,13 @@ class BaseHttpService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
+          final rawItem = result[itemKey];
+          if (rawItem == null || rawItem is! Map<String, dynamic>) {
+            Logger.error('❌ Missing or invalid "$itemKey" in response from $endpoint');
+            return null;
+          }
           Logger.debug('✅ Created item at $endpoint');
-          return fromJson(result[itemKey] as Map<String, dynamic>);
+          return fromJson(rawItem);
         } else {
           Logger.error('❌ API error: ${result['error']}');
         }
@@ -186,8 +200,13 @@ class BaseHttpService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
+          final rawItem = result[itemKey];
+          if (rawItem == null || rawItem is! Map<String, dynamic>) {
+            Logger.error('❌ Missing or invalid "$itemKey" in response from $endpoint');
+            return null;
+          }
           Logger.debug('✅ Updated item at $endpoint');
-          return fromJson(result[itemKey] as Map<String, dynamic>);
+          return fromJson(rawItem);
         } else {
           Logger.error('❌ API error: ${result['error']}');
         }
@@ -422,7 +441,11 @@ class BaseHttpService {
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
-      final result = jsonDecode(response.body) as Map<String, dynamic>;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return HttpResult(success: false, error: 'Invalid response format');
+      }
+      final result = decoded;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (result['success'] == true) {
@@ -475,8 +498,13 @@ class BaseHttpService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
+          final rawItem = result[itemKey];
+          if (rawItem == null || rawItem is! Map<String, dynamic>) {
+            Logger.error('❌ Missing or invalid "$itemKey" in response from $endpoint');
+            return null;
+          }
           Logger.debug('✅ Patched item at $endpoint');
-          return fromJson(result[itemKey] as Map<String, dynamic>);
+          return fromJson(rawItem);
         }
       }
       return null;

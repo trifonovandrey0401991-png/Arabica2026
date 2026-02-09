@@ -491,19 +491,23 @@ async function setupCigaretteVisionAPI(app) {
       const shouldSave = isAiActive === true || isAiActive === 'true';
       console.log(`[Cigarette Vision API] shouldSave=${shouldSave}`);
       if (shouldSave) {
-        cigaretteVision.saveCountingTrainingSample({
-          imageBase64,
-          productId,
-          productName: productName || '',
-          shopAddress: shopAddress || '',
-          employeeAnswer: employeeAnswer || null,
-        }).then(saveResult => {
-          if (saveResult.success) {
-            console.log(`[Cigarette Vision API] Counting sample сохранён для ${productName || productId}`);
+        // Fire-and-forget: сохраняем sample асинхронно, не блокируя ответ
+        (async () => {
+          try {
+            const saveResult = await cigaretteVision.saveCountingTrainingSample({
+              imageBase64,
+              productId,
+              productName: productName || '',
+              shopAddress: shopAddress || '',
+              employeeAnswer: employeeAnswer || null,
+            });
+            if (saveResult.success) {
+              console.log(`[Cigarette Vision API] Counting sample сохранён для ${productName || productId}`);
+            }
+          } catch (err) {
+            console.warn('[Cigarette Vision API] Ошибка сохранения counting sample:', err.message);
           }
-        }).catch(err => {
-          console.warn('[Cigarette Vision API] Ошибка сохранения counting sample:', err.message);
-        });
+        })();
       }
 
       res.json(result);

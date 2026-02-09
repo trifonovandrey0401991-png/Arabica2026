@@ -379,7 +379,7 @@ function setupAttendanceAPI(app, {
   // POST /api/attendance/confirm-shift - подтверждение выбора смены
   app.post('/api/attendance/confirm-shift', async (req, res) => {
     try {
-      console.log('POST /api/attendance/confirm-shift:', JSON.stringify(req.body));
+      console.log('POST /api/attendance/confirm-shift: recordId:', req.body?.recordId, 'shift:', req.body?.selectedShift);
 
       const { recordId, selectedShift } = req.body;
 

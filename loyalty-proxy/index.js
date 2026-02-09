@@ -223,6 +223,7 @@ if (helmet) {
     contentSecurityPolicy: false, // Отключаем CSP для API (нет HTML)
     crossOriginEmbedderPolicy: false, // Для совместимости с мобильными приложениями
     crossOriginResourcePolicy: { policy: "cross-origin" }, // Разрешаем загрузку ресурсов
+    hsts: { maxAge: 31536000, includeSubDomains: true }, // HSTS — принудительный HTTPS на 1 год
   }));
   console.log('✅ Security Headers (helmet) активированы');
 }
@@ -327,6 +328,7 @@ if (rateLimit) {
     standardHeaders: true,
     legacyHeaders: false,
     validate: { xForwardedForHeader: false }, // Отключаем валидацию т.к. trust proxy включен
+    keyGenerator: (req) => req.user?.phone || req.ip, // Per-user rate limiting
   });
 
   // Умеренный лимит для финансовых endpoints: 50 запросов в минуту
@@ -671,7 +673,7 @@ const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 // POST /api/fcm-tokens - сохранение FCM токена
 app.post('/api/fcm-tokens', async (req, res) => {
   try {
-    console.log('POST /api/fcm-tokens', req.body);
+    console.log('POST /api/fcm-tokens phone:', req.body?.phone);
     const { phone, token } = req.body;
 
     if (!phone || !token) {

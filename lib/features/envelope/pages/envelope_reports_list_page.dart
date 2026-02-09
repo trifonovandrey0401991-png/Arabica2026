@@ -3,6 +3,8 @@ import '../../../core/utils/logger.dart';
 import '../models/envelope_report_model.dart';
 import '../models/pending_envelope_report_model.dart';
 import '../services/envelope_report_service.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../employees/models/user_role_model.dart';
 import 'envelope_report_view_page.dart';
 
 /// Страница со списком отчетов по конвертам
@@ -27,6 +29,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   List<EnvelopeReport> _allReports = [];
   List<PendingEnvelopeReport> _pendingReports = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
 
   @override
   void initState() {
@@ -35,7 +38,18 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
+    _detectRole();
     _loadData();
+  }
+
+  Future<void> _detectRole() async {
+    final roleData = await UserRoleService.loadUserRole();
+    if (roleData != null && mounted) {
+      setState(() {
+        _isAdmin = roleData.role == UserRole.admin ||
+                   roleData.role == UserRole.developer;
+      });
+    }
   }
 
   @override
@@ -549,7 +563,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => EnvelopeReportViewPage(report: report),
+                builder: (context) => EnvelopeReportViewPage(report: report, isAdmin: _isAdmin),
               ),
             ).then((_) => _loadData());
           },

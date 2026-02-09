@@ -50,7 +50,7 @@ function setupShopSettingsAPI(app) {
   app.post('/api/shop-settings', async (req, res) => {
     try {
       console.log('📝 POST /api/shop-settings');
-      console.log('   Тело запроса:', JSON.stringify(req.body, null, 2));
+      console.log('   Shop settings for:', req.body?.shopAddress || 'unknown');
 
       const settingsDir = `${DATA_DIR}/shop-settings`;
       console.log('   Проверка директории:', settingsDir);

@@ -241,7 +241,7 @@ function setupTestsAPI(app) {
 
   app.post('/api/test-results', async (req, res) => {
     try {
-      console.log('POST /api/test-results', req.body);
+      console.log('POST /api/test-results employee:', req.body?.employeeName, 'test:', req.body?.testId);
       const result = {
         id: req.body.id || `test_result_${Date.now()}`,
         employeeName: req.body.employeeName,

@@ -94,6 +94,12 @@ class CigaretteProduct {
   final int countingAttempts;      // Кол-во попыток распознавания при пересчёте
   final int countingSuccesses;     // Кол-во успешных распознаваний при пересчёте
 
+  // Фото товара (первое фото крупного плана, templateId=1)
+  final String? productPhotoUrl;
+
+  // Все штрихкоды товара (при группировке по имени может быть несколько)
+  final List<String> barcodes;
+
   CigaretteProduct({
     required this.id,
     required this.barcode,
@@ -129,6 +135,9 @@ class CigaretteProduct {
     this.countingAccuracy,
     this.countingAttempts = 0,
     this.countingSuccesses = 0,
+    // Фото и группировка
+    this.productPhotoUrl,
+    this.barcodes = const [],
   });
 
   factory CigaretteProduct.fromJson(Map<String, dynamic> json) {
@@ -184,6 +193,10 @@ class CigaretteProduct {
       countingAccuracy: json['countingAccuracy'] as int?,
       countingAttempts: json['countingAttempts'] ?? 0,
       countingSuccesses: json['countingSuccesses'] ?? 0,
+      // Фото и группировка
+      productPhotoUrl: json['productPhotoUrl'] as String?,
+      barcodes: (json['barcodes'] as List?)?.map((e) => e.toString()).toList()
+          ?? [json['barcode']?.toString() ?? ''],
     );
   }
 
@@ -222,6 +235,9 @@ class CigaretteProduct {
     'countingAccuracy': countingAccuracy,
     'countingAttempts': countingAttempts,
     'countingSuccesses': countingSuccesses,
+    // Фото и группировка
+    'productPhotoUrl': productPhotoUrl,
+    'barcodes': barcodes,
   };
 
   /// Получить статистику для конкретного магазина

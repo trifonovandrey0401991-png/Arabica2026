@@ -511,11 +511,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       scoredProducts = _products.map((p) => MapEntry(p, 1.0)).toList();
     } else {
       // С поиском - вычисляем релевантность каждого товара
+      final queryLower = _searchQuery.toLowerCase();
       scoredProducts = _products
-          .map((product) => MapEntry(
-                product,
-                _calculateSearchRelevance(product.productName, _searchQuery),
-              ))
+          .map((product) {
+            // Проверяем совпадение по штрихкодам
+            final barcodeMatch = product.barcodes.any((b) => b.contains(queryLower));
+            if (barcodeMatch) return MapEntry(product, 0.95);
+            return MapEntry(
+              product,
+              _calculateSearchRelevance(product.productName, _searchQuery),
+            );
+          })
           .where((entry) => entry.value > 0.3) // Минимальный порог релевантности
           .toList();
 
@@ -1188,12 +1194,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 // Заголовок: иконка + название + кнопка справа
                 Row(
                   children: [
-                    // Иконка статуса
+                    // Фото товара или иконка статуса
                     Container(
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: progressGradient),
+                        gradient: product.productPhotoUrl == null
+                            ? LinearGradient(colors: progressGradient)
+                            : null,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
@@ -1203,13 +1211,27 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                           ),
                         ],
                       ),
-                      child: Icon(
-                        product.isTrainingComplete
-                            ? Icons.check_circle
-                            : Icons.add_a_photo,
-                        color: Colors.white,
-                        size: 22,
-                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: product.productPhotoUrl != null
+                          ? AppCachedImage(
+                              imageUrl: '${ApiConstants.serverUrl}${product.productPhotoUrl}',
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.cover,
+                              errorWidget: (ctx, url, err) => Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: progressGradient),
+                                ),
+                                child: const Icon(Icons.inventory_2, color: Colors.white, size: 22),
+                              ),
+                            )
+                          : Icon(
+                              product.isTrainingComplete
+                                  ? Icons.check_circle
+                                  : Icons.add_a_photo,
+                              color: Colors.white,
+                              size: 22,
+                            ),
                     ),
                     const SizedBox(width: 12),
 
@@ -1236,6 +1258,22 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.white.withOpacity(0.5),
+                              ),
+                            ),
+                          if (product.barcodes.length > 1)
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${product.barcodes.length} шт-кодов',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white.withOpacity(0.6),
+                                ),
                               ),
                             ),
                         ],

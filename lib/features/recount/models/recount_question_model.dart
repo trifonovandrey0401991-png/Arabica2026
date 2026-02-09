@@ -12,6 +12,7 @@ class RecountQuestion {
   final int grade;            // 1 - очень важный, 2 - средней важности, 3 - не очень важный
   final int stock;            // Остаток товара из DBF (0 = нет в наличии)
   final bool isAiActive;      // Активна ли ИИ проверка для этого товара
+  final String? productPhotoUrl; // Фото товара из обучения ИИ (крупный план)
 
   RecountQuestion({
     required this.id,
@@ -21,6 +22,7 @@ class RecountQuestion {
     required this.grade,
     this.stock = 0,
     this.isAiActive = false,
+    this.productPhotoUrl,
   });
 
   /// Есть ли товар в наличии
@@ -45,6 +47,7 @@ class RecountQuestion {
       grade: json['grade'] is int ? json['grade'] : int.tryParse(json['grade'].toString()) ?? 1,
       stock: json['stock'] is int ? json['stock'] : int.tryParse(json['stock']?.toString() ?? '0') ?? 0,
       isAiActive: json['isAiActive'] ?? false,
+      productPhotoUrl: json['productPhotoUrl'] as String?,
     );
   }
 
@@ -58,6 +61,7 @@ class RecountQuestion {
       'grade': grade,
       'stock': stock,
       'isAiActive': isAiActive,
+      'productPhotoUrl': productPhotoUrl,
     };
   }
 
@@ -71,6 +75,7 @@ class RecountQuestion {
       grade: grade,
       stock: newStock,
       isAiActive: isAiActive,
+      productPhotoUrl: productPhotoUrl,
     );
   }
 
@@ -83,6 +88,7 @@ class RecountQuestion {
     int? grade,
     int? stock,
     bool? isAiActive,
+    String? productPhotoUrl,
   }) {
     return RecountQuestion(
       id: id ?? this.id,
@@ -92,6 +98,7 @@ class RecountQuestion {
       grade: grade ?? this.grade,
       stock: stock ?? this.stock,
       isAiActive: isAiActive ?? this.isAiActive,
+      productPhotoUrl: productPhotoUrl ?? this.productPhotoUrl,
     );
   }
 

@@ -20,6 +20,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
   static const Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
+  int _selectedTab = 0;
 
   bool _isLoading = true;
   List<CoffeeMachineReport> _allReports = [];
@@ -35,6 +36,9 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() => _selectedTab = _tabController.index);
+    });
     _loadData();
   }
 
@@ -166,38 +170,91 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        indicatorColor: _gold,
-        labelColor: _gold,
-        unselectedLabelColor: Colors.white54,
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        tabAlignment: TabAlignment.start,
-        tabs: List.generate(5, (i) => Tab(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildTabButton(0, tabNames[0], counts[0])),
+              Expanded(child: _buildTabButton(1, tabNames[1], counts[1])),
+              Expanded(child: _buildTabButton(2, tabNames[2], counts[2])),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _buildTabButton(3, tabNames[3], counts[3])),
+              Expanded(child: _buildTabButton(4, tabNames[4], counts[4])),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(int index, String label, int count) {
+    final isSelected = _selectedTab == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTab = index;
+            _tabController.animateTo(index);
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+            ),
+          ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(tabNames[i]),
-              if (counts[i] > 0) ...[
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                    color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              if (count > 0) ...[
                 const SizedBox(width: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: i < 2 ? Colors.red.withOpacity(0.8) : _gold.withOpacity(0.8),
+                    color: isSelected ? _gold : Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '${counts[i]}',
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                    '$count',
+                    style: TextStyle(
+                      color: isSelected ? _night : Colors.white.withOpacity(0.7),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
             ],
           ),
-        )),
+        ),
       ),
     );
   }

@@ -10,6 +10,8 @@ const { sendPushToPhone, sendPushNotification } = require('./report_notification
 const { getTaskPointsConfig } = require('./task_points_settings_api');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
+const dataCache = require('../utils/data_cache');
+
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const TASKS_DIR = `${DATA_DIR}/tasks`;
@@ -51,25 +53,21 @@ function generateId(prefix = 'task') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Get employee phone by ID
+// Get employee phone by ID (uses cache for O(1) lookup instead of scanning all files)
 async function getEmployeePhoneById(employeeId) {
   try {
+    // 1. Прямой файл по ID (быстрый путь)
     const filePath = path.join(EMPLOYEES_DIR, `${employeeId}.json`);
     if (await fileExists(filePath)) {
       const data = await fsp.readFile(filePath, 'utf8');
       const employee = JSON.parse(data);
       return employee.phone || null;
     }
-    // Попробуем найти по имени (если id - это имя)
-    if (await fileExists(EMPLOYEES_DIR)) {
-      const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
-      for (const file of files) {
-        const empData = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
-        const emp = JSON.parse(empData);
-        if (emp.name === employeeId || emp.id === employeeId) {
-          return emp.phone || null;
-        }
-      }
+    // 2. Поиск через кэш (вместо сканирования всех файлов)
+    const employees = await dataCache.getEmployees();
+    if (Array.isArray(employees)) {
+      const found = employees.find(emp => emp.name === employeeId || emp.id === employeeId);
+      if (found) return found.phone || null;
     }
   } catch (e) {
     console.error('Error getting employee phone:', e);

@@ -117,6 +117,13 @@ class ApiConstants {
   static const String fcmTokensEndpoint = '/api/fcm-tokens';
   static const String loyaltyPromoEndpoint = '/api/loyalty-promo';
 
+  // Endpoints - Coffee Machine
+  static const String coffeeMachineEndpoint = '/api/coffee-machine';
+  static const String coffeeMachineReportsEndpoint = '/api/coffee-machine/reports';
+
+  // Endpoints - Execution Chain
+  static const String executionChainEndpoint = '/api/execution-chain';
+
   // Endpoints - Cigarette Vision (AI Training)
   // Теперь товары берутся из мастер-каталога
   static const String cigaretteProductsEndpoint = '/api/master-catalog/for-training';

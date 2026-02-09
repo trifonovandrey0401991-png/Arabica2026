@@ -122,6 +122,8 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
         }
 
         Logger.debug('📝 Подтверждение отчета администратором: $adminName');
+        Logger.debug('   report.id: ${_report.id}');
+        Logger.debug('   report.status: ${_report.status}');
         Logger.debug('   user_employee_name: $userEmployeeName');
         Logger.debug('   user_display_name: $userDisplayName');
         Logger.debug('   user_name: $userName');
@@ -131,12 +133,20 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
           adminName,
           _selectedRating,
         );
+        Logger.debug('📝 Результат подтверждения: ${updated != null ? "OK" : "NULL"}');
         if (updated != null && mounted) {
           setState(() => _report = updated);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Отчет подтвержден!'),
               backgroundColor: Colors.green,
+            ),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Не удалось подтвердить отчет. Попробуйте ещё раз.'),
+              backgroundColor: Colors.red,
             ),
           );
         }

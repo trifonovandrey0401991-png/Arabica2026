@@ -108,7 +108,7 @@ function setupShopsAPI(app) {
   app.post('/api/shops', async (req, res) => {
     try {
       const { name, address, latitude, longitude, icon } = req.body;
-      console.log('POST /api/shops', req.body);
+      console.log('POST /api/shops', name, address);
 
       const id = 'shop_' + Date.now();
       const shop = {

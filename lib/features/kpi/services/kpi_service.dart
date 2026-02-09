@@ -83,7 +83,7 @@ class KPIService {
           for (var rkoJson in (shopRKOs['currentMonth'] as List<dynamic>)) {
             try {
               allRKOs.add(RKOMetadata.fromJson(rkoJson as Map<String, dynamic>));
-            } catch (_) {}
+            } catch (e) { Logger.debug('KPI: skip malformed RKO in currentMonth: $e'); }
           }
         }
 
@@ -94,7 +94,7 @@ class KPIService {
               for (var rkoJson in (monthData['items'] as List<dynamic>)) {
                 try {
                   allRKOs.add(RKOMetadata.fromJson(rkoJson as Map<String, dynamic>));
-                } catch (_) {}
+                } catch (e) { Logger.debug('KPI: skip malformed RKO in months: $e'); }
               }
             }
           }
@@ -193,7 +193,7 @@ class KPIService {
             try {
               final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
               allRKOs.add(rko);
-            } catch (_) {}
+            } catch (e) { Logger.debug('KPI: skip malformed RKO in latest: $e'); }
           }
         }
 
@@ -207,7 +207,7 @@ class KPIService {
                 try {
                   final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
                   allRKOs.add(rko);
-                } catch (_) {}
+                } catch (e) { Logger.debug('KPI: skip malformed RKO in months: $e'); }
               }
             }
           }
@@ -540,7 +540,7 @@ class KPIService {
           for (var rkoJson in (employeeRKOs['latest'] as List<dynamic>)) {
             try {
               allRKOs.add(RKOMetadata.fromJson(rkoJson as Map<String, dynamic>));
-            } catch (_) {}
+            } catch (e) { Logger.debug('KPI: skip malformed RKO in latest: $e'); }
           }
         }
 
@@ -551,7 +551,7 @@ class KPIService {
               for (var rkoJson in (monthData['items'] as List<dynamic>)) {
                 try {
                   allRKOs.add(RKOMetadata.fromJson(rkoJson as Map<String, dynamic>));
-                } catch (_) {}
+                } catch (e) { Logger.debug('KPI: skip malformed RKO in months: $e'); }
               }
             }
           }
@@ -767,7 +767,7 @@ class KPIService {
               if (rkoJson is Map<String, dynamic>) {
                 allRKOs.add(RKOMetadata.fromJson(rkoJson));
               }
-            } catch (_) {}
+            } catch (e) { Logger.debug('KPI: skip malformed RKO in currentMonth: $e'); }
           }
         }
         // Парсим months
@@ -780,7 +780,7 @@ class KPIService {
                   if (rkoJson is Map<String, dynamic>) {
                     allRKOs.add(RKOMetadata.fromJson(rkoJson));
                   }
-                } catch (_) {}
+                } catch (e) { Logger.debug('KPI: skip malformed RKO in months map: $e'); }
               }
             }
           }
@@ -791,7 +791,7 @@ class KPIService {
               if (rkoJson is Map<String, dynamic>) {
                 allRKOs.add(RKOMetadata.fromJson(rkoJson));
               }
-            } catch (_) {}
+            } catch (e) { Logger.debug('KPI: skip malformed RKO in months list: $e'); }
           }
         }
       }
@@ -928,13 +928,13 @@ class KPIService {
       try {
         final date = record.timestamp as DateTime;
         activeDays.add('${date.year}-${date.month}-${date.day}');
-      } catch (_) {}
+      } catch (e) { Logger.debug('KPI: skip attendance record with bad timestamp: $e'); }
     }
     for (final shift in monthShifts) {
       try {
         final date = shift.date ?? shift.createdAt as DateTime;
         activeDays.add('${date.year}-${date.month}-${date.day}');
-      } catch (_) {}
+      } catch (e) { Logger.debug('KPI: skip shift with bad date: $e'); }
     }
 
     return KPIShopMonthStats(

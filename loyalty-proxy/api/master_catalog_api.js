@@ -1012,7 +1012,7 @@ function setupMasterCatalogAPI(app) {
    */
   app.get('/api/master-catalog/for-training', async (req, res) => {
     try {
-      const { productGroup, shopAddress, limit, offset } = req.query;
+      const { productGroup, shopAddress, limit, offset, grouped } = req.query;
       // shopAddress - если передан, возвращаем perShopDisplayStats только для этого магазина
       // Это критически важно для производительности при 100+ магазинах
       const filterShopAddress = shopAddress ? decodeURIComponent(shopAddress) : null;
@@ -1022,7 +1022,8 @@ function setupMasterCatalogAPI(app) {
       const pageOffset = offset ? parseInt(offset, 10) : 0;
 
       // Кэш-ключ на основе параметров (без пагинации - кэшируем полный список)
-      const cacheKey = `training_${productGroup || 'all'}_${filterShopAddress || 'all'}`;
+      const isGrouped = grouped !== 'false';
+      const cacheKey = `training_${productGroup || 'all'}_${filterShopAddress || 'all'}_${isGrouped ? 'grouped' : 'flat'}`;
 
       // Пробуем получить из кэша
       let trainingProducts = getTrainingCache(cacheKey);
@@ -1039,21 +1040,21 @@ function setupMasterCatalogAPI(app) {
         }
 
         // Загружаем данные для статистики из cigarette-vision
-        const samples = cigaretteVision.loadSamples();
-      const settings = cigaretteVision.getSettings();
-      const shops = cigaretteVision.loadAllShops();
+        const samples = await cigaretteVision.loadSamples();
+      const settings = await cigaretteVision.getSettings();
+      const shops = await cigaretteVision.loadAllShops();
 
       // Загружаем статистику распознаваний (accuracy)
-      const allRecognitionStats = cigaretteVision.getAllRecognitionStats();
+      const allRecognitionStats = await cigaretteVision.getAllRecognitionStats();
 
       const requiredRecount = settings.requiredRecountPhotos || 10;
       const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
       const requiredCounting = settings.requiredCountingPhotos || 10;
 
       // Загружаем counting samples (фото с пересчёта - подтверждённые)
-      const countingSamples = cigaretteVision.loadTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
+      const countingSamples = await cigaretteVision.loadTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
       // Загружаем pending counting samples (ожидающие подтверждения админа)
-      const pendingCountingSamples = cigaretteVision.getAllPendingCountingSamples();
+      const pendingCountingSamples = await cigaretteVision.getAllPendingCountingSamples();
 
       // Подсчёт фото по товарам
       const recountPhotosByProduct = {};
@@ -1061,6 +1062,21 @@ function setupMasterCatalogAPI(app) {
       const displayPhotosByProductAndShop = {};
       const countingPhotosByProduct = {};
       const pendingCountingPhotosByProduct = {};
+
+      // Lookup фото товара: первое фото крупного плана (templateId === 1) = фото лицевой стороны
+      const productPhotoUrlMap = {};
+      samples.forEach(sample => {
+        if (sample.templateId === 1 && (!sample.type || sample.type === 'recount')) {
+          const productId = sample.productId;
+          const barcode = sample.barcode;
+          if (productId && !productPhotoUrlMap[productId]) {
+            productPhotoUrlMap[productId] = sample.imageUrl;
+          }
+          if (barcode && barcode !== productId && !productPhotoUrlMap[barcode]) {
+            productPhotoUrlMap[barcode] = sample.imageUrl;
+          }
+        }
+      });
 
       // Подсчёт counting photos (подтверждённые)
       countingSamples.forEach(sample => {
@@ -1217,8 +1233,79 @@ function setupMasterCatalogAPI(app) {
           countingAccuracy: recognitionStats.counting.accuracy,
           countingAttempts: recognitionStats.counting.attempts,
           countingSuccesses: recognitionStats.counting.successes,
+          // Фото товара (первое фото крупного плана, templateId=1)
+          productPhotoUrl: productPhotoUrlMap[p.id] || productPhotoUrlMap[p.barcode] || null,
         };
       });
+
+      // Группировка товаров по имени (exact match, case-sensitive)
+      // grouped=false отключает группировку (по умолчанию true)
+      if (grouped !== 'false') {
+        const groupedMap = new Map();
+        trainingProducts.forEach(p => {
+          const key = p.productName;
+          if (groupedMap.has(key)) {
+            const g = groupedMap.get(key);
+            g.barcodes.push(p.barcode);
+            g.ids.push(p.id);
+            // Суммируем статистику
+            g.recountPhotosCount += p.recountPhotosCount;
+            g.displayPhotosCount += p.displayPhotosCount;
+            g.countingPhotosCount += p.countingPhotosCount;
+            g.pendingCountingPhotosCount += p.pendingCountingPhotosCount;
+            g.totalDisplayPhotos += p.totalDisplayPhotos;
+            g.trainingPhotosCount += p.trainingPhotosCount;
+            // Объединяем completedTemplates (union)
+            p.completedTemplates.forEach(t => g._completedSet.add(t));
+            // Объединяем perShopDisplayStats (берём максимальные значения)
+            p.perShopDisplayStats.forEach(shopStat => {
+              const existing = g.perShopDisplayStats.find(s => s.shopAddress === shopStat.shopAddress);
+              if (existing) {
+                existing.displayPhotosCount += shopStat.displayPhotosCount;
+                existing.isDisplayComplete = existing.displayPhotosCount >= existing.requiredDisplayPhotos;
+              } else {
+                g.perShopDisplayStats.push({ ...shopStat });
+              }
+            });
+            g.shopsWithAiReady = g.perShopDisplayStats.filter(s => s.isDisplayComplete).length;
+            // Берём первый доступный productPhotoUrl
+            if (!g.productPhotoUrl && p.productPhotoUrl) {
+              g.productPhotoUrl = p.productPhotoUrl;
+            }
+            // Объединяем accuracy (суммируем attempts/successes)
+            g.displayAttempts += p.displayAttempts;
+            g.displaySuccesses += p.displaySuccesses;
+            g.countingAttempts += p.countingAttempts;
+            g.countingSuccesses += p.countingSuccesses;
+          } else {
+            groupedMap.set(key, {
+              ...p,
+              barcodes: [p.barcode],
+              ids: [p.id],
+              _completedSet: new Set(p.completedTemplates),
+            });
+          }
+        });
+        // Финализация: completedTemplates из Set, пересчёт accuracy и флагов
+        trainingProducts = Array.from(groupedMap.values()).map(g => {
+          g.completedTemplates = Array.from(g._completedSet).sort((a, b) => a - b);
+          delete g._completedSet;
+          g.isRecountComplete = g.completedTemplates.length >= requiredRecount;
+          g.isCountingComplete = g.countingPhotosCount >= requiredCounting;
+          g.isDisplayComplete = g.shopsWithAiReady > 0;
+          g.isTrainingComplete = g.isRecountComplete && g.isDisplayComplete;
+          g.displayAccuracy = g.displayAttempts > 0 ? Math.round(g.displaySuccesses / g.displayAttempts * 100) : null;
+          g.countingAccuracy = g.countingAttempts > 0 ? Math.round(g.countingSuccesses / g.countingAttempts * 100) : null;
+          return g;
+        });
+      } else {
+        // Без группировки — оборачиваем barcode в массив для единообразия
+        trainingProducts = trainingProducts.map(p => ({
+          ...p,
+          barcodes: [p.barcode],
+          ids: [p.id],
+        }));
+      }
 
         // Сохраняем в кэш
         setTrainingCache(cacheKey, trainingProducts);
@@ -1244,6 +1331,164 @@ function setupMasterCatalogAPI(app) {
       });
     } catch (error) {
       console.error('[Master Catalog API] Ошибка получения товаров для обучения:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ ПОИСК ДЛЯ ПРИВЯЗКИ КОДА К СУЩЕСТВУЮЩЕМУ ТОВАРУ ============
+
+  /**
+   * GET /api/master-catalog/search-for-assign
+   * Лёгкий поиск товаров для привязки pending-кода к существующей карточке
+   * Возвращает: id, name, group, barcode, additionalBarcodes, barcodesCount, productPhotoUrl
+   */
+  app.get('/api/master-catalog/search-for-assign', async (req, res) => {
+    try {
+      const { search } = req.query;
+      if (!search || search.length < 2) {
+        return res.json({ success: true, products: [] });
+      }
+
+      let products = await loadProducts();
+      const searchLower = search.toLowerCase();
+      products = products.filter(p =>
+        p.name?.toLowerCase().includes(searchLower) ||
+        p.barcode?.toLowerCase().includes(searchLower) ||
+        (p.additionalBarcodes || []).some(b => b.toLowerCase().includes(searchLower))
+      );
+
+      // Группируем по имени (exact match) для показа объединённых карточек
+      const groupedMap = new Map();
+      products.forEach(p => {
+        const key = p.name;
+        if (groupedMap.has(key)) {
+          const g = groupedMap.get(key);
+          g.barcodes.push(p.barcode);
+          if (p.additionalBarcodes) g.barcodes.push(...p.additionalBarcodes);
+          g.ids.push(p.id);
+        } else {
+          groupedMap.set(key, {
+            id: p.id,
+            name: p.name,
+            group: p.group,
+            barcode: p.barcode,
+            barcodes: [p.barcode, ...(p.additionalBarcodes || [])],
+            ids: [p.id],
+            productPhotoUrl: null, // Заполним ниже
+          });
+        }
+      });
+
+      // Добавляем productPhotoUrl из samples
+      const samples = await cigaretteVision.loadSamples();
+      const photoMap = {};
+      (samples || []).forEach(s => {
+        if (s.templateId === 1 && (!s.type || s.type === 'recount')) {
+          const key = s.productId || s.barcode;
+          if (!photoMap[key]) photoMap[key] = s.imageUrl;
+        }
+      });
+
+      const result = Array.from(groupedMap.values()).slice(0, 20).map(g => ({
+        id: g.id,
+        name: g.name,
+        group: g.group,
+        barcode: g.barcode,
+        barcodes: g.barcodes,
+        ids: g.ids,
+        barcodesCount: g.barcodes.length,
+        productPhotoUrl: photoMap[g.id] || photoMap[g.barcode] || null,
+      }));
+
+      res.json({ success: true, products: result });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка поиска для привязки:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/master-catalog/assign-code-to-product
+   * Привязать pending-код к существующему товару
+   *
+   * Body: { kod: "4620011111111", targetProductId: "master_..." }
+   */
+  app.post('/api/master-catalog/assign-code-to-product', async (req, res) => {
+    try {
+      const { kod, targetProductId } = req.body;
+
+      if (!kod || !targetProductId) {
+        return res.status(400).json({ success: false, error: 'kod и targetProductId обязательны' });
+      }
+
+      // Найти pending code
+      const pending = await loadPendingCodes();
+      const pendingIndex = pending.findIndex(p => p.kod === kod);
+      if (pendingIndex === -1) {
+        return res.status(404).json({ success: false, error: 'Код не найден в pending' });
+      }
+      const pendingCode = pending[pendingIndex];
+
+      // Найти target product
+      const products = await loadProducts();
+      const product = products.find(p => p.id === targetProductId);
+      if (!product) {
+        return res.status(404).json({ success: false, error: 'Целевой продукт не найден' });
+      }
+
+      // Добавить штрихкод в additionalBarcodes
+      if (!product.additionalBarcodes) product.additionalBarcodes = [];
+      if (!product.additionalBarcodes.includes(kod) && product.barcode !== kod) {
+        product.additionalBarcodes.push(kod);
+      }
+
+      // Перенести shopCodes из sources pending code
+      if (!product.shopCodes) product.shopCodes = {};
+      pendingCode.sources.forEach(source => {
+        product.shopCodes[source.shopId] = kod;
+      });
+
+      product.updatedAt = new Date().toISOString();
+      await saveProducts(products);
+      await updateMappingsForProduct(product);
+
+      // Удалить из pending
+      pending.splice(pendingIndex, 1);
+      await savePendingCodes(pending);
+
+      // Очистить кэш training данных
+      clearTrainingCache();
+
+      console.log(`[Master Catalog API] Код ${kod} привязан к продукту "${product.name}"`);
+      res.json({ success: true, product });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка привязки кода:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ ФОТО ТОВАРОВ ИЗ ОБУЧЕНИЯ ИИ ============
+
+  /**
+   * GET /api/master-catalog/product-photos
+   * Лёгкий эндпоинт: возвращает Map barcode → productPhotoUrl
+   * Фото = первый sample с templateId=5 (очень крупно, 70% кадра)
+   */
+  app.get('/api/master-catalog/product-photos', async (req, res) => {
+    try {
+      const samples = await cigaretteVision.loadSamples();
+      const photos = {};
+      (samples || []).forEach(s => {
+        if (s.templateId === 5 && (!s.type || s.type === 'recount')) {
+          const productId = s.productId;
+          const barcode = s.barcode;
+          if (productId && !photos[productId]) photos[productId] = s.imageUrl;
+          if (barcode && barcode !== productId && !photos[barcode]) photos[barcode] = s.imageUrl;
+        }
+      });
+      res.json({ success: true, photos });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка загрузки фото товаров:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

@@ -1113,15 +1113,47 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              // Название товара
-                              Text(
-                                question.question,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.4,
-                                  color: Colors.white.withOpacity(0.95),
-                                ),
+                              // Название товара + фото / заглушка
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: question.productPhotoUrl != null
+                                        ? AppCachedImage(
+                                            imageUrl: question.productPhotoUrl!,
+                                            width: 60,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Container(
+                                            width: 60,
+                                            height: 60,
+                                            decoration: BoxDecoration(
+                                              color: _gold.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(10),
+                                              border: Border.all(color: _gold.withOpacity(0.2)),
+                                            ),
+                                            child: Icon(
+                                              Icons.inventory_2_outlined,
+                                              color: _gold.withOpacity(0.5),
+                                              size: 28,
+                                            ),
+                                          ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      question.question,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.4,
+                                        color: Colors.white.withOpacity(0.95),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

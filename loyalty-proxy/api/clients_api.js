@@ -605,27 +605,33 @@ function setupClientsAPI(app) {
         }
       }
 
+      // Параллельная запись (по 20 штук) вместо последовательной
       let sent = 0;
-      for (const phone of targetPhones) {
-        const normalizedPhone = sanitizePhone(phone);
-        if (!normalizedPhone) continue;
-        const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${normalizedPhone}.json`);
+      const BATCH_SIZE = 20;
+      for (let i = 0; i < targetPhones.length; i += BATCH_SIZE) {
+        const batch = targetPhones.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(batch.map(async (phone) => {
+          const normalizedPhone = sanitizePhone(phone);
+          if (!normalizedPhone) return false;
+          const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${normalizedPhone}.json`);
 
-        let dialog = { phone: normalizedPhone, messages: [] };
-        if (await fileExists(filePath)) {
-          const content = await fsp.readFile(filePath, 'utf8');
-          dialog = JSON.parse(content);
-        }
+          let dialog = { phone: normalizedPhone, messages: [] };
+          if (await fileExists(filePath)) {
+            const content = await fsp.readFile(filePath, 'utf8');
+            dialog = JSON.parse(content);
+          }
 
-        dialog.messages.push({
-          ...messageObj,
-          timestamp: new Date().toISOString(),
-          from: 'manager',
-          isBroadcast: true
-        });
+          dialog.messages.push({
+            ...messageObj,
+            timestamp: new Date().toISOString(),
+            from: 'manager',
+            isBroadcast: true
+          });
 
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
-        sent++;
+          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+          return true;
+        }));
+        sent += results.filter(r => r.status === 'fulfilled' && r.value === true).length;
       }
 
       res.json({ success: true, sent, sentCount: sent, totalClients: targetPhones.length });

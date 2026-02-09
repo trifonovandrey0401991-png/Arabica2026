@@ -40,6 +40,27 @@ class RecountQuestionService {
     return {};
   }
 
+  /// Загрузить фото товаров из обучения ИИ
+  /// Возвращает Map<barcode, photoUrl>
+  static Future<Map<String, String>> _loadProductPhotos() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/master-catalog/product-photos'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['photos'] != null) {
+          return Map<String, String>.from(data['photos']);
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки фото товаров', e);
+    }
+    return {};
+  }
+
   /// Получить все вопросы
   static Future<List<RecountQuestion>> getQuestions() async {
     Logger.debug('📥 Загрузка вопросов пересчета с сервера...');
@@ -69,9 +90,15 @@ class RecountQuestionService {
     int grade2Count = 0;
     int grade3Count = 0;
 
-    // Загружаем данные из мастер-каталога для получения isAiActive
-    final masterCatalogMap = await _loadMasterCatalogAiStatus();
+    // Загружаем данные из мастер-каталога (isAiActive) и фото товаров параллельно
+    final results = await Future.wait([
+      _loadMasterCatalogAiStatus(),
+      _loadProductPhotos(),
+    ]);
+    final masterCatalogMap = results[0] as Map<String, bool>;
+    final productPhotosMap = results[1] as Map<String, String>;
     Logger.info('📊 [AI-DEBUG] Загружено ${masterCatalogMap.length} товаров из мастер-каталога');
+    Logger.info('📸 Загружено ${productPhotosMap.length} фото товаров');
 
     // Debug: показать сколько товаров с AI активным
     final aiActiveCount = masterCatalogMap.values.where((v) => v).length;
@@ -124,6 +151,7 @@ class RecountQuestionService {
         grade: grade, // Грейд рассчитывается по продажам и остаткам
         stock: p.stock,
         isAiActive: isAiActive,
+        productPhotoUrl: productPhotosMap[p.kod],
       );
     }).toList();
 

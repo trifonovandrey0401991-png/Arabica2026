@@ -18,6 +18,7 @@ const path = require('path');
 
 const router = express.Router();
 const { addTokenToIndex, removeTokenFromIndex, removePhoneFromIndex } = require('../utils/session_middleware');
+const { withLock } = require('../utils/file_lock');
 
 // Конфигурация
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -25,8 +26,8 @@ const SESSIONS_DIR = path.join(DATA_DIR, 'auth-sessions');
 const PINS_DIR = path.join(DATA_DIR, 'auth-pins');
 const OTP_DIR = path.join(DATA_DIR, 'auth-otp');
 
-// Время жизни сессии (30 дней)
-const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+// Время жизни сессии (7 дней)
+const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 // Максимум неудачных попыток PIN
 const MAX_PIN_ATTEMPTS = 5;
 // Время блокировки (15 минут)
@@ -311,55 +312,55 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedPhone = normalizePhone(phone);
-    const pinData = await getPinData(normalizedPhone);
 
-    if (!pinData) {
-      return res.status(404).json({ error: 'Пользователь не найден. Необходима регистрация.' });
-    }
+    // File lock для атомарности PIN-проверки (защита от race condition при brute-force)
+    const pinLockPath = path.join(PINS_DIR, `${normalizedPhone}.lock`);
+    const result = await withLock(pinLockPath, async () => {
+      const pinData = await getPinData(normalizedPhone);
 
-    // Проверяем блокировку
-    if (pinData.lockedUntil && Date.now() < pinData.lockedUntil) {
-      const remainingMinutes = Math.ceil((pinData.lockedUntil - Date.now()) / 60000);
-      return res.status(423).json({
-        error: `Аккаунт заблокирован. Попробуйте через ${remainingMinutes} мин.`,
-        lockedUntil: pinData.lockedUntil
-      });
-    }
-
-    // Проверяем PIN (поддержка bcrypt и SHA-256)
-    const { valid, needsMigration } = await verifyPin(pin, pinData);
-    if (!valid) {
-      // Увеличиваем счётчик неудачных попыток
-      pinData.failedAttempts++;
-
-      if (pinData.failedAttempts >= MAX_PIN_ATTEMPTS) {
-        pinData.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-        pinData.failedAttempts = 0;
-        await savePinData(normalizedPhone, pinData);
-
-        return res.status(423).json({
-          error: 'Превышено количество попыток. Аккаунт заблокирован на 15 минут.',
-          lockedUntil: pinData.lockedUntil
-        });
+      if (!pinData) {
+        return { status: 404, body: { error: 'Пользователь не найден. Необходима регистрация.' } };
       }
 
+      // Проверяем блокировку
+      if (pinData.lockedUntil && Date.now() < pinData.lockedUntil) {
+        const remainingMinutes = Math.ceil((pinData.lockedUntil - Date.now()) / 60000);
+        return { status: 423, body: { error: `Аккаунт заблокирован. Попробуйте через ${remainingMinutes} мин.`, lockedUntil: pinData.lockedUntil } };
+      }
+
+      // Проверяем PIN (поддержка bcrypt и SHA-256)
+      const { valid, needsMigration } = await verifyPin(pin, pinData);
+      if (!valid) {
+        pinData.failedAttempts++;
+
+        if (pinData.failedAttempts >= MAX_PIN_ATTEMPTS) {
+          pinData.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+          pinData.failedAttempts = 0;
+          await savePinData(normalizedPhone, pinData);
+          return { status: 423, body: { error: 'Превышено количество попыток. Аккаунт заблокирован на 15 минут.', lockedUntil: pinData.lockedUntil } };
+        }
+
+        await savePinData(normalizedPhone, pinData);
+        const remaining = MAX_PIN_ATTEMPTS - pinData.failedAttempts;
+        return { status: 401, body: { error: `Неверный PIN-код. Осталось попыток: ${remaining}`, attemptsRemaining: remaining } };
+      }
+
+      // PIN верный - сбрасываем счётчик попыток
+      pinData.failedAttempts = 0;
+      pinData.lockedUntil = null;
       await savePinData(normalizedPhone, pinData);
-      const remaining = MAX_PIN_ATTEMPTS - pinData.failedAttempts;
 
-      return res.status(401).json({
-        error: `Неверный PIN-код. Осталось попыток: ${remaining}`,
-        attemptsRemaining: remaining
-      });
-    }
+      // Автомиграция на bcrypt
+      if (needsMigration) {
+        migratePinToBcrypt(normalizedPhone, pin, pinData).catch(() => {});
+      }
 
-    // PIN верный - сбрасываем счётчик попыток
-    pinData.failedAttempts = 0;
-    pinData.lockedUntil = null;
-    await savePinData(normalizedPhone, pinData);
+      return { status: 200, pinData };
+    });
 
-    // Автомиграция на bcrypt (асинхронно, не блокирует ответ)
-    if (needsMigration) {
-      migratePinToBcrypt(normalizedPhone, pin, pinData).catch(() => {});
+    // Обработка результата из lock-блока
+    if (result.status !== 200) {
+      return res.status(result.status).json(result.body);
     }
 
     // Создаём или обновляем сессию
@@ -367,7 +368,7 @@ router.post('/login', async (req, res) => {
     const session = {
       sessionToken,
       phone: normalizedPhone,
-      name: pinData.name,
+      name: result.pinData.name,
       deviceId: deviceId || 'unknown',
       deviceName: deviceName || 'Unknown Device',
       createdAt: Date.now(),
@@ -376,7 +377,7 @@ router.post('/login', async (req, res) => {
     };
 
     await saveSession(normalizedPhone, session);
-    addTokenToIndex(sessionToken, normalizedPhone, pinData.name, session.expiresAt);
+    addTokenToIndex(sessionToken, normalizedPhone, result.pinData.name, session.expiresAt);
 
     console.log(`✅ User logged in: ${normalizedPhone}`);
 
@@ -384,8 +385,8 @@ router.post('/login', async (req, res) => {
       success: true,
       sessionToken,
       expiresAt: session.expiresAt,
-      name: pinData.name,
-      biometricEnabled: pinData.biometricEnabled
+      name: result.pinData.name,
+      biometricEnabled: result.pinData.biometricEnabled
     });
 
   } catch (error) {

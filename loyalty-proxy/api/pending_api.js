@@ -323,9 +323,22 @@ async function processUnfinishedShifts(date) {
   return { processed: unfinishedReports.length, penalties: penalties.length };
 }
 
+// Кэш: не генерировать pending чаще 5 минут
+let _lastPendingGeneration = null;
+let _lastPendingDate = null;
+const PENDING_CACHE_MS = 5 * 60 * 1000;
+
 // Generate pending shift reports for today
 async function generateDailyPendingShifts() {
   const todayStr = getTodayStr();
+
+  // Кэш: пропускаем если уже генерировали для сегодня менее 5 мин назад
+  if (_lastPendingDate === todayStr && _lastPendingGeneration && (Date.now() - _lastPendingGeneration) < PENDING_CACHE_MS) {
+    return { cached: true };
+  }
+  _lastPendingDate = todayStr;
+  _lastPendingGeneration = Date.now();
+
   console.log(`📋 Generating pending shifts for ${todayStr}...`);
 
   // Load shops from directory

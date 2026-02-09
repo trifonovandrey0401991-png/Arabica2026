@@ -1570,6 +1570,28 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 | POST | `/api/cigarette-vision/samples` | Загрузить образец | ✅ |
 | DELETE | `/api/cigarette-vision/samples/:id` | Удалить | ✅ |
 
+### MASTER CATALOG API (Мастер-каталог товаров)
+
+**Файл:** `loyalty-proxy/api/master_catalog_api.js`
+
+| Method | Path | Описание | Auth |
+|--------|------|----------|------|
+| GET | `/api/master-catalog` | Все продукты (фильтр: group, search, limit, offset) | ✅ |
+| POST | `/api/master-catalog` | Создать продукт | ✅ |
+| GET | `/api/master-catalog/:id` | Получить продукт по ID | ✅ |
+| PUT | `/api/master-catalog/:id` | Обновить продукт | ✅ |
+| DELETE | `/api/master-catalog/:id` | Удалить продукт | ✅ |
+| GET | `/api/master-catalog/groups/list` | Список групп товаров | ✅ |
+| GET | `/api/master-catalog/by-shop-code` | Поиск по коду магазина | ✅ |
+| GET | `/api/master-catalog/stats` | Статистика каталога | ✅ |
+| GET | `/api/master-catalog/pending-codes` | Очередь новых кодов | ✅ |
+| POST | `/api/master-catalog/approve-code` | Одобрить pending-код | ✅ |
+| POST | `/api/master-catalog/reject-code` | Отклонить pending-код | ✅ |
+| GET | `/api/master-catalog/for-training` | Продукты для обучения ИИ (с группировкой, фото, статистикой) | ✅ |
+| GET | `/api/master-catalog/search-for-assign` | Поиск товаров для привязки кода | ✅ |
+| POST | `/api/master-catalog/assign-code-to-product` | Привязать pending-код к существующему товару | ✅ |
+| GET | `/api/master-catalog/product-photos` | Фото товаров из обучения ИИ (Map barcode→url) | ✅ |
+
 ### SHIFT AI VERIFICATION API (ИИ верификация отчётов)
 
 **Файл:** `loyalty-proxy/api/shift_ai_verification_api.js`

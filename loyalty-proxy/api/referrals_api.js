@@ -765,7 +765,7 @@ function setupReferralsAPI(app) {
   // POST /api/points-settings/referrals - обновить настройки
   app.post('/api/points-settings/referrals', async (req, res) => {
     try {
-      console.log('POST /api/points-settings/referrals:', req.body);
+      console.log('POST /api/points-settings/referrals');
 
       const settingsFile = path.join(POINTS_SETTINGS_DIR, 'referrals.json');
 

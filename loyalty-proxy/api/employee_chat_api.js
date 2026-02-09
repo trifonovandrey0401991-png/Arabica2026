@@ -479,7 +479,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { chatId } = req.params;
       const { senderPhone, senderName, text, imageUrl } = req.body;
-      console.log('POST /api/employee-chats/:chatId/messages:', chatId, senderName, 'text:', text, 'body:', JSON.stringify(req.body));
+      console.log('POST /api/employee-chats/:chatId/messages:', chatId, senderName, 'text length:', text?.length || 0);
 
       if (!senderPhone || (!text && !imageUrl)) {
         return res.status(400).json({
