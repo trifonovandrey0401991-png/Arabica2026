@@ -7,6 +7,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const RECIPES_DIR = `${DATA_DIR}/recipes`;
@@ -47,7 +48,11 @@ function setupRecipesAPI(app) {
       }
 
       console.log(`✅ Найдено рецептов: ${recipes.length}`);
-      res.json({ success: true, recipes });
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(recipes, req.query, 'recipes'));
+      } else {
+        res.json({ success: true, recipes });
+      }
     } catch (error) {
       console.error('Ошибка получения рецептов:', error);
       res.status(500).json({ success: false, error: error.message });

@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const fetch = require('node-fetch');
 const { fileExists } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzaH6AqH8j9E93Tf4SFCie35oeESGfBL6p51cTHl9EvKq0Y5bfzg4UbmsDKB1B82yPS/exec";
@@ -205,7 +206,11 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
           });
         }
 
-        return res.json({ success: true, reports: filteredReports });
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(filteredReports, req.query, 'reports'));
+        } else {
+          return res.json({ success: true, reports: filteredReports });
+        }
       }
 
       // Если директории нет, возвращаем пустой список

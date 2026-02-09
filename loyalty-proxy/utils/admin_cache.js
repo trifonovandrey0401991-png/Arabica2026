@@ -10,6 +10,7 @@
  */
 
 const fs = require('fs');
+const fsp = fs.promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -38,32 +39,16 @@ function normalizePhone(phone) {
 }
 
 /**
- * Проверить, является ли телефон админом (с кэшированием)
+ * Проверить, является ли телефон админом (чистый cache lookup, без I/O)
+ * Кэш обновляется асинхронно каждые 5 минут
  * @param {string} phone - Телефон для проверки
  * @returns {boolean} - true если админ
  */
 function isAdminPhone(phone) {
   if (!phone) return false;
-
   const normalizedPhone = normalizePhone(phone);
-  const now = Date.now();
-
-  // Проверяем кэш
   const cached = adminCache.get(normalizedPhone);
-  if (cached && (now - cached.cachedAt) < CACHE_TTL_MS) {
-    return cached.isAdmin;
-  }
-
-  // Кэш промах - читаем с диска
-  const isAdmin = checkAdminFromDisk(normalizedPhone);
-
-  // Сохраняем в кэш
-  adminCache.set(normalizedPhone, {
-    isAdmin,
-    cachedAt: now
-  });
-
-  return isAdmin;
+  return cached ? cached.isAdmin : false;
 }
 
 /**
@@ -74,61 +59,33 @@ async function isAdminPhoneAsync(phone) {
 }
 
 /**
- * Проверка админа/разработчика через чтение файла с диска
- * Developer role имеет те же права что и admin
+ * Async предзагрузка всех админов в кэш
+ * Не блокирует event loop (используется fsp.readdir/readFile)
  */
-function checkAdminFromDisk(normalizedPhone) {
-  try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) return false;
-
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
-
-    for (const file of files) {
-      try {
-        const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
-        const employee = JSON.parse(content);
-        const empPhone = normalizePhone(employee.phone);
-
-        if (empPhone === normalizedPhone) {
-          // Developer role имеет те же права что и admin
-          return employee.isAdmin === true || employee.role === 'developer';
-        }
-      } catch (e) { /* skip invalid files */ }
-    }
-  } catch (e) {
-    console.error('[AdminCache] Error checking admin from disk:', e);
-  }
-
-  return false;
-}
-
-/**
- * Предзагрузка всех админов в кэш (вызывать при старте сервера)
- * SCALABILITY: Загружает всё ОДИН раз, а не при каждом запросе
- */
-function preloadAdminCache() {
-  console.log('[AdminCache] Preloading admin cache...');
+async function preloadAdminCache() {
   const startTime = Date.now();
 
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) {
+    try {
+      await fsp.access(EMPLOYEES_DIR);
+    } catch (e) {
       console.log('[AdminCache] Employees directory not found');
       return;
     }
 
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    const allFiles = await fsp.readdir(EMPLOYEES_DIR);
+    const files = allFiles.filter(f => f.endsWith('.json'));
     const now = Date.now();
     let adminCount = 0;
     let totalCount = 0;
 
     for (const file of files) {
       try {
-        const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
         const employee = JSON.parse(content);
         const empPhone = normalizePhone(employee.phone);
 
         if (empPhone) {
-          // Developer role имеет те же права что и admin
           const hasAdminRights = employee.isAdmin === true || employee.role === 'developer';
           adminCache.set(empPhone, {
             isAdmin: hasAdminRights,
@@ -146,6 +103,17 @@ function preloadAdminCache() {
   } catch (e) {
     console.error('[AdminCache] Preload error:', e);
   }
+}
+
+/**
+ * Запустить периодическое обновление кэша (каждые 5 минут)
+ */
+function startPeriodicRebuild() {
+  setInterval(() => {
+    preloadAdminCache().catch(e => {
+      console.error('[AdminCache] Periodic rebuild error:', e.message);
+    });
+  }, CACHE_TTL_MS);
 }
 
 /**
@@ -183,6 +151,7 @@ module.exports = {
   isAdminPhone,
   isAdminPhoneAsync,
   preloadAdminCache,
+  startPeriodicRebuild,
   invalidateCache,
   clearCache,
   getCacheStats,

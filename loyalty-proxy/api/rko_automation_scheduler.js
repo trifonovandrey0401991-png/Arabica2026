@@ -13,6 +13,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { writeJsonFile } = require('../utils/async_fs');
 
 // Async helper
 async function fileExists(filePath) {
@@ -87,11 +88,7 @@ async function loadJsonFile(filePath, defaultValue) {
 
 async function saveJsonFile(filePath, data) {
   try {
-    const dir = path.dirname(filePath);
-    if (!(await fileExists(dir))) {
-      await fsp.mkdir(dir, { recursive: true });
-    }
-    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await writeJsonFile(filePath, data);
     return true;
   } catch (e) {
     console.error(`[RkoScheduler] Error saving JSON to ${filePath}:`, e.message);

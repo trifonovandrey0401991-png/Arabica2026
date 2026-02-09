@@ -9,6 +9,7 @@ const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ENVELOPE_QUESTIONS_DIR = `${DATA_DIR}/envelope-questions`;
@@ -255,7 +256,11 @@ function setupEnvelopeAPI(app) {
       // Сортируем по дате создания (новые первыми)
       reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      res.json({ success: true, reports });
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(reports, req.query, 'reports'));
+      } else {
+        res.json({ success: true, reports });
+      }
     } catch (error) {
       console.error('Ошибка получения отчетов конвертов:', error);
       res.status(500).json({ success: false, error: error.message });

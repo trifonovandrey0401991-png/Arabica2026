@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const dataCache = require('../utils/data_cache');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
@@ -48,22 +49,23 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
     try {
       console.log('GET /api/employees');
 
-      let employees = [];
+      // SCALABILITY: Используем кэш если доступен, иначе читаем с диска
+      let employees = dataCache.getEmployees();
 
-      if (!await fileExists(EMPLOYEES_DIR)) {
-        await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
-      }
-
-      const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
-
-      for (const file of files) {
-        try {
-          const filePath = path.join(EMPLOYEES_DIR, file);
-          const content = await fsp.readFile(filePath, 'utf8');
-          const employee = JSON.parse(content);
-          employees.push(employee);
-        } catch (e) {
-          console.error(`Ошибка чтения файла ${file}:`, e);
+      if (!employees) {
+        employees = [];
+        if (!await fileExists(EMPLOYEES_DIR)) {
+          await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
+        }
+        const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+        for (const file of files) {
+          try {
+            const filePath = path.join(EMPLOYEES_DIR, file);
+            const content = await fsp.readFile(filePath, 'utf8');
+            employees.push(JSON.parse(content));
+          } catch (e) {
+            console.error(`Ошибка чтения файла ${file}:`, e);
+          }
         }
       }
 
@@ -167,10 +169,11 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
       await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
       console.log('Сотрудник создан:', employeeFile);
 
-      // SCALABILITY: Инвалидируем кэш isAdmin при создании сотрудника
+      // SCALABILITY: Инвалидируем кэши при создании сотрудника
       if (employee.phone && invalidateCache) {
         invalidateCache(employee.phone);
       }
+      dataCache.invalidateEmployees();
 
       res.json({ success: true, employee });
     } catch (error) {
@@ -228,10 +231,11 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
       await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
       console.log('Сотрудник обновлен:', employeeFile);
 
-      // SCALABILITY: Инвалидируем кэш isAdmin при изменении сотрудника
+      // SCALABILITY: Инвалидируем кэши при изменении сотрудника
       if (invalidateCache) {
         invalidateCache(employee.phone);
       }
+      dataCache.invalidateEmployees();
 
       res.json({ success: true, employee });
     } catch (error) {
@@ -267,10 +271,11 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
       await fsp.unlink(employeeFile);
       console.log('Сотрудник удален:', employeeFile);
 
-      // SCALABILITY: Инвалидируем кэш isAdmin при удалении сотрудника
+      // SCALABILITY: Инвалидируем кэши при удалении сотрудника
       if (employeePhone && invalidateCache) {
         invalidateCache(employeePhone);
       }
+      dataCache.invalidateEmployees();
 
       res.json({ success: true, message: 'Сотрудник удален' });
     } catch (error) {

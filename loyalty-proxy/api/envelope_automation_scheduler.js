@@ -6,6 +6,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { writeJsonFile } = require('../utils/async_fs');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -154,7 +155,7 @@ async function loadState() {
       lastCleanup: null,
       lastCheck: null
     };
-    await fsp.writeFile(STATE_FILE, JSON.stringify(defaultState, null, 2));
+    await writeJsonFile(STATE_FILE, defaultState);
     return defaultState;
   }
   return JSON.parse(await fsp.readFile(STATE_FILE, 'utf8'));
@@ -165,7 +166,7 @@ async function loadState() {
  */
 async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+  await writeJsonFile(STATE_FILE, state);
 }
 
 /**
@@ -334,7 +335,7 @@ async function generatePendingReports(shiftType) {
 
     // Сохранить
     const filePath = path.join(ENVELOPE_PENDING_DIR, `${report.id}.json`);
-    await fsp.writeFile(filePath, JSON.stringify(report, null, 2));
+    await writeJsonFile(filePath, report);
     created++;
   }
 
@@ -395,7 +396,7 @@ async function checkPendingDeadlines() {
       report.failedAt = moscow.toISOString();
 
       // Сохранить изменения
-      await fsp.writeFile(report._filePath, JSON.stringify(report, null, 2));
+      await writeJsonFile(report._filePath, report);
 
       // Назначить штраф
       await assignPenaltyFromSchedule(report, settings);
@@ -494,7 +495,7 @@ async function assignPenaltyFromSchedule(report, settings) {
   }
 
   penalties.penalties.push(penalty);
-  await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2));
+  await writeJsonFile(penaltiesFile, penalties);
 
   console.log(`[Envelope] Штраф назначен: ${entry.employeeName} (${penalty.points} баллов)`);
 
@@ -578,7 +579,7 @@ async function cleanupFailedReports() {
     lastCheck: new Date().toISOString()
   };
 
-  await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+  await writeJsonFile(STATE_FILE, state);
 }
 
 /**
@@ -608,12 +609,12 @@ async function startScheduler() {
       const currentMinute = moscow.getUTCMinutes();
       const today = moscow.toISOString().split('T')[0];
 
-      // Проверка 1: Создание утренних pending (07:00)
+      // Проверка 1: Создание утренних pending (07:00, окно 30 мин)
       const [morningStartHour, morningStartMinute] = settings.morningStartTime.split(':').map(Number);
       if (
         currentHour === morningStartHour &&
         currentMinute >= morningStartMinute &&
-        currentMinute < morningStartMinute + 5 &&
+        currentMinute < morningStartMinute + 30 &&
         state.lastMorningGeneration !== today
       ) {
         await generatePendingReports('morning');
@@ -621,12 +622,12 @@ async function startScheduler() {
         await saveState(state);
       }
 
-      // Проверка 2: Создание вечерних pending (19:00)
+      // Проверка 2: Создание вечерних pending (19:00, окно 30 мин)
       const [eveningStartHour, eveningStartMinute] = settings.eveningStartTime.split(':').map(Number);
       if (
         currentHour === eveningStartHour &&
         currentMinute >= eveningStartMinute &&
-        currentMinute < eveningStartMinute + 5 &&
+        currentMinute < eveningStartMinute + 30 &&
         state.lastEveningGeneration !== today
       ) {
         await generatePendingReports('evening');

@@ -570,12 +570,45 @@ function setupClientsAPI(app) {
 
   app.post('/api/clients/messages/broadcast', async (req, res) => {
     try {
-      const { message, phones } = req.body;
       console.log('POST /api/clients/messages/broadcast');
 
+      // Поддержка двух форматов:
+      // Формат 1 (legacy): { message: {...}, phones: [...] }
+      // Формат 2 (Flutter): { text: "...", imageUrl?: "...", senderPhone?: "..." }
+      let messageObj = req.body.message;
+      let targetPhones = req.body.phones;
+
+      // Если Flutter-формат (text вместо message)
+      if (!messageObj && req.body.text) {
+        messageObj = { text: req.body.text };
+        if (req.body.imageUrl) messageObj.imageUrl = req.body.imageUrl;
+        if (req.body.senderPhone) messageObj.senderPhone = req.body.senderPhone;
+      }
+
+      if (!messageObj) {
+        return res.status(400).json({ success: false, error: 'Не указан текст сообщения (message или text)' });
+      }
+
+      // Если phones не указан — рассылаем всем клиентам
+      if (!targetPhones || !Array.isArray(targetPhones) || targetPhones.length === 0) {
+        try {
+          if (await fileExists(CLIENTS_DIR)) {
+            const allFiles = await fsp.readdir(CLIENTS_DIR);
+            targetPhones = allFiles
+              .filter(f => f.endsWith('.json'))
+              .map(f => f.replace('.json', ''));
+          } else {
+            targetPhones = [];
+          }
+        } catch {
+          targetPhones = [];
+        }
+      }
+
       let sent = 0;
-      for (const phone of phones) {
+      for (const phone of targetPhones) {
         const normalizedPhone = sanitizePhone(phone);
+        if (!normalizedPhone) continue;
         const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${normalizedPhone}.json`);
 
         let dialog = { phone: normalizedPhone, messages: [] };
@@ -585,7 +618,7 @@ function setupClientsAPI(app) {
         }
 
         dialog.messages.push({
-          ...message,
+          ...messageObj,
           timestamp: new Date().toISOString(),
           from: 'manager',
           isBroadcast: true
@@ -595,7 +628,7 @@ function setupClientsAPI(app) {
         sent++;
       }
 
-      res.json({ success: true, sent });
+      res.json({ success: true, sent, sentCount: sent, totalClients: targetPhones.length });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }

@@ -34,11 +34,13 @@ const RECOUNT_REPORTS_DIR = `${DATA_DIR}/recount-reports`;
 const HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handovers`;
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
 const TESTS_DIR = `${DATA_DIR}/test-results`;
-const REVIEWS_DIR = `${DATA_DIR}/client-reviews`;
+const REVIEWS_DIR = `${DATA_DIR}/reviews`;
 const PRODUCT_QUESTIONS_DIR = `${DATA_DIR}/product-questions`;
 const RKO_DIR = `${DATA_DIR}/rko`;
 const TASKS_DIR = `${DATA_DIR}/tasks`;
 const RECURRING_TASKS_DIR = `${DATA_DIR}/recurring-tasks`;
+const TASK_ASSIGNMENTS_DIR = `${DATA_DIR}/task-assignments`;
+const RECURRING_INSTANCES_DIR = `${DATA_DIR}/recurring-task-instances`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 const COFFEE_MACHINE_REPORTS_DIR = `${DATA_DIR}/coffee-machine-reports`;
@@ -531,10 +533,10 @@ async function calculateReviewsPoints(shopAddress, month) {
         const review = JSON.parse(content);
 
         if (review.shopAddress === shopAddress &&
-            review.date && review.date.startsWith(month)) {
+            review.createdAt && review.createdAt.startsWith(month)) {
 
-          // Положительный отзыв (rating >= 4) = +баллы, отрицательный = -баллы
-          const isPositive = review.rating && review.rating >= 4;
+          // Положительный отзыв = +баллы, отрицательный = -баллы
+          const isPositive = review.reviewType === 'positive';
           const points = isPositive
             ? DEFAULT_REVIEWS_POINTS.positivePoints
             : DEFAULT_REVIEWS_POINTS.negativePoints;
@@ -556,39 +558,10 @@ async function calculateReviewsPoints(shopAddress, month) {
  * Рассчитать баллы за поиск товара (product search)
  */
 async function calculateProductSearchPoints(employeeId, month) {
-  try {
-    if (!(await fileExists(PRODUCT_QUESTIONS_DIR))) return 0;
-
-    const files = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
-    let totalPoints = 0;
-
-    for (const file of files) {
-      if (!file.endsWith('.json')) continue;
-
-      try {
-        const content = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
-        const question = JSON.parse(content);
-
-        if (question.employeeId === employeeId &&
-            question.createdAt && question.createdAt.startsWith(month)) {
-
-          // Если ответил - баллы, не ответил - 0
-          const answered = question.status === 'answered';
-          const points = answered
-            ? DEFAULT_PRODUCT_SEARCH_POINTS.answeredPoints
-            : DEFAULT_PRODUCT_SEARCH_POINTS.missedPoints;
-          totalPoints += points;
-        }
-      } catch (e) {
-        // Skip invalid file
-      }
-    }
-
-    return totalPoints;
-  } catch (e) {
-    console.error('Error calculating product search points:', e);
-    return 0;
-  }
+  // Баллы за поиск товара рассчитываются через product_questions_penalty_scheduler
+  // и записываются в efficiency-penalties/YYYY-MM.json
+  // calculateAttendancePenalties() уже суммирует их оттуда
+  return 0;
 }
 
 /**
@@ -636,52 +609,44 @@ async function calculateTasksPoints(employeeId, month) {
   try {
     let totalPoints = 0;
 
-    // Разовые задачи
-    if (await fileExists(TASKS_DIR)) {
-      const files = await fsp.readdir(TASKS_DIR);
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
+    // Разовые задачи — читаем назначения из task-assignments/YYYY-MM.json
+    const assignmentsFile = path.join(TASK_ASSIGNMENTS_DIR, `${month}.json`);
+    if (await fileExists(assignmentsFile)) {
+      try {
+        const content = await fsp.readFile(assignmentsFile, 'utf8');
+        const data = JSON.parse(content);
+        const assignments = data.assignments || [];
 
-        try {
-          const content = await fsp.readFile(path.join(TASKS_DIR, file), 'utf8');
-          const task = JSON.parse(content);
-
-          if (task.assignedTo === employeeId &&
-              task.completedAt && task.completedAt.startsWith(month)) {
-            // TODO: добавить настройки баллов за задачи
-            totalPoints += 1.0; // Временно фиксированный балл
+        for (const assignment of assignments) {
+          if (assignment.assigneeId === employeeId && assignment.status === 'approved') {
+            totalPoints += 1.0;
           }
-        } catch (e) {
-          // Skip invalid file
         }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
-    // Циклические задачи
-    if (await fileExists(RECURRING_TASKS_DIR)) {
-      const files = await fsp.readdir(RECURRING_TASKS_DIR);
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
+    // Циклические задачи — читаем инстансы из recurring-task-instances/YYYY-MM.json
+    const instancesFile = path.join(RECURRING_INSTANCES_DIR, `${month}.json`);
+    if (await fileExists(instancesFile)) {
+      try {
+        const content = await fsp.readFile(instancesFile, 'utf8');
+        const instances = JSON.parse(content);
+        const instancesArr = Array.isArray(instances) ? instances : [];
 
-        try {
-          const content = await fsp.readFile(path.join(RECURRING_TASKS_DIR, file), 'utf8');
-          const task = JSON.parse(content);
-
-          if (task.assignedTo === employeeId) {
-            // Подсчитать выполненные задачи за месяц
-            const completions = task.completions || [];
-            for (const completion of completions) {
-              if (completion.completedAt && completion.completedAt.startsWith(month)) {
-                totalPoints += 1.0; // Временно фиксированный балл
-              }
-            }
+        for (const instance of instancesArr) {
+          if (instance.assigneeId === employeeId && instance.status === 'completed') {
+            totalPoints += 1.0;
           }
-        } catch (e) {
-          // Skip invalid file
         }
+      } catch (e) {
+        // Skip invalid file
       }
     }
 
+    // Штрафы за просроченные задачи обрабатываются через
+    // tasks_api/recurring_tasks_api → efficiency-penalties
     return totalPoints;
   } catch (e) {
     console.error('Error calculating tasks points:', e);
@@ -757,17 +722,17 @@ async function calculateEnvelopePoints(employeeName, month) {
         const content = await fsp.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
         const envelope = JSON.parse(content);
 
-        // Фильтруем по имени сотрудника и месяцу
-        if (envelope.employeeName === employeeName &&
-            envelope.createdAt && envelope.createdAt.startsWith(month)) {
+        // Фильтруем по имени сотрудника (case-insensitive) и месяцу
+        const nameMatch = envelope.employeeName && employeeName &&
+          envelope.employeeName.trim().toLowerCase() === employeeName.trim().toLowerCase();
 
-          // Если конверт подтвержден (status: "confirmed") - 0 баллов
-          // Если не подтвержден (status: "pending" или другой) - штраф -5
-          const isConfirmed = envelope.status === 'confirmed';
-          const points = isConfirmed
-            ? settings.submittedPoints
-            : settings.notSubmittedPoints;
-          totalPoints += points;
+        if (nameMatch && envelope.createdAt && envelope.createdAt.startsWith(month)) {
+          // Бонус за подтверждённый конверт
+          if (envelope.status === 'confirmed') {
+            totalPoints += settings.submittedPoints;
+          }
+          // Штрафы за несданные конверты обрабатываются через
+          // envelope_automation_scheduler → efficiency-penalties
         }
       } catch (e) {
         // Skip invalid file
@@ -803,14 +768,14 @@ async function calculateCoffeeMachinePoints(employeeName, month) {
         const content = await fsp.readFile(path.join(COFFEE_MACHINE_REPORTS_DIR, file), 'utf8');
         const report = JSON.parse(content);
 
-        if (report.employeeName === employeeName &&
-            report.createdAt && report.createdAt.startsWith(month)) {
+        const nameMatch = report.employeeName && employeeName &&
+          report.employeeName.trim().toLowerCase() === employeeName.trim().toLowerCase();
 
-          const isConfirmed = report.status === 'confirmed';
-          const points = isConfirmed
-            ? settings.submittedPoints
-            : settings.notSubmittedPoints;
-          totalPoints += points;
+        if (nameMatch && report.createdAt && report.createdAt.startsWith(month)) {
+          if (report.status === 'confirmed') {
+            totalPoints += settings.submittedPoints;
+          }
+          // Штрафы за несданные — через coffee_machine_automation_scheduler → efficiency-penalties
         }
       } catch (e) {
         // Skip invalid file
@@ -1013,7 +978,7 @@ function calculateReviewsPointsCached(shopAddress, cache) {
 
   for (const review of cache.reviews) {
     if (review.shopAddress === shopAddress) {
-      const points = review.isPositive
+      const points = (review.reviewType === 'positive')
         ? DEFAULT_REVIEWS_POINTS.positivePoints
         : DEFAULT_REVIEWS_POINTS.negativePoints;
       totalPoints += points;
@@ -1033,10 +998,12 @@ async function calculateEnvelopePointsCached(employeeName, cache) {
   let totalPoints = 0;
 
   for (const envelope of cache.envelopes) {
-    if (envelope.employeeName === employeeName) {
-      const isConfirmed = envelope.status === 'confirmed';
-      totalPoints += isConfirmed ? settings.submittedPoints : settings.notSubmittedPoints;
+    const nameMatch = envelope.employeeName && employeeName &&
+      envelope.employeeName.trim().toLowerCase() === employeeName.trim().toLowerCase();
+    if (nameMatch && envelope.status === 'confirmed') {
+      totalPoints += settings.submittedPoints;
     }
+    // Штрафы за несданные — через envelope_automation_scheduler → efficiency-penalties
   }
 
   return totalPoints;
@@ -1052,10 +1019,12 @@ async function calculateCoffeeMachinePointsCached(employeeName, cache) {
   let totalPoints = 0;
 
   for (const report of cache.coffeeMachineReports) {
-    if (report.employeeName === employeeName) {
-      const isConfirmed = report.status === 'confirmed';
-      totalPoints += isConfirmed ? settings.submittedPoints : settings.notSubmittedPoints;
+    const nameMatch = report.employeeName && employeeName &&
+      report.employeeName.trim().toLowerCase() === employeeName.trim().toLowerCase();
+    if (nameMatch && report.status === 'confirmed') {
+      totalPoints += settings.submittedPoints;
     }
+    // Штрафы за несданные — через coffee_machine_automation_scheduler → efficiency-penalties
   }
 
   return totalPoints;

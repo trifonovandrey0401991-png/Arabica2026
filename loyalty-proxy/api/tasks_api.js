@@ -8,6 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 const { getTaskPointsConfig } = require('./task_points_settings_api');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -459,7 +460,11 @@ function setupTasksAPI(app) {
       // Sort by creation date descending
       tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      res.json({ success: true, tasks });
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(tasks, req.query, 'tasks'));
+      } else {
+        res.json({ success: true, tasks });
+      }
     } catch (error) {
       console.error('Error getting tasks:', error);
       res.status(500).json({ success: false, error: error.message });

@@ -5,6 +5,8 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const dataCache = require('../utils/data_cache');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHOPS_DIR = `${DATA_DIR}/shops`;
@@ -55,19 +57,28 @@ function setupShopsAPI(app) {
     try {
       console.log('GET /api/shops');
 
-      const shops = [];
-      const files = (await fsp.readdir(SHOPS_DIR)).filter(f => f.endsWith('.json'));
+      // SCALABILITY: Используем кэш если доступен
+      let shops = dataCache.getShops();
 
-      for (const file of files) {
-        try {
-          const content = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
-          shops.push(JSON.parse(content));
-        } catch (e) {
-          console.error(`Ошибка чтения файла ${file}:`, e.message);
+      if (!shops) {
+        shops = [];
+        const files = (await fsp.readdir(SHOPS_DIR)).filter(f => f.endsWith('.json'));
+        for (const file of files) {
+          try {
+            const content = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
+            shops.push(JSON.parse(content));
+          } catch (e) {
+            console.error(`Ошибка чтения файла ${file}:`, e.message);
+          }
         }
       }
 
-      res.json({ success: true, shops });
+      // SCALABILITY: Пагинация если запрошена
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(shops, req.query, 'shops'));
+      } else {
+        res.json({ success: true, shops });
+      }
     } catch (error) {
       console.error('Ошибка получения магазинов:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -112,6 +123,7 @@ function setupShopsAPI(app) {
 
       const shopFile = path.join(SHOPS_DIR, `${id}.json`);
       await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
+      dataCache.invalidateShops();
 
       console.log('✅ Магазин создан:', id);
       res.json({ success: true, shop });
@@ -144,6 +156,7 @@ function setupShopsAPI(app) {
       shop.updatedAt = new Date().toISOString();
 
       await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
+      dataCache.invalidateShops();
 
       console.log('✅ Магазин обновлен:', id);
       res.json({ success: true, shop });
@@ -165,6 +178,7 @@ function setupShopsAPI(app) {
       }
 
       await fsp.unlink(shopFile);
+      dataCache.invalidateShops();
 
       console.log('✅ Магазин удален:', id);
       res.json({ success: true });

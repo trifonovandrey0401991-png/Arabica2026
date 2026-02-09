@@ -1,10 +1,10 @@
 /**
  * Z-Report Vision Module
- * Распознавание Z-отчётов с помощью Google Cloud Vision API
+ * Распознавание Z-отчётов с помощью EasyOCR + Tesseract (ранее Google Cloud Vision)
+ * OCR → z-report-ocr.js, парсинг текста → здесь
  */
 
-const vision = require('@google-cloud/vision');
-const path = require('path');
+const { extractZReportText } = require('./z-report-ocr');
 
 // Кэш для выученных паттернов
 let learnedPatternsCache = null;
@@ -68,10 +68,7 @@ function enhancedOcrNormalize(text) {
   return normalized;
 }
 
-// Инициализация клиента Vision API
-const client = new vision.ImageAnnotatorClient({
-  keyFilename: path.join(__dirname, '../credentials/vision-key.json')
-});
+// OCR теперь через EasyOCR + Tesseract (см. z-report-ocr.js)
 
 /**
  * Извлекает данные из Z-отчёта
@@ -80,26 +77,18 @@ const client = new vision.ImageAnnotatorClient({
  */
 async function parseZReport(imageBase64) {
   try {
-    // Убираем префикс data:image/... если есть
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    // Распознаём текст через EasyOCR (с Tesseract fallback)
+    const ocrResult = await extractZReportText(imageBase64);
 
-    // Распознаём текст на изображении
-    const [result] = await client.textDetection({
-      image: { content: base64Data }
-    });
-
-    const detections = result.textAnnotations;
-
-    if (!detections || detections.length === 0) {
+    if (!ocrResult.success || !ocrResult.text) {
       return {
         success: false,
-        error: 'Текст не распознан на изображении'
+        error: ocrResult.error || 'Текст не распознан на изображении'
       };
     }
 
-    // Полный текст с чека
-    const fullText = detections[0].description;
-    console.log('[Z-Report] Распознанный текст:', fullText);
+    const fullText = ocrResult.text;
+    console.log('[Z-Report] Распознанный текст (метод:', ocrResult.method, '| символов:', ocrResult.charCount, '):', fullText);
 
     // Парсим нужные поля (теперь async)
     const parsed = await extractZReportData(fullText);
@@ -769,17 +758,13 @@ async function parseRegion(imageBase64, region) {
       .extract({ left, top, width, height })
       .toBuffer();
 
-    // Распознаём текст в области
-    const [result] = await client.textDetection({
-      image: { content: croppedBuffer.toString('base64') }
-    });
-
-    const detections = result.textAnnotations;
-    if (!detections || detections.length === 0) {
+    // Распознаём текст в области через EasyOCR
+    const ocrResult = await extractZReportText(croppedBuffer.toString('base64'));
+    if (!ocrResult.success || !ocrResult.text) {
       return null;
     }
 
-    return detections[0].description.trim();
+    return ocrResult.text.trim();
   } catch (error) {
     console.error('[Z-Report] Ошибка распознавания области:', error);
     return null;
@@ -835,13 +820,10 @@ async function parseZReportWithTemplate(imageBase64, template) {
     // ВАЖНО: Сначала делаем полное OCR для получения rawText (нужен для обучения!)
     let rawText = '';
     try {
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      const [ocrResult] = await client.textDetection({
-        image: { content: base64Data }
-      });
-      if (ocrResult.textAnnotations && ocrResult.textAnnotations.length > 0) {
-        rawText = ocrResult.textAnnotations[0].description;
-        console.log('[Z-Report] Получен rawText для обучения, длина:', rawText.length);
+      const ocrResult = await extractZReportText(imageBase64);
+      if (ocrResult.success && ocrResult.text) {
+        rawText = ocrResult.text;
+        console.log('[Z-Report] Получен rawText для обучения, длина:', rawText.length, '| метод:', ocrResult.method);
       }
     } catch (e) {
       console.log('[Z-Report] Не удалось получить rawText:', e.message);

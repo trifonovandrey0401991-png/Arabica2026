@@ -25,7 +25,7 @@ import numpy as np
 print("[OCR Server] Starting...")
 print("[OCR Server] Loading EasyOCR model (this may take 20-30 seconds)...")
 import easyocr
-reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+reader = easyocr.Reader(['ru', 'en'], gpu=False, verbose=False)
 print("[OCR Server] Model loaded successfully!")
 
 # Keywords that indicate the counter reading line
@@ -176,7 +176,7 @@ def is_date_pattern(val):
     return False
 
 
-def recognize(image_path, preset="standard"):
+def recognize(image_path, preset="standard", expected_range=None):
     """Main recognition function"""
     img = cv2.imread(image_path)
     if img is None:
@@ -273,6 +273,13 @@ def recognize(image_path, preset="standard"):
         if kw_boost > 0:
             score += kw_boost * 2.0
 
+        # Expected range bonus (from machine intelligence)
+        if expected_range:
+            range_min = expected_range.get("min", 0)
+            range_max = expected_range.get("max", float("inf"))
+            if range_min <= val <= range_max:
+                score *= 1.5
+
         return score
 
     sorted_nums = sorted(
@@ -304,13 +311,143 @@ def recognize(image_path, preset="standard"):
     }
 
 
+def preprocess_zreport(img):
+    """Generate preprocessing variants optimized for thermal paper Z-reports"""
+    variants = []
+    h, w = img.shape[:2]
+
+    max_dim = 1200
+    if max(h, w) > max_dim:
+        scale = max_dim / max(h, w)
+        img_resized = cv2.resize(img, (int(w * scale), int(h * scale)))
+    else:
+        img_resized = img.copy()
+
+    # Variant 1: Original
+    variants.append(("original", img_resized.copy()))
+
+    # Variant 2: CLAHE contrast enhancement (thermal paper often low contrast)
+    gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+    variants.append(("clahe", cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)))
+
+    # Variant 3: Adaptive threshold (binary, good for faded receipts)
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                    cv2.THRESH_BINARY, 31, 10)
+    variants.append(("adaptive_thresh", cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)))
+
+    # Variant 4: High-res if image was large
+    if max(h, w) > 1200:
+        max_dim_hi = 1800
+        scale_hi = max_dim_hi / max(h, w)
+        img_hi = cv2.resize(img, (int(w * scale_hi), int(h * scale_hi)))
+        variants.append(("hires", img_hi))
+
+    return variants
+
+
+def recognize_text(image_path):
+    """
+    Full text recognition for Z-reports.
+    Returns complete text in reading order (top-to-bottom, left-to-right).
+    """
+    img = cv2.imread(image_path)
+    if img is None:
+        return {"error": f"Cannot read image: {image_path}", "success": False}
+
+    variants = preprocess_zreport(img)
+    del img
+    gc.collect()
+
+    best_text = ""
+    best_char_count = 0
+    all_variant_results = []
+
+    for vname, vimg in variants:
+        tmp_path = f"/tmp/counter-ocr/zr_{os.getpid()}_{vname}.jpg"
+        try:
+            cv2.imwrite(tmp_path, vimg)
+            del vimg
+
+            results = reader.readtext(tmp_path)
+
+            if not results:
+                all_variant_results.append({"variant": vname, "text": "", "lines": 0})
+                continue
+
+            # Sort by Y coordinate (top of bbox) to get reading order
+            def sort_key(item):
+                bbox = item[0]
+                y_top = min(p[1] for p in bbox)
+                x_left = min(p[0] for p in bbox)
+                return (y_top, x_left)
+
+            results.sort(key=sort_key)
+
+            # Group into lines: items with similar Y coordinates
+            lines = []
+            current_line = []
+            current_y = None
+            line_threshold = 15  # pixels
+
+            for bbox, text, conf in results:
+                if conf < 0.1:
+                    continue
+                y_center = sum(p[1] for p in bbox) / 4
+                if current_y is None or abs(y_center - current_y) > line_threshold:
+                    if current_line:
+                        current_line.sort(key=lambda x: min(p[0] for p in x[0]))
+                        line_text = " ".join(item[1] for item in current_line)
+                        lines.append(line_text)
+                    current_line = [(bbox, text, conf)]
+                    current_y = y_center
+                else:
+                    current_line.append((bbox, text, conf))
+
+            if current_line:
+                current_line.sort(key=lambda x: min(p[0] for p in x[0]))
+                line_text = " ".join(item[1] for item in current_line)
+                lines.append(line_text)
+
+            full_text = "\n".join(lines)
+            char_count = len(full_text.replace(" ", "").replace("\n", ""))
+
+            all_variant_results.append({
+                "variant": vname,
+                "lines": len(lines),
+                "chars": char_count
+            })
+
+            if char_count > best_char_count:
+                best_char_count = char_count
+                best_text = full_text
+
+        except Exception as e:
+            all_variant_results.append({"variant": vname, "error": str(e)})
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
+        gc.collect()
+
+    return {
+        "success": True,
+        "text": best_text,
+        "charCount": best_char_count,
+        "lineCount": best_text.count("\n") + 1 if best_text else 0,
+        "variants": all_variant_results
+    }
+
+
 class OCRHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({"status": "ok", "engine": "easyocr"}).encode())
+            self.wfile.write(json.dumps({"status": "ok", "engine": "easyocr", "languages": ["ru", "en"]}).encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -324,6 +461,7 @@ class OCRHandler(BaseHTTPRequestHandler):
 
                 image_path = data.get("imagePath")
                 preset = data.get("preset", "standard")
+                expected_range = data.get("expectedRange")  # {"min": N, "max": N} from intelligence
 
                 if not image_path or not os.path.exists(image_path):
                     self.send_response(400)
@@ -332,7 +470,33 @@ class OCRHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"error": "imagePath required and must exist"}).encode())
                     return
 
-                result = recognize(image_path, preset)
+                result = recognize(image_path, preset, expected_range)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e), "traceback": traceback.format_exc()}).encode())
+        elif self.path == "/ocr-text":
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_length)
+                data = json.loads(body)
+
+                image_path = data.get("imagePath")
+
+                if not image_path or not os.path.exists(image_path):
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "imagePath required and must exist"}).encode())
+                    return
+
+                result = recognize_text(image_path)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -355,7 +519,7 @@ if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5001
     server = HTTPServer(("127.0.0.1", port), OCRHandler)
     print(f"[OCR Server] Listening on http://127.0.0.1:{port}")
-    print(f"[OCR Server] Endpoints: POST /ocr, GET /health")
+    print(f"[OCR Server] Endpoints: POST /ocr, POST /ocr-text, GET /health")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -8,7 +8,7 @@
 
 const WebSocket = require('ws');
 
-// Опциональная проверка session token
+// Проверка session token (обязательная)
 let tokenIndex;
 try {
   const sessionMiddleware = require('../utils/session_middleware');
@@ -59,17 +59,27 @@ function setupChatWebSocket(server) {
       return;
     }
 
-    // Проверяем session token если предоставлен
-    if (authToken && tokenIndex) {
-      const tokenUser = tokenIndex.verifyToken(authToken);
-      if (!tokenUser) {
-        console.log(`❌ WebSocket: невалидный token для ${userPhone}`);
-        ws.close(4003, 'Invalid session token');
-        return;
-      }
-      // Используем phone из token (более надёжный)
-      userPhone = tokenUser.phone || userPhone;
+    // Проверяем session token (обязательно)
+    if (!authToken) {
+      console.log(`❌ WebSocket: подключение без token для ${userPhone}, отклонено`);
+      ws.close(4002, 'Auth token required');
+      return;
     }
+
+    if (!tokenIndex) {
+      console.log(`❌ WebSocket: session middleware не загружен`);
+      ws.close(4003, 'Auth service unavailable');
+      return;
+    }
+
+    const tokenUser = tokenIndex.verifyToken(authToken);
+    if (!tokenUser) {
+      console.log(`❌ WebSocket: невалидный token для ${userPhone}`);
+      ws.close(4003, 'Invalid session token');
+      return;
+    }
+    // Используем phone из token (более надёжный)
+    userPhone = tokenUser.phone || userPhone;
 
     const normalizedPhone = userPhone.replace(/[\s+]/g, '');
     console.log(`📱 WebSocket: подключился ${normalizedPhone}`);

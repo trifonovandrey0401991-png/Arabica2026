@@ -13,6 +13,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { writeJsonFile } = require('../utils/async_fs');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -88,7 +89,7 @@ async function loadState() {
       lastCleanup: null,
       lastCheck: null,
     };
-    await fsp.writeFile(STATE_FILE, JSON.stringify(defaultState, null, 2));
+    await writeJsonFile(STATE_FILE, defaultState);
     return defaultState;
   }
   return JSON.parse(await fsp.readFile(STATE_FILE, 'utf8'));
@@ -99,7 +100,7 @@ async function loadState() {
  */
 async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+  await writeJsonFile(STATE_FILE, state);
 }
 
 /**
@@ -230,7 +231,7 @@ async function generatePendingReports(shiftType) {
     };
 
     const filePath = path.join(PENDING_DIR, `${report.id}.json`);
-    await fsp.writeFile(filePath, JSON.stringify(report, null, 2));
+    await writeJsonFile(filePath, report);
     created++;
   }
 
@@ -273,7 +274,7 @@ async function checkPendingDeadlines() {
     if (currentMinutes >= deadlineMinutes) {
       report.status = 'failed';
       report.failedAt = moscow.toISOString();
-      await fsp.writeFile(report._filePath, JSON.stringify(report, null, 2));
+      await writeJsonFile(report._filePath, report);
 
       await assignPenalty(report, settings);
       failedReports.push(report);
@@ -346,7 +347,7 @@ async function assignPenalty(report, settings) {
   if (exists) return;
 
   penalties.penalties.push(penalty);
-  await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2));
+  await writeJsonFile(penaltiesFile, penalties);
 
   console.log(`[CoffeeMachine] Штраф назначен: ${entry.employeeName} (${penalty.points} баллов)`);
 
@@ -415,7 +416,7 @@ async function cleanupPendingReports() {
     lastCleanup: new Date().toISOString(),
     lastCheck: new Date().toISOString(),
   };
-  await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+  await writeJsonFile(STATE_FILE, state);
 }
 
 /**
@@ -440,12 +441,12 @@ async function startCoffeeMachineAutomation() {
       const currentMinute = moscow.getUTCMinutes();
       const today = moscow.toISOString().split('T')[0];
 
-      // Утренние pending
+      // Утренние pending (окно 30 мин)
       const [mStartH, mStartM] = settings.morningStartTime.split(':').map(Number);
       if (
         currentHour === mStartH &&
         currentMinute >= mStartM &&
-        currentMinute < mStartM + 5 &&
+        currentMinute < mStartM + 30 &&
         state.lastMorningGeneration !== today
       ) {
         await generatePendingReports('morning');
@@ -453,12 +454,12 @@ async function startCoffeeMachineAutomation() {
         await saveState(state);
       }
 
-      // Вечерние pending
+      // Вечерние pending (окно 30 мин)
       const [eStartH, eStartM] = settings.eveningStartTime.split(':').map(Number);
       if (
         currentHour === eStartH &&
         currentMinute >= eStartM &&
-        currentMinute < eStartM + 5 &&
+        currentMinute < eStartM + 30 &&
         state.lastEveningGeneration !== today
       ) {
         await generatePendingReports('evening');

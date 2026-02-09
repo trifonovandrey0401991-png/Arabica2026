@@ -20,8 +20,9 @@ async function fileExists(filePath) {
 }
 
 const { spawn } = require('child_process');
-const { preloadAdminCache, invalidateCache } = require('./utils/admin_cache');
+const { preloadAdminCache, startPeriodicRebuild, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
+const dataCache = require('./utils/data_cache');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 
@@ -146,13 +147,12 @@ const { sessionMiddleware, initSessionMiddleware } = require("./utils/session_mi
 // ============================================
 // Генерация ключа: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 const API_KEY = process.env.API_KEY || null;
-const API_KEY_ENABLED = process.env.API_KEY_ENABLED === 'true';
+const API_KEY_ENABLED = process.env.API_KEY_ENABLED !== 'false';
 
 // Публичные endpoints которые не требуют аутентификации
 const PUBLIC_ENDPOINTS = [
   '/health',
   '/',           // Proxy для Google Apps Script (регистрация, лояльность)
-  '/upload-photo', // Загрузка фото (временно публичный)
   '/api/auth',   // Авторизация (регистрация, вход, сброс PIN)
 ];
 
@@ -279,6 +279,39 @@ app.use(apiKeyMiddleware);
 
 // Применяем Session middleware (неблокирующий - только заполняет req.user)
 app.use(sessionMiddleware);
+
+// ============================================
+// SECURITY: Require auth for write operations
+// ============================================
+// Все POST/PUT/DELETE/PATCH требуют авторизованную сессию
+// (кроме public endpoints: auth, shop-products sync)
+const PUBLIC_WRITE_PATHS = [
+  '/api/auth',           // Регистрация, вход, сброс PIN
+  '/api/shop-products',  // Синхронизация товаров (своя авторизация по x-sync-key)
+];
+
+app.use((req, res, next) => {
+  // Только write-операции
+  if (!['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    return next();
+  }
+
+  // Пропускаем публичные write paths
+  if (PUBLIC_WRITE_PATHS.some(p => req.path === p || req.path.startsWith(p + '/') || req.path.startsWith(p + '?'))) {
+    return next();
+  }
+
+  // Требуем авторизацию
+  if (!req.user) {
+    console.warn(`⚠️ Unauthenticated write blocked: ${req.method} ${req.path}`);
+    return res.status(401).json({
+      success: false,
+      error: 'Требуется авторизация. Войдите в приложение.'
+    });
+  }
+
+  next();
+});
 
 // Применяем Rate Limiting если пакет установлен
 if (rateLimit) {
@@ -653,9 +686,13 @@ const server = http.createServer(app);
 // Инициализируем WebSocket для чата
 setupChatWebSocket(server);
 
-// SCALABILITY: Предзагрузка кэша админов при старте сервера
-// Это предотвращает сканирование всех файлов сотрудников при каждом запросе
-preloadAdminCache();
+// SCALABILITY: Async предзагрузка кэша админов + периодическое обновление
+preloadAdminCache().catch(e => console.error('AdminCache preload error:', e.message));
+startPeriodicRebuild();
+
+// SCALABILITY: Кэш employees/shops данных (Fix #17)
+dataCache.preload().catch(e => console.error('DataCache preload error:', e.message));
+dataCache.startPeriodicRebuild();
 
 // Инициализация session middleware (индекс token -> session)
 initSessionMiddleware().catch(e => {

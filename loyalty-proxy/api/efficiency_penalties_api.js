@@ -9,6 +9,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
@@ -48,12 +49,9 @@ async function loadMonthPenalties(monthKey) {
 }
 
 async function saveMonthPenalties(monthKey, data) {
-  if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
-    await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
-  }
   const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
-  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+  await writeJsonFile(filePath, data);
 }
 
 async function addPenalty(penalty) {

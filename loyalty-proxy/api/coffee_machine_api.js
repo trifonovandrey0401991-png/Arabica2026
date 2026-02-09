@@ -18,6 +18,7 @@ const PHOTOS_DIR = `${DATA_DIR}/coffee-machine-photos`;
 const TRAINING_DIR = `${DATA_DIR}/coffee-machine-training`;
 const TRAINING_IMAGES_DIR = `${TRAINING_DIR}/images`;
 const TRAINING_SAMPLES_FILE = `${TRAINING_DIR}/samples.json`;
+const INTELLIGENCE_FILE = `${TRAINING_DIR}/machine-intelligence.json`;
 const MAX_TRAINING_SAMPLES = 200;
 
 // Async helper
@@ -379,6 +380,11 @@ function setupCoffeeMachineAPI(app) {
       await markPendingAsCompleted(report.shopAddress, report.shiftType, report.date);
 
       res.json({ success: true, report });
+
+      // Фоновое обновление intelligence (не блокирует ответ)
+      buildMachineIntelligence().catch(e =>
+        console.error('[CoffeeMachine] Intelligence update error:', e.message)
+      );
     } catch (error) {
       console.error('[CoffeeMachine] Ошибка создания отчёта:', error.message);
       res.status(500).json({ success: false, error: error.message });
@@ -513,10 +519,32 @@ function setupCoffeeMachineAPI(app) {
         }
       }
 
-      const result = await ocrModule.readCounterNumber(imageBase64, effectiveRegion, preset);
+      // Загружаем intelligence для этой машины (если есть)
+      let expectedRange = null;
+      let machineIntel = null;
+      if (machineName) {
+        try {
+          machineIntel = await loadMachineIntelligence(machineName);
+          if (machineIntel && machineIntel.expectedNext) {
+            expectedRange = machineIntel.expectedNext;
+            console.log(`[CoffeeMachine] 🧠 Intelligence: ${machineName} → ожидаем ${expectedRange.min}-${expectedRange.max}`);
+          }
+        } catch (e) { /* intelligence недоступна — продолжаем без неё */ }
+      }
+
+      const result = await ocrModule.readCounterNumber(imageBase64, effectiveRegion, preset, expectedRange);
       // Добавляем флаг: использовался ли обученный region
       if (effectiveRegion && !region) {
         result.usedTrainingRegion = true;
+      }
+      // Добавляем intelligence данные в ответ
+      if (machineIntel) {
+        result.intelligence = {
+          expectedRange: machineIntel.expectedNext,
+          suggestedPreset: machineIntel.bestPreset,
+          successRate: machineIntel.successRate,
+          lastKnownValue: machineIntel.lastKnownValue,
+        };
       }
       res.json(result);
     } catch (error) {
@@ -767,6 +795,45 @@ function setupCoffeeMachineAPI(app) {
     }
   });
 
+  // ============================================
+  // MACHINE INTELLIGENCE
+  // ============================================
+
+  // GET /api/coffee-machine/intelligence — вся intelligence (все машины)
+  app.get('/api/coffee-machine/intelligence', async (req, res) => {
+    try {
+      const data = await loadMachineIntelligence(null);
+      res.json({ success: true, intelligence: data || {}, machineCount: data ? Object.keys(data).length : 0 });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/coffee-machine/intelligence/:machineName — одна машина
+  app.get('/api/coffee-machine/intelligence/:machineName', async (req, res) => {
+    try {
+      const { machineName } = req.params;
+      const data = await loadMachineIntelligence(decodeURIComponent(machineName));
+      if (data) {
+        res.json({ success: true, machineName: decodeURIComponent(machineName), intelligence: data });
+      } else {
+        res.json({ success: true, machineName: decodeURIComponent(machineName), intelligence: null, message: 'Нет данных для этой машины (нужно минимум 2 отчёта)' });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/coffee-machine/intelligence/rebuild — принудительная перестройка
+  app.post('/api/coffee-machine/intelligence/rebuild', async (req, res) => {
+    try {
+      const intelligence = await buildMachineIntelligence();
+      res.json({ success: true, machineCount: Object.keys(intelligence).length, intelligence });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log('✅ Coffee Machine API initialized');
 }
 
@@ -802,4 +869,155 @@ async function markPendingAsCompleted(shopAddress, shiftType, date) {
   }
 }
 
-module.exports = { setupCoffeeMachineAPI, markPendingAsCompleted };
+/**
+ * Построить intelligence-профили всех кофемашин из истории отчётов
+ * Сканирует все отчёты, группирует по machineName, вычисляет статистику
+ */
+async function buildMachineIntelligence() {
+  try {
+    const intelligence = {};
+
+    // Читаем все отчёты
+    if (!(await fileExists(REPORTS_DIR))) return intelligence;
+    const files = (await fsp.readdir(REPORTS_DIR)).filter(f => f.endsWith('.json'));
+
+    const reportsByMachine = {}; // machineName -> [{confirmedNumber, aiReadNumber, wasManuallyEdited, date}]
+
+    for (const file of files) {
+      try {
+        const report = JSON.parse(await fsp.readFile(path.join(REPORTS_DIR, file), 'utf8'));
+        if (!report.readings || !Array.isArray(report.readings)) continue;
+
+        const reportDate = report.date || (report.createdAt ? report.createdAt.slice(0, 10) : null);
+
+        for (const reading of report.readings) {
+          const name = reading.machineName;
+          if (!name || !reading.confirmedNumber) continue;
+
+          if (!reportsByMachine[name]) reportsByMachine[name] = [];
+          reportsByMachine[name].push({
+            confirmedNumber: reading.confirmedNumber,
+            aiReadNumber: reading.aiReadNumber || null,
+            wasManuallyEdited: reading.wasManuallyEdited || false,
+            templateId: reading.templateId || '',
+            date: reportDate,
+          });
+        }
+      } catch (e) { /* skip broken files */ }
+    }
+
+    // Загружаем шаблоны для определения пресетов
+    const templatePresets = {};
+    try {
+      if (await fileExists(TEMPLATES_DIR)) {
+        const tFiles = (await fsp.readdir(TEMPLATES_DIR)).filter(f => f.endsWith('.json'));
+        for (const tf of tFiles) {
+          try {
+            const tmpl = JSON.parse(await fsp.readFile(path.join(TEMPLATES_DIR, tf), 'utf8'));
+            if (tmpl.id && tmpl.preset) templatePresets[tmpl.id] = tmpl.preset;
+          } catch (e) { /* skip */ }
+        }
+      }
+    } catch (e) { /* no templates */ }
+
+    // Вычисляем intelligence для каждой машины
+    for (const [machineName, readings] of Object.entries(reportsByMachine)) {
+      if (readings.length < 2) continue; // нужно минимум 2 отчёта
+
+      // Сортировка по дате
+      readings.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+      const values = readings.map(r => r.confirmedNumber).filter(v => v > 0);
+      if (values.length === 0) continue;
+
+      const lastKnownValue = values[values.length - 1];
+      const minValue = Math.min(...values);
+      const maxValue = Math.max(...values);
+
+      // Средний дневной прирост
+      let avgDailyGrowth = 0;
+      const datedReadings = readings.filter(r => r.date && r.confirmedNumber > 0);
+      if (datedReadings.length >= 2) {
+        const first = datedReadings[0];
+        const last = datedReadings[datedReadings.length - 1];
+        const daysDiff = Math.max(1, (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24));
+        avgDailyGrowth = Math.round((last.confirmedNumber - first.confirmedNumber) / daysDiff);
+      }
+
+      // Ожидаемый диапазон следующего значения
+      const lastDate = datedReadings.length > 0 ? datedReadings[datedReadings.length - 1].date : null;
+      let expectedNext = null;
+      if (lastDate && avgDailyGrowth > 0) {
+        const daysSinceLast = Math.max(0, (Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24));
+        const expectedValue = lastKnownValue + Math.round(avgDailyGrowth * daysSinceLast);
+        // Диапазон: -10% ... +30% от среднего прироста (допуск на выходные/пики)
+        const margin = Math.max(500, Math.round(avgDailyGrowth * 3));
+        expectedNext = {
+          min: Math.max(lastKnownValue, expectedValue - margin),
+          max: expectedValue + margin,
+        };
+      }
+
+      // Статистика успешности ИИ
+      const withAI = readings.filter(r => r.aiReadNumber !== null && r.aiReadNumber !== undefined);
+      const aiCorrect = withAI.filter(r => !r.wasManuallyEdited).length;
+      const manualEdits = withAI.filter(r => r.wasManuallyEdited).length;
+      const successRate = withAI.length > 0 ? Math.round((aiCorrect / withAI.length) * 1000) / 1000 : 0;
+
+      // Лучший пресет (по templateId → preset mapping)
+      const presetCounts = {};
+      for (const r of readings) {
+        const preset = templatePresets[r.templateId] || 'standard';
+        if (!presetCounts[preset]) presetCounts[preset] = { total: 0, correct: 0 };
+        presetCounts[preset].total++;
+        if (r.aiReadNumber && !r.wasManuallyEdited) presetCounts[preset].correct++;
+      }
+      let bestPreset = 'standard';
+      let bestPresetRate = 0;
+      for (const [preset, stats] of Object.entries(presetCounts)) {
+        const rate = stats.total > 0 ? stats.correct / stats.total : 0;
+        if (rate > bestPresetRate || (rate === bestPresetRate && stats.total > (presetCounts[bestPreset]?.total || 0))) {
+          bestPreset = preset;
+          bestPresetRate = rate;
+        }
+      }
+
+      intelligence[machineName] = {
+        lastKnownValue,
+        minValue,
+        maxValue,
+        avgDailyGrowth,
+        expectedNext,
+        totalReadings: readings.length,
+        aiCorrect,
+        manualEdits,
+        successRate,
+        bestPreset,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    // Сохраняем
+    await fsp.writeFile(INTELLIGENCE_FILE, JSON.stringify(intelligence, null, 2), 'utf8');
+    console.log(`[CoffeeMachine] 🧠 Intelligence обновлён: ${Object.keys(intelligence).length} машин`);
+    return intelligence;
+  } catch (error) {
+    console.error('[CoffeeMachine] Ошибка buildMachineIntelligence:', error.message);
+    return {};
+  }
+}
+
+/**
+ * Загрузить intelligence для конкретной машины
+ */
+async function loadMachineIntelligence(machineName) {
+  try {
+    if (!(await fileExists(INTELLIGENCE_FILE))) return null;
+    const data = JSON.parse(await fsp.readFile(INTELLIGENCE_FILE, 'utf8'));
+    return machineName ? (data[machineName] || null) : data;
+  } catch (e) {
+    return null;
+  }
+}
+
+module.exports = { setupCoffeeMachineAPI, markPendingAsCompleted, buildMachineIntelligence, loadMachineIntelligence };

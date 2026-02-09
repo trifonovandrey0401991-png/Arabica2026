@@ -16,6 +16,8 @@ const {
   notifyPersonalDialogEmployeeMessage
 } = require('./product_questions_notifications');
 
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const PRODUCT_QUESTIONS_DIR = path.join(DATA_DIR, 'product-questions');
@@ -152,7 +154,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       });
 
       console.log(`✅ Found ${questions.length} product questions`);
-      res.json({ success: true, questions });
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(questions, req.query, 'questions'));
+      } else {
+        res.json({ success: true, questions });
+      }
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }

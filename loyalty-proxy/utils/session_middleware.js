@@ -161,6 +161,40 @@ async function initSessionMiddleware() {
   }, INDEX_REBUILD_INTERVAL_MS);
 }
 
+/**
+ * Middleware: требует авторизацию (любой залогиненный пользователь)
+ * Возвращает 401 если req.user не установлен
+ */
+function requireAuth(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Требуется авторизация. Войдите в приложение.'
+    });
+  }
+  next();
+}
+
+/**
+ * Middleware: требует права администратора
+ * Возвращает 401 если не авторизован, 403 если не админ
+ */
+function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Требуется авторизация. Войдите в приложение.'
+    });
+  }
+  if (!req.user.isAdmin) {
+    return res.status(403).json({
+      success: false,
+      error: 'Недостаточно прав. Требуется администратор.'
+    });
+  }
+  next();
+}
+
 module.exports = {
   sessionMiddleware,
   initSessionMiddleware,
@@ -169,4 +203,6 @@ module.exports = {
   removePhoneFromIndex,
   rebuildTokenIndex,
   verifyToken,
+  requireAuth,
+  requireAdmin,
 };

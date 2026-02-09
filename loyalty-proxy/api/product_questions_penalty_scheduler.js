@@ -6,6 +6,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { writeJsonFile } = require('../utils/async_fs');
 
 // Directories
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -99,7 +100,7 @@ async function saveState(state) {
     state.processedQuestions = state.processedQuestions.slice(-1000);
     state.processedDialogs = state.processedDialogs.slice(-1000);
 
-    await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
+    await writeJsonFile(STATE_FILE, state);
   } catch (e) {
     console.error('Error saving penalty state:', e.message);
   }
@@ -109,7 +110,8 @@ async function saveState(state) {
 // 2. Shift Time Matching
 // ============================================
 function getShiftTypeByTime(date) {
-  const hour = date.getHours(); // Moscow time assumed
+  // Всегда используем московское время (UTC+3), независимо от TZ сервера
+  const hour = (date.getUTCHours() + 3) % 24;
 
   // Shift definitions:
   // morning: 08:00-16:00
@@ -311,7 +313,7 @@ async function savePenalties(penalties) {
         await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(existingPenalties, null, 2), 'utf8');
+      await writeJsonFile(filePath, existingPenalties);
       console.log(`  Saved ${penaltiesByMonth[monthKey].length} penalties to ${monthKey}.json`);
     } catch (e) {
       console.error(`  Error saving penalties for ${monthKey}:`, e.message);

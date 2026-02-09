@@ -10,6 +10,7 @@ const path = require('path');
 const multer = require('multer');
 const express = require('express');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const TRAINING_ARTICLES_DIR = `${DATA_DIR}/training-articles`;
@@ -74,7 +75,11 @@ function setupTrainingAPI(app) {
           }
         }
       }
-      res.json({ success: true, articles });
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(articles, req.query, 'articles'));
+      } else {
+        res.json({ success: true, articles });
+      }
     } catch (error) {
       console.error('Ошибка получения статей обучения:', error);
       res.status(500).json({ success: false, error: error.message });

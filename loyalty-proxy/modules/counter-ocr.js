@@ -55,9 +55,11 @@ async function fileExists(fp) {
 /**
  * Вызов EasyOCR микросервиса
  */
-function callEasyOCR(imagePath, preset) {
+function callEasyOCR(imagePath, preset, expectedRange) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ imagePath, preset: preset || 'standard' });
+    const payload = { imagePath, preset: preset || 'standard' };
+    if (expectedRange) payload.expectedRange = expectedRange;
+    const body = JSON.stringify(payload);
     const url = new URL(EASYOCR_URL);
     const options = {
       hostname: url.hostname,
@@ -182,7 +184,7 @@ async function tesseractAttempt(inputPath, metadata, region, presetConfig) {
  * @param {string} [preset='standard'] - Пресет предобработки
  * @returns {Promise<{number, confidence, rawText, success, error, method}>}
  */
-async function readCounterNumber(imageBase64, region, preset) {
+async function readCounterNumber(imageBase64, region, preset, expectedRange) {
   const mainPreset = PRESETS[preset] || PRESETS.standard;
   const ts = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   const inputPath = path.join(TEMP_DIR, `counter_${ts}_input.jpg`);
@@ -197,16 +199,23 @@ async function readCounterNumber(imageBase64, region, preset) {
     const easyOCRAvailable = await checkEasyOCR();
     if (easyOCRAvailable) {
       try {
-        const easyResult = await callEasyOCR(inputPath, preset);
+        const easyResult = await callEasyOCR(inputPath, preset, expectedRange);
         if (easyResult.success && easyResult.bestNumber && easyResult.bestNumber > 100) {
           await cleanupTempFiles([inputPath]);
+          let conf = Math.min(0.98, easyResult.bestConfidence);
+          let inExpectedRange = false;
+          if (expectedRange && easyResult.bestNumber >= expectedRange.min && easyResult.bestNumber <= expectedRange.max) {
+            conf = Math.min(0.99, conf + 0.1);
+            inExpectedRange = true;
+          }
           return {
             number: easyResult.bestNumber,
-            confidence: Math.min(0.98, easyResult.bestConfidence),
+            confidence: conf,
             rawText: JSON.stringify(easyResult.numbers.slice(0, 5)),
             success: true,
             error: null,
             method: `easyocr_${easyResult.bestVariant || 'default'}`,
+            inExpectedRange,
           };
         }
       } catch (easyErr) {
@@ -220,13 +229,17 @@ async function readCounterNumber(imageBase64, region, preset) {
       if (r1.number !== null && r1.number > 100) {
         await cleanupTempFiles([inputPath]);
         const digitCount = r1.number.toString().length;
+        let conf = Math.min(0.85, 0.5 + (digitCount * 0.1));
+        const inRange = expectedRange && r1.number >= expectedRange.min && r1.number <= expectedRange.max;
+        if (inRange) conf = Math.min(0.95, conf + 0.1);
         return {
           number: r1.number,
-          confidence: Math.min(0.85, 0.5 + (digitCount * 0.1)),
+          confidence: conf,
           rawText: r1.rawText,
           success: true,
           error: null,
           method: 'tesseract_region',
+          inExpectedRange: !!inRange,
         };
       }
     }
@@ -236,13 +249,17 @@ async function readCounterNumber(imageBase64, region, preset) {
     if (r2.number !== null && r2.number > 100) {
       await cleanupTempFiles([inputPath]);
       const digitCount = r2.number.toString().length;
+      let conf = Math.min(0.75, 0.4 + (digitCount * 0.1));
+      const inRange = expectedRange && r2.number >= expectedRange.min && r2.number <= expectedRange.max;
+      if (inRange) conf = Math.min(0.85, conf + 0.1);
       return {
         number: r2.number,
-        confidence: Math.min(0.75, 0.4 + (digitCount * 0.1)),
+        confidence: conf,
         rawText: r2.rawText,
         success: true,
         error: null,
         method: 'tesseract_full',
+        inExpectedRange: !!inRange,
       };
     }
 
@@ -252,13 +269,17 @@ async function readCounterNumber(imageBase64, region, preset) {
       if (r3.number !== null && r3.number > 100) {
         await cleanupTempFiles([inputPath]);
         const digitCount = r3.number.toString().length;
+        let conf = Math.min(0.60, 0.3 + (digitCount * 0.1));
+        const inRange = expectedRange && r3.number >= expectedRange.min && r3.number <= expectedRange.max;
+        if (inRange) conf = Math.min(0.70, conf + 0.1);
         return {
           number: r3.number,
-          confidence: Math.min(0.60, 0.3 + (digitCount * 0.1)),
+          confidence: conf,
           rawText: r3.rawText,
           success: true,
           error: null,
           method: 'tesseract_fallback',
+          inExpectedRange: !!inRange,
         };
       }
     }

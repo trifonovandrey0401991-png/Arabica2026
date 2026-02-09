@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
@@ -168,7 +169,11 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         return dateB - dateA;
       });
 
-      res.json({ success: true, reports });
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(reports, req.query, 'reports'));
+      } else {
+        res.json({ success: true, reports });
+      }
     } catch (error) {
       console.error('Ошибка получения отчетов пересменки:', error);
       res.status(500).json({ success: false, error: error.message });

@@ -278,9 +278,8 @@ router.post('/register', async (req, res) => {
     res.json({
       success: true,
       message: 'Регистрация успешна',
-      // Данные для локального хранения на клиенте
-      pinHash,
-      salt,
+      // pinHash и salt НЕ отправляем клиенту (безопасность)
+      // Flutter создаёт локальные credentials через createCredentials(pin)
       session: {
         sessionToken,
         phone: normalizedPhone,
@@ -683,6 +682,49 @@ router.get('/session/:phone', async (req, res) => {
   } catch (error) {
     console.error('Get session error:', error);
     res.status(500).json({ error: 'Ошибка получения сессии' });
+  }
+});
+
+// ============================================
+// POST /api/auth/refresh-session
+// Обновляет lastActivity сессии (вызывается Flutter при каждом входе)
+// ============================================
+router.post('/refresh-session', async (req, res) => {
+  try {
+    // Получаем токен из Authorization header или body
+    const authHeader = req.headers['authorization'];
+    const tokenFromHeader = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const tokenFromBody = req.body && req.body.sessionToken;
+    const sessionToken = tokenFromHeader || tokenFromBody;
+
+    if (!sessionToken) {
+      return res.status(401).json({ error: 'Токен сессии не указан' });
+    }
+
+    // Ищем сессию по токену
+    const session = await getSessionByToken(sessionToken);
+    if (!session) {
+      return res.status(404).json({ error: 'Сессия не найдена' });
+    }
+
+    // Проверяем истечение
+    if (session.expiresAt && Date.now() > session.expiresAt) {
+      return res.status(401).json({ error: 'Сессия истекла' });
+    }
+
+    // Обновляем lastActivity
+    session.lastActivity = Date.now();
+    await saveSession(session.phone, session);
+
+    res.json({
+      success: true,
+      message: 'Сессия обновлена',
+      expiresAt: session.expiresAt
+    });
+
+  } catch (error) {
+    console.error('Refresh session error:', error);
+    res.status(500).json({ error: 'Ошибка обновления сессии' });
   }
 });
 

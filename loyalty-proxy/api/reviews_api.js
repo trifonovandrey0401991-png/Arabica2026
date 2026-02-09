@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const REVIEWS_DIR = `${DATA_DIR}/reviews`;
@@ -43,7 +44,11 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
           }
         }
       }
-      res.json({ success: true, reviews });
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(reviews, req.query, 'reviews'));
+      } else {
+        res.json({ success: true, reviews });
+      }
     } catch (error) {
       console.error('Ошибка получения отзывов:', error);
       res.status(500).json({ success: false, error: error.message });
