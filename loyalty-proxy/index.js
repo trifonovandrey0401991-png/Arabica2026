@@ -291,6 +291,7 @@ app.use(sessionMiddleware);
 const PUBLIC_WRITE_PATHS = [
   '/api/auth',           // Регистрация, вход, сброс PIN
   '/api/shop-products',  // Синхронизация товаров (своя авторизация по x-sync-key)
+  '/api/fcm-tokens',     // Регистрация FCM push-токенов (вызывается до/после логина)
 ];
 
 app.use((req, res, next) => {
