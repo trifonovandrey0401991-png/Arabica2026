@@ -411,6 +411,17 @@ function getDiskInfo() {
 }
 
 function setupDataCleanupAPI(app) {
+  // SECURITY: Middleware для проверки админских прав на всех /api/admin/* маршрутах
+  app.use('/api/admin', (req, res, next) => {
+    if (!req.user || !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Доступ запрещён. Требуются права администратора.'
+      });
+    }
+    next();
+  });
+
   // GET /api/admin/disk-info - информация о дисковом пространстве
   app.get('/api/admin/disk-info', (req, res) => {
     try {
@@ -573,4 +584,105 @@ function setupDataCleanupAPI(app) {
   console.log('✅ Data Cleanup API initialized');
 }
 
-module.exports = { setupDataCleanupAPI };
+// ============================================
+// AUTO CLEANUP SCHEDULER
+// Ежедневная автоочистка старых данных в 3:00 ночи
+// ============================================
+
+// Период хранения по типу данных (в днях)
+const RETENTION_DAYS = {
+  'app-logs': 30,         // Логи — 30 дней
+  'fcm-tokens': 60,       // FCM токены — 60 дней
+  'test-results': 90,     // Тесты — 90 дней
+  'orders': 180,          // Заказы — 180 дней
+  'reviews': 180,         // Отзывы — 180 дней
+  'employee-registrations': 90, // Заявки — 90 дней
+};
+
+// Очистка expired сессий
+async function cleanupExpiredSessions() {
+  const sessionsDir = `${DATA_DIR}/auth-sessions`;
+  let cleaned = 0;
+  try {
+    if (!(await fileExists(sessionsDir))) return 0;
+    const files = (await fsp.readdir(sessionsDir)).filter(f => f.endsWith('.json'));
+    const now = Date.now();
+    for (const file of files) {
+      try {
+        const filePath = path.join(sessionsDir, file);
+        const content = await fsp.readFile(filePath, 'utf8');
+        const session = JSON.parse(content);
+        if (session.expiresAt && session.expiresAt < now) {
+          await fsp.unlink(filePath);
+          cleaned++;
+        }
+      } catch (e) { /* skip */ }
+    }
+  } catch (e) {
+    console.error('[AutoCleanup] Error cleaning sessions:', e.message);
+  }
+  return cleaned;
+}
+
+async function runAutoCleanup() {
+  console.log('[AutoCleanup] Начинаю автоматическую очистку...');
+  const startTime = Date.now();
+  let totalDeleted = 0;
+  let totalFreed = 0;
+
+  // 1. Очистка expired сессий
+  const sessionsCleared = await cleanupExpiredSessions();
+  totalDeleted += sessionsCleared;
+  if (sessionsCleared > 0) {
+    console.log(`[AutoCleanup] Очищено expired сессий: ${sessionsCleared}`);
+  }
+
+  // 2. Очистка категорий с настроенным retention
+  for (const [categoryId, retentionDays] of Object.entries(RETENTION_DAYS)) {
+    const cat = CLEANUP_CATEGORIES.find(c => c.id === categoryId);
+    if (!cat) continue;
+
+    try {
+      const beforeDate = new Date();
+      beforeDate.setDate(beforeDate.getDate() - retentionDays);
+
+      const filesToDelete = await getFilesToDelete(cat.directory, cat.dateField, beforeDate, cat.isPhotos);
+      if (filesToDelete.length > 0) {
+        const { deletedCount, freedBytes } = await deleteFiles(filesToDelete);
+        await removeEmptyDirectories(cat.directory);
+        totalDeleted += deletedCount;
+        totalFreed += freedBytes;
+        console.log(`[AutoCleanup] ${cat.name}: удалено ${deletedCount} файлов (${Math.round(freedBytes / 1024)}KB)`);
+      }
+    } catch (e) {
+      console.error(`[AutoCleanup] Ошибка очистки ${categoryId}:`, e.message);
+    }
+  }
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[AutoCleanup] Завершено за ${elapsed}ms. Удалено: ${totalDeleted}, Освобождено: ${Math.round(totalFreed / 1024)}KB`);
+}
+
+function startAutoCleanupScheduler() {
+  // Запускаем ежедневно в 3:00 ночи
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(3, 0, 0, 0);
+  if (target <= now) {
+    target.setDate(target.getDate() + 1);
+  }
+
+  const msUntilFirst = target.getTime() - now.getTime();
+
+  setTimeout(() => {
+    runAutoCleanup().catch(e => console.error('[AutoCleanup] Error:', e.message));
+    // Далее каждые 24 часа
+    setInterval(() => {
+      runAutoCleanup().catch(e => console.error('[AutoCleanup] Error:', e.message));
+    }, 24 * 60 * 60 * 1000);
+  }, msUntilFirst);
+
+  console.log(`✅ AutoCleanup scheduler started. First run in ${Math.round(msUntilFirst / 60000)} minutes (at 03:00)`);
+}
+
+module.exports = { setupDataCleanupAPI, startAutoCleanupScheduler };

@@ -16,7 +16,6 @@ class _ReferralsPointsSettingsPageState
     extends State<ReferralsPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  ReferralsPointsSettings? _settings;
 
   // Editable values
   double _basePoints = 1;
@@ -38,7 +37,6 @@ class _ReferralsPointsSettingsPageState
     try {
       final settings = await ReferralService.getPointsSettings();
       setState(() {
-        _settings = settings;
         _basePoints = settings.basePoints.toDouble();
         _milestoneThreshold = settings.milestoneThreshold.toDouble();
         _milestonePoints = settings.milestonePoints.toDouble();
@@ -71,7 +69,6 @@ class _ReferralsPointsSettingsPageState
 
       if (success) {
         setState(() {
-          _settings = settings;
           _isSaving = false;
         });
         if (mounted) {

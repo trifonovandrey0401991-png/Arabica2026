@@ -56,7 +56,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   List<PendingShiftHandover> _overdueHandovers = []; // Просроченные сдачи смен (не в срок)
   List<ShiftHandoverReport> _expiredReports = [];
   ShiftHandoverPointsSettings? _handoverSettings; // Настройки временных окон
-  bool _isLoading = true;
   int _overdueViewedCount = 0; // Количество просмотренных просроченных (для бейджа)
 
   // Состояние раскрытия групп (ключ = уникальный идентификатор группы)
@@ -282,12 +281,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   }
 
   Future<void> _loadData() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
-
     Logger.info('Загрузка отчетов сдачи смены...');
 
     // Загружаем настройки временных окон для сдачи смены
@@ -352,9 +345,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     }
 
     if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() {});
     }
   }
 

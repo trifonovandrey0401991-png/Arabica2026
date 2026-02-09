@@ -139,7 +139,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
       // Проверяем, является ли пользователь admin/developer с managedShopIds
       final isAdmin = roleData?.role == UserRole.admin || roleData?.role == UserRole.developer;
-      final hasManagedShops = roleData?.managedShopIds?.isNotEmpty ?? false;
+      final hasManagedShops = roleData?.managedShopIds.isNotEmpty ?? false;
       _isManagerWithShops = isAdmin && hasManagedShops;
 
       Logger.debug('   isAdmin: $isAdmin, hasManagedShops: $hasManagedShops');

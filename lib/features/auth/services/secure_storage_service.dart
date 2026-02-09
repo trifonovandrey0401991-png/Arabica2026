@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 import '../models/auth_session.dart';
@@ -92,11 +93,11 @@ class SecureStorageService {
     return hash.toString();
   }
 
-  /// Генерирует случайную соль для хеширования
+  /// Генерирует криптографически безопасную соль для хеширования
   static String generateSalt() {
-    final random = DateTime.now().microsecondsSinceEpoch.toString();
-    final data = utf8.encode(random);
-    final hash = sha256.convert(data);
+    final secureRandom = Random.secure();
+    final bytes = List<int>.generate(32, (_) => secureRandom.nextInt(256));
+    final hash = sha256.convert(bytes);
     return hash.toString().substring(0, 32);
   }
 

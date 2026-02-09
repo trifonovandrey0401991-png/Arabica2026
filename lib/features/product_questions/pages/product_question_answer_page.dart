@@ -71,7 +71,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
     });
 
     try {
-      final shops = await Shop.loadShopsFromServer();
+      await Shop.loadShopsFromServer();
       final question = await ProductQuestionService.getQuestion(widget.questionId);
       
       setState(() {

@@ -165,7 +165,7 @@ ssh root@arabica26.ru "pm2 logs loyalty-proxy --lines 20 --nostream"
 # Flutter
 flutter analyze
 flutter test
-flutter build appbundle
+flutter build appbundle --obfuscate --split-debug-info=build/debug-info
 flutter clean
 
 # Git

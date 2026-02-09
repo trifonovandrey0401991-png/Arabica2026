@@ -21,7 +21,6 @@ class ManagerPointsSettingsPage extends StatefulWidget {
 class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  ManagerPointsSettings? _settings;
 
   // Editable values for shift (Пересменка)
   double _shiftConfirmedPoints = 1.0;
@@ -57,7 +56,6 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
     try {
       final settings = await PointsSettingsService.getManagerPointsSettings();
       setState(() {
-        _settings = settings;
         // Shift settings
         _shiftConfirmedPoints = settings.shiftSettings.confirmedPoints;
         _shiftRejectedPenalty = settings.shiftSettings.rejectedPenalty;
@@ -103,7 +101,6 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
 
       if (result != null) {
         setState(() {
-          _settings = result;
           _isSaving = false;
         });
         if (mounted) {

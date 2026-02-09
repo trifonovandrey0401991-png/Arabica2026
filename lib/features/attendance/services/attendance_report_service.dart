@@ -1,7 +1,6 @@
 import '../models/attendance_model.dart';
 import '../models/shop_attendance_summary.dart';
 import '../models/pending_attendance_model.dart';
-import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../../core/services/base_http_service.dart';
@@ -309,7 +308,7 @@ class AttendanceReportService {
 
     // Фильтруем по магазинам текущего пользователя
     return await MultitenancyFilterService.filterByShopAddress(
-      result ?? [],
+      result,
       (report) => report.shopAddress,
     );
   }
@@ -326,7 +325,7 @@ class AttendanceReportService {
 
     // Фильтруем по магазинам текущего пользователя
     return await MultitenancyFilterService.filterByShopAddress(
-      result ?? [],
+      result,
       (report) => report.shopAddress,
     );
   }

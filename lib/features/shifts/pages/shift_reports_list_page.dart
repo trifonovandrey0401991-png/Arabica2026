@@ -240,10 +240,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
     }
 
-    final morningStart = parseTime(_shiftSettings!.morningStartTime ?? '07:00');
-    final morningEnd = parseTime(_shiftSettings!.morningEndTime ?? '13:00');
-    final eveningStart = parseTime(_shiftSettings!.eveningStartTime ?? '14:00');
-    final eveningEnd = parseTime(_shiftSettings!.eveningEndTime ?? '23:00');
+    final morningStart = parseTime(_shiftSettings!.morningStartTime);
+    final morningEnd = parseTime(_shiftSettings!.morningEndTime);
+    final eveningStart = parseTime(_shiftSettings!.eveningStartTime);
+    final eveningEnd = parseTime(_shiftSettings!.eveningEndTime);
 
     final morningStartMinutes = morningStart.hour * 60 + morningStart.minute;
     final morningEndMinutes = morningEnd.hour * 60 + morningEnd.minute;
@@ -735,9 +735,6 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       ),
     );
   }
-
-  // Градиентные цвета для страницы
-  static const _gradientColors = [_emerald, _emeraldDark];
 
   /// Секция фильтров
   Widget _buildFiltersSection() {

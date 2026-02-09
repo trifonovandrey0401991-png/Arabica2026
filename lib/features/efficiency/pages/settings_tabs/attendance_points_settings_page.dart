@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -16,7 +15,6 @@ class _AttendancePointsSettingsPageState
     extends State<AttendancePointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  AttendancePointsSettings? _settings;
 
   // Editable values
   double _onTimePoints = 0.5;
@@ -44,7 +42,6 @@ class _AttendancePointsSettingsPageState
       final settings =
           await PointsSettingsService.getAttendancePointsSettings();
       setState(() {
-        _settings = settings;
         _onTimePoints = settings.onTimePoints;
         _latePoints = settings.latePoints;
         _morningStartTime = settings.morningStartTime;
@@ -81,7 +78,6 @@ class _AttendancePointsSettingsPageState
 
       if (result != null) {
         setState(() {
-          _settings = result;
           _isSaving = false;
         });
         if (mounted) {

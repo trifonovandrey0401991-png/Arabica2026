@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -16,7 +15,6 @@ class _ProductSearchPointsSettingsPageState
     extends State<ProductSearchPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  ProductSearchPointsSettings? _settings;
 
   double _answeredPoints = 0.2;
   double _notAnsweredPoints = -3;
@@ -36,7 +34,6 @@ class _ProductSearchPointsSettingsPageState
     try {
       final settings = await PointsSettingsService.getProductSearchPointsSettings();
       setState(() {
-        _settings = settings;
         _answeredPoints = settings.answeredPoints;
         _notAnsweredPoints = settings.notAnsweredPoints;
         _answerTimeoutMinutes = settings.answerTimeoutMinutes;
@@ -61,7 +58,7 @@ class _ProductSearchPointsSettingsPageState
         answerTimeoutMinutes: _answerTimeoutMinutes,
       );
       if (result != null) {
-        setState(() { _settings = result; _isSaving = false; });
+        setState(() { _isSaving = false; });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

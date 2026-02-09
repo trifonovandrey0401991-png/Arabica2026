@@ -772,7 +772,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
 
   Widget _buildList() {
     final filteredEmployees = _employees.where((e) {
-      final name = (e.name ?? '').toLowerCase();
+      final name = e.name.toLowerCase();
       final phone = (e.phone ?? '').toLowerCase();
       return name.contains(_searchQuery) || phone.contains(_searchQuery);
     }).toList();
@@ -813,7 +813,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   }
                 });
               },
-              title: Text(e.name ?? e.phone ?? '',
+              title: Text(e.name,
                   style: TextStyle(color: Colors.white.withOpacity(0.9))),
               subtitle: Text(e.position ?? '',
                   style: TextStyle(color: Colors.white.withOpacity(0.4))),

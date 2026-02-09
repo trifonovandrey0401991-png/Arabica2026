@@ -386,8 +386,7 @@ class EfficiencyPenalty {
     // Определяем имя сотрудника: сначала employeeName, потом entityName
     // type может быть null для старых штрафов, поэтому проверяем наличие имени
     final resolvedEmployeeName = employeeName ?? entityName;
-    final isEmployeePenalty = type == 'employee' ||
-        (type == null && resolvedEmployeeName.isNotEmpty);
+    final isEmployeePenalty = type == 'employee';
 
     return EfficiencyRecord(
       id: id,

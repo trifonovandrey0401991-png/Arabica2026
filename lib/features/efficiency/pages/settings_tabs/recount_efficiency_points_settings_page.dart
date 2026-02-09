@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -16,7 +15,6 @@ class RecountEfficiencyPointsSettingsPage extends StatefulWidget {
 class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  RecountPointsSettings? _settings;
 
   // Editable values
   double _minPoints = -3;
@@ -46,7 +44,6 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
     try {
       final settings = await PointsSettingsService.getRecountPointsSettings();
       setState(() {
-        _settings = settings;
         _minPoints = settings.minPoints;
         _zeroThreshold = settings.zeroThreshold;
         _maxPoints = settings.maxPoints;
@@ -89,7 +86,6 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
 
       if (result != null) {
         setState(() {
-          _settings = result;
           _isSaving = false;
         });
         if (mounted) {

@@ -214,7 +214,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
                 Logger.error('Ошибка загрузки PDF: ${details.error}', details.description);
                 if (mounted) {
                   setState(() {
-                    _errorMessage = details.description ?? 'Не удалось загрузить документ';
+                    _errorMessage = details.description;
                   });
                 }
               },

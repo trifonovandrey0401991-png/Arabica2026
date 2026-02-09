@@ -111,7 +111,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         final spins = await FortuneWheelService.getAvailableSpins(employeeId);
         if (mounted) {
           setState(() {
-            _availableSpins = spins?.availableSpins ?? 0;
+            _availableSpins = spins.availableSpins;
           });
         }
       }

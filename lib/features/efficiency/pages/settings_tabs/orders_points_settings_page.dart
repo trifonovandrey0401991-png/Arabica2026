@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 import '../../../orders/services/order_timeout_settings_service.dart';
@@ -16,7 +15,6 @@ class OrdersPointsSettingsPage extends StatefulWidget {
 class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  OrdersPointsSettings? _settings;
 
   double _acceptedPoints = 0.2;
   double _rejectedPoints = -3;
@@ -44,7 +42,6 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
       final timeoutSettings = await OrderTimeoutSettingsService.getSettings();
 
       setState(() {
-        _settings = settings;
         _acceptedPoints = settings.acceptedPoints;
         _rejectedPoints = settings.rejectedPoints;
         _timeoutMinutes = timeoutSettings.timeoutMinutes;
@@ -77,7 +74,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
       );
 
       if (result != null && timeoutResult) {
-        setState(() { _settings = result; _isSaving = false; });
+        setState(() { _isSaving = false; });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

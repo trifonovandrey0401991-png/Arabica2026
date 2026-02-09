@@ -338,7 +338,7 @@ function sendToSocket(ws, data) {
 }
 
 /**
- * Очистка неактивных соединений
+ * Очистка неактивных соединений и onlineStatus
  */
 function cleanupStaleConnections() {
   const now = Date.now();
@@ -351,6 +351,15 @@ function cleanupStaleConnections() {
     }
     if (sockets.size === 0) {
       connections.delete(phone);
+      // MEMORY LEAK FIX: Удаляем onlineStatus для отключённых пользователей
+      onlineStatus.delete(phone);
+    }
+  }
+
+  // Дополнительно: очищаем onlineStatus для телефонов без активных соединений
+  for (const [phone] of onlineStatus.entries()) {
+    if (!connections.has(phone) || connections.get(phone).size === 0) {
+      onlineStatus.delete(phone);
     }
   }
 }

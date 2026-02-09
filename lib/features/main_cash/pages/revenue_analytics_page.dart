@@ -322,19 +322,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       ]);
 
       final allRevenues = results[0] as List<ShopRevenue>;
-      final allDailyRevenues = results[1] as Map<String, List<DailyRevenue>>;
+      // results[1] contains daily revenues (Map<String, List<DailyRevenue>>), not used here
       final allowedAddresses = results[2] as List<String>?;
 
       // Фильтрация по мультитенантности
       final revenues = allowedAddresses == null
           ? allRevenues
           : allRevenues.where((r) => allowedAddresses.contains(r.shopAddress)).toList();
-      final dailyRevenues = allowedAddresses == null
-          ? allDailyRevenues
-          : Map.fromEntries(
-              allDailyRevenues.entries.where((e) => allowedAddresses.contains(e.key)),
-            );
-
       if (!mounted) return;
       setState(() {
         _allShopsRevenues = revenues;

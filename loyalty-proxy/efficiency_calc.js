@@ -115,6 +115,17 @@ async function initBatchCache(month) {
   const startTime = Date.now();
   console.log(`[Efficiency] Инициализация batch кэша для ${month}...`);
 
+  // OPTIMIZATION: Загружаем settings ОДИН раз для batch (вместо N раз на сотрудника)
+  const [shiftSettings, recountSettings, handoverSettings, attendanceSettings, testSettings, envelopeSettings, coffeeMachineSettings] = await Promise.all([
+    getShiftSettings(),
+    getRecountSettings(),
+    getHandoverSettings(),
+    getAttendanceSettings(),
+    getTestSettings(),
+    getEnvelopeSettings(),
+    getCoffeeMachineSettings(),
+  ]);
+
   _batchCache = {
     shiftReports: await loadDirectoryForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate'),
     recountReports: await loadDirectoryForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate'),
@@ -129,6 +140,8 @@ async function initBatchCache(month) {
     envelopes: await loadDirectoryForMonth(ENVELOPE_REPORTS_DIR, month, 'createdAt'),
     coffeeMachineReports: await loadDirectoryForMonth(COFFEE_MACHINE_REPORTS_DIR, month, 'createdAt'),
     penalties: await loadPenaltiesForMonth(month),
+    // Cached settings (loaded once, used for all employees)
+    settings: { shiftSettings, recountSettings, handoverSettings, attendanceSettings, testSettings, envelopeSettings, coffeeMachineSettings },
   };
 
   _batchCacheMonth = month;
@@ -845,7 +858,7 @@ async function calculateFullEfficiency(employeeId, employeeName, shopAddress, mo
 async function calculateShiftPointsCached(employeeId, employeeName, cache) {
   if (!cache.shiftReports) return 0;
 
-  const settings = await getShiftSettings();
+  const settings = cache.settings ? cache.settings.shiftSettings : await getShiftSettings();
   let totalPoints = 0;
 
   for (const report of cache.shiftReports) {
@@ -869,7 +882,7 @@ async function calculateShiftPointsCached(employeeId, employeeName, cache) {
 async function calculateRecountPointsCached(employeeId, employeeName, cache) {
   if (!cache.recountReports) return 0;
 
-  const settings = await getRecountSettings();
+  const settings = cache.settings ? cache.settings.recountSettings : await getRecountSettings();
   let totalPoints = 0;
 
   for (const report of cache.recountReports) {
@@ -893,7 +906,7 @@ async function calculateRecountPointsCached(employeeId, employeeName, cache) {
 async function calculateHandoverPointsCached(employeeId, employeeName, cache) {
   if (!cache.handoverReports) return 0;
 
-  const settings = await getHandoverSettings();
+  const settings = cache.settings ? cache.settings.handoverSettings : await getHandoverSettings();
   let totalPoints = 0;
 
   for (const report of cache.handoverReports) {
@@ -917,7 +930,7 @@ async function calculateHandoverPointsCached(employeeId, employeeName, cache) {
 async function calculateAttendancePointsCached(employeeId, cache) {
   if (!cache.attendance) return 0;
 
-  const settings = await getAttendanceSettings();
+  const settings = cache.settings ? cache.settings.attendanceSettings : await getAttendanceSettings();
   let totalPoints = 0;
 
   for (const record of cache.attendance) {
@@ -952,7 +965,7 @@ function calculateAttendancePenaltiesCached(employeeId, cache) {
 async function calculateTestPointsCached(employeeId, employeeName, cache) {
   if (!cache.tests) return 0;
 
-  const settings = await getTestSettings();
+  const settings = cache.settings ? cache.settings.testSettings : await getTestSettings();
   let totalPoints = 0;
 
   for (const test of cache.tests) {
@@ -994,7 +1007,7 @@ function calculateReviewsPointsCached(shopAddress, cache) {
 async function calculateEnvelopePointsCached(employeeName, cache) {
   if (!cache.envelopes) return 0;
 
-  const settings = await getEnvelopeSettings();
+  const settings = cache.settings ? cache.settings.envelopeSettings : await getEnvelopeSettings();
   let totalPoints = 0;
 
   for (const envelope of cache.envelopes) {
@@ -1015,7 +1028,7 @@ async function calculateEnvelopePointsCached(employeeName, cache) {
 async function calculateCoffeeMachinePointsCached(employeeName, cache) {
   if (!cache.coffeeMachineReports) return 0;
 
-  const settings = await getCoffeeMachineSettings();
+  const settings = cache.settings ? cache.settings.coffeeMachineSettings : await getCoffeeMachineSettings();
   let totalPoints = 0;
 
   for (const report of cache.coffeeMachineReports) {

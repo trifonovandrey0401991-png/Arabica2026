@@ -357,17 +357,14 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (answer.question != null)
-                            Text(
-                              'Вопрос: ${answer.question}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          Text(
+                            'Вопрос: ${answer.question}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
                             ),
-                          if (answer.answer != null) ...[
-                            const SizedBox(height: 4),
-                            Text('Ответ: ${answer.answer}'),
-                          ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text('Ответ: ${answer.answer}'),
                           if (answer.quantity != null) ...[
                             const SizedBox(height: 4),
                             Text('Количество: ${answer.quantity}'),

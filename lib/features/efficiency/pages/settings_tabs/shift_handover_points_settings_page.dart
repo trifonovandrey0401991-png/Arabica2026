@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -16,7 +15,6 @@ class _ShiftHandoverPointsSettingsPageState
     extends State<ShiftHandoverPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  ShiftHandoverPointsSettings? _settings;
 
   // Editable values for shift handover
   double _minPoints = -3;
@@ -47,7 +45,6 @@ class _ShiftHandoverPointsSettingsPageState
       final settings =
           await PointsSettingsService.getShiftHandoverPointsSettings();
       setState(() {
-        _settings = settings;
         _minPoints = settings.minPoints;
         _zeroThreshold = settings.zeroThreshold;
         _maxPoints = settings.maxPoints;
@@ -91,7 +88,6 @@ class _ShiftHandoverPointsSettingsPageState
 
       if (result != null) {
         setState(() {
-          _settings = result;
           _isSaving = false;
         });
         if (mounted) {

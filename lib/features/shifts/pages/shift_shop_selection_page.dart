@@ -56,10 +56,10 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
       final settings = await PointsSettingsService.getShiftPointsSettings();
       final now = TimeOfDay.now();
 
-      final morningStart = _parseTime(settings.morningStartTime ?? '07:00');
-      final morningEnd = _parseTime(settings.morningEndTime ?? '13:00');
-      final eveningStart = _parseTime(settings.eveningStartTime ?? '14:00');
-      final eveningEnd = _parseTime(settings.eveningEndTime ?? '23:00');
+      final morningStart = _parseTime(settings.morningStartTime);
+      final morningEnd = _parseTime(settings.morningEndTime);
+      final eveningStart = _parseTime(settings.eveningStartTime);
+      final eveningEnd = _parseTime(settings.eveningEndTime);
 
       String? shiftType;
       if (_isTimeInRange(now, morningStart, morningEnd)) {

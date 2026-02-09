@@ -13,7 +13,6 @@ import '../../employees/services/employee_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
 import '../../shops/services/shop_service.dart';
-import '../../../shared/dialogs/schedule_bulk_operations_dialog.dart';
 import '../../employees/pages/employees_page.dart';
 import '../work_schedule_validator.dart';
 import '../../../shared/dialogs/schedule_validation_dialog.dart';
@@ -47,10 +46,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
   // Кэш настроек магазинов для быстрого доступа к аббревиатурам
   Map<String, ShopSettings> _shopSettingsCache = {};
-
-  // Уведомления для админа
-  List<ShiftTransferRequest> _adminNotifications = [];
-  bool _isLoadingNotifications = false;
 
   // Валидация графика
   bool _hasErrors = false;
@@ -105,26 +100,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   Future<void> _loadAdminNotifications() async {
-    setState(() {
-      _isLoadingNotifications = true;
-    });
-
     try {
-      final notifications = await ShiftTransferService.getAdminRequests();
-      if (mounted) {
-        setState(() {
-          _adminNotifications = notifications;
-          _isLoadingNotifications = false;
-        });
-      }
+      await ShiftTransferService.getAdminRequests();
       await _loadAdminUnreadCount();
     } catch (e) {
       Logger.error('Ошибка загрузки уведомлений админа', e);
-      if (mounted) {
-        setState(() {
-          _isLoadingNotifications = false;
-        });
-      }
     }
   }
 

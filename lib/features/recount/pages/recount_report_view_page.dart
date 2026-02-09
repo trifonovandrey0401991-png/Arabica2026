@@ -70,13 +70,13 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
 
       for (final sample in allPending) {
         // Индексируем по productId/barcode
-        final productId = sample.productId ?? sample.barcode ?? '';
+        final productId = sample.productId.isNotEmpty ? sample.productId : sample.barcode;
         if (productId.isNotEmpty) {
           byProduct.putIfAbsent(productId, () => []);
           byProduct[productId]!.add(sample);
         }
         // Также индексируем по productName для совместимости со старыми отчётами
-        final productName = sample.productName ?? '';
+        final productName = sample.productName;
         if (productName.isNotEmpty) {
           byProduct.putIfAbsent(productName, () => []);
           byProduct[productName]!.add(sample);

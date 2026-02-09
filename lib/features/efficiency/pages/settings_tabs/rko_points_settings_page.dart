@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -14,7 +13,6 @@ class RkoPointsSettingsPage extends StatefulWidget {
 class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  RkoPointsSettings? _settings;
 
   // Editable values for RKO
   double _hasRkoPoints = 1;
@@ -42,7 +40,6 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
     try {
       final settings = await PointsSettingsService.getRkoPointsSettings();
       setState(() {
-        _settings = settings;
         _hasRkoPoints = settings.hasRkoPoints;
         _noRkoPoints = settings.noRkoPoints;
         _morningStartTime = settings.morningStartTime;
@@ -81,7 +78,6 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
 
       if (result != null) {
         setState(() {
-          _settings = result;
           _isSaving = false;
         });
         if (mounted) {

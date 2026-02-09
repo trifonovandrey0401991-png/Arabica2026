@@ -311,6 +311,92 @@ function setupEfficiencyPenaltiesAPI(app) {
     }
   });
 
+  /**
+   * GET /api/efficiency/supplementary-batch
+   * Batch endpoint для загрузки дополнительных данных эффективности за месяц
+   * (штрафы, задачи, отзывы, товарные вопросы, заказы, РКО)
+   * Заменяет ~12 отдельных запросов MyEfficiencyPage одним
+   */
+  app.get('/api/efficiency/supplementary-batch', async (req, res) => {
+    try {
+      const { month } = req.query;
+
+      if (!month || !month.match(/^\d{4}-\d{2}$/)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Неверный формат месяца. Используйте YYYY-MM'
+        });
+      }
+
+      console.log(`📊 GET /api/efficiency/supplementary-batch?month=${month}`);
+      const startTime = Date.now();
+
+      const [year, monthNum] = month.split('-').map(Number);
+      const startDate = new Date(year, monthNum - 1, 1, 0, 0, 0);
+      const endDate = new Date(year, monthNum, 0, 23, 59, 59);
+
+      const isInPeriod = (dateStr) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return d >= startDate && d <= endDate;
+      };
+
+      // Загружаем penalty файл
+      const penaltiesFile = path.join(`${DATA_DIR}/efficiency-penalties`, `${month}.json`);
+      let penalties = [];
+      if (await fileExists(penaltiesFile)) {
+        try {
+          const content = await fsp.readFile(penaltiesFile, 'utf8');
+          penalties = JSON.parse(content);
+          if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+        } catch (e) { /* skip */ }
+      }
+
+      // Загружаем остальные данные параллельно
+      const loadDir = async (dirPath, dateField) => {
+        const results = [];
+        try {
+          if (!await fileExists(dirPath)) return results;
+          const files = (await fsp.readdir(dirPath)).filter(f => f.endsWith('.json'));
+          for (const file of files) {
+            try {
+              const content = await fsp.readFile(path.join(dirPath, file), 'utf8');
+              const data = JSON.parse(content);
+              if (isInPeriod(data[dateField])) results.push(data);
+            } catch (e) { /* skip */ }
+          }
+        } catch (e) { /* skip */ }
+        return results;
+      };
+
+      const [tasks, reviews, productQuestions, orders, rko] = await Promise.all([
+        loadDir(`${DATA_DIR}/task-assignments`, 'createdAt'),
+        loadDir(`${DATA_DIR}/reviews`, 'createdAt'),
+        loadDir(`${DATA_DIR}/product-questions`, 'createdAt'),
+        loadDir(`${DATA_DIR}/orders`, 'createdAt'),
+        loadDir(`${DATA_DIR}/rko`, 'date'),
+      ]);
+
+      const elapsed = Date.now() - startTime;
+      console.log(`  ✅ Supplementary batch за ${elapsed}ms: penalties=${penalties.length}, tasks=${tasks.length}, reviews=${reviews.length}`);
+
+      res.json({
+        success: true,
+        month,
+        penalties,
+        tasks,
+        reviews,
+        productQuestions,
+        orders,
+        rko,
+        loadTimeMs: elapsed,
+      });
+    } catch (error) {
+      console.error('❌ Ошибка supplementary batch:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log('✅ Efficiency Penalties API initialized');
 }
 

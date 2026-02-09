@@ -176,10 +176,8 @@ class RecountReport {
     Duration duration;
     if (json['duration'] != null) {
       duration = Duration(seconds: json['duration'] is int ? json['duration'] : 0);
-    } else if (startedAt != null && completedAt != null) {
-      duration = completedAt.difference(startedAt);
     } else {
-      duration = Duration.zero;
+      duration = completedAt.difference(startedAt);
     }
 
     return RecountReport(

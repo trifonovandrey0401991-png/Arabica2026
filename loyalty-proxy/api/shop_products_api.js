@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const crypto = require('crypto');
 
 // Импортируем функции мастер-каталога для детекции новых кодов и подстановки названий
 const { addPendingCode, isCodeInMasterCatalog, getMasterNameByBarcode } = require('./master_catalog_api');
@@ -39,17 +40,19 @@ async function fileExists(filePath) {
 async function loadApiKeys() {
   try {
     if (!(await fileExists(API_KEYS_FILE))) {
-      // Создаём файл с дефолтным ключом
+      // SECURITY: Генерируем криптографически случайный ключ вместо захардкоженного
+      const randomKey = crypto.randomBytes(32).toString('hex');
       const defaultKeys = {
         keys: [
           {
-            key: 'arabica-sync-2025',
+            key: randomKey,
             shopId: '*', // Доступ ко всем магазинам
-            description: 'Default sync key',
+            description: 'Auto-generated sync key',
             createdAt: new Date().toISOString(),
           },
         ],
       };
+      console.log(`[Shop Products API] ⚠️ Сгенерирован новый API ключ: ${randomKey.substring(0, 8)}...`);
       const dir = path.dirname(API_KEYS_FILE);
       await fsp.mkdir(dir, { recursive: true });
       await fsp.writeFile(API_KEYS_FILE, JSON.stringify(defaultKeys, null, 2));

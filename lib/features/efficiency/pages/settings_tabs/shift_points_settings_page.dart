@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -15,7 +14,6 @@ class ShiftPointsSettingsPage extends StatefulWidget {
 class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  ShiftPointsSettings? _settings;
 
   // Editable values
   double _minPoints = -3;
@@ -45,7 +43,6 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
     try {
       final settings = await PointsSettingsService.getShiftPointsSettings();
       setState(() {
-        _settings = settings;
         _minPoints = settings.minPoints;
         _zeroThreshold = settings.zeroThreshold;
         _maxPoints = settings.maxPoints;
@@ -88,7 +85,6 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
 
       if (result != null) {
         setState(() {
-          _settings = result;
           _isSaving = false;
         });
         if (mounted) {

@@ -367,7 +367,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     for (final e in _employees) {
       final empPhone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
       if (empPhone == normalizedPhone) {
-        return e.name ?? phone;
+        return e.name;
       }
     }
 
@@ -383,7 +383,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 
   Widget _buildParticipantsList() {
     final filteredEmployees = _employees.where((e) {
-      final name = (e.name ?? '').toLowerCase();
+      final name = e.name.toLowerCase();
       final phone = (e.phone ?? '').toLowerCase();
       return name.contains(_searchQuery) || phone.contains(_searchQuery);
     }).toList();
@@ -419,7 +419,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           ),
           ...filteredEmployees.map((e) => _buildParticipantTile(
                 phone: e.phone ?? '',
-                name: e.name ?? e.phone ?? '',
+                name: e.name,
                 subtitle: e.position ?? '',
                 isEmployee: true,
               )),

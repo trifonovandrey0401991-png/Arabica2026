@@ -614,9 +614,15 @@ router.post('/logout', async (req, res) => {
 /**
  * POST /api/auth/enable-biometric
  * Включение/выключение биометрии
+ * SECURITY: Требуем авторизацию — только владелец аккаунта или админ
  */
 router.post('/enable-biometric', async (req, res) => {
   try {
+    // SECURITY: Требуем авторизацию
+    if (!req.user) {
+      return res.status(401).json({ error: 'Требуется авторизация' });
+    }
+
     const { phone, enabled } = req.body;
 
     if (!phone || enabled === undefined) {
@@ -624,6 +630,13 @@ router.post('/enable-biometric', async (req, res) => {
     }
 
     const normalizedPhone = normalizePhone(phone);
+
+    // SECURITY: Только владелец аккаунта или админ может менять биометрию
+    const userPhone = normalizePhone(req.user.phone);
+    if (userPhone !== normalizedPhone && !req.user.isAdmin) {
+      return res.status(403).json({ error: 'Нельзя менять настройки чужого аккаунта' });
+    }
+
     const pinData = await getPinData(normalizedPhone);
 
     if (!pinData) {
@@ -651,10 +664,15 @@ router.post('/enable-biometric', async (req, res) => {
 
 /**
  * GET /api/auth/session/:phone
- * Получить информацию о сессии пользователя (для отладки)
+ * Получить информацию о сессии пользователя (только для админов)
  */
 router.get('/session/:phone', async (req, res) => {
   try {
+    // SECURITY: Только админы могут просматривать чужие сессии
+    if (!req.user || !req.user.isAdmin) {
+      return res.status(403).json({ error: 'Доступ запрещён. Требуются права администратора.' });
+    }
+
     const normalizedPhone = normalizePhone(req.params.phone);
     const filePath = path.join(SESSIONS_DIR, `${normalizedPhone}.json`);
 

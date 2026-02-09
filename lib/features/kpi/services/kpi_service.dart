@@ -1,7 +1,6 @@
 import '../models/kpi_models.dart';
 import '../models/kpi_employee_month_stats.dart';
 import '../models/kpi_shop_month_stats.dart';
-import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../shifts/services/shift_report_service.dart';
@@ -860,9 +859,6 @@ class KPIService {
     required ShopMonthScheduleStats scheduleStats,
   }) {
     // Фильтруем данные по месяцу
-    final monthStart = DateTime(year, month, 1);
-    final monthEnd = DateTime(year, month + 1, 0, 23, 59, 59);
-
     bool isInMonth(DateTime date) {
       return date.year == year && date.month == month;
     }

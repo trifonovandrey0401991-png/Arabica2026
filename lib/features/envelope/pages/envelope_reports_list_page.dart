@@ -410,7 +410,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                   child: DefaultTextStyle(
                     style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
                     overflow: TextOverflow.ellipsis,
-                    child: item.child ?? const SizedBox(),
+                    child: item.child,
                   ),
                 ),
               ],

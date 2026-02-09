@@ -100,7 +100,7 @@ const { startScheduler: startEnvelopeAutomationScheduler } = require("./api/enve
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupShiftAiVerificationAPI } = require("./api/shift_ai_verification_api");
-const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
+const { setupDataCleanupAPI, startAutoCleanupScheduler } = require("./api/data_cleanup_api");
 const { setupShopProductsAPI } = require("./api/shop_products_api");
 const { setupMasterCatalogAPI } = require("./api/master_catalog_api");
 const { setupGeofenceAPI } = require("./api/geofence_api");
@@ -116,6 +116,7 @@ const { setupMenuAPI } = require('./api/menu_api');
 const { setupLoyaltyPromoAPI } = require('./api/loyalty_promo_api');
 const { setupShopSettingsAPI } = require('./api/shop_settings_api');
 const { setupEfficiencyPenaltiesAPI } = require('./api/efficiency_penalties_api');
+const { setupDashboardBatchAPI } = require('./api/dashboard_batch_api');
 const { setupWorkScheduleAPI } = require('./api/work_schedule_api');
 const { setupWithdrawalsAPI, loadAllEmployeesForWithdrawals } = require('./api/withdrawals_api');
 const { setupShiftsAPI } = require('./api/shifts_api');
@@ -338,15 +339,28 @@ if (rateLimit) {
     validate: { xForwardedForHeader: false },
   });
 
+  // Строгий лимит для auth endpoints: 10 запросов в минуту (защита от brute-force)
+  const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { success: false, error: 'Слишком много попыток авторизации. Подождите минуту.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
+  });
+
   // Применяем общий лимит ко всем /api/* маршрутам
   app.use('/api/', generalLimiter);
+
+  // Строгий лимит для auth операций
+  app.use('/api/auth', authLimiter);
 
   // Умеренный лимит для финансовых операций
   app.use('/api/withdrawals', financialLimiter);
   app.use('/api/bonus-penalties', financialLimiter);
   app.use('/api/rko', financialLimiter);
 
-  console.log('✅ Rate Limiting активирован: 500 req/min (общий), 50 req/min (финансовые операции)');
+  console.log('✅ Rate Limiting активирован: 500 req/min (общий), 10 req/min (auth), 50 req/min (финансовые)');
 }
 
 // Статические файлы для редактора координат
@@ -355,12 +369,16 @@ app.use('/static', express.static(`${DATA_DIR}/html`));
 // ============================================
 // SECURITY: File Type Validation для всех uploads
 // ============================================
-// Добавлен application/octet-stream для поддержки загрузки из Flutter (камера иногда не передаёт MIME type)
-const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/octet-stream'];
+// SECURITY: Убран application/octet-stream — проверяем расширение файла вместо слепого доверия MIME
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const allowedMediaTypes = [...allowedImageTypes, 'video/mp4', 'video/quicktime'];
+const allowedImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+const allowedMediaExtensions = [...allowedImageExtensions, '.mp4', '.mov'];
 
 const imageFileFilter = (req, file, cb) => {
-  if (allowedImageTypes.includes(file.mimetype)) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  // Проверяем MIME type ИЛИ расширение (Flutter камера иногда шлёт octet-stream)
+  if (allowedImageTypes.includes(file.mimetype) || allowedImageExtensions.includes(ext)) {
     cb(null, true);
   } else {
     cb(new Error(`Invalid file type: ${file.mimetype}. Only JPEG, PNG, GIF, WebP allowed.`), false);
@@ -368,7 +386,8 @@ const imageFileFilter = (req, file, cb) => {
 };
 
 const mediaFileFilter = (req, file, cb) => {
-  if (allowedMediaTypes.includes(file.mimetype)) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (allowedMediaTypes.includes(file.mimetype) || allowedMediaExtensions.includes(ext)) {
     cb(null, true);
   } else {
     cb(new Error(`Invalid file type: ${file.mimetype}. Only images and videos allowed.`), false);
@@ -731,6 +750,7 @@ setupMenuAPI(app);
 setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals });
 setupShopSettingsAPI(app);
 setupEfficiencyPenaltiesAPI(app);
+setupDashboardBatchAPI(app);
 setupWorkScheduleAPI(app, { sendPushToPhone });
 setupWithdrawalsAPI(app);
 setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingCompleted, sendShiftHandoverNewReportNotification, getPendingShiftHandoverReports, getFailedShiftHandoverReports, calculateShiftPoints });
@@ -787,6 +807,9 @@ startCoffeeMachineAutomation();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);
+
+// Start auto-cleanup scheduler (daily at 3:00 AM — expired sessions, old logs, old data)
+startAutoCleanupScheduler();
 
 // ============================================
 // HEALTH CHECK ENDPOINT

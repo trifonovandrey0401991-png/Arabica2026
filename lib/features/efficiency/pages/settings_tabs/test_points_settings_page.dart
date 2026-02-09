@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -14,7 +13,6 @@ class TestPointsSettingsPage extends StatefulWidget {
 class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
-  TestPointsSettings? _settings;
 
   // Editable values
   double _minPoints = -2;
@@ -36,7 +34,6 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
     try {
       final settings = await PointsSettingsService.getTestPointsSettings();
       setState(() {
-        _settings = settings;
         _minPoints = settings.minPoints;
         _zeroThreshold = settings.zeroThreshold;
         _maxPoints = settings.maxPoints;
@@ -67,7 +64,6 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
 
       if (result != null) {
         setState(() {
-          _settings = result;
           _isSaving = false;
         });
         if (mounted) {
