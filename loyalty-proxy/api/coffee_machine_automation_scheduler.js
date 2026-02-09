@@ -75,7 +75,12 @@ async function getCoffeeMachineSettings() {
       adminReviewTimeoutHours: 4,
     };
   }
-  return JSON.parse(await fsp.readFile(POINTS_SETTINGS_FILE, 'utf8'));
+  try {
+    return JSON.parse(await fsp.readFile(POINTS_SETTINGS_FILE, 'utf8'));
+  } catch (e) {
+    console.error('[CoffeeMachineScheduler] Error parsing points settings:', e.message);
+    return null;
+  }
 }
 
 /**
@@ -92,7 +97,12 @@ async function loadState() {
     await writeJsonFile(STATE_FILE, defaultState);
     return defaultState;
   }
-  return JSON.parse(await fsp.readFile(STATE_FILE, 'utf8'));
+  try {
+    return JSON.parse(await fsp.readFile(STATE_FILE, 'utf8'));
+  } catch (e) {
+    console.error('[CoffeeMachineScheduler] Error parsing state file:', e.message);
+    return { lastMorningGeneration: null, lastEveningGeneration: null, lastCleanup: null, lastCheck: null };
+  }
 }
 
 /**
@@ -111,7 +121,13 @@ async function getShopsWithCoffeeMachines() {
   if (!(await fileExists(SHOPS_FILE))) {
     return [];
   }
-  const shopsData = JSON.parse(await fsp.readFile(SHOPS_FILE, 'utf8'));
+  let shopsData;
+  try {
+    shopsData = JSON.parse(await fsp.readFile(SHOPS_FILE, 'utf8'));
+  } catch (e) {
+    console.error('[CoffeeMachineScheduler] Error parsing shops file:', e.message);
+    return [];
+  }
   const shops = shopsData.shops || shopsData || [];
   if (!Array.isArray(shops)) return [];
 
@@ -129,7 +145,7 @@ async function getShopsWithCoffeeMachines() {
         configuredShops.add(config.shopAddress);
       }
     } catch (e) {
-      // skip
+      console.error(`[CoffeeMachineScheduler] Error reading config ${file}:`, e.message);
     }
   }
 
@@ -156,7 +172,7 @@ async function loadAllPendingForDate(date) {
         pendingMap.set(key, data);
       }
     } catch (e) {
-      // skip
+      console.error(`[CoffeeMachineScheduler] Error reading pending ${file}:`, e.message);
     }
   }
   return pendingMap;

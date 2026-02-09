@@ -256,7 +256,7 @@ async function checkIfAttendanceMarked(shopAddress, shiftType, today) {
         const recordDate = record.timestamp ? record.timestamp.split('T')[0] : null;
         if (recordDate === today && record.shopAddress === shopAddress) {
           // Определяем смену по времени отметки
-          const recordHour = new Date(record.timestamp).getUTCHours() + MOSCOW_OFFSET_HOURS;
+          const recordHour = (new Date(record.timestamp).getUTCHours() + MOSCOW_OFFSET_HOURS) % 24;
           const isMorning = recordHour < 14;
           const recordShiftType = isMorning ? 'morning' : 'evening';
 

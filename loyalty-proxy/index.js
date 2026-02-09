@@ -111,6 +111,7 @@ const { setupShopManagersAPI } = require("./api/shop_managers_api");
 const { setupLoyaltyGamificationAPI } = require("./api/loyalty_gamification_api");
 const { setupCoffeeMachineAPI } = require("./api/coffee_machine_api");
 const { startCoffeeMachineAutomation } = require("./api/coffee_machine_automation_scheduler");
+const { setupExecutionChainAPI } = require("./api/execution_chain_api");
 const { setupShopsAPI } = require('./api/shops_api');
 const { setupMenuAPI } = require('./api/menu_api');
 const { setupLoyaltyPromoAPI } = require('./api/loyalty_promo_api');
@@ -528,12 +529,15 @@ const uploadRKO = multer({
 });
 
 // URL Google Apps Script для регистрации, лояльности и ролей
-const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzaH6AqH8j9E93Tf4SFCie35oeESGfBL6p51cTHl9EvKq0Y5bfzg4UbmsDKB1B82yPS/exec";
+const SCRIPT_URL = process.env.SCRIPT_URL;
+if (!SCRIPT_URL) {
+  console.error('WARNING: SCRIPT_URL env variable is not set! Google Apps Script integration will not work.');
+}
 
 app.post('/', async (req, res) => {
   try {
-    console.log("POST request to script:", SCRIPT_URL);
-    console.log("Request body:", JSON.stringify(req.body));
+    console.log("POST request to script");
+    console.log("Request action:", req.body?.action || 'unknown');
     
     const response = await fetch(SCRIPT_URL, {
       method: 'post',
@@ -743,6 +747,7 @@ setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
 setupLoyaltyGamificationAPI(app);
 setupCoffeeMachineAPI(app);
+setupExecutionChainAPI(app);
 
 // Migrated modules (inline routes removed from index.js)
 setupShopsAPI(app);

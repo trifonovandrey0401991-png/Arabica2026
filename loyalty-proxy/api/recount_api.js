@@ -12,7 +12,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzaH6AqH8j9E93Tf4SFCie35oeESGfBL6p51cTHl9EvKq0Y5bfzg4UbmsDKB1B82yPS/exec";
+const SCRIPT_URL = process.env.SCRIPT_URL;
 
 function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) {
 
@@ -95,7 +95,9 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         try {
           const settings = JSON.parse(await fsp.readFile(settingsFile, 'utf8'));
           adminReviewTimeout = settings.adminReviewTimeout || 2;
-        } catch (e) {}
+        } catch (e) {
+          console.error('[Recount] Error reading points settings:', e.message);
+        }
       }
 
       const now = new Date();
@@ -276,24 +278,34 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
 
+      let report = null;
+
       if (await fileExists(reportFile)) {
         const content = await fsp.readFile(reportFile, 'utf8');
-        const report = JSON.parse(content);
-        return res.json({ success: true, report });
+        report = JSON.parse(content);
       }
 
       // Попробуем найти по частичному совпадению (как в rating endpoint)
-      if (await fileExists(reportsDir)) {
+      if (!report && await fileExists(reportsDir)) {
         const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
         const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
         if (matchingFile) {
           const content = await fsp.readFile(path.join(reportsDir, matchingFile), 'utf8');
-          const report = JSON.parse(content);
-          return res.json({ success: true, report });
+          report = JSON.parse(content);
         }
       }
 
-      res.status(404).json({ success: false, error: 'Отчёт пересчёта не найден' });
+      if (!report) {
+        return res.status(404).json({ success: false, error: 'Отчёт пересчёта не найден' });
+      }
+
+      // IDOR: проверка владельца или админ
+      const ownerPhone = report.employeePhone || report.phone;
+      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
+      }
+
+      res.json({ success: true, report });
     } catch (error) {
       console.error('Ошибка получения отчёта пересчёта:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -344,9 +356,14 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
     }
   });
 
-  // POST /api/recount-reports/:reportId/rating - оценка отчета пересчёта
+  // POST /api/recount-reports/:reportId/rating - оценка отчета пересчёта (только админ)
   app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     try {
+      // Оценка пересчёта — только админ
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Только администратор может оценить отчёт пересчёта' });
+      }
+
       let { reportId } = req.params;
       const { rating, adminName } = req.body;
       // Декодируем URL-кодированный reportId

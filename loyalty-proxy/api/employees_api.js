@@ -28,7 +28,9 @@ async function getNextReferralCode() {
         if (emp.referralCode) {
           usedCodes.add(emp.referralCode);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error(`[Employees] Error reading employee file ${file}:`, e.message);
+      }
     }
 
     for (let code = 1; code <= 1000; code++) {
@@ -129,6 +131,11 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   // POST /api/employees - создать нового сотрудника
   app.post('/api/employees', async (req, res) => {
     try {
+      // Только админ может создавать сотрудников
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
+      }
+
       console.log('POST /api/employees:', JSON.stringify(req.body).substring(0, 200));
 
       if (!await fileExists(EMPLOYEES_DIR)) {
@@ -185,6 +192,11 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   // PUT /api/employees/:id - обновить сотрудника
   app.put('/api/employees/:id', async (req, res) => {
     try {
+      // Только админ может редактировать сотрудников
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
+      }
+
       const id = req.params.id;
       console.log('PUT /api/employees:', id);
 
@@ -247,6 +259,11 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   // DELETE /api/employees/:id - удалить сотрудника
   app.delete('/api/employees/:id', async (req, res) => {
     try {
+      // Только админ может удалять сотрудников
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
+      }
+
       const id = req.params.id;
       console.log('DELETE /api/employees:', id);
 

@@ -636,7 +636,9 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
         // Очищаем временные файлы при ошибке
         try {
           if (await fileExists(tempDocxPath)) await fsp.unlink(tempDocxPath);
-        } catch (e) {}
+        } catch (e) {
+          console.error('[RKO] Error cleaning temp file:', e.message);
+        }
 
         return res.status(500).json({
           success: false,

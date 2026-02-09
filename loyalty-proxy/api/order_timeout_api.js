@@ -76,7 +76,8 @@ async function saveOrderSettings(settings) {
 
 // Определить тип смены по времени
 function getShiftTypeByTime(date) {
-  const hour = date.getHours();
+  // UTC+3 (Moscow timezone)
+  const hour = (date.getUTCHours() + 3) % 24;
   // Утро: 08:00-16:00, День: 12:00-20:00, Вечер: 16:00-00:00
   if (hour >= 8 && hour < 12) return ['morning'];
   if (hour >= 12 && hour < 16) return ['morning', 'day']; // пересечение

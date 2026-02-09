@@ -197,8 +197,10 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       // Функция для проверки активного интервала
       function isWithinInterval(shiftType) {
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
+        // UTC+3 (Moscow timezone)
+        const moscowNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+        const currentHour = moscowNow.getUTCHours();
+        const currentMinute = moscowNow.getUTCMinutes();
         const currentMinutes = currentHour * 60 + currentMinute;
 
         if (shiftType === 'morning') {
@@ -306,7 +308,9 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
               const found = reports.find(r => r.id === reportId);
               if (found) { report = found; break; }
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error(`[Shifts] Error reading daily file ${file}:`, e.message);
+          }
         }
       }
 
@@ -322,6 +326,12 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       if (!report) {
         return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+      }
+
+      // IDOR: проверка владельца или админ
+      const ownerPhone = report.employeePhone || report.phone;
+      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
       }
 
       res.json({ success: true, report });
@@ -361,7 +371,9 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
                 break;
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error(`[Shifts] Error reading daily file ${file} for update:`, e.message);
+          }
         }
       }
 
@@ -376,6 +388,17 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       if (!existingReport) {
         return res.status(404).json({ success: false, error: 'Отчет не найден' });
+      }
+
+      // IDOR: проверка — владелец может обновить свой отчёт, подтверждение/оценка — только админ
+      const reportOwnerPhone = existingReport.employeePhone || existingReport.phone;
+      if (req.body.rating !== undefined || req.body.confirmedAt) {
+        // Подтверждение/оценка — только админ
+        if (!req.user || !req.user.isAdmin) {
+          return res.status(403).json({ success: false, error: 'Только администратор может подтвердить/оценить отчёт' });
+        }
+      } else if (reportOwnerPhone && req.user && req.user.phone !== reportOwnerPhone && !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
       }
 
       const updatedReport = { ...existingReport, ...req.body };
@@ -576,7 +599,8 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       // Определяем тип смены по времени создания
       const createdAt = new Date(report.createdAt || Date.now());
-      const createdHour = createdAt.getHours();
+      // UTC+3 (Moscow timezone)
+      const createdHour = (createdAt.getUTCHours() + 3) % 24;
       const shiftType = createdHour >= 14 ? 'evening' : 'morning';
 
       // Отмечаем pending как выполненный

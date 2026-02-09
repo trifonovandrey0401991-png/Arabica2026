@@ -145,7 +145,8 @@ async function loadAttendanceForDate(date) {
 // Determine shift type from timestamp (morning < 14:00, evening >= 14:00)
 function determineShiftType(timestamp) {
   if (!timestamp) return null;
-  const hour = new Date(timestamp).getHours();
+  // UTC+3 (Moscow timezone)
+  const hour = (new Date(timestamp).getUTCHours() + 3) % 24;
   return hour < 14 ? 'morning' : 'evening';
 }
 

@@ -73,11 +73,13 @@ function parseTimeToMinutes(timeStr) {
 // Проверить попадает ли время в интервал смены
 async function checkShiftTime(timestamp, shopSettings) {
   const time = new Date(timestamp);
-  const hour = time.getHours();
-  const minute = time.getMinutes();
+  // UTC+3 (Moscow timezone)
+  const moscowTime = new Date(time.getTime() + 3 * 60 * 60 * 1000);
+  const hour = moscowTime.getUTCHours();
+  const minute = moscowTime.getUTCMinutes();
   const currentMinutes = hour * 60 + minute;
 
-  console.log(`Проверка времени: ${hour}:${minute} (${currentMinutes} минут)`);
+  console.log(`Проверка времени (МСК): ${hour}:${minute} (${currentMinutes} минут)`);
 
   if (!shopSettings) {
     console.log('Нет настроек магазина - пропускаем проверку');
@@ -698,7 +700,9 @@ function setupAttendanceAPI(app, {
               console.log(`[GPS-Check] Found employee: ${empData.name} (${employeeId})`);
               break;
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error(`[GPS-Check] Error reading employee file ${file}:`, e.message);
+          }
         }
       } catch (e) {
         console.error('[GPS-Check] Error loading employees:', e.message);

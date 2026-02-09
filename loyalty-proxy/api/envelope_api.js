@@ -15,6 +15,28 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ENVELOPE_QUESTIONS_DIR = `${DATA_DIR}/envelope-questions`;
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 
+/**
+ * Найти файл отчёта конверта по ID.
+ * Пробует sanitized имя (новые файлы), затем оригинальное (старые с кириллицей).
+ * Возвращает путь к файлу или null.
+ */
+async function findEnvelopeReportFile(rawId) {
+  // 1. Sanitized путь (новые файлы)
+  const sanitized = rawId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const sanitizedPath = path.join(ENVELOPE_REPORTS_DIR, `${sanitized}.json`);
+  if (await fileExists(sanitizedPath)) return sanitizedPath;
+
+  // 2. Оригинальное имя с защитой от path traversal (старые файлы с кириллицей)
+  const safeId = rawId.replace(/[\/\\]/g, '').replace(/\.\./g, '');
+  const originalPath = path.join(ENVELOPE_REPORTS_DIR, `${safeId}.json`);
+  // Проверяем что путь не выходит за пределы директории
+  if (path.resolve(originalPath).startsWith(path.resolve(ENVELOPE_REPORTS_DIR)) && await fileExists(originalPath)) {
+    return originalPath;
+  }
+
+  return null;
+}
+
 // Создаем директории, если их нет
 (async () => {
   if (!await fileExists(ENVELOPE_QUESTIONS_DIR)) {
@@ -311,18 +333,22 @@ function setupEnvelopeAPI(app) {
   // GET /api/envelope-reports/:id - получить один отчет
   app.get('/api/envelope-reports/:id', async (req, res) => {
     try {
-      const id = sanitizeId(req.params.id);
-      console.log('GET /api/envelope-reports/:id', id);
+      const rawId = decodeURIComponent(req.params.id);
+      console.log('GET /api/envelope-reports/:id', rawId);
 
-      const sanitizedId2 = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId2}.json`);
-
-      if (!await fileExists(filePath)) {
+      const filePath = await findEnvelopeReportFile(rawId);
+      if (!filePath) {
         return res.status(404).json({ success: false, error: 'Отчет не найден' });
       }
 
       const content = await fs.promises.readFile(filePath, 'utf8');
       const report = JSON.parse(content);
+
+      // IDOR: проверка владельца или админ
+      const ownerPhone = report.employeePhone || report.phone;
+      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
+      }
 
       res.json({ success: true, report });
     } catch (error) {
@@ -360,18 +386,22 @@ function setupEnvelopeAPI(app) {
   // PUT /api/envelope-reports/:id - обновить отчет
   app.put('/api/envelope-reports/:id', async (req, res) => {
     try {
-      const id = sanitizeId(req.params.id);
-      console.log('PUT /api/envelope-reports/:id', id);
+      const rawId = decodeURIComponent(req.params.id);
+      console.log('PUT /api/envelope-reports/:id', rawId);
 
-      const sanitizedId2 = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId2}.json`);
-
-      if (!await fileExists(filePath)) {
+      const filePath = await findEnvelopeReportFile(rawId);
+      if (!filePath) {
         return res.status(404).json({ success: false, error: 'Отчет не найден' });
       }
 
       const content = await fs.promises.readFile(filePath, 'utf8');
       const existingReport = JSON.parse(content);
+
+      // IDOR: проверка владельца или админ
+      const ownerPhone = existingReport.employeePhone || existingReport.phone;
+      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
+      }
 
       const updatedReport = {
         ...existingReport,
@@ -390,17 +420,20 @@ function setupEnvelopeAPI(app) {
     }
   });
 
-  // PUT /api/envelope-reports/:id/confirm - подтвердить отчет с оценкой
+  // PUT /api/envelope-reports/:id/confirm - подтвердить отчет с оценкой (только админ)
   app.put('/api/envelope-reports/:id/confirm', async (req, res) => {
     try {
-      const id = sanitizeId(req.params.id);
+      // Подтверждение отчёта — только админ
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Только администратор может подтвердить отчёт' });
+      }
+
+      const rawId = decodeURIComponent(req.params.id);
       const { confirmedByAdmin, rating } = req.body;
-      console.log('PUT /api/envelope-reports/:id/confirm', id, confirmedByAdmin, rating);
+      console.log('PUT /api/envelope-reports/:id/confirm', rawId, confirmedByAdmin, rating);
 
-      const sanitizedId2 = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId2}.json`);
-
-      if (!await fileExists(filePath)) {
+      const filePath = await findEnvelopeReportFile(rawId);
+      if (!filePath) {
         return res.status(404).json({ success: false, error: 'Отчет не найден' });
       }
 
@@ -422,16 +455,19 @@ function setupEnvelopeAPI(app) {
     }
   });
 
-  // DELETE /api/envelope-reports/:id - удалить отчет
+  // DELETE /api/envelope-reports/:id - удалить отчет (только админ)
   app.delete('/api/envelope-reports/:id', async (req, res) => {
     try {
-      const id = sanitizeId(req.params.id);
-      console.log('DELETE /api/envelope-reports/:id', id);
+      // Удаление отчёта — только админ
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Только администратор может удалить отчёт' });
+      }
 
-      const sanitizedId2 = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId2}.json`);
+      const rawId = decodeURIComponent(req.params.id);
+      console.log('DELETE /api/envelope-reports/:id', rawId);
 
-      if (!await fileExists(filePath)) {
+      const filePath = await findEnvelopeReportFile(rawId);
+      if (!filePath) {
         return res.status(404).json({ success: false, error: 'Отчет не найден' });
       }
 

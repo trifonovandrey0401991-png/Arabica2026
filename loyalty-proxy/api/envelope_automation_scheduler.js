@@ -141,7 +141,12 @@ async function getEnvelopeSettings() {
       adminReviewTimeout: 0
     };
   }
-  return JSON.parse(await fsp.readFile(POINTS_SETTINGS_FILE, 'utf8'));
+  try {
+    return JSON.parse(await fsp.readFile(POINTS_SETTINGS_FILE, 'utf8'));
+  } catch (e) {
+    console.error('[EnvelopeScheduler] Error parsing points settings:', e.message);
+    return null;
+  }
 }
 
 /**
@@ -158,7 +163,12 @@ async function loadState() {
     await writeJsonFile(STATE_FILE, defaultState);
     return defaultState;
   }
-  return JSON.parse(await fsp.readFile(STATE_FILE, 'utf8'));
+  try {
+    return JSON.parse(await fsp.readFile(STATE_FILE, 'utf8'));
+  } catch (e) {
+    console.error('[EnvelopeScheduler] Error parsing state file:', e.message);
+    return { lastMorningGeneration: null, lastEveningGeneration: null, lastCleanup: null, lastCheck: null };
+  }
 }
 
 /**
