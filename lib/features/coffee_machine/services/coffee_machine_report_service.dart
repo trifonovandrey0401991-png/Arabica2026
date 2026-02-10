@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/utils/logger.dart';
-import '../../../core/services/multitenancy_filter_service.dart';
-import '../../../core/services/employee_push_service.dart';
 import '../models/coffee_machine_report_model.dart';
 import '../models/pending_coffee_machine_report_model.dart';
 
@@ -12,28 +11,27 @@ import '../models/pending_coffee_machine_report_model.dart';
 class CoffeeMachineReportService {
   static const String baseEndpoint = '/api/coffee-machine/reports';
 
+  static final _base = BaseReportService<CoffeeMachineReport>(
+    endpoint: baseEndpoint,
+    fromJson: (json) => CoffeeMachineReport.fromJson(json),
+    getShopAddress: (r) => r.shopAddress,
+    reportType: 'coffee_machine',
+  );
+
   /// Получить все отчёты
   static Future<List<CoffeeMachineReport>> getReports({
     String? shopAddress,
     String? status,
     DateTime? fromDate,
     DateTime? toDate,
-  }) async {
-    Logger.debug('Загрузка отчётов кофемашин...');
-
-    final queryParams = <String, String>{};
-    if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
-    if (status != null) queryParams['status'] = status;
-    if (fromDate != null) queryParams['fromDate'] = fromDate.toIso8601String();
-    if (toDate != null) queryParams['toDate'] = toDate.toIso8601String();
-
-    return await BaseHttpService.getList<CoffeeMachineReport>(
-      endpoint: baseEndpoint,
-      fromJson: (json) => CoffeeMachineReport.fromJson(json),
-      listKey: 'reports',
-      queryParams: queryParams.isNotEmpty ? queryParams : null,
-    );
-  }
+  }) => _base.getReports(
+    queryParams: BaseReportService.buildQueryParams({
+      'shopAddress': shopAddress,
+      'status': status,
+      'fromDate': fromDate?.toIso8601String(),
+      'toDate': toDate?.toIso8601String(),
+    }),
+  );
 
   /// Получить отчёты с фильтрацией по мультитенантности
   static Future<List<CoffeeMachineReport>> getReportsForCurrentUser({
@@ -41,29 +39,17 @@ class CoffeeMachineReportService {
     String? status,
     DateTime? fromDate,
     DateTime? toDate,
-  }) async {
-    final reports = await getReports(
-      shopAddress: shopAddress,
-      status: status,
-      fromDate: fromDate,
-      toDate: toDate,
-    );
-
-    return await MultitenancyFilterService.filterByShopAddress(
-      reports,
-      (report) => report.shopAddress,
-    );
-  }
+  }) => _base.getReportsForCurrentUser(
+    queryParams: BaseReportService.buildQueryParams({
+      'shopAddress': shopAddress,
+      'status': status,
+      'fromDate': fromDate?.toIso8601String(),
+      'toDate': toDate?.toIso8601String(),
+    }),
+  );
 
   /// Получить отчёт по ID
-  static Future<CoffeeMachineReport?> getReport(String id) async {
-    Logger.debug('Загрузка отчёта кофемашины: $id');
-    return await BaseHttpService.get<CoffeeMachineReport>(
-      endpoint: '$baseEndpoint/$id',
-      fromJson: (json) => CoffeeMachineReport.fromJson(json),
-      itemKey: 'report',
-    );
-  }
+  static Future<CoffeeMachineReport?> getReport(String id) => _base.getReport(id);
 
   /// Создать новый отчёт
   static Future<CoffeeMachineReport?> createReport(CoffeeMachineReport report) async {
@@ -77,24 +63,11 @@ class CoffeeMachineReportService {
   }
 
   /// Удалить отчёт
-  static Future<bool> deleteReport(String id) async {
-    Logger.debug('Удаление отчёта кофемашины: $id');
-    return await BaseHttpService.delete(endpoint: '$baseEndpoint/$id');
-  }
+  static Future<bool> deleteReport(String id) => _base.deleteReport(id);
 
   /// Подтвердить отчёт с оценкой
-  static Future<CoffeeMachineReport?> confirmReport(String id, String adminName, int rating) async {
-    Logger.debug('Подтверждение отчёта: $id, оценка: $rating');
-    return await BaseHttpService.put<CoffeeMachineReport>(
-      endpoint: '$baseEndpoint/$id/confirm',
-      body: {
-        'confirmedByAdmin': adminName,
-        'rating': rating,
-      },
-      fromJson: (json) => CoffeeMachineReport.fromJson(json),
-      itemKey: 'report',
-    );
-  }
+  static Future<CoffeeMachineReport?> confirmReport(String id, String adminName, int rating) =>
+    _base.confirmViaEndpoint(id, adminName, rating);
 
   /// Подтвердить отчёт с push уведомлением сотруднику
   static Future<CoffeeMachineReport?> confirmReportWithPush({
@@ -105,18 +78,15 @@ class CoffeeMachineReportService {
     String? reportDate,
   }) async {
     final report = await confirmReport(id, adminName, rating);
-
     if (report != null) {
       Logger.debug('Счётчик подтверждён, отправка push сотруднику');
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'coffee_machine',
         status: 'confirmed',
         reportDate: reportDate,
         rating: rating,
       );
     }
-
     return report;
   }
 
@@ -128,30 +98,17 @@ class CoffeeMachineReportService {
     String? comment,
     String? reportDate,
   }) async {
-    Logger.debug('Отклонение отчёта кофемашины: $id');
-
-    final result = await BaseHttpService.put<CoffeeMachineReport>(
-      endpoint: '$baseEndpoint/$id/reject',
-      body: {
-        'rejectedByAdmin': adminName,
-        'rejectReason': comment,
-      },
-      fromJson: (json) => CoffeeMachineReport.fromJson(json),
-      itemKey: 'report',
-    );
-
+    final result = await _base.rejectViaEndpoint(id, adminName, comment);
     if (result != null) {
       Logger.debug('Счётчик отклонён, отправка push сотруднику');
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'coffee_machine',
         status: 'rejected',
         reportDate: reportDate,
         comment: comment,
       );
       return true;
     }
-
     return false;
   }
 

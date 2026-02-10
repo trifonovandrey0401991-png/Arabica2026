@@ -105,7 +105,7 @@ class ProductQuestionService {
 
   /// Получить диалоги клиента (старый метод для совместимости)
   static Future<List<ProductQuestionDialog>> getClientQuestions(String clientPhone) async {
-    Logger.debug('📥 Загрузка диалогов клиента: $clientPhone');
+    Logger.debug('📥 Загрузка диалогов клиента: ${Logger.maskPhone(clientPhone)}');
     return await BaseHttpService.getList<ProductQuestionDialog>(
       endpoint: '$baseEndpoint/client/$clientPhone',
       fromJson: (json) => ProductQuestionDialog.fromJson(json),
@@ -116,7 +116,7 @@ class ProductQuestionService {
   /// Получить данные диалога клиента (единый чат "Поиск Товара")
   static Future<ProductQuestionClientDialogData?> getClientDialog(String clientPhone) async {
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
-    Logger.debug('📥 Загрузка диалога клиента: $normalizedPhone');
+    Logger.debug('📥 Загрузка диалога клиента: ${Logger.maskPhone(normalizedPhone)}');
 
     final result = await BaseHttpService.getRaw(
       endpoint: '$baseEndpoint/client/$normalizedPhone',
@@ -133,7 +133,7 @@ class ProductQuestionService {
   /// Получить группированные диалоги клиента (по магазинам)
   static Future<ProductQuestionGroupedData?> getClientGroupedDialogs(String clientPhone) async {
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
-    Logger.debug('📥 Загрузка группированных диалогов: $normalizedPhone');
+    Logger.debug('📥 Загрузка группированных диалогов: ${Logger.maskPhone(normalizedPhone)}');
 
     final result = await BaseHttpService.getRaw(
       endpoint: '$baseEndpoint/client/$normalizedPhone/grouped',
@@ -161,7 +161,7 @@ class ProductQuestionService {
     String? questionId,
   }) async {
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
-    Logger.debug('📤 Отправка ответа клиента: $normalizedPhone');
+    Logger.debug('📤 Отправка ответа клиента: ${Logger.maskPhone(normalizedPhone)}');
 
     final requestBody = {
       'text': text,
@@ -259,7 +259,7 @@ class ProductQuestionService {
   /// Получить все персональные диалоги клиента
   static Future<List<PersonalProductDialog>> getClientPersonalDialogs(String clientPhone) async {
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
-    Logger.debug('📥 Загрузка персональных диалогов клиента: $normalizedPhone');
+    Logger.debug('📥 Загрузка персональных диалогов клиента: ${Logger.maskPhone(normalizedPhone)}');
     return await BaseHttpService.getList<PersonalProductDialog>(
       endpoint: '$_dialogsEndpoint/client/$normalizedPhone',
       fromJson: (json) => PersonalProductDialog.fromJson(json),
@@ -377,7 +377,7 @@ class ProductQuestionService {
   /// Пометить все сообщения клиента как прочитанные
   static Future<bool> markAllClientQuestionsAsRead(String clientPhone) async {
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
-    Logger.debug('📤 Пометка всех вопросов клиента как прочитанных: $normalizedPhone');
+    Logger.debug('📤 Пометка всех вопросов клиента как прочитанных: ${Logger.maskPhone(normalizedPhone)}');
     return await BaseHttpService.simplePost(
       endpoint: '$baseEndpoint/client/$normalizedPhone/mark-all-read',
       body: {},

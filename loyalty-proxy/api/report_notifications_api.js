@@ -14,6 +14,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
+const { maskPhone } = require('../utils/file_helpers');
 
 // Директория хранения уведомлений
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -114,7 +115,7 @@ async function getAdminFcmTokens() {
         const tokenData = await loadJsonFile(filePath, null);
         if (tokenData && tokenData.token) {
           tokens.push(tokenData.token);
-          console.log(`Найден FCM токен для админа ${phone}`);
+          console.log(`Найден FCM токен для админа ${maskPhone(phone)}`);
         }
       }
     }
@@ -214,17 +215,17 @@ async function sendPushToPhone(phone, title, body, data = {}) {
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
     if (!(await fileExists(tokenFile))) {
-      console.log(`Нет FCM токена для телефона: ${phone}`);
+      console.log(`Нет FCM токена для телефона: ${maskPhone(phone)}`);
       return false;
     }
 
     const tokenData = await loadJsonFile(tokenFile, null);
     if (!tokenData || !tokenData.token) {
-      console.log(`Некорректный FCM токен для телефона: ${phone}`);
+      console.log(`Некорректный FCM токен для телефона: ${maskPhone(phone)}`);
       return false;
     }
 
-    console.log(`Отправка push-уведомления на ${phone}: ${title}`);
+    console.log(`Отправка push-уведомления на ${maskPhone(phone)}: ${title}`);
 
     // Convert all data values to strings (Firebase requirement)
     const stringData = Object.fromEntries(
@@ -250,10 +251,10 @@ async function sendPushToPhone(phone, title, body, data = {}) {
       },
     });
 
-    console.log(`✓ Push-уведомление отправлено на ${phone}`);
+    console.log(`✓ Push-уведомление отправлено на ${maskPhone(phone)}`);
     return true;
   } catch (e) {
-    console.error(`❌ Ошибка отправки push-уведомления на ${phone}:`, e.message);
+    console.error(`❌ Ошибка отправки push-уведомления на ${maskPhone(phone)}:`, e.message);
 
     // Проверяем, является ли токен невалидным
     const errorMessage = e.message || '';
@@ -271,7 +272,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
         const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
         if (await fileExists(tokenFile)) {
           await fsp.unlink(tokenFile);
-          console.log(`🗑️ Невалидный FCM токен удалён для: ${phone}`);
+          console.log(`🗑️ Невалидный FCM токен удалён для: ${maskPhone(phone)}`);
         }
       } catch (deleteError) {
         console.error(`Ошибка удаления невалидного токена:`, deleteError.message);

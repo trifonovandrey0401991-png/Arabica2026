@@ -49,7 +49,7 @@ class NetworkManagementService {
       );
 
       if (result != null && result['success'] == true) {
-        Logger.debug('✅ Разработчик добавлен: $normalizedPhone');
+        Logger.debug('✅ Разработчик добавлен: ${Logger.maskPhone(normalizedPhone)}');
         return true;
       }
 
@@ -72,7 +72,7 @@ class NetworkManagementService {
       );
 
       if (result != null && result['success'] == true) {
-        Logger.debug('✅ Разработчик удалён: $normalizedPhone');
+        Logger.debug('✅ Разработчик удалён: ${Logger.maskPhone(normalizedPhone)}');
         return true;
       }
 
@@ -108,7 +108,7 @@ class NetworkManagementService {
       );
 
       if (result != null && result['success'] == true) {
-        Logger.debug('✅ Управляющий сохранён: ${manager['phone']}');
+        Logger.debug('✅ Управляющий сохранён: ${Logger.maskPhone(manager['phone']?.toString())}');
         return true;
       }
 
@@ -131,7 +131,7 @@ class NetworkManagementService {
       );
 
       if (result != null && result['success'] == true) {
-        Logger.debug('✅ Управляющий удалён: $normalizedPhone');
+        Logger.debug('✅ Управляющий удалён: ${Logger.maskPhone(normalizedPhone)}');
         return true;
       }
 
@@ -221,7 +221,7 @@ class NetworkManagementService {
       );
 
       if (result != null && result['success'] == true) {
-        Logger.debug('✅ Заведующая сохранена: ${storeManager['phone']}');
+        Logger.debug('✅ Заведующая сохранена: ${Logger.maskPhone(storeManager['phone']?.toString())}');
         return true;
       }
 
@@ -244,7 +244,7 @@ class NetworkManagementService {
       );
 
       if (result != null && result['success'] == true) {
-        Logger.debug('✅ Заведующая удалена: $normalizedPhone');
+        Logger.debug('✅ Заведующая удалена: ${Logger.maskPhone(normalizedPhone)}');
         return true;
       }
 

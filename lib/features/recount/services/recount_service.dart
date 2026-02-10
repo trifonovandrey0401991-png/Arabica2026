@@ -6,11 +6,10 @@ import '../models/recount_report_model.dart';
 import '../models/recount_answer_model.dart';
 import '../models/recount_pivot_model.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
-import '../../../core/services/employee_push_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
-import '../../../core/services/multitenancy_filter_service.dart';
 // Условный импорт: по умолчанию stub, на веб - dart:html
 import '../../../core/services/html_stub.dart' as html if (dart.library.html) 'dart:html';
 
@@ -36,6 +35,13 @@ class RecountSubmitResult {
 /// Сервис для работы с пересчетом товаров
 class RecountService {
   static const String baseEndpoint = ApiConstants.recountReportsEndpoint;
+
+  static final _base = BaseReportService<RecountReport>(
+    endpoint: baseEndpoint,
+    fromJson: (json) => RecountReport.fromJson(json),
+    getShopAddress: (r) => r.shopAddress,
+    reportType: 'recount',
+  );
 
   /// Создать отчет пересчета
   static Future<bool> createReport(RecountReport report) async {
@@ -288,27 +294,14 @@ class RecountService {
     String? shopAddress,
     String? employeeName,
     DateTime? date,
-  }) async {
-    try {
-      final queryParams = <String, String>{};
-      if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
-      if (employeeName != null) queryParams['employeeName'] = employeeName;
-      if (date != null) queryParams['date'] = date.toIso8601String();
-
-      Logger.debug('📥 Загрузка отчетов пересчета...');
-
-      return await BaseHttpService.getList<RecountReport>(
-        endpoint: baseEndpoint,
-        fromJson: (json) => RecountReport.fromJson(json),
-        listKey: 'reports',
-        queryParams: queryParams.isNotEmpty ? queryParams : null,
-        timeout: ApiConstants.longTimeout,
-      );
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки отчетов', e);
-      return [];
-    }
-  }
+  }) => _base.getReports(
+    queryParams: BaseReportService.buildQueryParams({
+      'shopAddress': shopAddress,
+      'employeeName': employeeName,
+      'date': date?.toIso8601String(),
+    }),
+    timeout: ApiConstants.longTimeout,
+  );
 
   /// Получить отчеты пересчёта с фильтрацией по мультитенантности
   ///
@@ -317,18 +310,14 @@ class RecountService {
     String? shopAddress,
     String? employeeName,
     DateTime? date,
-  }) async {
-    final reports = await getReports(
-      shopAddress: shopAddress,
-      employeeName: employeeName,
-      date: date,
-    );
-
-    return await MultitenancyFilterService.filterByShopAddress(
-      reports,
-      (report) => report.shopAddress,
-    );
-  }
+  }) => _base.getReportsForCurrentUser(
+    queryParams: BaseReportService.buildQueryParams({
+      'shopAddress': shopAddress,
+      'employeeName': employeeName,
+      'date': date?.toIso8601String(),
+    }),
+    timeout: ApiConstants.longTimeout,
+  );
 
   /// Поставить оценку отчету
   static Future<bool> rateReport(String reportId, int rating, String adminName) async {
@@ -370,10 +359,8 @@ class RecountService {
   }) async {
     final success = await rateReport(reportId, rating, adminName);
     if (success) {
-      // Отправляем push уведомление сотруднику
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'recount',
         status: 'confirmed',
         reportDate: reportDate,
         rating: rating,
@@ -400,9 +387,8 @@ class RecountService {
     // Для отклонения используем тот же endpoint с rating=0 или отдельный
     final success = await rateReport(reportId, 0, adminName);
     if (success) {
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'recount',
         status: 'rejected',
         reportDate: reportDate,
         comment: comment,
@@ -428,20 +414,7 @@ class RecountService {
   }
 
   /// Получить просроченные отчёты пересчёта с сервера
-  static Future<List<RecountReport>> getExpiredReports() async {
-    try {
-      Logger.debug('📥 Загрузка просроченных отчётов пересчёта...');
-
-      return await BaseHttpService.getList<RecountReport>(
-        endpoint: '$baseEndpoint/expired',
-        fromJson: (json) => RecountReport.fromJson(json),
-        listKey: 'reports',
-      );
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки просроченных пересчётов', e);
-      return [];
-    }
-  }
+  static Future<List<RecountReport>> getExpiredReports() => _base.getExpiredReports();
 
   /// Получить pivot-таблицу отчётов за указанную дату
   /// Возвращает таблицу: строки = товары, столбцы = магазины, значения = разница (факт - программа)

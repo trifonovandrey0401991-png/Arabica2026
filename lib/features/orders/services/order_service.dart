@@ -75,7 +75,7 @@ class OrderService {
 
   /// Получить заказы клиента
   static Future<List<Map<String, dynamic>>> getClientOrders(String clientPhone) async {
-    Logger.debug('📥 Загрузка заказов клиента: $clientPhone');
+    Logger.debug('📥 Загрузка заказов клиента: ${Logger.maskPhone(clientPhone)}');
 
     final result = await BaseHttpService.getRaw(
       endpoint: baseEndpoint,

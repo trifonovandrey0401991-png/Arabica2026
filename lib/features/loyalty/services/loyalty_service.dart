@@ -216,7 +216,7 @@ class LoyaltyService {
       // Нормализуем номер телефона: убираем + и пробелы
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
-      Logger.debug('📞 Поиск пользователя с номером: $normalizedPhone');
+      Logger.debug('📞 Поиск пользователя с номером: ${Logger.maskPhone(normalizedPhone)}');
 
       final result = await BaseHttpService.getRaw(
         endpoint: '?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
@@ -339,7 +339,7 @@ class LoyaltyService {
         endpoint: '/api/clients/$normalizedPhone/free-drink',
         body: {'count': count},
       );
-      Logger.debug('🍹 Счётчик бесплатных напитков обновлён: +$count для $normalizedPhone');
+      Logger.debug('🍹 Счётчик бесплатных напитков обновлён: +$count для ${Logger.maskPhone(normalizedPhone)}');
     } catch (e) {
       Logger.error('Ошибка обновления счётчика бесплатных напитков', e);
       rethrow;
@@ -354,7 +354,7 @@ class LoyaltyService {
         endpoint: '/api/clients/$normalizedPhone/sync-free-drinks',
         body: {'freeDrinksGiven': freeDrinks},
       );
-      Logger.debug('🔄 Синхронизация freeDrinksGiven: $freeDrinks для $normalizedPhone');
+      Logger.debug('🔄 Синхронизация freeDrinksGiven: $freeDrinks для ${Logger.maskPhone(normalizedPhone)}');
     } catch (e) {
       // Не критично, просто логируем
       Logger.error('Ошибка синхронизации freeDrinksGiven', e);

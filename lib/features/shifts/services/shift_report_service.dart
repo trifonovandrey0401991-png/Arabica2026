@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/shift_report_model.dart';
+import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
-import '../../../core/services/multitenancy_filter_service.dart';
 
 /// Результат отправки отчёта пересменки
 class ShiftSubmitResult {
@@ -25,6 +25,13 @@ class ShiftSubmitResult {
 
 class ShiftReportService {
   static const String baseEndpoint = ApiConstants.shiftReportsEndpoint;
+
+  static final _base = BaseReportService<ShiftReport>(
+    endpoint: baseEndpoint,
+    fromJson: (json) => ShiftReport.fromJson(json),
+    getShopAddress: (r) => r.shopAddress,
+    reportType: 'shift',
+  );
 
   /// Отправить отчет пересменки на сервер с обработкой TIME_EXPIRED
   static Future<ShiftSubmitResult> submitReport(ShiftReport report) async {
@@ -93,23 +100,13 @@ class ShiftReportService {
     String? employeeName,
     String? shopAddress,
     DateTime? date,
-  }) async {
-    Logger.debug('📥 Загрузка отчетов пересменки с сервера...');
-
-    final queryParams = <String, String>{};
-    if (employeeName != null) queryParams['employeeName'] = employeeName;
-    if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
-    if (date != null) {
-      queryParams['date'] = date.toIso8601String().split('T')[0];
-    }
-
-    return await BaseHttpService.getList<ShiftReport>(
-      endpoint: baseEndpoint,
-      fromJson: (json) => ShiftReport.fromJson(json),
-      listKey: 'reports',
-      queryParams: queryParams.isNotEmpty ? queryParams : null,
-    );
-  }
+  }) => _base.getReports(
+    queryParams: BaseReportService.buildQueryParams({
+      'employeeName': employeeName,
+      'shopAddress': shopAddress,
+      'date': date?.toIso8601String().split('T')[0],
+    }),
+  );
 
   /// Получить отчеты пересменки с фильтрацией по мультитенантности
   ///
@@ -118,28 +115,16 @@ class ShiftReportService {
     String? employeeName,
     String? shopAddress,
     DateTime? date,
-  }) async {
-    final reports = await getReports(
-      employeeName: employeeName,
-      shopAddress: shopAddress,
-      date: date,
-    );
-
-    return await MultitenancyFilterService.filterByShopAddress(
-      reports,
-      (report) => report.shopAddress,
-    );
-  }
+  }) => _base.getReportsForCurrentUser(
+    queryParams: BaseReportService.buildQueryParams({
+      'employeeName': employeeName,
+      'shopAddress': shopAddress,
+      'date': date?.toIso8601String().split('T')[0],
+    }),
+  );
 
   /// Получить просроченные отчеты пересменки с сервера
-  static Future<List<ShiftReport>> getExpiredReports() async {
-    Logger.debug('📥 Загрузка просроченных отчетов пересменки...');
-    return await BaseHttpService.getList<ShiftReport>(
-      endpoint: '$baseEndpoint/expired',
-      fromJson: (json) => ShiftReport.fromJson(json),
-      listKey: 'reports',
-    );
-  }
+  static Future<List<ShiftReport>> getExpiredReports() => _base.getExpiredReports();
 
   /// Получить pending отчёты для текущего дня
   static Future<List<ShiftReport>> getPendingReports({
@@ -175,6 +160,3 @@ class ShiftReportService {
     return reports.isNotEmpty ? reports.first : null;
   }
 }
-
-
-

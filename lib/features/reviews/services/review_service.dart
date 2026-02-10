@@ -85,7 +85,7 @@ class ReviewService {
   /// Получить отзывы клиента по телефону
   static Future<List<Review>> getClientReviews(String phone) async {
     try {
-      Logger.debug('Загрузка отзывов клиента: $phone');
+      Logger.debug('Загрузка отзывов клиента: ${Logger.maskPhone(phone)}');
 
       final result = await BaseHttpService.getRaw(
         endpoint: ApiConstants.reviewsEndpoint,

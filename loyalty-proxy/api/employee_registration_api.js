@@ -7,7 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -73,7 +73,7 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
   app.get('/api/employee-registration/:phone', async (req, res) => {
     try {
       const phone = decodeURIComponent(req.params.phone);
-      console.log('GET /api/employee-registration:', phone);
+      console.log('GET /api/employee-registration:', maskPhone(phone));
 
       const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
@@ -100,7 +100,7 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
     try {
       const phone = decodeURIComponent(req.params.phone);
       const { isVerified, verifiedBy } = req.body;
-      console.log('POST /api/employee-registration/:phone/verify:', phone, isVerified);
+      console.log('POST /api/employee-registration/:phone/verify:', maskPhone(phone), isVerified);
 
       const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
@@ -149,7 +149,7 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
               'Ваша верификация была отозвана администратором. Пожалуйста, перезапустите приложение.',
               { type: 'verification_revoked' }
             );
-            console.log('Push-уведомление о снятии верификации отправлено:', phone);
+            console.log('Push-уведомление о снятии верификации отправлено:', maskPhone(phone));
           }
         } catch (pushError) {
           console.error('Ошибка отправки push при снятии верификации:', pushError);

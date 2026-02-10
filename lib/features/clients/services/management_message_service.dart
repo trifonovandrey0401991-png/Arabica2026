@@ -9,7 +9,7 @@ class ManagementMessageService {
   /// Получить сообщения руководству для клиента
   static Future<ManagementDialogData> getManagementMessages(String clientPhone) async {
     try {
-      Logger.debug('Loading management messages for: $clientPhone');
+      Logger.debug('Loading management messages for: ${Logger.maskPhone(clientPhone)}');
 
       final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
 
@@ -44,7 +44,7 @@ class ManagementMessageService {
     String? imageUrl,
     String? clientName,
   }) async {
-    Logger.debug('Sending management message from: $clientPhone');
+    Logger.debug('Sending management message from: ${Logger.maskPhone(clientPhone)}');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
 
@@ -69,7 +69,7 @@ class ManagementMessageService {
     required String senderPhone, // SECURITY: Обязательный параметр для проверки isAdmin
     String? imageUrl,
   }) async {
-    Logger.debug('Sending manager message to: $clientPhone from admin: $senderPhone');
+    Logger.debug('Sending manager message to: ${Logger.maskPhone(clientPhone)} from admin: ${Logger.maskPhone(senderPhone)}');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     final normalizedSenderPhone = senderPhone.replaceAll(RegExp(r'[\s\+]'), '');
@@ -88,7 +88,7 @@ class ManagementMessageService {
 
   /// Отметить сообщения как прочитанные клиентом
   static Future<bool> markAsReadByClient(String clientPhone) async {
-    Logger.debug('Marking management messages as read by client: $clientPhone');
+    Logger.debug('Marking management messages as read by client: ${Logger.maskPhone(clientPhone)}');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     return await BaseHttpService.simplePost(
@@ -99,7 +99,7 @@ class ManagementMessageService {
 
   /// Отметить сообщения как прочитанные руководством (админом)
   static Future<bool> markAsReadByManager(String clientPhone) async {
-    Logger.debug('Marking management messages as read by manager: $clientPhone');
+    Logger.debug('Marking management messages as read by manager: ${Logger.maskPhone(clientPhone)}');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     return await BaseHttpService.simplePost(

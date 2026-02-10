@@ -8,6 +8,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -63,7 +64,7 @@ function setupDashboardBatchAPI(app) {
   app.get('/api/dashboard/counters', async (req, res) => {
     try {
       const { phone, employeeId, employeeName } = req.query;
-      console.log(`📊 GET /api/dashboard/counters phone=${phone}`);
+      console.log(`📊 GET /api/dashboard/counters phone=${maskPhone(phone)}`);
       const startTime = Date.now();
 
       // Параллельно загружаем все счётчики

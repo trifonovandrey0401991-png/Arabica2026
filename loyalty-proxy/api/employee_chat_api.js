@@ -2,6 +2,7 @@ const fs = require('fs');
 const fsPromises = fs.promises;
 const path = require('path');
 const { isAdminPhoneAsync } = require('../utils/admin_cache');
+const { maskPhone } = require('../utils/file_helpers');
 
 // WebSocket уведомления (опционально, если модуль загружен)
 let wsNotify = null;
@@ -167,7 +168,7 @@ async function getFcmTokens(phones) {
       return null;
     } catch (e) {
       if (e.code !== 'ENOENT') {
-        console.error(`Error reading FCM token for ${phone}:`, e.message);
+        console.error(`Error reading FCM token for ${maskPhone(phone)}:`, e.message);
       }
       return null;
     }
@@ -206,9 +207,9 @@ async function sendPushNotification(tokens, title, body, data) {
           }
         }
       });
-      console.log(`✅ Push отправлен: ${phone}`);
+      console.log(`✅ Push отправлен: ${maskPhone(phone)}`);
     } catch (e) {
-      console.error(`❌ Push ошибка для ${phone}:`, e.message);
+      console.error(`❌ Push ошибка для ${maskPhone(phone)}:`, e.message);
     }
   }
 }
@@ -327,7 +328,7 @@ function setupEmployeeChatAPI(app) {
       // SECURITY FIX: Проверяем isAdmin по базе данных сотрудников, а не по query параметру
       // Это предотвращает подделку прав доступа клиентом
       const isAdminUser = await isAdminPhoneAsync(phone);
-      console.log('GET /api/employee-chats for phone:', phone, 'isAdmin:', isAdminUser, '(verified from DB)');
+      console.log('GET /api/employee-chats for phone:', maskPhone(phone), 'isAdmin:', isAdminUser, '(verified from DB)');
 
       if (!phone) {
         return res.status(400).json({ success: false, error: 'phone is required' });
@@ -566,7 +567,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { chatId } = req.params;
       const { phone } = req.body;
-      console.log('POST /api/employee-chats/:chatId/read:', chatId, phone);
+      console.log('POST /api/employee-chats/:chatId/read:', chatId, maskPhone(phone));
 
       if (!phone) {
         return res.status(400).json({ success: false, error: 'phone is required' });
@@ -601,7 +602,7 @@ function setupEmployeeChatAPI(app) {
   app.post('/api/employee-chats/private', async (req, res) => {
     try {
       const { phone1, phone2 } = req.body;
-      console.log('POST /api/employee-chats/private:', phone1, phone2);
+      console.log('POST /api/employee-chats/private:', maskPhone(phone1), maskPhone(phone2));
 
       if (!phone1 || !phone2) {
         return res.status(400).json({ success: false, error: 'phone1 and phone2 are required' });
@@ -709,7 +710,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { shopAddress } = req.params;
       const { phones } = req.body;
-      console.log('POST /api/employee-chats/shop/:shopAddress/members:', shopAddress, phones);
+      console.log('POST /api/employee-chats/shop/:shopAddress/members:', shopAddress, 'phones:', phones?.length);
 
       if (!phones || !Array.isArray(phones) || phones.length === 0) {
         return res.status(400).json({ success: false, error: 'phones array is required' });
@@ -754,7 +755,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { shopAddress, phone } = req.params;
       const { requesterPhone } = req.query;
-      console.log('DELETE /api/employee-chats/shop/:shopAddress/members/:phone:', shopAddress, phone, 'requester:', requesterPhone);
+      console.log('DELETE /api/employee-chats/shop/:shopAddress/members/:phone:', shopAddress, maskPhone(phone), 'requester:', maskPhone(requesterPhone));
 
       // Проверка авторизации: только админ может удалять участников
       if (!requesterPhone || !(await isAdminPhoneAsync(requesterPhone))) {
@@ -913,7 +914,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { chatId, messageId } = req.params;
       const { phone, reaction } = req.body; // reaction: emoji string like "👍", "❤️", etc.
-      console.log('POST /api/employee-chats/:chatId/messages/:messageId/reactions:', chatId, messageId, phone, reaction);
+      console.log('POST /api/employee-chats/:chatId/messages/:messageId/reactions:', chatId, messageId, maskPhone(phone), reaction);
 
       if (!phone || !reaction) {
         return res.status(400).json({ success: false, error: 'phone and reaction are required' });
@@ -963,7 +964,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { chatId, messageId } = req.params;
       const { phone, reaction } = req.query;
-      console.log('DELETE /api/employee-chats/:chatId/messages/:messageId/reactions:', chatId, messageId, phone, reaction);
+      console.log('DELETE /api/employee-chats/:chatId/messages/:messageId/reactions:', chatId, messageId, maskPhone(phone), reaction);
 
       if (!phone || !reaction) {
         return res.status(400).json({ success: false, error: 'phone and reaction are required' });
@@ -1247,7 +1248,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { groupId, phone } = req.params;
       const { requesterPhone } = req.query;
-      console.log('DELETE /api/employee-chats/group/:groupId/members/:phone:', groupId, phone, 'requester:', requesterPhone);
+      console.log('DELETE /api/employee-chats/group/:groupId/members/:phone:', groupId, maskPhone(phone), 'requester:', maskPhone(requesterPhone));
 
       if (!requesterPhone) {
         return res.status(400).json({ success: false, error: 'requesterPhone is required' });
@@ -1281,7 +1282,7 @@ function setupEmployeeChatAPI(app) {
       delete chat.participantNames[normalizedPhone];
 
       await saveChat(chat);
-      console.log(`✅ Участник ${phone} удалён из группы "${chat.name}"`);
+      console.log(`✅ Участник ${maskPhone(phone)} удалён из группы "${chat.name}"`);
 
       res.json({ success: true, participants: chat.participants });
     } catch (error) {
@@ -1295,7 +1296,7 @@ function setupEmployeeChatAPI(app) {
     try {
       const { groupId } = req.params;
       const { phone } = req.body;
-      console.log('POST /api/employee-chats/group/:groupId/leave:', groupId, 'phone:', phone);
+      console.log('POST /api/employee-chats/group/:groupId/leave:', groupId, 'phone:', maskPhone(phone));
 
       if (!phone) {
         return res.status(400).json({ success: false, error: 'phone is required' });
@@ -1322,7 +1323,7 @@ function setupEmployeeChatAPI(app) {
       delete chat.participantNames[normalizedPhone];
 
       await saveChat(chat);
-      console.log(`✅ Участник ${phone} вышел из группы "${chat.name}"`);
+      console.log(`✅ Участник ${maskPhone(phone)} вышел из группы "${chat.name}"`);
 
       res.json({ success: true });
     } catch (error) {

@@ -10,6 +10,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { maskPhone } = require('../utils/file_helpers');
 
 // Константы
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -144,7 +145,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
 
     return true;
   } catch (e) {
-    console.error(`[Master Catalog Notifications] Push error for ${phone}:`, e.message);
+    console.error(`[Master Catalog Notifications] Push error for ${maskPhone(phone)}:`, e.message);
     return false;
   }
 }

@@ -7,6 +7,7 @@
  */
 
 const WebSocket = require('ws');
+const { maskPhone } = require('../utils/file_helpers');
 
 // Проверка session token (обязательная)
 let tokenIndex;
@@ -187,7 +188,7 @@ function handleMessage(phone, message, ws) {
 
     case 'subscribe_chat':
       // Подписка на чат (для получения сообщений)
-      console.log(`📝 ${phone} подписался на чат ${chatId}`);
+      console.log(`📝 ${maskPhone(phone)} подписался на чат ${chatId}`);
       break;
 
     case 'get_online_users':

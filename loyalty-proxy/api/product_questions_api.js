@@ -17,6 +17,7 @@ const {
 } = require('./product_questions_notifications');
 
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -506,7 +507,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.post('/api/product-questions/client/:phone/mark-all-read', async (req, res) => {
     try {
       const { phone } = req.params;
-      console.log('POST /api/product-questions/client/:phone/mark-all-read', phone);
+      console.log('POST /api/product-questions/client/:phone/mark-all-read', maskPhone(phone));
 
       let markedCount = 0;
 
@@ -543,7 +544,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         }
       }
 
-      console.log(`✅ Marked ${markedCount} questions as read for client ${phone}`);
+      console.log(`✅ Marked ${markedCount} questions as read for client ${maskPhone(phone)}`);
       res.json({ success: true, markedCount });
     } catch (error) {
       console.error('Error marking all questions as read:', error);
@@ -672,7 +673,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.get('/api/product-question-dialogs/client/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
-      console.log('GET /api/product-question-dialogs/client/:phone', phone);
+      console.log('GET /api/product-question-dialogs/client/:phone', maskPhone(phone));
 
       let dialogs = [];
 
@@ -696,7 +697,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       // Сортировать по lastMessageTime
       dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
 
-      console.log(`✅ Found ${dialogs.length} dialogs for client ${phone}`);
+      console.log(`✅ Found ${dialogs.length} dialogs for client ${maskPhone(phone)}`);
       res.json({ success: true, dialogs });
     } catch (error) {
       console.error('Error getting client dialogs:', error);
@@ -1085,7 +1086,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.get('/api/product-questions/client/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
-      console.log('GET /api/product-questions/client/:phone', phone);
+      console.log('GET /api/product-questions/client/:phone', maskPhone(phone));
 
       let questions = [];
       if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
@@ -1137,7 +1138,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         lastMessage: lastMessage
       };
 
-      console.log(`✅ Found ${questions.length} questions with ${allMessages.length} messages for client ${phone}, unread: ${unreadCount}`);
+      console.log(`✅ Found ${questions.length} questions with ${allMessages.length} messages for client ${maskPhone(phone)}, unread: ${unreadCount}`);
       res.json(response);
     } catch (error) {
       console.error('Error getting client questions:', error);
@@ -1151,7 +1152,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.get('/api/product-questions/client/:phone/grouped', async (req, res) => {
     try {
       const { phone } = req.params;
-      console.log('GET /api/product-questions/client/:phone/grouped', phone);
+      console.log('GET /api/product-questions/client/:phone/grouped', maskPhone(phone));
 
       // Получить все вопросы клиента
       const questions = [];
@@ -1247,7 +1248,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
           return lastMsg && lastMsg.senderType === 'employee' && !lastMsg.isRead;
         }).length;
 
-      console.log(`✅ Grouped ${questions.length} questions + ${dialogs.length} dialogs for client ${phone}`);
+      console.log(`✅ Grouped ${questions.length} questions + ${dialogs.length} dialogs for client ${maskPhone(phone)}`);
       res.json({
         success: true,
         totalUnread,

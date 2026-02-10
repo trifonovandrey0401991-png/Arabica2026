@@ -86,12 +86,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
       final name = _nameController.text.trim();
 
       // Сначала проверяем, существует ли пользователь с таким номером
-      Logger.debug('Проверка существующего пользователя с номером: $phone');
+      Logger.debug('Проверка существующего пользователя с номером: ${Logger.maskPhone(phone)}');
       try {
         final existingUser = await LoyaltyService.fetchByPhone(phone);
         
         // Пользователь уже существует в базе
-        Logger.success('Пользователь найден: ${existingUser.name} (${existingUser.phone})');
+        Logger.success('Пользователь найден: ${existingUser.name} (${Logger.maskPhone(existingUser.phone)})');
         
         if (mounted) {
           // Сохраняем данные существующего пользователя
@@ -174,7 +174,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
           // Регистрируем PIN-код в системе авторизации
           final pin = _pinController.text.trim();
-          Logger.debug('🔐 Попытка регистрации PIN: phone=${existingUser.phone}, pin.length=${pin.length}');
+          Logger.debug('🔐 Попытка регистрации PIN: phone=${Logger.maskPhone(existingUser.phone)}, pin.length=${pin.length}');
           if (pin.isNotEmpty) {
             try {
               Logger.debug('🔐 Вызываем AuthService.registerSimple...');
@@ -325,7 +325,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
         // Регистрируем PIN-код в системе авторизации
         final pin = _pinController.text.trim();
-        Logger.debug('🔐 Попытка регистрации PIN (новый пользователь): phone=${loyaltyInfo.phone}, pin.length=${pin.length}');
+        Logger.debug('🔐 Попытка регистрации PIN (новый пользователь): phone=${Logger.maskPhone(loyaltyInfo.phone)}, pin.length=${pin.length}');
         if (pin.isNotEmpty) {
           try {
             Logger.debug('🔐 Вызываем AuthService.registerSimple для нового пользователя...');

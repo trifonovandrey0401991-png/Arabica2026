@@ -14,6 +14,7 @@ import '../../shift_handover/models/shift_handover_report_model.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import 'kpi_cache_service.dart';
+import 'kpi_persistence_service.dart';
 import 'kpi_filters.dart';
 import 'kpi_aggregation_service.dart';
 import 'kpi_normalizers.dart';
@@ -325,9 +326,20 @@ class KPIService {
       // Сохраняем в кэш
       KPICacheService.saveAllEmployees(employees);
 
+      // Персистим для offline доступа
+      KPIPersistenceService.saveAllEmployees(employees);
+
       return employees;
     } catch (e) {
       Logger.error('Ошибка получения списка сотрудников', e);
+
+      // Fallback: пробуем загрузить из persistence
+      final persisted = await KPIPersistenceService.getAllEmployees();
+      if (persisted != null && persisted.isNotEmpty) {
+        Logger.debug('KPI: загружен список сотрудников из persistence (${persisted.length} шт.)');
+        return persisted;
+      }
+
       return [];
     }
   }
@@ -605,9 +617,20 @@ class KPIService {
       );
       KPICacheService.saveEmployeeShopDaysData(employeeName, cacheData);
 
+      // Персистим для offline доступа
+      KPIPersistenceService.saveEmployeeShopDaysData(employeeName, cacheData);
+
       return enrichedDays;
     } catch (e) {
       Logger.error('Ошибка получения KPI данных сотрудника (по магазинам)', e);
+
+      // Fallback: пробуем загрузить из persistence
+      final persisted = await KPIPersistenceService.getEmployeeShopDaysData(employeeName);
+      if (persisted != null && persisted.shopDays.isNotEmpty) {
+        Logger.debug('KPI: загружены данные сотрудника из persistence (${persisted.shopDays.length} записей)');
+        return persisted.shopDays;
+      }
+
       return [];
     }
   }
@@ -700,9 +723,20 @@ class KPIService {
       // Сохраняем в кэш
       KPICacheService.saveAllShops(addresses);
 
+      // Персистим для offline доступа
+      KPIPersistenceService.saveAllShops(addresses);
+
       return addresses;
     } catch (e) {
       Logger.error('Ошибка получения списка магазинов', e);
+
+      // Fallback: пробуем загрузить из persistence
+      final persisted = await KPIPersistenceService.getAllShops();
+      if (persisted != null && persisted.isNotEmpty) {
+        Logger.debug('KPI: загружен список магазинов из persistence (${persisted.length} шт.)');
+        return persisted;
+      }
+
       return [];
     }
   }

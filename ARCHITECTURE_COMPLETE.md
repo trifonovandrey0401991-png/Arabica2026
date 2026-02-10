@@ -117,6 +117,7 @@ arabica2026/
 │   │   │   └── api_constants.dart  # URL сервера, таймауты
 │   │   ├── services/
 │   │   │   ├── base_http_service.dart
+│   │   │   ├── base_report_service.dart  # Базовый сервис отчётов (CRUD + multitenancy + push)
 │   │   │   ├── firebase_service.dart
 │   │   │   ├── notification_service.dart
 │   │   │   └── background_gps_service.dart
@@ -3196,7 +3197,7 @@ async function checkManagerAccess(phone, shopAddress) {
 │  bonuses/               GET/POST /api/bonuses → bonuses/                   │
 │  main_cash/             GET/POST /api/withdrawals → withdrawals/           │
 │  data_cleanup/          GET/POST /api/admin/* → (очистка файлов)           │
-│  kpi/                   (только Flutter, вычисляется из efficiency)         │
+│  kpi/                   (Flutter + SharedPreferences offline кэш)           │
 │  ai_training/           POST /api/z-report-* + /api/cigarette-vision/*     │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘

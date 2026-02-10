@@ -534,7 +534,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             orElse: () => throw StateError('Employee not found'),
           );
           employeePhone = employee.phone;
-          Logger.debug('Телефон сотрудника для push: $employeePhone');
+          Logger.debug('Телефон сотрудника для push: ${Logger.maskPhone(employeePhone)}');
         }
       } catch (e) {
         Logger.warning('Не удалось получить телефон сотрудника: $e');

@@ -60,7 +60,7 @@ class EmployeeRegistrationService {
     _lastUploadError = null;
 
     try {
-      Logger.debug('📤 Загрузка фото из байтов: type=$photoType, phone=$phone, размер=${bytes.length}');
+      Logger.debug('📤 Загрузка фото из байтов: type=$photoType, phone=${Logger.maskPhone(phone)}, размер=${bytes.length}');
 
       if (bytes.isEmpty) {
         _lastUploadError = 'Файл пустой (0 байт)';
@@ -144,7 +144,7 @@ class EmployeeRegistrationService {
     _lastUploadError = null;
 
     try {
-      Logger.debug('📤 Начало загрузки фото: type=$photoType, phone=$phone');
+      Logger.debug('📤 Начало загрузки фото: type=$photoType, phone=${Logger.maskPhone(phone)}');
       Logger.debug('   Путь к файлу: $photoPath');
 
       List<int> bytes;
@@ -266,7 +266,7 @@ class EmployeeRegistrationService {
     if (normalizedPhone.isEmpty) return false;
     final registrationToSave = registration.copyWith(phone: normalizedPhone);
 
-    Logger.debug('💾 Сохранение регистрации для телефона: $normalizedPhone');
+    Logger.debug('💾 Сохранение регистрации для телефона: ${Logger.maskPhone(normalizedPhone)}');
 
     return await BaseHttpService.simplePost(
       endpoint: '/api/employee-registration',
@@ -279,7 +279,7 @@ class EmployeeRegistrationService {
   static Future<EmployeeRegistration?> getRegistration(String phone) async {
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     if (normalizedPhone.isEmpty) return null;
-    Logger.debug('🔍 Запрос регистрации для телефона: $normalizedPhone');
+    Logger.debug('🔍 Запрос регистрации для телефона: ${Logger.maskPhone(normalizedPhone)}');
 
     return await BaseHttpService.get<EmployeeRegistration>(
       endpoint: '/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}',
@@ -297,7 +297,7 @@ class EmployeeRegistrationService {
   ) async {
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     if (normalizedPhone.isEmpty) return false;
-    Logger.debug('🔐 Верификация сотрудника: $normalizedPhone, статус: $isVerified');
+    Logger.debug('🔐 Верификация сотрудника: ${Logger.maskPhone(normalizedPhone)}, статус: $isVerified');
 
     return await BaseHttpService.simplePost(
       endpoint: '/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}/verify',

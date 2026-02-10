@@ -60,6 +60,20 @@ Flutter App (lib/)                    Backend (loyalty-proxy/)
 → НИКОГДА не менять без полного тестирования
 ```
 
+### 2.1b BaseReportService<T> — Базовый сервис отчётов
+**Файл:** `lib/core/services/base_report_service.dart`
+
+Generic класс для общих CRUD-операций отчётов. Используется через композицию (static `_base` instance).
+
+**Методы:** getReports, getReportsForCurrentUser, getExpiredReports, getReport, deleteReport, confirmViaEndpoint, rejectViaEndpoint, sendStatusPush, buildQueryParams
+**Зависит от:** BaseHttpService, MultitenancyFilterService, EmployeePushService
+
+```
+⚠️ ЕСЛИ ИЗМЕНИТЬ BaseReportService:
+→ Затронет 5 сервисов: ShiftReport, ShiftHandoverReport, Recount, Envelope, CoffeeMachine
+→ Public API этих сервисов НЕ меняется — вызывающие файлы не затронуты
+```
+
 ### 2.2 ApiConstants — Все эндпоинты
 **Файл:** `lib/core/constants/api_constants.dart`
 
@@ -588,6 +602,7 @@ API эндпоинты:
 ├── services/kpi_service.dart (агрегирует 6+ источников)
 ├── services/kpi_aggregation_service.dart
 ├── services/kpi_cache_service.dart
+├── services/kpi_persistence_service.dart (SharedPreferences fallback для offline)
 ├── services/kpi_schedule_integration_service.dart
 ├── services/kpi_filters.dart
 └── pages/kpi_page.dart
@@ -1054,6 +1069,7 @@ API эндпоинты:
 ### Высокий риск (сломает 5-10 модулей):
 | Файл | Влияние |
 |------|---------|
+| `base_report_service.dart` | shifts, shift_handover, recount, envelope, coffee_machine |
 | `multitenancy_filter_service.dart` | kpi, efficiency, envelope, recount, shifts, rko, coffee_machine, shift_handover |
 | `employee_service.dart` | kpi, efficiency, shifts, rko, clients, tasks |
 | `shop_service.dart` / `shop_model.dart` | kpi, efficiency, rko, multitenancy фильтрация |

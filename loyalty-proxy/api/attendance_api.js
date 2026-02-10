@@ -7,7 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
@@ -628,7 +628,7 @@ function setupAttendanceAPI(app, {
     try {
       const { lat, lng, phone, employeeName } = req.body;
 
-      console.log(`[GPS-Check] Request: lat=${lat}, lng=${lng}, phone=${phone}, employee=${employeeName}`);
+      console.log(`[GPS-Check] Request: lat=${lat}, lng=${lng}, phone=${maskPhone(phone)}, employee=${employeeName}`);
 
       if (!lat || !lng || !phone) {
         return res.json({ success: true, notified: false, reason: 'missing_params' });
@@ -732,7 +732,7 @@ function setupAttendanceAPI(app, {
       }
 
       if (!hasShiftToday) {
-        console.log(`[GPS-Check] No shift today for ${phone} at ${nearestShop.address}`);
+        console.log(`[GPS-Check] No shift today for ${maskPhone(phone)} at ${nearestShop.address}`);
         return res.json({ success: true, notified: false, reason: 'no_shift_here' });
       }
 
@@ -751,7 +751,7 @@ function setupAttendanceAPI(app, {
       const cacheKey = `${phone}_${today}`;
       const cached = gpsNotificationCache.get(cacheKey);
       if (cached && cached.shopAddress === nearestShop.address) {
-        console.log(`[GPS-Check] Already notified ${phone} for ${nearestShop.address} today`);
+        console.log(`[GPS-Check] Already notified ${maskPhone(phone)} for ${nearestShop.address} today`);
         return res.json({ success: true, notified: false, reason: 'already_notified' });
       }
 
@@ -765,7 +765,7 @@ function setupAttendanceAPI(app, {
             type: 'attendance_reminder',
             shopAddress: nearestShop.address
           });
-          console.log(`[GPS-Check] Push sent to ${phone} for ${nearestShop.address}`);
+          console.log(`[GPS-Check] Push sent to ${maskPhone(phone)} for ${nearestShop.address}`);
         } catch (e) {
           console.error('[GPS-Check] Error sending push:', e.message);
         }

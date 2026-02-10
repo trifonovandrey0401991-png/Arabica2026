@@ -259,7 +259,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
       // Проверяем оба ключа для телефона (userPhone для сотрудников, user_phone для клиентов)
       final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
 
-      Logger.debug('Загружены данные: displayName=$employeeName, phone=$employeePhone');
+      Logger.debug('Загружены данные: displayName=$employeeName, phone=${Logger.maskPhone(employeePhone)}');
 
       _employeeName = employeeName;
       _employeePhone = employeePhone;

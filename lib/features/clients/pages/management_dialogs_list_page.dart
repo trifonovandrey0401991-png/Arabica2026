@@ -43,7 +43,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
 
         Logger.debug('ManagementDialogsList: Loaded ${dialogs.length} dialogs');
         for (var i = 0; i < dialogs.length && i < 3; i++) {
-          Logger.debug('Dialog $i: ${dialogs[i].clientName} (${dialogs[i].phone}), unread: ${dialogs[i].unreadCount}');
+          Logger.debug('Dialog $i: ${dialogs[i].clientName} (${Logger.maskPhone(dialogs[i].phone)}), unread: ${dialogs[i].unreadCount}');
         }
 
         if (mounted) {
@@ -232,14 +232,14 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
                           ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () async {
-                            Logger.debug('Tapped on dialog: ${dialog.clientName} (${dialog.phone})');
+                            Logger.debug('Tapped on dialog: ${dialog.clientName} (${Logger.maskPhone(dialog.phone)})');
                             // Создаем простой объект Client
                             final client = Client(
                               phone: dialog.phone,
                               name: dialog.clientName,
                             );
 
-                            Logger.debug('Navigating to AdminManagementDialogPage with client: ${client.name}, ${client.phone}');
+                            Logger.debug('Navigating to AdminManagementDialogPage with client: ${client.name}, ${Logger.maskPhone(client.phone)}');
                             await Navigator.push(
                               context,
                               MaterialPageRoute(

@@ -1,12 +1,18 @@
 import '../models/shift_handover_report_model.dart';
+import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
-import '../../../core/services/employee_push_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
-import '../../../core/services/multitenancy_filter_service.dart';
 
 class ShiftHandoverReportService {
   static const String baseEndpoint = ApiConstants.shiftHandoverReportsEndpoint;
+
+  static final _base = BaseReportService<ShiftHandoverReport>(
+    endpoint: baseEndpoint,
+    fromJson: (json) => ShiftHandoverReport.fromJson(json),
+    getShopAddress: (r) => r.shopAddress,
+    reportType: 'shift_handover',
+  );
 
   /// Сохранить отчет сдачи смены на сервере
   static Future<bool> saveReport(ShiftHandoverReport report) async {
@@ -27,10 +33,6 @@ class ShiftHandoverReportService {
   }
 
   /// Подтвердить отчет сдачи смены и отправить push сотруднику
-  ///
-  /// [report] - отчёт для подтверждения (уже с обновлённым статусом)
-  /// [employeePhone] - телефон сотрудника для push уведомления
-  /// [rating] - оценка отчёта (1-5)
   static Future<bool> confirmReport(
     ShiftHandoverReport report, {
     required String employeePhone,
@@ -38,12 +40,10 @@ class ShiftHandoverReportService {
   }) async {
     final success = await updateReport(report);
     if (success) {
-      // Отправляем push уведомление сотруднику
       final reportDate =
           '${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}';
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'shift_handover',
         status: 'confirmed',
         reportDate: reportDate,
         rating: rating,
@@ -54,10 +54,6 @@ class ShiftHandoverReportService {
   }
 
   /// Отклонить отчет сдачи смены и отправить push сотруднику
-  ///
-  /// [report] - отчёт для отклонения
-  /// [employeePhone] - телефон сотрудника для push уведомления
-  /// [comment] - причина отклонения
   static Future<bool> rejectReport(
     ShiftHandoverReport report, {
     required String employeePhone,
@@ -67,9 +63,8 @@ class ShiftHandoverReportService {
     if (success) {
       final reportDate =
           '${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}';
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'shift_handover',
         status: 'rejected',
         reportDate: reportDate,
         comment: comment,
@@ -84,23 +79,13 @@ class ShiftHandoverReportService {
     String? employeeName,
     String? shopAddress,
     DateTime? date,
-  }) async {
-    Logger.debug('📥 Загрузка отчетов сдачи смены с сервера...');
-
-    final queryParams = <String, String>{};
-    if (employeeName != null) queryParams['employeeName'] = employeeName;
-    if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
-    if (date != null) {
-      queryParams['date'] = date.toIso8601String().split('T')[0];
-    }
-
-    return await BaseHttpService.getList<ShiftHandoverReport>(
-      endpoint: baseEndpoint,
-      fromJson: (json) => ShiftHandoverReport.fromJson(json),
-      listKey: 'reports',
-      queryParams: queryParams.isNotEmpty ? queryParams : null,
-    );
-  }
+  }) => _base.getReports(
+    queryParams: BaseReportService.buildQueryParams({
+      'employeeName': employeeName,
+      'shopAddress': shopAddress,
+      'date': date?.toIso8601String().split('T')[0],
+    }),
+  );
 
   /// Получить отчеты сдачи смены с фильтрацией по мультитенантности
   ///
@@ -109,44 +94,20 @@ class ShiftHandoverReportService {
     String? employeeName,
     String? shopAddress,
     DateTime? date,
-  }) async {
-    final reports = await getReports(
-      employeeName: employeeName,
-      shopAddress: shopAddress,
-      date: date,
-    );
-
-    return await MultitenancyFilterService.filterByShopAddress(
-      reports,
-      (report) => report.shopAddress,
-    );
-  }
+  }) => _base.getReportsForCurrentUser(
+    queryParams: BaseReportService.buildQueryParams({
+      'employeeName': employeeName,
+      'shopAddress': shopAddress,
+      'date': date?.toIso8601String().split('T')[0],
+    }),
+  );
 
   /// Получить отчет по ID
-  static Future<ShiftHandoverReport?> getReport(String reportId) async {
-    Logger.debug('📥 Загрузка отчета сдачи смены: $reportId');
-    return await BaseHttpService.get<ShiftHandoverReport>(
-      endpoint: '$baseEndpoint/$reportId',
-      fromJson: (json) => ShiftHandoverReport.fromJson(json),
-      itemKey: 'report',
-    );
-  }
+  static Future<ShiftHandoverReport?> getReport(String reportId) => _base.getReport(reportId);
 
   /// Получить просроченные отчеты сдачи смены с сервера
-  static Future<List<ShiftHandoverReport>> getExpiredReports() async {
-    Logger.debug('📥 Загрузка просроченных отчетов сдачи смены...');
-    return await BaseHttpService.getList<ShiftHandoverReport>(
-      endpoint: '$baseEndpoint/expired',
-      fromJson: (json) => ShiftHandoverReport.fromJson(json),
-      listKey: 'reports',
-    );
-  }
+  static Future<List<ShiftHandoverReport>> getExpiredReports() => _base.getExpiredReports();
 
   /// Удалить отчет с сервера
-  static Future<bool> deleteReport(String reportId) async {
-    Logger.debug('📤 Удаление отчета сдачи смены: $reportId');
-    return await BaseHttpService.delete(
-      endpoint: '$baseEndpoint/$reportId',
-    );
-  }
+  static Future<bool> deleteReport(String reportId) => _base.deleteReport(reportId);
 }

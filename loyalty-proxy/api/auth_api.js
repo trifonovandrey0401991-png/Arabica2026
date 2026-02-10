@@ -19,6 +19,7 @@ const path = require('path');
 const router = express.Router();
 const { addTokenToIndex, removeTokenFromIndex, removePhoneFromIndex } = require('../utils/session_middleware');
 const { withLock } = require('../utils/file_lock');
+const { maskPhone } = require('../utils/file_helpers');
 
 // Конфигурация
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -101,9 +102,9 @@ async function migratePinToBcrypt(phone, pin, pinData) {
     pinData.salt = ''; // Bcrypt включает соль в хэш
     pinData.migratedAt = new Date().toISOString();
     await savePinData(phone, pinData);
-    console.log(`[Auth] PIN migrated to bcrypt for: ${phone}`);
+    console.log(`[Auth] PIN migrated to bcrypt for: ${maskPhone(phone)}`);
   } catch (e) {
-    console.error(`[Auth] bcrypt migration error for ${phone}:`, e.message);
+    console.error(`[Auth] bcrypt migration error for ${maskPhone(phone)}:`, e.message);
   }
 }
 
@@ -596,7 +597,7 @@ router.post('/logout', async (req, res) => {
       if (session) {
         removeTokenFromIndex(sessionToken);
         await deleteSession(session.phone);
-        console.log(`✅ User logged out: ${session.phone}`);
+        console.log(`✅ User logged out: ${maskPhone(session.phone)}`);
       }
     } else if (phone) {
       const normalizedPhone = normalizePhone(phone);

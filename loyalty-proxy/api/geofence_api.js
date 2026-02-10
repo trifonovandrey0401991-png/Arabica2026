@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { maskPhone } = require('../utils/file_helpers');
 
 // Директории хранения данных
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -194,7 +195,7 @@ async function saveNotificationRecord(phone, shop, distance) {
     });
 
     await saveJsonFile(notificationFile, notifications);
-    console.log(`📍 Геозона: записано уведомление для ${phone} -> ${shop.address}`);
+    console.log(`📍 Геозона: записано уведомление для ${maskPhone(phone)} -> ${shop.address}`);
   } catch (e) {
     console.error('Ошибка сохранения записи уведомления:', e);
   }

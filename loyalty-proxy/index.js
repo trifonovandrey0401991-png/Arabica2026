@@ -23,6 +23,7 @@ const { spawn } = require('child_process');
 const { preloadAdminCache, startPeriodicRebuild, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
 const dataCache = require('./utils/data_cache');
+const { maskPhone } = require('./utils/file_helpers');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 
@@ -697,7 +698,7 @@ const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 // POST /api/fcm-tokens - сохранение FCM токена
 app.post('/api/fcm-tokens', async (req, res) => {
   try {
-    console.log('POST /api/fcm-tokens phone:', req.body?.phone);
+    console.log('POST /api/fcm-tokens phone:', maskPhone(req.body?.phone));
     const { phone, token } = req.body;
 
     if (!phone || !token) {

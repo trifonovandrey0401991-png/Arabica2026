@@ -6,6 +6,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -880,7 +881,7 @@ function setupReferralsAPI(app) {
       const { phone } = req.params;
       const { status } = req.body;
 
-      console.log(`PATCH /api/clients/${phone}/referral-status -> ${status}`);
+      console.log(`PATCH /api/clients/${maskPhone(phone)}/referral-status -> ${status}`);
 
       // Валидация статуса
       const validStatuses = ['registered', 'first_purchase', 'active'];
@@ -924,7 +925,7 @@ function setupReferralsAPI(app) {
 
       await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
 
-      console.log(`✅ Статус реферала обновлен: ${phone} -> ${status}`);
+      console.log(`✅ Статус реферала обновлен: ${maskPhone(phone)} -> ${status}`);
       res.json({ success: true, client });
     } catch (error) {
       console.error('Ошибка обновления статуса реферала:', error);

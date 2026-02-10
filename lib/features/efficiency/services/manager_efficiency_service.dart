@@ -24,7 +24,7 @@ class ManagerEfficiencyService {
       return null;
     }
 
-    Logger.debug('Fetching manager efficiency for $phone, month: $month');
+    Logger.debug('Fetching manager efficiency for ${Logger.maskPhone(phone)}, month: $month');
 
     try {
       final result = await BaseHttpService.get<ManagerEfficiencyData>(
@@ -46,7 +46,7 @@ class ManagerEfficiencyService {
     required String phone,
     required String currentMonth,
   }) async {
-    Logger.debug('Fetching manager efficiency with comparison for $phone');
+    Logger.debug('Fetching manager efficiency with comparison for ${Logger.maskPhone(phone)}');
 
     try {
       // Вычисляем прошлый месяц

@@ -84,7 +84,7 @@ class StoreManagerService {
       );
 
       if (result != null && result['success'] == true) {
-        Logger.debug('Магазины заведующей $storeManagerPhone обновлены: ${shopIds.length}');
+        Logger.debug('Магазины заведующей ${Logger.maskPhone(storeManagerPhone)} обновлены: ${shopIds.length}');
         return true;
       }
       return false;

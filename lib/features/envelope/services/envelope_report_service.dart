@@ -1,15 +1,21 @@
 import '../models/envelope_report_model.dart';
 import '../models/pending_envelope_report_model.dart';
+import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
-import '../../../core/services/multitenancy_filter_service.dart';
-import '../../../core/services/employee_push_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class EnvelopeReportService {
   static const String baseEndpoint = ApiConstants.envelopeReportsEndpoint;
+
+  static final _base = BaseReportService<EnvelopeReport>(
+    endpoint: baseEndpoint,
+    fromJson: (json) => EnvelopeReport.fromJson(json),
+    getShopAddress: (r) => r.shopAddress,
+    reportType: 'envelope',
+  );
 
   /// Получить все отчеты конвертов
   static Future<List<EnvelopeReport>> getReports({
@@ -17,22 +23,14 @@ class EnvelopeReportService {
     String? status,
     DateTime? fromDate,
     DateTime? toDate,
-  }) async {
-    Logger.debug('Загрузка отчетов конвертов...');
-
-    final queryParams = <String, String>{};
-    if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
-    if (status != null) queryParams['status'] = status;
-    if (fromDate != null) queryParams['fromDate'] = fromDate.toIso8601String();
-    if (toDate != null) queryParams['toDate'] = toDate.toIso8601String();
-
-    return await BaseHttpService.getList<EnvelopeReport>(
-      endpoint: baseEndpoint,
-      fromJson: (json) => EnvelopeReport.fromJson(json),
-      listKey: 'reports',
-      queryParams: queryParams.isNotEmpty ? queryParams : null,
-    );
-  }
+  }) => _base.getReports(
+    queryParams: BaseReportService.buildQueryParams({
+      'shopAddress': shopAddress,
+      'status': status,
+      'fromDate': fromDate?.toIso8601String(),
+      'toDate': toDate?.toIso8601String(),
+    }),
+  );
 
   /// Получить отчеты конвертов с фильтрацией по мультитенантности
   ///
@@ -42,29 +40,17 @@ class EnvelopeReportService {
     String? status,
     DateTime? fromDate,
     DateTime? toDate,
-  }) async {
-    final reports = await getReports(
-      shopAddress: shopAddress,
-      status: status,
-      fromDate: fromDate,
-      toDate: toDate,
-    );
-
-    return await MultitenancyFilterService.filterByShopAddress(
-      reports,
-      (report) => report.shopAddress,
-    );
-  }
+  }) => _base.getReportsForCurrentUser(
+    queryParams: BaseReportService.buildQueryParams({
+      'shopAddress': shopAddress,
+      'status': status,
+      'fromDate': fromDate?.toIso8601String(),
+      'toDate': toDate?.toIso8601String(),
+    }),
+  );
 
   /// Получить отчет по ID
-  static Future<EnvelopeReport?> getReport(String id) async {
-    Logger.debug('Загрузка отчета конверта: $id');
-    return await BaseHttpService.get<EnvelopeReport>(
-      endpoint: '$baseEndpoint/$id',
-      fromJson: (json) => EnvelopeReport.fromJson(json),
-      itemKey: 'report',
-    );
-  }
+  static Future<EnvelopeReport?> getReport(String id) => _base.getReport(id);
 
   /// Создать новый отчет конверта
   static Future<EnvelopeReport?> createReport(EnvelopeReport report) async {
@@ -89,42 +75,16 @@ class EnvelopeReportService {
   }
 
   /// Удалить отчет
-  static Future<bool> deleteReport(String id) async {
-    Logger.debug('Удаление отчета конверта: $id');
-    return await BaseHttpService.delete(endpoint: '$baseEndpoint/$id');
-  }
+  static Future<bool> deleteReport(String id) => _base.deleteReport(id);
 
   /// Получить просроченные отчеты (более 24 часов без подтверждения)
-  static Future<List<EnvelopeReport>> getExpiredReports() async {
-    Logger.debug('Загрузка просроченных отчетов конвертов...');
-    return await BaseHttpService.getList<EnvelopeReport>(
-      endpoint: '$baseEndpoint/expired',
-      fromJson: (json) => EnvelopeReport.fromJson(json),
-      listKey: 'reports',
-    );
-  }
+  static Future<List<EnvelopeReport>> getExpiredReports() => _base.getExpiredReports();
 
   /// Подтвердить отчет с оценкой
-  static Future<EnvelopeReport?> confirmReport(String id, String adminName, int rating) async {
-    Logger.debug('Подтверждение отчета: $id, оценка: $rating');
-    return await BaseHttpService.put<EnvelopeReport>(
-      endpoint: '$baseEndpoint/$id/confirm',
-      body: {
-        'confirmedByAdmin': adminName,
-        'rating': rating,
-      },
-      fromJson: (json) => EnvelopeReport.fromJson(json),
-      itemKey: 'report',
-    );
-  }
+  static Future<EnvelopeReport?> confirmReport(String id, String adminName, int rating) =>
+    _base.confirmViaEndpoint(id, adminName, rating);
 
   /// Подтвердить отчет конверта с push уведомлением сотруднику
-  ///
-  /// [id] - ID отчёта
-  /// [adminName] - имя админа, подтвердившего отчёт
-  /// [rating] - оценка (1-5)
-  /// [employeePhone] - телефон сотрудника для push
-  /// [reportDate] - дата отчёта для отображения в push
   static Future<EnvelopeReport?> confirmReportWithPush({
     required String id,
     required String adminName,
@@ -133,30 +93,19 @@ class EnvelopeReportService {
     String? reportDate,
   }) async {
     final report = await confirmReport(id, adminName, rating);
-
     if (report != null) {
       Logger.debug('Конверт подтверждён, отправка push сотруднику');
-
-      // Отправляем push уведомление сотруднику
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'envelope',
         status: 'confirmed',
         reportDate: reportDate,
         rating: rating,
       );
     }
-
     return report;
   }
 
   /// Отклонить отчет конверта с push уведомлением сотруднику
-  ///
-  /// [id] - ID отчёта
-  /// [adminName] - имя админа, отклонившего отчёт
-  /// [employeePhone] - телефон сотрудника для push
-  /// [comment] - причина отклонения
-  /// [reportDate] - дата отчёта для отображения в push
   static Future<bool> rejectReportWithPush({
     required String id,
     required String adminName,
@@ -164,33 +113,17 @@ class EnvelopeReportService {
     String? comment,
     String? reportDate,
   }) async {
-    Logger.debug('Отклонение отчета конверта: $id');
-
-    final result = await BaseHttpService.put<EnvelopeReport>(
-      endpoint: '$baseEndpoint/$id/reject',
-      body: {
-        'rejectedByAdmin': adminName,
-        'rejectReason': comment,
-      },
-      fromJson: (json) => EnvelopeReport.fromJson(json),
-      itemKey: 'report',
-    );
-
+    final result = await _base.rejectViaEndpoint(id, adminName, comment);
     if (result != null) {
       Logger.debug('Конверт отклонён, отправка push сотруднику');
-
-      // Отправляем push уведомление сотруднику
-      await EmployeePushService.sendReportStatusPush(
+      await _base.sendStatusPush(
         employeePhone: employeePhone,
-        reportType: 'envelope',
         status: 'rejected',
         reportDate: reportDate,
         comment: comment,
       );
-
       return true;
     }
-
     return false;
   }
 

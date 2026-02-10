@@ -8,7 +8,7 @@ class ClientDialogService {
 
   /// Получить все диалоги клиента
   static Future<List<ClientDialog>> getClientDialogs(String clientPhone) async {
-    Logger.debug('📥 Загрузка диалогов клиента: $clientPhone');
+    Logger.debug('📥 Загрузка диалогов клиента: ${Logger.maskPhone(clientPhone)}');
     return await BaseHttpService.getList<ClientDialog>(
       endpoint: '$baseEndpoint/$clientPhone',
       fromJson: (json) => ClientDialog.fromJson(json),
@@ -18,7 +18,7 @@ class ClientDialogService {
 
   /// Получить диалог по магазину
   static Future<ClientDialog?> getShopDialog(String clientPhone, String shopAddress) async {
-    Logger.debug('📥 Загрузка диалога: $clientPhone, магазин: $shopAddress');
+    Logger.debug('📥 Загрузка диалога: ${Logger.maskPhone(clientPhone)}, магазин: $shopAddress');
     final encodedShopAddress = Uri.encodeComponent(shopAddress);
     return await BaseHttpService.get<ClientDialog>(
       endpoint: '$baseEndpoint/$clientPhone/shop/$encodedShopAddress',

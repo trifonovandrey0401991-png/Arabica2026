@@ -481,6 +481,19 @@ class KPIEmployeeShopDaysData {
   List<String> get allShops {
     return shopDays.map((d) => d.shopAddress).where((a) => a.trim().isNotEmpty).toSet().toList()..sort();
   }
+
+  Map<String, dynamic> toJson() => {
+    'employeeName': employeeName,
+    'shopDays': shopDays.map((d) => d.toJson()).toList(),
+  };
+
+  factory KPIEmployeeShopDaysData.fromJson(Map<String, dynamic> json) =>
+    KPIEmployeeShopDaysData(
+      employeeName: json['employeeName'] ?? '',
+      shopDays: (json['shopDays'] as List<dynamic>)
+          .map((d) => KPIEmployeeShopDayData.fromJson(d as Map<String, dynamic>))
+          .toList(),
+    );
 }
 
 

@@ -9,7 +9,7 @@ class ClientGroupChatService {
   /// Фильтрует все чаты и возвращает только type == group
   static Future<List<EmployeeChat>> getClientGroupChats(String phone) async {
     try {
-      Logger.debug('📥 Загрузка групповых чатов для клиента $phone...');
+      Logger.debug('📥 Загрузка групповых чатов для клиента ${Logger.maskPhone(phone)}...');
       final allChats = await EmployeeChatService.getChats(phone, isAdmin: false);
       // Фильтруем: только группы (не general, не shop, не private)
       final groups = allChats.where((chat) => chat.type == EmployeeChatType.group).toList();

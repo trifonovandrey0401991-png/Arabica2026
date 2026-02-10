@@ -9,6 +9,7 @@ const path = require('path');
 const multer = require('multer');
 const crypto = require('crypto');
 const { isAdminPhone } = require('../utils/admin_cache');
+const { maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -384,7 +385,7 @@ function setupLoyaltyGamificationAPI(app) {
           const fsp = require('fs').promises;
           await fsp.unlink(req.file.path).catch(() => {});
         }
-        console.warn(`⚠️ Non-admin badge upload attempt: ${req.user?.phone || 'anonymous'}`);
+        console.warn(`⚠️ Non-admin badge upload attempt: ${maskPhone(req.user?.phone || 'anonymous')}`);
         return res.status(403).json({ success: false, error: 'Только администратор может загружать бейджи' });
       }
 
@@ -409,7 +410,7 @@ function setupLoyaltyGamificationAPI(app) {
   app.get('/api/loyalty-gamification/client/:phone', async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
-      console.log('GET /api/loyalty-gamification/client:', phone);
+      console.log('GET /api/loyalty-gamification/client:', maskPhone(phone));
 
       const clientPath = path.join(CLIENTS_DIR, `${phone}.json`);
       const settings = await loadSettings();
@@ -481,7 +482,7 @@ function setupLoyaltyGamificationAPI(app) {
   app.post('/api/loyalty-gamification/spin', async (req, res) => {
     try {
       const { phone } = req.body;
-      console.log('POST /api/loyalty-gamification/spin:', phone);
+      console.log('POST /api/loyalty-gamification/spin:', maskPhone(phone));
 
       if (!phone) {
         return res.status(400).json({ success: false, error: 'Phone required' });
@@ -628,7 +629,7 @@ function setupLoyaltyGamificationAPI(app) {
   app.get('/api/loyalty-gamification/wheel-history', async (req, res) => {
     try {
       const { month, phone } = req.query;
-      console.log('GET /api/loyalty-gamification/wheel-history:', month, phone);
+      console.log('GET /api/loyalty-gamification/wheel-history:', month, maskPhone(phone));
 
       const monthKey = month || new Date().toISOString().slice(0, 7);
       const historyPath = path.join(WHEEL_HISTORY_DIR, `${monthKey}.json`);
@@ -692,7 +693,7 @@ function setupLoyaltyGamificationAPI(app) {
   app.get('/api/loyalty-gamification/client/:phone/pending-prize', async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
-      console.log('GET /api/loyalty-gamification/client/:phone/pending-prize:', phone);
+      console.log('GET /api/loyalty-gamification/client/:phone/pending-prize:', maskPhone(phone));
 
       const prize = await findPendingPrize(phone);
 
@@ -726,7 +727,7 @@ function setupLoyaltyGamificationAPI(app) {
   app.post('/api/loyalty-gamification/generate-qr', async (req, res) => {
     try {
       const { prizeId, phone } = req.body;
-      console.log('POST /api/loyalty-gamification/generate-qr:', prizeId || phone);
+      console.log('POST /api/loyalty-gamification/generate-qr:', maskPhone(prizeId || phone));
 
       let prize;
       if (prizeId) {

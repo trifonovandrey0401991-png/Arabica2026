@@ -9,7 +9,7 @@ class NetworkMessageService {
   /// Получить сетевые сообщения (broadcast) для клиента
   static Future<NetworkDialogData> getNetworkMessages(String clientPhone) async {
     try {
-      Logger.debug('Loading network messages for: $clientPhone');
+      Logger.debug('Loading network messages for: ${Logger.maskPhone(clientPhone)}');
 
       final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
       // SECURITY: Передаём clientPhone для авторизационной проверки на сервере
@@ -37,7 +37,7 @@ class NetworkMessageService {
     String? imageUrl,
     String? clientName,
   }) async {
-    Logger.debug('Sending network reply from: $clientPhone');
+    Logger.debug('Sending network reply from: ${Logger.maskPhone(clientPhone)}');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
 
@@ -56,7 +56,7 @@ class NetworkMessageService {
 
   /// Отметить сообщения как прочитанные клиентом
   static Future<bool> markAsReadByClient(String clientPhone) async {
-    Logger.debug('Marking network messages as read by client: $clientPhone');
+    Logger.debug('Marking network messages as read by client: ${Logger.maskPhone(clientPhone)}');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     return await BaseHttpService.simplePost(

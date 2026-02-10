@@ -344,7 +344,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             true,
             'Система (авто-верификация)',
           );
-          Logger.success('Сотрудник автоматически верифицирован: $phone');
+          Logger.success('Сотрудник автоматически верифицирован: ${Logger.maskPhone(phone)}');
         }
 
         if (!mounted) return;

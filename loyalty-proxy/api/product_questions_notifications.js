@@ -11,6 +11,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { maskPhone } = require('../utils/file_helpers');
 
 // Константы
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -97,7 +98,7 @@ async function getFcmTokenByPhone(phone) {
     const tokenData = JSON.parse(content);
     return tokenData.token || null;
   } catch (e) {
-    console.error(`Error getting token for ${phone}:`, e.message);
+    console.error(`Error getting token for ${maskPhone(phone)}:`, e.message);
     return null;
   }
 }
@@ -119,7 +120,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
 
   const token = await getFcmTokenByPhone(phone);
   if (!token) {
-    console.log(`FCM token not found for ${phone}`);
+    console.log(`FCM token not found for ${maskPhone(phone)}`);
     return false;
   }
 
@@ -146,7 +147,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
     console.log(`Push sent: ${phone.substring(0, 5)}***`);
     return true;
   } catch (e) {
-    console.error(`Push error for ${phone}:`, e.message);
+    console.error(`Push error for ${maskPhone(phone)}:`, e.message);
     return false;
   }
 }

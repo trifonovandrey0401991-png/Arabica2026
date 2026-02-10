@@ -15,6 +15,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { maskPhone } = require('../utils/file_helpers');
 
 // Directories
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -254,18 +255,18 @@ function aggregateByShop(records, validAddresses) {
  */
 async function calculateManagerEfficiency(phone, month) {
   console.log(`\n========== Calculating manager efficiency ==========`);
-  console.log(`Phone: ${phone}, Month: ${month}`);
+  console.log(`Phone: ${maskPhone(phone)}, Month: ${month}`);
 
   // Find manager
   const manager = await getManagerByPhone(phone);
   if (!manager) {
-    console.log(`Manager not found for phone: ${phone}`);
+    console.log(`Manager not found for phone: ${maskPhone(phone)}`);
     return null;
   }
 
   const managedShopIds = manager.managedShopIds || [];
   if (managedShopIds.length === 0) {
-    console.log(`Manager ${phone} has no managed shops`);
+    console.log(`Manager ${maskPhone(phone)} has no managed shops`);
     return {
       totalPercentage: 0,
       shopEfficiencyPercentage: 0,
@@ -580,7 +581,7 @@ function setupManagerEfficiencyAPI(app) {
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       })();
 
-      console.log(`Calculating manager efficiency for ${phone}, month: ${targetMonth}`);
+      console.log(`Calculating manager efficiency for ${maskPhone(phone)}, month: ${targetMonth}`);
 
       const efficiency = await calculateManagerEfficiency(phone, targetMonth);
 

@@ -7,6 +7,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { isAdminPhone } = require('../utils/admin_cache');
+const { maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -616,7 +617,7 @@ function setupShiftTransfersAPI(app) {
       let isAdminUser = false;
       if (phone) {
         isAdminUser = isAdminPhone(phone);
-        console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'phone:', phone, 'isAdmin:', isAdminUser, '(verified from DB)');
+        console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'phone:', maskPhone(phone), 'isAdmin:', isAdminUser, '(verified from DB)');
       } else {
         isAdminUser = isAdmin === true || isAdmin === 'true';
         console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'isAdmin:', isAdminUser, '(from body - DEPRECATED)');

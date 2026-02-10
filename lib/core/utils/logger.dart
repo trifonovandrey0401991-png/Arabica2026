@@ -41,6 +41,14 @@ class Logger {
       print('✅ $message');
     }
   }
+
+  /// Маскирование телефона для логов (PII protection)
+  /// '79001234567' → '7900***67'
+  static String maskPhone(String? phone) {
+    if (phone == null || phone.isEmpty) return '***';
+    if (phone.length <= 6) return '***';
+    return '${phone.substring(0, 4)}***${phone.substring(phone.length - 2)}';
+  }
 }
 
 

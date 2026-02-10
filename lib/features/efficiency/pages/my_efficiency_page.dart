@@ -108,7 +108,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       if (roleData != null && roleData.phone.isEmpty) {
         final savedPhone = prefs.getString('user_phone') ?? prefs.getString('phone') ?? '';
         if (savedPhone.isNotEmpty) {
-          Logger.debug('Phone was empty, restored from prefs: $savedPhone');
+          Logger.debug('Phone was empty, restored from prefs: ${Logger.maskPhone(savedPhone)}');
           roleData = roleData.copyWith(phone: savedPhone);
         }
       }
@@ -134,7 +134,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       // DEBUG: Логируем данные роли для отладки
       Logger.debug('MyEfficiencyPage: roleData = $roleData');
       Logger.debug('   role: ${roleData?.role}');
-      Logger.debug('   phone: "${roleData?.phone}"');
+      Logger.debug('   phone: "${Logger.maskPhone(roleData?.phone)}"');
       Logger.debug('   managedShopIds: ${roleData?.managedShopIds}');
 
       // Проверяем, является ли пользователь admin/developer с managedShopIds

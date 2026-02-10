@@ -12,7 +12,7 @@ class RegistrationService {
     required String qr,
   }) async {
     try {
-      Logger.debug('Регистрация пользователя: $name ($phone)');
+      Logger.debug('Регистрация пользователя: $name (${Logger.maskPhone(phone)})');
       final info = await LoyaltyService.registerClient(
         name: name,
         phone: phone,

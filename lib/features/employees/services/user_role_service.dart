@@ -25,7 +25,7 @@ class UserRoleService {
         return _cachedMultitenantRole;
       }
 
-      Logger.debug('🔍 Проверка мультитенантной роли для: $normalizedPhone');
+      Logger.debug('🔍 Проверка мультитенантной роли для: ${Logger.maskPhone(normalizedPhone)}');
 
       final result = await BaseHttpService.getRaw(
         endpoint: '/api/shop-managers/role/$normalizedPhone',
@@ -71,7 +71,7 @@ class UserRoleService {
       // Нормализуем номер телефона: убираем + и пробелы, оставляем только цифры
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
-      Logger.debug('🔍 Проверка сотрудника через API с номером: $normalizedPhone');
+      Logger.debug('🔍 Проверка сотрудника через API с номером: ${Logger.maskPhone(normalizedPhone)}');
 
       // Загружаем список сотрудников с сервера
       final result = await BaseHttpService.getRaw(
@@ -189,7 +189,7 @@ class UserRoleService {
       // Нормализуем номер телефона: убираем + и пробелы, оставляем только цифры
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
-      Logger.debug('🔍 Проверка роли пользователя с номером: $normalizedPhone');
+      Logger.debug('🔍 Проверка роли пользователя с номером: ${Logger.maskPhone(normalizedPhone)}');
 
       // Очищаем кэш мультитенантной роли при новом запросе
       clearMultitenantCache();

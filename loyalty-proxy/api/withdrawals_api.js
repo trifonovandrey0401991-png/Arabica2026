@@ -7,7 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { fileExists, sanitizeId, maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
@@ -72,7 +72,7 @@ async function getFCMTokenByPhoneForWithdrawals(phone) {
     const tokenData = JSON.parse(await fsp.readFile(tokenFile, "utf8"));
     return tokenData.token || null;
   } catch (err) {
-    console.error(`Ошибка получения токена для ${phone}:`, err.message);
+    console.error(`Ошибка получения токена для ${maskPhone(phone)}:`, err.message);
     return null;
   }
 }

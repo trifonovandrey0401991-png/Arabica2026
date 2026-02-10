@@ -16,7 +16,7 @@ class ClientService {
     );
 
     if (clients.isNotEmpty) {
-      Logger.debug('Первый клиент: ${clients[0].name} (${clients[0].phone})');
+      Logger.debug('Первый клиент: ${clients[0].name} (${Logger.maskPhone(clients[0].phone)})');
     }
 
     return clients;
@@ -25,7 +25,7 @@ class ClientService {
   /// Получить переписку с клиентом
   static Future<List<ClientMessage>> getClientMessages(String clientPhone) async {
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
-    Logger.debug('Загрузка сообщений для клиента: $normalizedPhone');
+    Logger.debug('Загрузка сообщений для клиента: ${Logger.maskPhone(normalizedPhone)}');
 
     return await BaseHttpService.getList<ClientMessage>(
       endpoint: '${ApiConstants.clientsEndpoint}/${Uri.encodeComponent(normalizedPhone)}/messages',
@@ -43,7 +43,7 @@ class ClientService {
   }) async {
     try {
       final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
-      Logger.debug('Отправка сообщения клиенту: $normalizedPhone');
+      Logger.debug('Отправка сообщения клиенту: ${Logger.maskPhone(normalizedPhone)}');
 
       final requestBody = <String, dynamic>{
         'text': text,
@@ -133,7 +133,7 @@ class ClientService {
   /// Отметить сетевые сообщения клиента как прочитанные админом
   static Future<bool> markNetworkMessagesAsReadByAdmin(String clientPhone) async {
     try {
-      Logger.debug('Отметка сетевых сообщений клиента как прочитанных: $clientPhone');
+      Logger.debug('Отметка сетевых сообщений клиента как прочитанных: ${Logger.maskPhone(clientPhone)}');
 
       final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
       return await BaseHttpService.simplePost(

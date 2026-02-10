@@ -61,7 +61,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     try {
       final prefs = await SharedPreferences.getInstance();
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
-      Logger.debug('Проверка роли админа для телефона: ${phone.isNotEmpty ? phone : "не найден"}');
+      Logger.debug('Проверка роли админа для телефона: ${phone.isNotEmpty ? Logger.maskPhone(phone) : "не найден"}');
 
       if (phone.isEmpty) {
         if (mounted) {
@@ -91,7 +91,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Future<void> _loadRegistration() async {
     try {
-      Logger.debug('Загрузка регистрации для телефона: ${widget.employeePhone}');
+      Logger.debug('Загрузка регистрации для телефона: ${Logger.maskPhone(widget.employeePhone)}');
       final registration = await EmployeeRegistrationService.getRegistration(widget.employeePhone);
 
       if (registration != null) {
@@ -100,7 +100,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         Logger.debug('Фото прописки: ${registration.passportRegistrationPhotoUrl ?? "нет"}');
         Logger.debug('Доп фото: ${registration.additionalPhotoUrl ?? "нет"}');
       } else {
-        Logger.warning('Регистрация не найдена для телефона: ${widget.employeePhone}');
+        Logger.warning('Регистрация не найдена для телефона: ${Logger.maskPhone(widget.employeePhone)}');
       }
 
       await _loadEmployee();
@@ -128,7 +128,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Future<void> _loadEmployee() async {
     try {
-      Logger.debug('Поиск сотрудника для телефона: ${widget.employeePhone}, имени: ${widget.employeeName}');
+      Logger.debug('Поиск сотрудника для телефона: ${Logger.maskPhone(widget.employeePhone)}, имени: ${widget.employeeName}');
       final employees = await EmployeeService.getEmployees();
       Logger.debug('Загружено сотрудников: ${employees.length}');
       final normalizedPhone = widget.employeePhone.replaceAll(RegExp(r'[\s\+]'), '');
@@ -204,7 +204,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
-    Logger.debug('Телефон администратора из SharedPreferences: ${phone.isNotEmpty ? phone : "не найден"}');
+    Logger.debug('Телефон администратора из SharedPreferences: ${phone.isNotEmpty ? Logger.maskPhone(phone) : "не найден"}');
 
     if (phone.isEmpty) {
       if (mounted) {

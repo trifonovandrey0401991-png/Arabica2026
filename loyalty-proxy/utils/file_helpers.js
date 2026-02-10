@@ -81,6 +81,17 @@ function sanitizePhone(phone) {
  */
 const normalizePhone = sanitizePhone;
 
+/**
+ * Маскирование телефона для логов (PII protection)
+ * '79001234567' → '7900***67'
+ */
+function maskPhone(phone) {
+  if (!phone) return '***';
+  const s = String(phone);
+  if (s.length <= 6) return '***';
+  return s.substring(0, 4) + '***' + s.substring(s.length - 2);
+}
+
 module.exports = {
   DATA_DIR,
   fileExists,
@@ -91,4 +102,5 @@ module.exports = {
   isPathSafe,
   sanitizePhone,
   normalizePhone,
+  maskPhone,
 };

@@ -10,6 +10,7 @@ const path = require('path');
 const { sendPushNotification, sendPushToPhone } = require('./report_notifications_api');
 const { isAdminPhone } = require('../utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
+const { maskPhone } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -227,7 +228,7 @@ function setupClientsAPI(app) {
       const isAdmin = isAdminPhone(requesterPhone);
 
       if (!isAdmin && requesterPhone !== phone) {
-        console.warn(`SECURITY: Попытка доступа к чужому диалогу network: ${requesterPhone} -> ${phone}`);
+        console.warn(`SECURITY: Попытка доступа к чужому диалогу network: ${maskPhone(requesterPhone)} -> ${maskPhone(phone)}`);
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -257,7 +258,7 @@ function setupClientsAPI(app) {
       // SECURITY: Проверка что клиент отправляет сообщение от своего имени
       const normalizedSenderPhone = sanitizePhone(senderPhone);
       if (normalizedSenderPhone && normalizedSenderPhone !== phone) {
-        console.warn(`SECURITY: Попытка отправки сообщения от чужого имени: ${normalizedSenderPhone} -> ${phone}`);
+        console.warn(`SECURITY: Попытка отправки сообщения от чужого имени: ${maskPhone(normalizedSenderPhone)} -> ${maskPhone(phone)}`);
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -286,7 +287,7 @@ function setupClientsAPI(app) {
       dialog.messages.push(message);
 
       await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
-      console.log(`Сообщение от клиента ${phone} в общий чат сохранено`);
+      console.log(`Сообщение от клиента ${maskPhone(phone)} в общий чат сохранено`);
       res.json({ success: true, message });
     } catch (error) {
       console.error('Ошибка сохранения network reply:', error);
@@ -342,7 +343,7 @@ function setupClientsAPI(app) {
       const isAdmin = isAdminPhone(requesterPhone);
 
       if (!isAdmin && requesterPhone !== phone) {
-        console.warn(`SECURITY: Попытка доступа к чужому диалогу management: ${requesterPhone} -> ${phone}`);
+        console.warn(`SECURITY: Попытка доступа к чужому диалогу management: ${maskPhone(requesterPhone)} -> ${maskPhone(phone)}`);
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -372,7 +373,7 @@ function setupClientsAPI(app) {
       // SECURITY: Проверка что клиент отправляет сообщение от своего имени
       const normalizedSenderPhone = sanitizePhone(senderPhone);
       if (normalizedSenderPhone && normalizedSenderPhone !== phone) {
-        console.warn(`SECURITY: Попытка отправки management сообщения от чужого имени: ${normalizedSenderPhone} -> ${phone}`);
+        console.warn(`SECURITY: Попытка отправки management сообщения от чужого имени: ${maskPhone(normalizedSenderPhone)} -> ${maskPhone(phone)}`);
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -400,7 +401,7 @@ function setupClientsAPI(app) {
       dialog.messages.push(message);
 
       await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
-      console.log(`Сообщение руководству от клиента ${phone} сохранено`);
+      console.log(`Сообщение руководству от клиента ${maskPhone(phone)} сохранено`);
 
       // Отправить push-уведомление админам
       await sendPushNotification(
@@ -491,7 +492,7 @@ function setupClientsAPI(app) {
       dialog.messages.push(message);
 
       await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
-      console.log(`Сообщение от руководства клиенту ${phone} сохранено (от админа: ${normalizedSenderPhone})`);
+      console.log(`Сообщение от руководства клиенту ${maskPhone(phone)} сохранено (от админа: ${maskPhone(normalizedSenderPhone)})`);
 
       // Отправить push-уведомление клиенту
       await sendPushToPhone(

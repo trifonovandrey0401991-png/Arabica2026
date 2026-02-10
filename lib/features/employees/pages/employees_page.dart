@@ -184,7 +184,7 @@ class EmployeesPage extends StatefulWidget {
 
       // Нормализуем телефон (убираем пробелы и +)
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      Logger.debug('Нормализованный телефон: $normalizedPhone');
+      Logger.debug('Нормализованный телефон: ${Logger.maskPhone(normalizedPhone)}');
 
       // Загружаем список сотрудников
       final employees = await loadEmployeesForNotifications();

@@ -13,8 +13,8 @@
 | 🔴 CRITICAL | 8 | 8 (все ✓) | 0 | 0 |
 | 🟠 HIGH | 15 | 15 (все ✓ включая H-10) | 0 | 0 |
 | 🟡 MEDIUM | 18 | 18 (все ✓ включая M-11) | 0 | 0 |
-| 🟢 LOW | 12 | 7 (ложные тревоги) | 4 (L-01,L-03,L-05,L-10) | 0 |
-| **ИТОГО** | **53** | **49** | **4 (L-01,L-03,L-05,L-10)** | **0** |
+| 🟢 LOW | 12 | 11 (7 ложных + L-01 + L-03 + L-05 + L-10) | 0 | 0 |
+| **ИТОГО** | **53** | **53** | **0** | **0** |
 
 ---
 
@@ -322,10 +322,10 @@
 
 ## 🟢 LOW (12 проблем)
 
-### L-01. ⏸️ KPI offline mode отсутствует (УЛУЧШЕНИЕ, отложено)
-**Файл:** `lib/features/kpi/services/kpi_cache_service.dart`
+### L-01. ✅ KPI offline mode отсутствует (УЛУЧШЕНИЕ, исправлено 2026-02-11)
+**Файл:** `lib/features/kpi/services/kpi_persistence_service.dart` (новый)
 **Проблема:** Кэш KPI только в памяти (CacheManager). При отсутствии интернета — пустая страница.
-**Статус:** Feature request. Требует новый слой persistence (SharedPreferences/SQLite/Hive). Отложено.
+**Решение:** Создан KPIPersistenceService (SharedPreferences). При успешном API запросе данные персистятся. При ошибке сети — загружаются из persistence как fallback. Затронуты: kpi_service.dart (3 метода), kpi_models.dart (toJson/fromJson для KPIEmployeeShopDaysData).
 
 ---
 
@@ -335,9 +335,19 @@
 
 ---
 
-### L-03. ⏸️ Логирование чувствительных данных (РЕАЛЬНАЯ, отложено)
-**Файлы:** Множество файлов с `Logger.debug()` — полные номера телефонов, имена.
-**Статус:** Реальная проблема PII в логах. Требует масштабный рефакторинг (десятки файлов). Рекомендация: добавить `maskPhone()` утилиту в Logger. Отложено.
+### L-03. ✅ Логирование чувствительных данных (исправлено 2026-02-11)
+**Файлы:** Множество файлов с `Logger.debug()` — полные номера телефонов.
+**Проблема:** PII (номера телефонов) логировались в открытом виде.
+**Исправление:** Добавлен `Logger.maskPhone()` в `core/utils/logger.dart` ('79001234567' → '7900***67'). Замаскированы все 32 вхождения в 12 файлах:
+- `clients/pages/registration_page.dart`, `clients/services/client_service.dart`
+- `employees/pages/employee_registration_view_page.dart`, `employees/pages/employee_registration_page.dart`
+- `employees/services/employee_registration_service.dart`, `employees/services/user_role_service.dart`
+- `product_questions/services/product_question_service.dart`
+- `efficiency/pages/my_efficiency_page.dart`
+- `network_management/services/network_management_service.dart`
+- `loyalty/services/loyalty_service.dart`
+- `recount/services/recount_points_service.dart`
+- `main_cash/services/store_manager_service.dart`
 
 ---
 
@@ -347,9 +357,15 @@
 
 ---
 
-### L-05. ⏸️ Дублирование кода загрузки отчётов (УЛУЧШЕНИЕ, отложено)
-**Файлы:** 4 сервиса с ~40% одинакового boilerplate (getReports/getReportsForCurrentUser/confirmReport).
-**Статус:** Код работает. Рефакторинг в BaseReportService при следующей архитектурной задаче.
+### L-05. ✅ Дублирование кода загрузки отчётов (исправлено 2026-02-11)
+**Файлы:** 5 сервисов отчётов с ~40% одинакового boilerplate.
+**Исправление:** Создан `BaseReportService<T>` (`lib/core/services/base_report_service.dart`) — generic класс с общими CRUD-операциями, multitenancy фильтрацией и push-уведомлениями. 5 сервисов рефакторены через композицию (static `_base` instance):
+- `EnvelopeReportService` (236→169 строк)
+- `CoffeeMachineReportService` (208→165 строк)
+- `ShiftHandoverReportService` (152→113 строк)
+- `ShiftReportService` (177→162 строк)
+- `RecountService` (569→555 строк)
+Public API не изменён — вызывающие файлы (~30 шт.) не затронуты.
 
 ---
 
@@ -376,9 +392,10 @@
 
 ---
 
-### L-10. ⏸️ Дефолтные магазины захардкожены на бэкенде (УЛУЧШЕНИЕ, отложено)
-**Файл:** `loyalty-proxy/api/shops_api.js`
-**Статус:** 8 магазинов захардкожены как DEFAULT_SHOPS для инициализации. После первого запуска сохраняются в shops.json и управляются через файловую систему. Приемлемая архитектура, но можно вынести в config.json.
+### L-10. ✅ Дефолтные магазины захардкожены на бэкенде (УЛУЧШЕНИЕ, исправлено 2026-02-11)
+**Файл:** `loyalty-proxy/api/shops_api.js` + `loyalty-proxy/config/default_shops.json` (новый)
+**Проблема:** 8 магазинов захардкожены как DEFAULT_SHOPS для инициализации.
+**Решение:** Вынесены в `config/default_shops.json`. shops_api.js загружает через `require('../config/default_shops.json')`.
 
 ---
 
@@ -398,8 +415,8 @@
 
 ### Статистика:
 - **53 проблемы** найдено при полном аудите
-- **48 закрыто** (исправлено или подтверждено как ложные тревоги)
-- **5 отложено** (требуют рефакторинга)
+- **53 закрыто** (исправлено или подтверждено как ложные тревоги)
+- **0 отложено**
 - **0 открытых** — все проблемы обработаны
 
 ### Реально исправлено кодом:
@@ -429,11 +446,7 @@
 ### Ложные тревоги (29 из 53):
 Большинство issues оказались ложными — код уже работал корректно. Особенно на бэкенде: rate limiting, CORS, compression, health-check, graceful shutdown — всё уже было реализовано.
 
-### Отложено (4 задачи):
-1. **L-01** — KPI offline mode: feature request
-2. **L-03** — Маскирование телефонов в логах: масштабный рефакторинг
-3. **L-05** — Дублирование кода отчётов: архитектурное улучшение
-4. **L-10** — Вынос дефолтных магазинов в config: минорное улучшение
+### Отложено: 0 задач (все решены)
 
 ### Деплой (batch 1 — 2026-02-10):
 Исправления бэкенда задеплоены на сервер:

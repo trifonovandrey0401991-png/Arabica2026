@@ -30,7 +30,7 @@ class RecountPointsService {
   static Future<RecountPoints?> getPointsByPhone(String phone) async {
     try {
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      Logger.debug('Загружаем баллы сотрудника: $normalizedPhone');
+      Logger.debug('Загружаем баллы сотрудника: ${Logger.maskPhone(normalizedPhone)}');
 
       return await BaseHttpService.get<RecountPoints>(
         endpoint: '$_baseEndpoint/$normalizedPhone',
@@ -52,7 +52,7 @@ class RecountPointsService {
   }) async {
     try {
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      Logger.debug('Обновляем баллы сотрудника: $normalizedPhone -> $points');
+      Logger.debug('Обновляем баллы сотрудника: ${Logger.maskPhone(normalizedPhone)} -> $points');
 
       final body = <String, dynamic>{
         'points': points,
@@ -172,12 +172,12 @@ class RecountPointsService {
   }) async {
     try {
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      Logger.debug('Изменение баллов: $normalizedPhone, ${change > 0 ? '+' : ''}$change');
+      Logger.debug('Изменение баллов: ${Logger.maskPhone(normalizedPhone)}, ${change > 0 ? '+' : ''}$change');
 
       // Получаем текущие баллы
       final current = await getPointsByPhone(normalizedPhone);
       if (current == null) {
-        Logger.warning('Сотрудник не найден: $normalizedPhone');
+        Logger.warning('Сотрудник не найден: ${Logger.maskPhone(normalizedPhone)}');
         return false;
       }
 
