@@ -303,16 +303,22 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
     });
 
     try {
-      // Используем уже загруженные данные вместо повторного запроса
+      // Загружаем ВСЕ регистрации одним запросом вместо 31 отдельного
+      final registrations = await EmployeeRegistrationService.getAllRegistrations();
+      Logger.debug('Загружено регистраций: ${registrations.length}');
+
+      // Строим карту верификации по нормализованному телефону
+      for (var reg in registrations) {
+        final phone = reg.phone.replaceAll(RegExp(r'[\s\+]'), '');
+        _verificationStatus[phone] = reg.isVerified;
+      }
+
+      // Также добавляем записи для сотрудников без регистрации (isVerified = false)
       final employees = await _employeesFuture;
-      Logger.debug('Загрузка статусов верификации для ${employees.length} сотрудников');
       for (var employee in employees) {
         if (employee.phone != null && employee.phone!.isNotEmpty) {
-          Logger.debug('Проверка сотрудника: ${employee.name}, телефон: ${employee.phone}');
-          final registration = await EmployeeRegistrationService.getRegistration(employee.phone!);
-          final isVerified = registration?.isVerified ?? false;
-          _verificationStatus[employee.phone!] = isVerified;
-          Logger.debug('Статус верификации для ${employee.name}: $isVerified (регистрация: ${registration != null ? "найдена" : "не найдена"})');
+          final phone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+          _verificationStatus.putIfAbsent(phone, () => false);
         }
       }
       Logger.success('Загружено статусов верификации: ${_verificationStatus.length}');
@@ -617,7 +623,26 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
                 final allEmployees = snapshot.data ?? [];
 
-                // Фильтрация: показываем ТОЛЬКО ВЕРИФИЦИРОВАННЫХ сотрудников
+                // Пока статусы верификации загружаются — показываем индикатор
+                if (_isLoadingVerification) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Проверка верификации...',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Фильтрация: ТОЛЬКО верифицированные сотрудники
                 // Не верифицированные отображаются на отдельной странице
                 final filteredEmployees = allEmployees.where((employee) {
                   // Если нет телефона, исключаем из списка
@@ -625,8 +650,9 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     return false;
                   }
 
-                  // Проверяем верификацию - показываем только верифицированных
-                  final isVerified = _verificationStatus[employee.phone!] ?? false;
+                  // Показываем только верифицированных
+                  final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+                  final isVerified = _verificationStatus[normalizedPhone] ?? false;
                   if (!isVerified) {
                     return false;
                   }
@@ -697,8 +723,9 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     itemCount: filteredEmployees.length,
                     itemBuilder: (context, index) {
                       final employee = filteredEmployees[index];
-                      final isVerified = employee.phone != null
-                          ? _verificationStatus[employee.phone!] ?? false
+                      final normalizedPhone = employee.phone?.replaceAll(RegExp(r'[\s\+]'), '');
+                      final isVerified = normalizedPhone != null
+                          ? _verificationStatus[normalizedPhone] ?? false
                           : false;
 
                       // Анимация появления

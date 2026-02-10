@@ -69,7 +69,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     try {
       // Загружаем параллельно
       final results = await Future.wait([
-        Shop.loadShopsFromGoogleSheets(),
+        Shop.loadShopsFromServer(),
         ShopProductsService.getShopsWithProducts(),
         _loadProductPhotos(),
       ]);

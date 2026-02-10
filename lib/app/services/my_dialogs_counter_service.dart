@@ -18,64 +18,59 @@ class MyDialogsCounterService {
         return 0;
       }
 
-      int total = 0;
-
-      // Сетевые сообщения
-      try {
-        final networkData = await NetworkMessageService.getNetworkMessages(phone);
-        total += networkData.unreadCount;
-      } catch (e) {
-        Logger.error('Ошибка загрузки сетевых сообщений для счётчика', e);
-      }
-
-      // Сообщения руководству
-      try {
-        final managementData = await ManagementMessageService.getManagementMessages(phone);
-        total += managementData.unreadCount;
-      } catch (e) {
-        Logger.error('Ошибка загрузки сообщений руководству для счётчика', e);
-      }
-
-      // Отзывы
-      try {
-        final reviews = await ReviewService.getClientReviews(phone);
-        for (final review in reviews) {
-          total += review.getUnreadCountForClient();
-        }
-      } catch (e) {
-        Logger.error('Ошибка загрузки отзывов для счётчика', e);
-      }
-
-      // Поиск товара (общий)
-      try {
-        final productQuestionData = await ProductQuestionService.getClientDialog(phone);
-        if (productQuestionData != null) {
-          total += productQuestionData.unreadCount;
-        }
-      } catch (e) {
-        Logger.error('Ошибка загрузки вопросов для счётчика', e);
-      }
-
-      // Персональные диалоги "Поиск Товара"
-      try {
-        final personalDialogs = await ProductQuestionService.getClientPersonalDialogs(phone);
-        for (final dialog in personalDialogs) {
-          if (dialog.hasUnreadFromEmployee) {
-            total += 1;
+      // Запускаем все 6 запросов ПАРАЛЛЕЛЬНО (было последовательно)
+      final results = await Future.wait<int>([
+        // Сетевые сообщения
+        NetworkMessageService.getNetworkMessages(phone)
+            .then((data) => data.unreadCount)
+            .catchError((e) {
+          Logger.error('Ошибка загрузки сетевых сообщений для счётчика', e);
+          return 0;
+        }),
+        // Сообщения руководству
+        ManagementMessageService.getManagementMessages(phone)
+            .then((data) => data.unreadCount)
+            .catchError((e) {
+          Logger.error('Ошибка загрузки сообщений руководству для счётчика', e);
+          return 0;
+        }),
+        // Отзывы
+        ReviewService.getClientReviews(phone).then((reviews) {
+          int count = 0;
+          for (final review in reviews) {
+            count += review.getUnreadCountForClient();
           }
-        }
-      } catch (e) {
-        Logger.error('Ошибка загрузки персональных диалогов для счётчика', e);
-      }
+          return count;
+        }).catchError((e) {
+          Logger.error('Ошибка загрузки отзывов для счётчика', e);
+          return 0;
+        }),
+        // Поиск товара (общий)
+        ProductQuestionService.getClientDialog(phone)
+            .then((data) => data?.unreadCount ?? 0)
+            .catchError((e) {
+          Logger.error('Ошибка загрузки вопросов для счётчика', e);
+          return 0;
+        }),
+        // Персональные диалоги "Поиск Товара"
+        ProductQuestionService.getClientPersonalDialogs(phone).then((dialogs) {
+          int count = 0;
+          for (final dialog in dialogs) {
+            if (dialog.hasUnreadFromEmployee) count += 1;
+          }
+          return count;
+        }).catchError((e) {
+          Logger.error('Ошибка загрузки персональных диалогов для счётчика', e);
+          return 0;
+        }),
+        // Групповые чаты
+        ClientGroupChatService.getUnreadCount(phone).catchError((e) {
+          Logger.error('Ошибка загрузки групповых чатов для счётчика', e);
+          return 0;
+        }),
+      ]);
 
-      // Групповые чаты
-      try {
-        final groupsUnread = await ClientGroupChatService.getUnreadCount(phone);
-        total += groupsUnread;
-      } catch (e) {
-        Logger.error('Ошибка загрузки групповых чатов для счётчика', e);
-      }
-
+      final total = results.fold<int>(0, (sum, count) => sum + count);
       Logger.debug('Общий счётчик "Мои диалоги": $total');
       return total;
     } catch (e) {

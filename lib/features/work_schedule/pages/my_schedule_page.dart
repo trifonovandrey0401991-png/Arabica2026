@@ -1786,7 +1786,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       final schedule = await WorkScheduleService.getSchedule(_selectedMonth);
       Logger.debug('📅 Общий график загружен: ${schedule.entries.length} записей');
 
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await Shop.loadShopsFromServer();
       Logger.debug('📅 Магазины загружены: ${shops.length}');
 
       if (mounted) {

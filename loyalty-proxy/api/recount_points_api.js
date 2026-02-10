@@ -55,7 +55,7 @@ module.exports = function setupRecountPointsAPI(app) {
   async function getEmployeeNameByPhone(phone) {
     if (!phone || !(await fileExists(EMPLOYEES_DIR))) return null;
 
-    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
     const employeeFiles = await fsp.readdir(EMPLOYEES_DIR);
 
     for (const file of employeeFiles) {
@@ -63,7 +63,7 @@ module.exports = function setupRecountPointsAPI(app) {
       try {
         const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
         const employee = JSON.parse(content);
-        const empPhone = (employee.phone || '').replace(/[\s+]/g, '');
+        const empPhone = (employee.phone || '').replace(/[^\d]/g, '');
         if (empPhone === normalizedPhone) {
           return employee.name || null;
         }
@@ -136,7 +136,7 @@ module.exports = function setupRecountPointsAPI(app) {
   app.get('/api/recount-points/:phone', async (req, res) => {
     try {
       const { phone } = req.params;
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
+      const normalizedPhone = phone.replace(/[^\d]/g, '');
 
       console.log(`📥 GET /api/recount-points/${normalizedPhone}`);
 
@@ -182,7 +182,7 @@ module.exports = function setupRecountPointsAPI(app) {
     try {
       const { phone } = req.params;
       const { points, adminName, employeeName, reason } = req.body;
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
+      const normalizedPhone = phone.replace(/[^\d]/g, '');
 
       console.log(`📤 PUT /api/recount-points/${normalizedPhone}: ${points}`);
 
@@ -270,7 +270,7 @@ module.exports = function setupRecountPointsAPI(app) {
           // Пропускаем админов
           if (employee.isAdmin) continue;
 
-          const phone = employee.phone?.replace(/[\s+]/g, '');
+          const phone = employee.phone?.replace(/[^\d]/g, '');
           if (!phone) continue;
 
           const pointsFile = path.join(RECOUNT_POINTS_DIR, `${phone}.json`);
@@ -450,7 +450,7 @@ module.exports = function setupRecountPointsAPI(app) {
 
       // Обновляем баллы сотрудника
       if (employeePhone) {
-        const normalizedPhone = employeePhone.replace(/[\s+]/g, '');
+        const normalizedPhone = employeePhone.replace(/[^\d]/g, '');
         const pointsFile = path.join(RECOUNT_POINTS_DIR, `${normalizedPhone}.json`);
 
         if (await fileExists(pointsFile)) {

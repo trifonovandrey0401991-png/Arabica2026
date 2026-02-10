@@ -13,228 +13,229 @@ class ReviewShopSelectionPage extends StatelessWidget {
     required this.reviewType,
   });
 
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   @override
   Widget build(BuildContext context) {
     final isPositive = reviewType == 'positive';
     final accentColor = isPositive ? Colors.green : Colors.red;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF004D40),
-      appBar: AppBar(
-        title: const Text(
-          'Выберите магазин',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: const Color(0xFF004D40),
-        elevation: 0,
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF004D40),
-              const Color(0xFF00695C),
-              const Color(0xFF00796B),
-            ],
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: FutureBuilder<List<Shop>>(
-          future: ShopService.getShopsForCurrentUser(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              );
-            }
-
-            if (snapshot.hasError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Что-то пошло не так',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Попробуйте позже',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Назад'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            final shops = snapshot.data ?? [];
-            if (shops.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.store_mall_directory_outlined,
-                        size: 64,
-                        color: Colors.white54,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Магазины не найдены',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Column(
-              children: [
-                // Заголовок с типом отзыва
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isPositive
-                          ? [const Color(0xFF43A047), const Color(0xFF66BB6A)]
-                          : [const Color(0xFFE53935), const Color(0xFFEF5350)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accentColor.withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: Icon(
-                          isPositive ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Выберите магазин',
+                        style: TextStyle(
                           color: Colors.white,
-                          size: 28,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
+                    ),
+                  ],
+                ),
+              ),
+
+              // Body
+              Expanded(
+                child: FutureBuilder<List<Shop>>(
+                  future: ShopService.getShopsForCurrentUser(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(color: _gold),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.error_outline, size: 40, color: Colors.red.shade300),
+                            ),
+                            const SizedBox(height: 20),
                             Text(
-                              isPositive ? 'Положительный отзыв' : 'Отрицательный отзыв',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              'Что-то пошло не так',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 8),
                             Text(
-                              'Выберите магазин из списка',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.85),
-                                fontSize: 14,
+                              'Попробуйте позже',
+                              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
+                            ),
+                            const SizedBox(height: 24),
+                            OutlinedButton.icon(
+                              onPressed: () => Navigator.pop(context),
+                              icon: Icon(Icons.arrow_back, color: Colors.white.withOpacity(0.7)),
+                              label: Text('Назад', style: TextStyle(color: Colors.white.withOpacity(0.7))),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
+                      );
+                    }
+
+                    final shops = snapshot.data ?? [];
+                    if (shops.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.store_mall_directory_outlined, size: 40, color: Colors.white.withOpacity(0.3)),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Магазины не найдены',
+                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        // Заголовок с типом отзыва
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: accentColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: accentColor.withOpacity(0.25)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: accentColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  isPositive ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
+                                  color: accentColor,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isPositive ? 'Положительный отзыв' : 'Отрицательный отзыв',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Выберите магазин из списка',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.4),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Список магазинов
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            itemCount: shops.length,
+                            itemBuilder: (context, index) {
+                              final shop = shops[index];
+                              return _buildShopCard(context, shop);
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
-                // Список магазинов
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: shops.length,
-                    itemBuilder: (context, index) {
-                      final shop = shops[index];
-                      return _buildShopCard(context, shop, accentColor);
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildShopCard(BuildContext context, Shop shop, Color accentColor) {
+  Widget _buildShopCard(BuildContext context, Shop shop) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           onTap: () {
             Navigator.push(
               context,
@@ -247,24 +248,21 @@ class ReviewShopSelectionPage extends StatelessWidget {
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 // Иконка магазина
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF004D40).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
-                  child: const ShopIcon(size: 60),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: const ShopIcon(size: 52),
+                  ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 // Адрес магазина
                 Expanded(
                   child: Column(
@@ -272,29 +270,22 @@ class ReviewShopSelectionPage extends StatelessWidget {
                     children: [
                       Text(
                         shop.address,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(
-                            Icons.storefront,
-                            size: 16,
-                            color: Colors.grey[500],
-                          ),
+                          Icon(Icons.storefront, size: 14, color: Colors.white.withOpacity(0.3)),
                           const SizedBox(width: 4),
                           Text(
                             'Магазин',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[500],
-                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.3)),
                           ),
                         ],
                       ),
@@ -303,15 +294,15 @@ class ReviewShopSelectionPage extends StatelessWidget {
                 ),
                 // Стрелка
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: _gold.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios,
-                    size: 18,
-                    color: accentColor,
+                    size: 16,
+                    color: _gold.withOpacity(0.7),
                   ),
                 ),
               ],

@@ -29,20 +29,20 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
   app.get('/api/reviews', async (req, res) => {
     try {
       const { phone } = req.query;
-      const reviews = [];
+      let reviews = [];
       if (await fileExists(REVIEWS_DIR)) {
         const files = (await fsp.readdir(REVIEWS_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
+        // Параллельное чтение файлов (вместо последовательного for...of)
+        const results = await Promise.all(files.map(async (file) => {
           try {
             const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
-            const review = JSON.parse(content);
-            if (!phone || review.clientPhone === phone) {
-              reviews.push(review);
-            }
+            return JSON.parse(content);
           } catch (e) {
             console.error(`Ошибка чтения ${file}:`, e);
+            return null;
           }
-        }
+        }));
+        reviews = results.filter(r => r && (!phone || r.clientPhone === phone));
       }
       if (isPaginationRequested(req.query)) {
         res.json(createPaginatedResponse(reviews, req.query, 'reviews'));

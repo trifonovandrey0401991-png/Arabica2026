@@ -83,7 +83,7 @@ async function getAdminAndDeveloperFcmTokens() {
         const employee = JSON.parse(content);
         // isAdmin === true OR role === 'developer'
         if (employee && (employee.isAdmin === true || employee.role === 'developer') && employee.phone) {
-          const normalizedPhone = employee.phone.replace(/[\s\+]/g, '');
+          const normalizedPhone = employee.phone.replace(/[^\d]/g, '');
           adminPhones.push(normalizedPhone);
         }
       }

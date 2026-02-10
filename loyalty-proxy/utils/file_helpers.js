@@ -67,12 +67,19 @@ function isPathSafe(baseDir, filePath) {
 }
 
 /**
- * Sanitize phone — только цифры
+ * Sanitize phone — только цифры (защита от path traversal + нормализация)
  */
 function sanitizePhone(phone) {
   if (!phone) return '';
   return phone.replace(/[^\d]/g, '');
 }
+
+/**
+ * Нормализация телефона — единая функция для всего бэкенда
+ * Убирает ВСЕ нецифровые символы: пробелы, +, скобки, дефисы и т.д.
+ * Результат: только цифры, например "79001234567"
+ */
+const normalizePhone = sanitizePhone;
 
 module.exports = {
   DATA_DIR,
@@ -83,4 +90,5 @@ module.exports = {
   sanitizeId,
   isPathSafe,
   sanitizePhone,
+  normalizePhone,
 };

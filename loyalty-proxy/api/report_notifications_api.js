@@ -91,7 +91,7 @@ async function getAdminFcmTokens() {
         const employee = await loadJsonFile(filePath, null);
         if (employee && employee.isAdmin === true && employee.phone) {
           // Нормализуем телефон (убираем + и пробелы)
-          const normalizedPhone = employee.phone.replace(/[\s\+]/g, '');
+          const normalizedPhone = employee.phone.replace(/[^\d]/g, '');
           adminPhones.push(normalizedPhone);
         }
       }
@@ -210,7 +210,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
 
   try {
     // Нормализуем телефон (убираем + и пробелы)
-    const normalizedPhone = phone.replace(/[\s\+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
     if (!(await fileExists(tokenFile))) {
@@ -267,7 +267,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
     if (isInvalidToken) {
       // Удаляем невалидный токен
       try {
-        const normalizedPhone = phone.replace(/[\s\+]/g, '');
+        const normalizedPhone = phone.replace(/[^\d]/g, '');
         const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
         if (await fileExists(tokenFile)) {
           await fsp.unlink(tokenFile);

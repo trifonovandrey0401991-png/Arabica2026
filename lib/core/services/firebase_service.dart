@@ -401,7 +401,7 @@ class FirebaseService {
       }
 
       // Нормализация номера телефона (убираем + и пробелы)
-      final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
       final url = '${ApiConstants.serverUrl}/api/fcm-tokens';
 

@@ -17,9 +17,11 @@ class TrainingArticleEditorPage extends StatefulWidget {
 }
 
 class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
-  static const _primaryColor = Color(0xFF004D40);
-  static const _gradientStart = Color(0xFF00695C);
-  static const _gradientEnd = Color(0xFF004D40);
+  // Dark Emerald цвета
+  static const _emerald = Color(0xFF1A4D4D);
+  static const _emeraldDark = Color(0xFF0D2E2E);
+  static const _night = Color(0xFF051515);
+  static const _gold = Color(0xFFD4AF37);
 
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
@@ -91,18 +93,24 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: _primaryColor),
-                  SizedBox(height: 16),
-                  Text('Загрузка изображения...'),
-                ],
-              ),
+        builder: (context) => Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: _emeraldDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: _gold),
+                SizedBox(height: 16),
+                Text(
+                  'Загрузка изображения...',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
             ),
           ),
         ),
@@ -287,9 +295,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_gradientStart, _gradientEnd],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
@@ -297,22 +306,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             children: [
               _buildAppBar(isEditing),
               Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
-                    child: _buildContent(),
-                  ),
-                ),
+                child: _buildContent(),
               ),
             ],
           ),
@@ -328,8 +322,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
             ),
             child: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
@@ -352,7 +347,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 Text(
                   '${_contentBlocks.length} ${_getBlocksEnding(_contentBlocks.length)}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: _gold.withOpacity(0.8),
                     fontSize: 13,
                   ),
                 ),
@@ -362,8 +357,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           // Кнопка сохранения
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _gold.withOpacity(0.4)),
             ),
             child: IconButton(
               icon: _isSaving
@@ -372,10 +368,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: _primaryColor,
+                        color: _gold,
                       ),
                     )
-                  : const Icon(Icons.check_rounded, color: _primaryColor, size: 24),
+                  : const Icon(Icons.check_rounded, color: _gold, size: 24),
               onPressed: _isSaving ? null : _saveArticle,
             ),
           ),
@@ -426,15 +422,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryColor.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,10 +434,11 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _primaryColor.withOpacity(0.1),
+                  color: _gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _gold.withOpacity(0.3)),
                 ),
-                child: const Icon(Icons.info_outline, color: _primaryColor, size: 20),
+                child: Icon(Icons.info_outline, color: _gold, size: 20),
               ),
               const SizedBox(width: 12),
               const Text(
@@ -455,7 +446,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: _primaryColor,
+                  color: _gold,
                 ),
               ),
             ],
@@ -500,14 +491,14 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       children: [
         Row(
           children: [
-            Icon(Icons.visibility_rounded, color: _primaryColor, size: 18),
+            Icon(Icons.visibility_rounded, color: Colors.white.withOpacity(0.5), size: 18),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Кто может видеть',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF666666),
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
           ],
@@ -552,10 +543,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryColor.withOpacity(0.1) : Colors.grey[50],
+          color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.04),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? _primaryColor : Colors.grey[200]!,
+            color: isSelected ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.08),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -565,7 +556,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? _primaryColor : Colors.grey[500],
+              color: isSelected ? _gold : Colors.white.withOpacity(0.4),
             ),
             const SizedBox(width: 8),
             Text(
@@ -573,7 +564,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? _primaryColor : Colors.grey[600],
+                color: isSelected ? _gold : Colors.white.withOpacity(0.5),
               ),
             ),
           ],
@@ -591,10 +582,11 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.1),
+                color: _gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _gold.withOpacity(0.3)),
               ),
-              child: const Icon(Icons.view_agenda_rounded, color: _primaryColor, size: 20),
+              child: Icon(Icons.view_agenda_rounded, color: _gold, size: 20),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -602,7 +594,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: _primaryColor,
+                color: _gold,
               ),
             ),
           ],
@@ -620,15 +612,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryColor.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -638,8 +624,8 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: block.type == ContentBlockType.image
-                  ? Colors.blue.withOpacity(0.08)
-                  : _primaryColor.withOpacity(0.05),
+                  ? Colors.blue.withOpacity(0.1)
+                  : _gold.withOpacity(0.08),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -653,8 +639,8 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                       : Icons.text_fields_rounded,
                   size: 18,
                   color: block.type == ContentBlockType.image
-                      ? Colors.blue[600]
-                      : _primaryColor,
+                      ? Colors.blue[300]
+                      : _gold,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -664,8 +650,8 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: block.type == ContentBlockType.image
-                          ? Colors.blue[700]
-                          : _primaryColor,
+                          ? Colors.blue[300]
+                          : _gold,
                     ),
                   ),
                 ),
@@ -680,7 +666,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 ),
                 _buildBlockActionButton(
                   icon: Icons.delete_outline_rounded,
-                  color: Colors.red[400],
+                  color: Colors.red[300],
                   onTap: _contentBlocks.length > 1 ? () => _removeBlock(index) : null,
                 ),
               ],
@@ -711,7 +697,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         child: Icon(
           icon,
           size: 20,
-          color: onTap != null ? (color ?? Colors.grey[600]) : Colors.grey[300],
+          color: onTap != null ? (color ?? Colors.white.withOpacity(0.6)) : Colors.white.withOpacity(0.2),
         ),
       ),
     );
@@ -722,26 +708,27 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       initialValue: block.content,
       maxLines: null,
       minLines: 3,
-      style: const TextStyle(fontSize: 14, height: 1.6),
+      style: TextStyle(fontSize: 14, height: 1.6, color: Colors.white.withOpacity(0.9)),
       decoration: InputDecoration(
         hintText: 'Введите текст...',
-        hintStyle: TextStyle(color: Colors.grey[400]),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: Colors.white.withOpacity(0.04),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _primaryColor, width: 2),
+          borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
         ),
         contentPadding: const EdgeInsets.all(14),
       ),
+      cursorColor: _gold,
       onChanged: (value) => _updateTextBlock(index, value),
     );
   }
@@ -753,28 +740,29 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         // Поле подписи (сверху фото)
         TextFormField(
           initialValue: block.caption ?? '',
-          style: const TextStyle(fontSize: 13),
+          style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)),
           decoration: InputDecoration(
             hintText: 'Подпись к изображению (опционально)',
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-            prefixIcon: Icon(Icons.short_text_rounded, color: Colors.grey[400], size: 20),
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+            prefixIcon: Icon(Icons.short_text_rounded, color: Colors.white.withOpacity(0.4), size: 20),
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: Colors.white.withOpacity(0.04),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.blue[400]!, width: 1.5),
+              borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             isDense: true,
           ),
+          cursorColor: _gold,
           onChanged: (value) => _updateImageCaption(index, value),
         ),
         const SizedBox(height: 12),
@@ -791,15 +779,18 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 errorWidget: (context, url, error) => Container(
                   width: double.infinity,
                   height: 200,
-                  color: Colors.grey[100],
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.broken_image_rounded, color: Colors.grey[400], size: 48),
+                      Icon(Icons.broken_image_rounded, color: Colors.white.withOpacity(0.3), size: 48),
                       const SizedBox(height: 8),
                       Text(
                         'Ошибка загрузки',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
                       ),
                     ],
                   ),
@@ -859,18 +850,24 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: _primaryColor),
-                  SizedBox(height: 16),
-                  Text('Загрузка изображения...'),
-                ],
-              ),
+        builder: (context) => Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: _emeraldDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: _gold),
+                SizedBox(height: 16),
+                Text(
+                  'Загрузка изображения...',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
             ),
           ),
         ),
@@ -938,7 +935,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           child: _buildAddButton(
             icon: Icons.text_fields_rounded,
             label: 'Добавить текст',
-            color: _primaryColor,
+            color: _gold,
             onTap: _addTextBlock,
           ),
         ),
@@ -947,7 +944,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           child: _buildAddButton(
             icon: Icons.add_photo_alternate_rounded,
             label: 'Добавить фото',
-            color: Colors.blue[600]!,
+            color: Colors.blue[300]!,
             onTap: _addImageBlock,
           ),
         ),
@@ -967,9 +964,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -994,15 +991,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryColor.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1020,14 +1011,17 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: _showUrlField ? Colors.blue.withOpacity(0.08) : Colors.grey[50],
+                color: _showUrlField ? _gold.withOpacity(0.1) : Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _showUrlField ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.08),
+                ),
               ),
               child: Row(
                 children: [
                   Icon(
                     _showUrlField ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
-                    color: _showUrlField ? Colors.blue[600] : Colors.grey[400],
+                    color: _showUrlField ? _gold : Colors.white.withOpacity(0.4),
                     size: 22,
                   ),
                   const SizedBox(width: 10),
@@ -1040,14 +1034,14 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: _showUrlField ? Colors.blue[700] : Colors.grey[700],
+                            color: _showUrlField ? _gold : Colors.white.withOpacity(0.7),
                           ),
                         ),
                         Text(
                           'Дополнительный источник информации',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey[500],
+                            color: Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -1089,25 +1083,26 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 14),
+      style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400]),
-        prefixIcon: Icon(icon, color: _primaryColor, size: 20),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+        prefixIcon: Icon(icon, color: _gold, size: 20),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: Colors.white.withOpacity(0.06),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _primaryColor, width: 2),
+          borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1115,7 +1110,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         isDense: true,
+        errorStyle: TextStyle(color: Colors.red[300]),
       ),
+      cursorColor: _gold,
       validator: validator,
     );
   }

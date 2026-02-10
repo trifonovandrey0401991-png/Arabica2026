@@ -10,6 +10,7 @@ class ShiftQuestion {
   final List<String>? shops; // Список адресов магазинов, для которых задан вопрос. null означает "для всех магазинов"
   final Map<String, String>? referencePhotos; // Объект с ключами-адресами магазинов и значениями-URL эталонных фото
   final bool isAiCheck; // Проверять ли ИИ фото этого вопроса (только для вопросов типа "Фото")
+  final int order; // Порядок отображения вопроса (для сортировки и drag-and-drop)
 
   ShiftQuestion({
     required this.id,
@@ -19,6 +20,7 @@ class ShiftQuestion {
     this.shops,
     this.referencePhotos,
     this.isAiCheck = false,
+    this.order = 0,
   });
 
   /// Создать ShiftQuestion из JSON
@@ -47,6 +49,7 @@ class ShiftQuestion {
       shops: shops,
       referencePhotos: referencePhotos,
       isAiCheck: json['isAiCheck'] ?? false,
+      order: json['order'] is int ? json['order'] : (int.tryParse(json['order']?.toString() ?? '') ?? 0),
     );
   }
 
@@ -60,6 +63,7 @@ class ShiftQuestion {
       if (shops != null) 'shops': shops,
       if (referencePhotos != null) 'referencePhotos': referencePhotos,
       'isAiCheck': isAiCheck,
+      'order': order,
     };
   }
 

@@ -491,7 +491,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                                 return AnimatedBuilder(
                                   animation: _animationController,
                                   builder: (context, child) {
-                                    final delay = index * 0.1;
+                                    final delay = (index * 0.1).clamp(0.0, 0.8);
                                     final animationValue = Curves.easeOutCubic.transform(
                                       (_animationController.value - delay).clamp(0.0, 1.0),
                                     );

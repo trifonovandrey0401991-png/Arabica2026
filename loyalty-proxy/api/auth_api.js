@@ -128,9 +128,10 @@ function generateSessionToken() {
 
 /**
  * Нормализует номер телефона
+ * M-11: Унифицировано — сначала только цифры, затем 8→7 конверсия
  */
 function normalizePhone(phone) {
-  let normalized = phone.replace(/[\s+\-()]/g, '');
+  let normalized = phone.replace(/[^\d]/g, '');
   if (normalized.startsWith('8') && normalized.length === 11) {
     normalized = '7' + normalized.substring(1);
   }

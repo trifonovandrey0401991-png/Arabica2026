@@ -105,6 +105,14 @@ class ShiftHandoverQuestionService {
       final url = '${ApiConstants.serverUrl}$baseEndpoint/$questionId/reference-photo';
       final request = http.MultipartRequest('POST', Uri.parse(url));
 
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
+
       // Добавляем файл - поддержка веб и мобильных платформ
       final bytes = await photoFile.readAsBytes();
 

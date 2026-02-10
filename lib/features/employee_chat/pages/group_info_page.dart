@@ -562,8 +562,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   Widget _buildParticipantTile(String phone) {
     final name = _chat.getParticipantName(phone);
     final isCreator = phone == _chat.creatorPhone;
-    final isMe = phone.replaceAll(RegExp(r'[\s+]'), '') ==
-        widget.currentUserPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final isMe = phone.replaceAll(RegExp(r'[\s\+]'), '') ==
+        widget.currentUserPhone.replaceAll(RegExp(r'[\s\+]'), '');
 
     return Container(
       decoration: BoxDecoration(
@@ -660,16 +660,16 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
       ]);
 
       final normalizedExisting = widget.existingParticipants
-          .map((p) => p.replaceAll(RegExp(r'[\s+]'), ''))
+          .map((p) => p.replaceAll(RegExp(r'[\s\+]'), ''))
           .toSet();
 
       _employees = (results[0] as List<Employee>).where((e) {
-        final phone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
+        final phone = (e.phone ?? '').replaceAll(RegExp(r'[\s\+]'), '');
         return !normalizedExisting.contains(phone);
       }).toList();
 
       _clients = (results[1] as List<ChatClient>).where((c) {
-        final phone = c.phone.replaceAll(RegExp(r'[\s+]'), '');
+        final phone = c.phone.replaceAll(RegExp(r'[\s\+]'), '');
         return !normalizedExisting.contains(phone);
       }).toList();
     } catch (e) {
@@ -800,7 +800,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.7))),
           ),
           ...filteredEmployees.map((e) {
-            final phone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
+            final phone = (e.phone ?? '').replaceAll(RegExp(r'[\s\+]'), '');
             final isSelected = _selected.contains(phone);
             return CheckboxListTile(
               value: isSelected,
@@ -834,7 +834,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[400])),
           ),
           ...filteredClients.map((c) {
-            final phone = c.phone.replaceAll(RegExp(r'[\s+]'), '');
+            final phone = c.phone.replaceAll(RegExp(r'[\s\+]'), '');
             final isSelected = _selected.contains(phone);
             return CheckboxListTile(
               value: isSelected,

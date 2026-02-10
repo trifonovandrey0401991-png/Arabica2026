@@ -41,9 +41,9 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
       const { promoText, pointsRequired, drinksToGive, employeePhone } = req.body;
 
       // Проверка на админа или разработчика
-      const normalizedPhone = (employeePhone || '').replace(/[\s\+]/g, '');
+      const normalizedPhone = (employeePhone || '').replace(/[^\d]/g, '');
       const employees = loadAllEmployeesForWithdrawals ? await loadAllEmployeesForWithdrawals() : [];
-      const employee = employees.find(e => e.phone && e.phone.replace(/[\s\+]/g, '') === normalizedPhone);
+      const employee = employees.find(e => e.phone && e.phone.replace(/[^\d]/g, '') === normalizedPhone);
       const isAdminOrDev = employee && (employee.isAdmin === true || employee.role === 'developer');
       if (!isAdminOrDev) {
         console.log('POST /api/loyalty-promo: denied for non-admin', normalizedPhone);

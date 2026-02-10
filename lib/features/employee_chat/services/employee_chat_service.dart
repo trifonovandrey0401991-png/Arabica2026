@@ -116,8 +116,16 @@ class EmployeeChatService {
     try {
       Logger.debug('📤 Загрузка фото для сообщения...');
 
-      final uri = Uri.parse('${ApiConstants.serverUrl}/upload-media');
+      final uri = Uri.parse('${ApiConstants.serverUrl}/upload-photo');
       final request = http.MultipartRequest('POST', uri);
+
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
 
       final bytes = await photoFile.readAsBytes();
       final multipartFile = http.MultipartFile.fromBytes(
@@ -153,7 +161,7 @@ class EmployeeChatService {
   /// [requesterPhone] - телефон запрашивающего (должен быть админом)
   static Future<bool> deleteMessage(String chatId, String messageId, {required String requesterPhone}) async {
     Logger.debug('🗑️ Удаление сообщения $messageId из чата $chatId (requester: $requesterPhone)...');
-    final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s\+]'), '');
     return await BaseHttpService.delete(
       endpoint: '$baseEndpoint/$chatId/messages/$messageId?requesterPhone=$normalizedPhone',
     );
@@ -223,7 +231,7 @@ class EmployeeChatService {
   }) async {
     Logger.debug('👎 Удаление реакции $reaction с сообщения $messageId...');
     try {
-      final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
       final response = await BaseHttpService.deleteWithResponse(
         endpoint: '$baseEndpoint/$chatId/messages/$messageId/reactions?phone=$normalizedPhone&reaction=$reaction',
       );
@@ -293,7 +301,7 @@ class EmployeeChatService {
   /// [requesterPhone] - телефон запрашивающего (должен быть админом)
   static Future<bool> removeShopChatMember(String shopAddress, String phone, {required String requesterPhone}) async {
     Logger.debug('➖ Удаление сотрудника $phone из чата магазина $shopAddress (requester: $requesterPhone)...');
-    final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s\+]'), '');
     return await BaseHttpService.delete(
       endpoint: '$baseEndpoint/shop/$shopAddress/members/$phone?requesterPhone=$normalizedPhone',
     );
@@ -307,7 +315,7 @@ class EmployeeChatService {
   static Future<int> clearChatMessages(String chatId, String mode, {required String requesterPhone}) async {
     Logger.debug('🗑️ Очистка сообщений чата $chatId (режим: $mode, requester: $requesterPhone)...');
     try {
-      final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
+      final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s\+]'), '');
       final response = await BaseHttpService.postRaw(
         endpoint: '$baseEndpoint/$chatId/clear',
         body: {
@@ -403,7 +411,7 @@ class EmployeeChatService {
     required String phone,
   }) async {
     Logger.debug('➖ Удаление участника $phone из группы...');
-    final normalized = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalized = requesterPhone.replaceAll(RegExp(r'[\s\+]'), '');
     return await BaseHttpService.delete(
       endpoint: '$baseEndpoint/group/$groupId/members/$phone?requesterPhone=$normalized',
     );
@@ -421,7 +429,7 @@ class EmployeeChatService {
   /// Удалить группу (только создатель)
   static Future<bool> deleteGroup(String groupId, String requesterPhone) async {
     Logger.debug('🗑️ Удаление группы $groupId...');
-    final normalized = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalized = requesterPhone.replaceAll(RegExp(r'[\s\+]'), '');
     return await BaseHttpService.delete(
       endpoint: '$baseEndpoint/group/$groupId?requesterPhone=$normalized',
     );

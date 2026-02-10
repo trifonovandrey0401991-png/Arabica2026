@@ -61,14 +61,14 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       final employees = results[0] as List<Employee>;
       final clients = results[1] as List<ChatClient>;
 
-      final normalizedCreator = widget.creatorPhone.replaceAll(RegExp(r'[\s+]'), '');
+      final normalizedCreator = widget.creatorPhone.replaceAll(RegExp(r'[\s\+]'), '');
       _employees = employees.where((e) {
-        final empPhone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
+        final empPhone = (e.phone ?? '').replaceAll(RegExp(r'[\s\+]'), '');
         return empPhone != normalizedCreator;
       }).toList();
 
       _clients = clients.where((c) {
-        final clientPhone = c.phone.replaceAll(RegExp(r'[\s+]'), '');
+        final clientPhone = c.phone.replaceAll(RegExp(r'[\s\+]'), '');
         return clientPhone != normalizedCreator;
       }).toList();
     } catch (e) {
@@ -362,17 +362,17 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   }
 
   String _getParticipantName(String phone) {
-    final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
     for (final e in _employees) {
-      final empPhone = (e.phone ?? '').replaceAll(RegExp(r'[\s+]'), '');
+      final empPhone = (e.phone ?? '').replaceAll(RegExp(r'[\s\+]'), '');
       if (empPhone == normalizedPhone) {
         return e.name;
       }
     }
 
     for (final c in _clients) {
-      final clientPhone = c.phone.replaceAll(RegExp(r'[\s+]'), '');
+      final clientPhone = c.phone.replaceAll(RegExp(r'[\s\+]'), '');
       if (clientPhone == normalizedPhone) {
         return c.displayName;
       }
@@ -454,7 +454,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     String? subtitle,
     required bool isEmployee,
   }) {
-    final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     final isSelected = _selectedParticipants.contains(normalizedPhone);
 
     return Container(

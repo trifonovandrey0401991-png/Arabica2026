@@ -140,7 +140,7 @@ function calculateGpsDistance(lat1, lon1, lat2, lon2) {
 async function wasNotificationSentRecently(phone, shopId, cooldownHours) {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
     const notificationFile = path.join(
       GEOFENCE_NOTIFICATIONS_DIR,
       `${normalizedPhone}_${today}.json`
@@ -176,7 +176,7 @@ async function wasNotificationSentRecently(phone, shopId, cooldownHours) {
 async function saveNotificationRecord(phone, shop, distance) {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
     const notificationFile = path.join(
       GEOFENCE_NOTIFICATIONS_DIR,
       `${normalizedPhone}_${today}.json`

@@ -18,9 +18,11 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
 
-  static const _primaryColor = Color(0xFF004D40);
-  static const _gradientStart = Color(0xFF00695C);
-  static const _gradientEnd = Color(0xFF004D40);
+  // Dark Emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -62,8 +64,11 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка загрузки данных: $e'),
-            backgroundColor: Colors.red,
+            content: const Text('Ошибка загрузки данных', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -73,11 +78,104 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
   Future<void> _initializeAllPoints() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => _ModernConfirmDialog(
-        title: 'Инициализировать баллы?',
-        message: 'Всем сотрудникам без баллов будет установлено значение ${_settings.defaultPoints.toInt()} баллов.\n\nСуществующие баллы не будут изменены.',
-        confirmText: 'Инициализировать',
-        confirmColor: _primaryColor,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          decoration: BoxDecoration(
+            color: _emeraldDark,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_emerald, _emeraldDark],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _gold.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.help_outline_rounded, color: _gold, size: 32),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Инициализировать баллы?',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Text(
+                      'Всем сотрудникам без баллов будет установлено значение ${_settings.defaultPoints.toInt()} баллов.\n\nСуществующие баллы не будут изменены.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.7),
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                            ),
+                            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _gold,
+                              foregroundColor: _night,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text('Инициализировать', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
 
@@ -88,8 +186,17 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Инициализировано: $count сотрудников'),
-          backgroundColor: Colors.green,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('Инициализировано: $count сотрудников'),
+            ],
+          ),
+          backgroundColor: Colors.green[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
         ),
       );
       _loadData();
@@ -109,9 +216,18 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
       if (success && mounted) {
         setState(() => _settings = result);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Настройки сохранены'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Настройки сохранены'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -140,9 +256,18 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
       if (success && mounted) {
         _loadData();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Баллы обновлены'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Баллы обновлены'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -159,18 +284,12 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryColor.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                valueColor: AlwaysStoppedAnimation<Color>(_gold),
                 strokeWidth: 3,
               ),
             ),
@@ -178,7 +297,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
             Text(
               'Загрузка данных...',
               style: TextStyle(
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
                 fontSize: 14,
               ),
             ),
@@ -191,7 +310,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
       children: [
         // Карточка общих настроек
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: _buildSettingsCard(),
         ),
 
@@ -213,7 +332,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
               ? _buildEmptyState()
               : RefreshIndicator(
                   onRefresh: _loadData,
-                  color: _primaryColor,
+                  color: _gold,
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     itemCount: _filteredEmployees.length,
@@ -234,24 +353,18 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_gradientStart, _gradientEnd],
+          colors: [_emerald, _emeraldDark],
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryColor.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: _openSettingsDialog,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -260,33 +373,33 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: _gold.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.settings_outlined,
-                        color: Colors.white,
-                        size: 24,
+                        color: _gold,
+                        size: 22,
                       ),
                     ),
                     const SizedBox(width: 14),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'Общие настройки',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             'Нажмите для редактирования',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Colors.white.withOpacity(0.5),
                               fontSize: 12,
                             ),
                           ),
@@ -296,18 +409,18 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_forward_ios,
-                        color: Colors.white,
-                        size: 16,
+                        color: Colors.white.withOpacity(0.5),
+                        size: 14,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 // Показатели
                 Row(
                   children: [
@@ -316,13 +429,13 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                       value: '${_settings.questionsCount}',
                       label: 'вопросов',
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     _buildSettingStat(
                       icon: Icons.camera_alt_outlined,
                       value: '${_settings.basePhotos}',
                       label: 'базовых фото',
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     _buildSettingStat(
                       icon: Icons.stars_outlined,
                       value: '${_settings.defaultPoints.toInt()}',
@@ -347,12 +460,12 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Icon(icon, color: Colors.white70, size: 18),
+            Icon(icon, color: Colors.white.withOpacity(0.5), size: 18),
             const SizedBox(height: 4),
             Text(
               value,
@@ -364,8 +477,8 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
             ),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white60,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.4),
                 fontSize: 10,
               ),
             ),
@@ -377,43 +490,32 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
 
   Widget _buildSearchField() {
     return Container(
+      height: 50,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: TextField(
         controller: _searchController,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
         decoration: InputDecoration(
           hintText: 'Поиск по имени или телефону...',
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.5)),
           suffixIcon: _searchQuery.isNotEmpty
-              ? Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () {
-                      _searchController.clear();
-                      setState(() => _searchQuery = '');
-                    },
-                    child: const Icon(Icons.close, size: 18, color: Colors.grey),
-                  ),
+              ? IconButton(
+                  icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
                 )
               : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
+        cursorColor: _gold,
         onChanged: (value) => setState(() => _searchQuery = value),
       ),
     );
@@ -426,16 +528,16 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
 
     return Row(
       children: [
-        _buildStatChip(highCount, 'Высокие', Colors.green),
+        _buildStatChip(highCount, 'Высокие', const Color(0xFF43A047)),
         const SizedBox(width: 8),
-        _buildStatChip(mediumCount, 'Средние', Colors.orange),
+        _buildStatChip(mediumCount, 'Средние', const Color(0xFFFB8C00)),
         const SizedBox(width: 8),
-        _buildStatChip(lowCount, 'Низкие', Colors.red),
+        _buildStatChip(lowCount, 'Низкие', const Color(0xFFE53935)),
         const Spacer(),
         // Кнопка инициализации
         Container(
           decoration: BoxDecoration(
-            color: _primaryColor.withOpacity(0.1),
+            color: _gold.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Material(
@@ -443,17 +545,17 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
             child: InkWell(
               onTap: _initializeAllPoints,
               borderRadius: BorderRadius.circular(12),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_circle_outline, size: 16, color: _primaryColor),
-                    SizedBox(width: 6),
+                    Icon(Icons.add_circle_outline, size: 16, color: _gold),
+                    const SizedBox(width: 6),
                     Text(
                       'Добавить',
                       style: TextStyle(
-                        color: _primaryColor,
+                        color: _gold,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -472,7 +574,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -507,33 +609,27 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
               _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.people_outline_rounded,
               size: 48,
-              color: Colors.grey[400],
+              color: _gold.withOpacity(0.6),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Text(
             _searchQuery.isNotEmpty
                 ? 'Сотрудники не найдены'
                 : 'Нет сотрудников с баллами',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: _gold,
             ),
           ),
           const SizedBox(height: 8),
@@ -542,7 +638,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
               'Нажмите кнопку ниже для инициализации',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 20),
@@ -551,12 +647,13 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
               icon: const Icon(Icons.add_circle_outline),
               label: const Text('Инициализировать баллы'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryColor,
-                foregroundColor: Colors.white,
+                backgroundColor: _gold,
+                foregroundColor: _night,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                elevation: 0,
               ),
             ),
           ] else
@@ -564,7 +661,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
               'Попробуйте изменить запрос',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
         ],
@@ -579,22 +676,17 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: pointsColor.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: () => _editEmployeePoints(employee),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
+          splashColor: pointsColor.withOpacity(0.08),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -613,13 +705,6 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                       ],
                     ),
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: pointsColor.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: Center(
                     child: Text(
@@ -642,10 +727,10 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                         employee.employeeName.isNotEmpty
                             ? employee.employeeName
                             : 'Сотрудник',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
-                          color: Colors.black87,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -657,7 +742,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: _primaryColor.withOpacity(0.1),
+                              color: _gold.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -666,13 +751,13 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                                 Icon(
                                   Icons.camera_alt_outlined,
                                   size: 12,
-                                  color: _primaryColor,
+                                  color: _gold,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '$requiredPhotos фото',
-                                  style: const TextStyle(
-                                    color: _primaryColor,
+                                  style: TextStyle(
+                                    color: _gold,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -685,12 +770,12 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.phone_outlined, size: 12, color: Colors.grey[400]),
+                              Icon(Icons.phone_outlined, size: 12, color: Colors.white.withOpacity(0.3)),
                               const SizedBox(width: 4),
                               Text(
                                 employee.phone,
                                 style: TextStyle(
-                                  color: Colors.grey[500],
+                                  color: Colors.white.withOpacity(0.4),
                                   fontSize: 11,
                                 ),
                               ),
@@ -706,12 +791,12 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: _gold.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.edit_outlined,
-                    color: Colors.grey[500],
+                    color: _gold,
                     size: 18,
                   ),
                 ),
@@ -724,103 +809,10 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
   }
 
   Color _getPointsColor(double points) {
-    if (points >= 80) return Colors.green;
-    if (points >= 60) return Colors.orange;
+    if (points >= 80) return const Color(0xFF43A047);
+    if (points >= 60) return const Color(0xFFFB8C00);
     if (points >= 40) return Colors.deepOrange;
-    return Colors.red;
-  }
-}
-
-/// Современный диалог подтверждения
-class _ModernConfirmDialog extends StatelessWidget {
-  final String title;
-  final String message;
-  final String confirmText;
-  final Color confirmColor;
-
-  const _ModernConfirmDialog({
-    required this.title,
-    required this.message,
-    required this.confirmText,
-    required this.confirmColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: confirmColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.help_outline_rounded,
-                color: confirmColor,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Отмена'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: confirmColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(confirmText),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    return const Color(0xFFE53935);
   }
 }
 
@@ -843,7 +835,11 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
   late TextEditingController _incorrectPenaltyController;
   late TextEditingController _questionsCountController;
 
-  static const _primaryColor = Color(0xFF004D40);
+  // Dark Emerald palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -873,7 +869,7 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _emeraldDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -885,7 +881,7 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -897,27 +893,28 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
+                    color: _gold.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.settings_outlined, color: _primaryColor),
+                  child: Icon(Icons.settings_outlined, color: _gold),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Общие настройки пересчёта',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                       Text(
                         'Настройте параметры системы',
                         style: TextStyle(
-                          color: Colors.grey,
+                          color: Colors.white.withOpacity(0.5),
                           fontSize: 12,
                         ),
                       ),
@@ -966,7 +963,7 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
                           _correctBonusController,
                           Icons.add_circle_outline,
                           prefixText: '+',
-                          fieldColor: Colors.green,
+                          fieldColor: const Color(0xFF43A047),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -976,7 +973,7 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
                           _incorrectPenaltyController,
                           Icons.remove_circle_outline,
                           prefixText: '-',
-                          fieldColor: Colors.red,
+                          fieldColor: const Color(0xFFE53935),
                         ),
                       ),
                     ],
@@ -990,14 +987,10 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
           Container(
             padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
             decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+              color: Colors.white.withOpacity(0.04),
+              border: Border(
+                top: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
             ),
             child: Row(
               children: [
@@ -1009,8 +1002,9 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
+                      side: BorderSide(color: Colors.white.withOpacity(0.2)),
                     ),
-                    child: const Text('Отмена'),
+                    child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1030,8 +1024,8 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
                       Navigator.pop(context, settings);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
-                      foregroundColor: Colors.white,
+                      backgroundColor: _gold,
+                      foregroundColor: _night,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -1055,14 +1049,21 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: _primaryColor),
-        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _gold.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: _gold),
+        ),
+        const SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: _primaryColor,
+            color: _gold,
           ),
         ),
       ],
@@ -1076,18 +1077,18 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
     String? prefixText,
     Color? fieldColor,
   }) {
-    final color = fieldColor ?? _primaryColor;
+    final color = fieldColor ?? _gold;
     return Container(
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.1)),
+        border: Border.all(color: color.withOpacity(0.15)),
       ),
       child: TextField(
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.grey[600], fontSize: 12),
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
           prefixIcon: Icon(icon, color: color, size: 20),
           prefixText: prefixText,
           prefixStyle: TextStyle(color: color, fontWeight: FontWeight.bold),
@@ -1097,8 +1098,9 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         style: TextStyle(
           fontWeight: FontWeight.w600,
-          color: color == _primaryColor ? Colors.black87 : color,
+          color: color,
         ),
+        cursorColor: color,
       ),
     );
   }
@@ -1122,7 +1124,10 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
   late TextEditingController _pointsController;
   double _previewPoints = 0;
 
-  static const _primaryColor = Color(0xFF004D40);
+  // Dark Emerald palette
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -1147,10 +1152,10 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
   }
 
   Color _getPointsColor(double points) {
-    if (points >= 80) return Colors.green;
-    if (points >= 60) return Colors.orange;
+    if (points >= 80) return const Color(0xFF43A047);
+    if (points >= 60) return const Color(0xFFFB8C00);
     if (points >= 40) return Colors.deepOrange;
-    return Colors.red;
+    return const Color(0xFFE53935);
   }
 
   @override
@@ -1161,7 +1166,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _emeraldDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Padding(
@@ -1174,7 +1179,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1212,12 +1217,13 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                       Text(
                         widget.employee.phone,
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.5),
                           fontSize: 13,
                         ),
                       ),
@@ -1231,8 +1237,9 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1243,7 +1250,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                       Text(
                         'Было',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.5),
                           fontSize: 12,
                         ),
                       ),
@@ -1273,18 +1280,12 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.white.withOpacity(0.08),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                        ),
-                      ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_forward_rounded,
-                      color: Colors.grey,
+                      color: Colors.white.withOpacity(0.4),
                       size: 20,
                     ),
                   ),
@@ -1294,7 +1295,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                       Text(
                         'Станет',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.5),
                           fontSize: 12,
                         ),
                       ),
@@ -1312,13 +1313,6 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                             ],
                           ),
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: newColor.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Center(
                           child: Text(
@@ -1340,7 +1334,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
             // Поле ввода
             Container(
               decoration: BoxDecoration(
-                color: newColor.withOpacity(0.05),
+                color: newColor.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: newColor.withOpacity(0.2)),
               ),
@@ -1348,7 +1342,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                 controller: _pointsController,
                 decoration: InputDecoration(
                   labelText: 'Новые баллы (0-100)',
-                  labelStyle: TextStyle(color: Colors.grey[600]),
+                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                   prefixIcon: Icon(Icons.stars_outlined, color: newColor),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1360,6 +1354,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                   fontWeight: FontWeight.w600,
                   color: newColor,
                 ),
+                cursorColor: newColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -1367,20 +1362,21 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.08),
+                color: _gold.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _gold.withOpacity(0.2)),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _primaryColor.withOpacity(0.15),
+                      color: _gold.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.camera_alt_outlined,
-                      color: _primaryColor,
+                      color: _gold,
                       size: 18,
                     ),
                   ),
@@ -1389,17 +1385,17 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Требуется фотографий',
                           style: TextStyle(
-                            color: _primaryColor,
+                            color: _gold.withOpacity(0.7),
                             fontSize: 12,
                           ),
                         ),
                         Text(
                           '$requiredPhotos шт.',
-                          style: const TextStyle(
-                            color: _primaryColor,
+                          style: TextStyle(
+                            color: _gold,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1422,8 +1418,9 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
+                      side: BorderSide(color: Colors.white.withOpacity(0.2)),
                     ),
-                    child: const Text('Отмена'),
+                    child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1444,8 +1441,8 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
-                      foregroundColor: Colors.white,
+                      backgroundColor: _gold,
+                      foregroundColor: _night,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),

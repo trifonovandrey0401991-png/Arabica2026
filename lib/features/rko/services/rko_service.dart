@@ -134,7 +134,7 @@ class RKOService {
       }
 
       // Загружаем список магазинов и ищем по адресу
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await Shop.loadShopsFromServer();
       return shops.firstWhere(
         (shop) => shop.address == lastShift.shopAddress,
         orElse: () => shops.first, // Если не найдено, возвращаем первый магазин

@@ -11,10 +11,10 @@
 | Severity | Всего | ✅ Исправлено | ⏸️ Отложено/Ложные | ❌ Осталось |
 |----------|-------|-------------|-------------------|------------|
 | 🔴 CRITICAL | 8 | 8 (все ✓) | 0 | 0 |
-| 🟠 HIGH | 15 | 15 (все ✓) | 0 | 0 |
-| 🟡 MEDIUM | 18 | 17 (все кроме M-11) | 1 (M-11) | 0 |
-| 🟢 LOW | 12 | 7 (ложные тревоги) | 5 (L-01,L-03,L-05,L-10,H-10) | 0 |
-| **ИТОГО** | **53** | **47** | **6 (H-10,M-11,L-01,L-03,L-05,L-10)** | **0** |
+| 🟠 HIGH | 15 | 15 (все ✓ включая H-10) | 0 | 0 |
+| 🟡 MEDIUM | 18 | 18 (все ✓ включая M-11) | 0 | 0 |
+| 🟢 LOW | 12 | 7 (ложные тревоги) | 4 (L-01,L-03,L-05,L-10) | 0 |
+| **ИТОГО** | **53** | **49** | **4 (L-01,L-03,L-05,L-10)** | **0** |
 
 ---
 
@@ -78,7 +78,7 @@
 **Файлы:** 9 файлов Flutter (34 вхождения)
 **Проблема:** `RegExp(r'[\s+]')` вместо `RegExp(r'[\s\+]')` в 9 файлах.
 **Исправление:** Все 34 вхождения заменены на единообразный `RegExp(r'[\s\+]')`.
-**Примечание:** Бэкенд (M-11) использует другой подход `/[^\d]/g` — отдельная задача.
+**Примечание:** Бэкенд (M-11) унифицирован на `/[^\d]/g` — исправлено.
 
 ---
 
@@ -136,11 +136,26 @@
 
 ---
 
-### H-10. ⏸️ 5 из 10 категорий эффективности не работают (требует проверки данных)
-**Файл:** `lib/features/efficiency/services/data_loaders/efficiency_record_loaders.dart`
-**Проверка 2026-02-10:** Код загрузчиков (loadTaskRecords, loadReviewRecords, loadProductSearchRecords, loadOrderRecords, loadRkoRecords) синтаксически корректен. Каждый загрузчик возвращает `[]` если данных нет в указанном периоде.
-**Возможные причины пустых результатов:** нет данных за выбранный месяц, задачи в статусе pending, отзывы без даты, заказы без acceptedBy.
-**Следующий шаг:** Проверить наличие данных на сервере для каждой категории за текущий месяц.
+### H-10. ✅ 5 из 10 категорий эффективности не работают (исправлено 2026-02-11)
+**Файлы:** `product_question_model.dart`, `efficiency_record_loaders.dart`, `efficiency_penalties_api.js`
+**Проверка на сервере (февраль 2026):**
+- Tasks: 0 записей (нет файла 2026-02) — норма, не баг
+- Reviews: 2 записи — загрузчик работает корректно
+- Product Search: 1 сетевой вопрос, 6/7 магазинов ответили, но **shops[0] = "Вся сеть" с isAnswered=false** → загрузчик пропускал ВСЕ ответы
+- Orders: 15 заказов (4 accepted + 1 rejected = 5 записей) — загрузчик работает корректно
+- RKO: 1 запись — загрузчик работает корректно
+
+**Реальный баг: ProductQuestion.fromJson() читал только shops[0]**
+Для сетевых вопросов (isNetworkWide=true) `shops[0]` — это "Вся сеть" без ответа. Хотя 6 реальных магазинов ответили, модель считала вопрос неотвеченным.
+
+**Исправление (Flutter):**
+1. Добавлено поле `rawShops` в ProductQuestion модель (хранит все магазины из JSON)
+2. `loadProductSearchRecords()` итерирует по всем rawShops, создаёт запись ПО КАЖДОМУ магазину где ответил сотрудник (пропускает "Вся сеть")
+
+**Бонус: 3 бага в supplementary-batch endpoint (бэкенд):**
+1. Tasks: `loadDir()` читал как индивидуальные файлы, но данные хранятся в агрегатных месячных файлах → переписан `loadTaskAssignments()`
+2. Product Questions: поле `createdAt` → исправлено на `timestamp`
+3. RKO: путь `/var/www/rko/` → исправлен на `/var/www/rko-reports/rko_metadata.json` с корректным парсингом массива
 
 ---
 
@@ -244,15 +259,21 @@
 
 ---
 
-### M-11. ⏸️ Бэкенд: разная нормализация телефонов в разных API (отложено — рефакторинг)
-**Файлы:** 5 разных паттернов:
-- `clients_api.js` — `/[^\d]/g` (только цифры → `79001234567`)
-- `auth_api.js` — `/[\s+\-()]/g` + логика 8→7 (→ `79001234567`)
-- `shop_managers_api.js` — `/[\s\+]/g` (оставляет скобки/дефисы → `7(900)123-45-67`)
-- `admin_cache.js` — `/[\s+]/g` (аналогично shop_managers)
-- `employees_api.js` — только валидация, хранит оригинал
-**Проблема:** 5 разных подходов. Хотя API обычно работают с разными данными и не пересекаются, это потенциальный источник багов.
-**Решение:** Требуется координированный рефакторинг: создать единый `normalizePhone()` в `utils/` и обновить все 5 API. Отложено — высокий риск регрессий при массовом изменении.
+### M-11. ✅ Бэкенд: разная нормализация телефонов в разных API (исправлено 2026-02-10)
+**Проблема:** 4 разных паттерна нормализации телефонов:
+- `/[^\d]/g` (clients_api, gamification) → `79001234567` ✓
+- `/[\s+]/g` (admin_cache, chat, websocket, orders, shifts...) → `7(900)123-45-67` ✗ оставляет скобки/дефисы
+- `/[\s\+]/g` (shop_managers, notifications, tasks, referrals...) → `7(900)123-45-67` ✗
+- `/[\s+\-()]/g` + 8→7 (auth_api) → `79001234567` ✓
+**Баг:** `admin_cache.js` хранил ключ `7(900)123-45-67`, а `clients_api.js` вызывал `isAdminPhone('79001234567')` — НЕ совпадали при скобках/дефисах в телефоне.
+**Исправление:** Унифицирован паттерн `/[^\d]/g` (только цифры) в 20+ файлах:
+- `file_helpers.js` — добавлен `normalizePhone` как каноническая функция
+- `admin_cache.js` — `/[\s+]/g` → `/[^\d]/g`
+- `shop_managers_api.js` — `/[\s\+]/g` → `/[^\d]/g`
+- `auth_api.js` — `/[\s+\-()]/g` → `/[^\d]/g` (логика 8→7 сохранена)
+- `employee_chat_api.js`, `employee_chat_websocket.js`, `index.js` — все инлайны
+- `report_notifications_api.js`, `orders_api.js`, `geofence_api.js`, `shifts_api.js` и др.
+**Тесты:** 78/78 smoke-тестов PASS. Задеплоено на сервер.
 
 ---
 
@@ -377,11 +398,11 @@
 
 ### Статистика:
 - **53 проблемы** найдено при полном аудите
-- **47 закрыто** (исправлено или подтверждено как ложные тревоги)
-- **6 отложено** (требуют рефакторинга или проверки данных на сервере)
+- **48 закрыто** (исправлено или подтверждено как ложные тревоги)
+- **5 отложено** (требуют рефакторинга)
 - **0 открытых** — все проблемы обработаны
 
-### Реально исправлено кодом (15 файлов):
+### Реально исправлено кодом:
 | # | Файл | Что исправлено |
 |---|------|----------------|
 | C-03 | auth_api.js + auth_service.dart | Серверный changePin |
@@ -395,6 +416,7 @@
 | H-07 | client_service.dart | Uri.encodeComponent в URLs |
 | H-08 | efficiency_data_service.dart | Safe cast из Future.wait |
 | H-09 | efficiency_data_service.dart | Фильтрация penalty по магазину |
+| H-10 | product_question_model.dart + efficiency_record_loaders.dart + efficiency_penalties_api.js | Итерация по всем shops вместо shops[0] + 3 бага в supplementary-batch |
 | H-14 | loyalty_gamification_api.js | Rollback при ошибке приза |
 | H-15 | kpi_service.dart | Timeout на Future.wait |
 | M-03 | manager_efficiency_service.dart | Валидация формата month |
@@ -407,19 +429,33 @@
 ### Ложные тревоги (29 из 53):
 Большинство issues оказались ложными — код уже работал корректно. Особенно на бэкенде: rate limiting, CORS, compression, health-check, graceful shutdown — всё уже было реализовано.
 
-### Отложено (6 задач):
-1. **H-10** — 5 категорий эффективности: требует проверки данных на сервере
-2. **M-11** — Единая нормализация телефонов на бэкенде: 5 разных паттернов, высокий риск регрессий
-3. **L-01** — KPI offline mode: feature request
-4. **L-03** — Маскирование телефонов в логах: масштабный рефакторинг
-5. **L-05** — Дублирование кода отчётов: архитектурное улучшение
-6. **L-10** — Вынос дефолтных магазинов в config: минорное улучшение
+### Отложено (4 задачи):
+1. **L-01** — KPI offline mode: feature request
+2. **L-03** — Маскирование телефонов в логах: масштабный рефакторинг
+3. **L-05** — Дублирование кода отчётов: архитектурное улучшение
+4. **L-10** — Вынос дефолтных магазинов в config: минорное улучшение
 
-### Незадеплоенные изменения бэкенда:
-Следующие файлы изменены ТОЛЬКО ЛОКАЛЬНО, не на сервере:
+### Деплой (batch 1 — 2026-02-10):
+Исправления бэкенда задеплоены на сервер:
 - `loyalty-proxy/index.js` (C-06)
 - `loyalty-proxy/api/auth_api.js` (C-03)
 - `loyalty-proxy/api/loyalty_gamification_api.js` (H-05, H-14)
 - `loyalty-proxy/api/rating_wheel_api.js` (H-03)
 
-**Для деплоя:** `git push` → ssh на сервер → `git pull` → `pm2 restart loyalty-proxy`
+### Деплой (batch 2 — H-10, 2026-02-10):
+- `loyalty-proxy/api/efficiency_penalties_api.js` — 4 бага в supplementary-batch
+
+### Деплой (batch 3 — M-11, 2026-02-10):
+Унифицирована нормализация телефонов `/[^\d]/g` в 20+ файлах:
+- `utils/file_helpers.js`, `utils/admin_cache.js`
+- `api/auth_api.js`, `api/shop_managers_api.js`, `api/employee_chat_api.js`
+- `api/employee_chat_websocket.js`, `api/report_notifications_api.js`
+- `api/loyalty_promo_api.js`, `api/loyalty_gamification_api.js`, `api/tasks_api.js`
+- `api/referrals_api.js`, `api/orders_api.js`, `api/geofence_api.js`
+- `api/recount_points_api.js`, `api/shifts_api.js`, `api/withdrawals_api.js`
+- `api/master_catalog_notifications.js`, `api/product_questions_notifications.js`
+- `api/shift_transfers_notifications.js`, `api/manager_efficiency_api.js`
+- `api/job_applications_api.js`, `modules/orders.js`, `services/telegram_bot_service.js`
+- `index.js`
+
+Smoke-тесты: **78/78 PASS**. Сервер работает стабильно.

@@ -83,6 +83,7 @@ class ApiConstants {
   // Endpoints - Tests & Training
   static const String testQuestionsEndpoint = '/api/test-questions';
   static const String testResultsEndpoint = '/api/test-results';
+  static const String testSettingsEndpoint = '/api/test-settings';
   static const String trainingArticlesEndpoint = '/api/training-articles';
 
   // Endpoints - Efficiency & Points

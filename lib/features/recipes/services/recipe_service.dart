@@ -9,15 +9,36 @@ import '../../../core/utils/logger.dart';
 // http и dart:convert оставлены для multipart загрузки фото
 
 class RecipeService {
-  /// Получить все рецепты
-  static Future<List<Recipe>> getRecipes() async {
-    Logger.debug('📥 Загрузка рецептов с сервера...');
+  // Кеш рецептов (5 минут TTL)
+  static List<Recipe>? _cache;
+  static DateTime? _cacheTime;
+  static const _cacheTtl = Duration(minutes: 5);
 
-    return await BaseHttpService.getList<Recipe>(
+  /// Получить все рецепты (с кешированием)
+  static Future<List<Recipe>> getRecipes({bool forceRefresh = false}) async {
+    // Отдаём из кеша если свежий
+    if (!forceRefresh && _cache != null && _cacheTime != null &&
+        DateTime.now().difference(_cacheTime!) < _cacheTtl) {
+      Logger.debug('📥 Рецепты из кеша (${_cache!.length} шт)');
+      return _cache!;
+    }
+
+    Logger.debug('📥 Загрузка рецептов с сервера...');
+    final recipes = await BaseHttpService.getList<Recipe>(
       endpoint: ApiConstants.recipesEndpoint,
       fromJson: (json) => Recipe.fromJson(json),
       listKey: 'recipes',
     );
+
+    _cache = recipes;
+    _cacheTime = DateTime.now();
+    return recipes;
+  }
+
+  /// Сбросить кеш (вызывать после создания/обновления/удаления)
+  static void invalidateCache() {
+    _cache = null;
+    _cacheTime = null;
   }
 
   /// Получить рецепт по ID
@@ -51,12 +72,14 @@ class RecipeService {
       requestBody['price'] = price;
     }
 
-    return await BaseHttpService.post<Recipe>(
+    final result = await BaseHttpService.post<Recipe>(
       endpoint: ApiConstants.recipesEndpoint,
       body: requestBody,
       fromJson: (json) => Recipe.fromJson(json),
       itemKey: 'recipe',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Обновить рецепт
@@ -79,21 +102,25 @@ class RecipeService {
     if (steps != null) body['steps'] = steps;
     if (photoUrl != null) body['photoUrl'] = photoUrl;
 
-    return await BaseHttpService.put<Recipe>(
+    final result = await BaseHttpService.put<Recipe>(
       endpoint: '${ApiConstants.recipesEndpoint}/$id',
       body: body,
       fromJson: (json) => Recipe.fromJson(json),
       itemKey: 'recipe',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Удалить рецепт
   static Future<bool> deleteRecipe(String id) async {
     Logger.debug('📤 Удаление рецепта: $id');
 
-    return await BaseHttpService.delete(
+    final result = await BaseHttpService.delete(
       endpoint: '${ApiConstants.recipesEndpoint}/$id',
     );
+    if (result) invalidateCache();
+    return result;
   }
 
   /// Загрузить фото рецепта
@@ -108,6 +135,14 @@ class RecipeService {
         'POST',
         Uri.parse('${ApiConstants.serverUrl}${ApiConstants.recipesEndpoint}/upload-photo'),
       );
+
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
 
       request.fields['recipeId'] = recipeId;
       request.files.add(

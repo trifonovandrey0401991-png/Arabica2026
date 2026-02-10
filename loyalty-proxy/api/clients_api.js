@@ -546,6 +546,7 @@ function setupClientsAPI(app) {
       const phone = sanitizePhone(req.params.phone);
       const { shopAddress, ...message } = req.body;
 
+      // 1. Сохраняем в legacy-директорию (для admin chat history)
       const clientDir = path.join(CLIENT_MESSAGES_DIR, phone);
       await fsp.mkdir(clientDir, { recursive: true });
 
@@ -562,6 +563,40 @@ function setupClientsAPI(app) {
       dialog.messages.push(message);
 
       await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+
+      // 2. Дублируем в management-директорию (клиент видит в "Связь с руководством")
+      const mgmtFilePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
+      let mgmtDialog = { phone, messages: [] };
+      if (await fileExists(mgmtFilePath)) {
+        try {
+          mgmtDialog = JSON.parse(await fsp.readFile(mgmtFilePath, 'utf8'));
+        } catch (e) { /* ignore parse errors */ }
+      }
+      mgmtDialog.messages.push({
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        text: message.text || '',
+        imageUrl: message.imageUrl || null,
+        timestamp: message.timestamp,
+        senderType: 'manager',
+        senderName: 'Руководство',
+        isReadByClient: false,
+        isReadByManager: true
+      });
+      await fsp.writeFile(mgmtFilePath, JSON.stringify(mgmtDialog, null, 2), 'utf8');
+
+      // 3. Отправляем push-уведомление клиенту
+      try {
+        const text = message.text || '';
+        await sendPushToPhone(
+          phone,
+          '💬 Новое сообщение',
+          text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+          { type: 'management_message', clientPhone: phone }
+        );
+      } catch (pushErr) {
+        console.error('Push notification error:', pushErr.message);
+      }
+
       res.json({ success: true, message });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -608,6 +643,7 @@ function setupClientsAPI(app) {
       // Параллельная запись (по 20 штук) вместо последовательной
       let sent = 0;
       const BATCH_SIZE = 20;
+      const msgText = messageObj.text || '';
       for (let i = 0; i < targetPhones.length; i += BATCH_SIZE) {
         const batch = targetPhones.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(batch.map(async (phone) => {
@@ -622,18 +658,35 @@ function setupClientsAPI(app) {
           }
 
           dialog.messages.push({
-            ...messageObj,
+            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            text: msgText,
+            imageUrl: messageObj.imageUrl || null,
             timestamp: new Date().toISOString(),
-            from: 'manager',
+            senderType: 'manager',
+            senderName: 'Руководство',
+            isReadByClient: false,
+            isReadByManager: true,
             isBroadcast: true
           });
 
           await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+
+          // Push-уведомление каждому клиенту
+          try {
+            await sendPushToPhone(
+              normalizedPhone,
+              '📢 Рассылка',
+              msgText.substring(0, 50) + (msgText.length > 50 ? '...' : ''),
+              { type: 'management_message', clientPhone: normalizedPhone }
+            );
+          } catch (pushErr) { /* ignore individual push errors */ }
+
           return true;
         }));
         sent += results.filter(r => r.status === 'fulfilled' && r.value === true).length;
       }
 
+      console.log(`✅ Broadcast sent to ${sent}/${targetPhones.length} clients`);
       res.json({ success: true, sent, sentCount: sent, totalClients: targetPhones.length });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });

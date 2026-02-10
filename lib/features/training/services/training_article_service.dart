@@ -105,6 +105,14 @@ class TrainingArticleService {
       final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/upload-image');
       final request = http.MultipartRequest('POST', uri);
 
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
+
       // Определяем MIME-тип по расширению файла
       final extension = imageFile.path.split('.').last.toLowerCase();
       String contentType;
@@ -132,7 +140,12 @@ class TrainingArticleService {
         contentType: MediaType.parse(contentType),
       ));
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(
+        ApiConstants.uploadTimeout,
+        onTimeout: () {
+          throw Exception('Таймаут при загрузке изображения');
+        },
+      );
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {

@@ -325,7 +325,7 @@ async function sendNewOrderNotificationToAdmins(order) {
         if (!employee.isAdmin) continue;
 
         // Получаем телефон сотрудника (нормализуем)
-        const phone = (employee.phone || '').replace(/[\s+]/g, '');
+        const phone = (employee.phone || '').replace(/[^\d]/g, '');
         if (!phone) continue;
 
         // Проверяем наличие FCM токена

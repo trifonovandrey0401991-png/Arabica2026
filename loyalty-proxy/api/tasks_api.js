@@ -78,13 +78,13 @@ async function getEmployeePhoneById(employeeId) {
 // Get employee name by phone
 async function getEmployeeNameByPhone(phone) {
   try {
-    const normalizedPhone = phone.replace(/[\s\+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
     if (await fileExists(EMPLOYEES_DIR)) {
       const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         const empData = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
         const emp = JSON.parse(empData);
-        const empPhone = (emp.phone || '').replace(/[\s\+]/g, '');
+        const empPhone = (emp.phone || '').replace(/[^\d]/g, '');
         if (empPhone === normalizedPhone) {
           return emp.name || null;
         }

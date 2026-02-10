@@ -115,7 +115,7 @@ class ProductQuestionService {
 
   /// Получить данные диалога клиента (единый чат "Поиск Товара")
   static Future<ProductQuestionClientDialogData?> getClientDialog(String clientPhone) async {
-    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     Logger.debug('📥 Загрузка диалога клиента: $normalizedPhone');
 
     final result = await BaseHttpService.getRaw(
@@ -132,7 +132,7 @@ class ProductQuestionService {
 
   /// Получить группированные диалоги клиента (по магазинам)
   static Future<ProductQuestionGroupedData?> getClientGroupedDialogs(String clientPhone) async {
-    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     Logger.debug('📥 Загрузка группированных диалогов: $normalizedPhone');
 
     final result = await BaseHttpService.getRaw(
@@ -160,7 +160,7 @@ class ProductQuestionService {
     String? imageUrl,
     String? questionId,
   }) async {
-    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     Logger.debug('📤 Отправка ответа клиента: $normalizedPhone');
 
     final requestBody = {
@@ -197,6 +197,14 @@ class ProductQuestionService {
         'POST',
         Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/upload-photo'),
       );
+
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
 
       request.files.add(await http.MultipartFile.fromPath('photo', imagePath));
 
@@ -250,7 +258,7 @@ class ProductQuestionService {
 
   /// Получить все персональные диалоги клиента
   static Future<List<PersonalProductDialog>> getClientPersonalDialogs(String clientPhone) async {
-    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     Logger.debug('📥 Загрузка персональных диалогов клиента: $normalizedPhone');
     return await BaseHttpService.getList<PersonalProductDialog>(
       endpoint: '$_dialogsEndpoint/client/$normalizedPhone',
@@ -368,7 +376,7 @@ class ProductQuestionService {
 
   /// Пометить все сообщения клиента как прочитанные
   static Future<bool> markAllClientQuestionsAsRead(String clientPhone) async {
-    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
     Logger.debug('📤 Пометка всех вопросов клиента как прочитанных: $normalizedPhone');
     return await BaseHttpService.simplePost(
       endpoint: '$baseEndpoint/client/$normalizedPhone/mark-all-read',

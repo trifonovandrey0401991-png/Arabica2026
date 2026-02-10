@@ -46,9 +46,6 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     _animationController.reset();
 
     try {
-      // Очищаем кэш магазинов перед загрузкой
-      CacheManager.remove('shops_list');
-
       // Используем фильтрацию по роли пользователя
       final shops = await ShopService.getShopsForCurrentUser();
 
@@ -60,12 +57,14 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         Logger.debug('   - ${shop.name} (ID: ${shop.id})');
       }
 
-      // Загружаем настройки для каждого магазина
-      final Map<String, ShopSettings?> settings = {};
-      for (var shop in validShops) {
-        final settingsData = await _loadShopSettings(shop.address);
-        settings[shop.address] = settingsData;
-      }
+      // Загружаем настройки для всех магазинов ПАРАЛЛЕЛЬНО
+      final entries = await Future.wait(
+        validShops.map((shop) async {
+          final settingsData = await _loadShopSettings(shop.address);
+          return MapEntry(shop.address, settingsData);
+        }),
+      );
+      final Map<String, ShopSettings?> settings = Map.fromEntries(entries);
 
       setState(() {
         _shops = validShops;
@@ -1511,7 +1510,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           return AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
-              final delay = index * 0.1;
+              final delay = (index * 0.1).clamp(0.0, 0.8);
               final animationValue = Curves.easeOutCubic.transform(
                 (_animationController.value - delay).clamp(0.0, 1.0),
               );
@@ -1601,14 +1600,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                       ),
                       const SizedBox(height: 10),
                       // Статусы
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           _buildStatusBadge(
                             hasSettings ? 'Настроен' : 'Не настроен',
                             hasSettings ? Colors.green : Colors.orange,
                             hasSettings ? Icons.check_circle_rounded : Icons.warning_rounded,
                           ),
-                          const SizedBox(width: 8),
                           _buildStatusBadge(
                             hasLocation ? 'GPS' : 'Нет GPS',
                             hasLocation ? Colors.blue : Colors.grey,

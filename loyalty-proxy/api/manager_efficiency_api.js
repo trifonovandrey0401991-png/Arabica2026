@@ -84,7 +84,7 @@ async function getAllShops() {
  */
 async function getManagerByPhone(phone) {
   try {
-    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
 
     // Load shop-managers.json to get managedShopIds
     const shopManagersData = await loadJsonFile(SHOP_MANAGERS_FILE);
@@ -95,7 +95,7 @@ async function getManagerByPhone(phone) {
 
     // Check if user is a manager in shop-managers.json
     const managerEntry = shopManagersData.managers?.find(m => {
-      const mPhone = (m.phone || '').replace(/[\s+]/g, '');
+      const mPhone = (m.phone || '').replace(/[^\d]/g, '');
       return mPhone === normalizedPhone;
     });
 

@@ -6,6 +6,7 @@ import '../../../core/services/report_notification_service.dart';
 import '../../employees/services/user_role_service.dart';
 import '../models/test_model.dart';
 import '../models/test_result_model.dart';
+import '../services/test_question_service.dart';
 import '../services/test_result_service.dart';
 
 /// Страница тестирования
@@ -23,7 +24,8 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   String? _selectedAnswer;
   final Map<int, String> _userAnswers = {};
   Timer? _timer;
-  int _timeRemaining = 420; // 7 минут в секундах
+  int _durationMinutes = 7;
+  int _timeRemaining = 420;
   bool _testStarted = false;
   bool _testFinished = false;
   TestResult? _testResult;
@@ -45,6 +47,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _loadQuestions();
+    _loadDuration();
     _progressController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -83,12 +86,22 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _loadDuration() async {
+    final minutes = await TestQuestionService.getTestDurationMinutes();
+    if (mounted) {
+      setState(() {
+        _durationMinutes = minutes;
+        _timeRemaining = minutes * 60;
+      });
+    }
+  }
+
   void _startTest() {
     setState(() {
       _testStarted = true;
       _currentQuestionIndex = 0;
       _selectedAnswer = null;
-      _timeRemaining = 420;
+      _timeRemaining = _durationMinutes * 60;
     });
     _questionAnimController.forward();
     _startTimer();
@@ -206,7 +219,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       String? shopAddress = prefs.getString('user_shop_address') ??
                            prefs.getString('selected_shop_address');
 
-      final timeSpent = 420 - _timeRemaining;
+      final timeSpent = (_durationMinutes * 60) - _timeRemaining;
 
       final result = await TestResultService.saveResult(
         employeeName: employeeName,
@@ -608,7 +621,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          '20 вопросов • 7 минут',
+                          '20 вопросов • $_durationMinutes минут',
                           style: TextStyle(
                             fontSize: 15,
                             color: Colors.white.withOpacity(0.5),
@@ -630,7 +643,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                             Expanded(
                               child: _buildInfoCard(
                                 icon: Icons.timer_outlined,
-                                title: '7',
+                                title: '$_durationMinutes',
                                 subtitle: 'минут',
                               ),
                             ),

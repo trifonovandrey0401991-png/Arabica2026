@@ -258,6 +258,17 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               id: savedRecipe.id,
               photoUrl: photoUrl,
             );
+          } else {
+            Logger.warning('Фото не загружено для рецепта ${savedRecipe.id}');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Рецепт создан, но фото не удалось загрузить. Попробуйте добавить фото через редактирование.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
           }
         }
       } else {
@@ -286,6 +297,17 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               id: widget.recipe!.id,
               photoUrl: photoUrl,
             );
+          } else {
+            Logger.warning('Фото не загружено для рецепта ${widget.recipe!.id}');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Рецепт сохранён, но фото не удалось загрузить. Попробуйте ещё раз.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
           }
         }
       }

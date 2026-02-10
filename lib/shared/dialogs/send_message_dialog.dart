@@ -18,6 +18,11 @@ class SendMessageDialog extends StatefulWidget {
 }
 
 class _SendMessageDialogState extends State<SendMessageDialog> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   final _formKey = GlobalKey<FormState>();
   final _textController = TextEditingController();
   File? _selectedMedia;
@@ -35,31 +40,44 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
   Future<void> _showMediaPicker() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
+      backgroundColor: _emeraldDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera, color: Color(0xFF004D40)),
-              title: const Text('Сделать фото'),
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            _buildMediaTile(
+              icon: Icons.photo_camera,
+              title: 'Сделать фото',
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
             ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать фото из галереи'),
+            _buildMediaTile(
+              icon: Icons.photo_library,
+              title: 'Выбрать фото из галереи',
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
             ),
-            ListTile(
-              leading: const Icon(Icons.videocam, color: Color(0xFF004D40)),
-              title: const Text('Записать видео'),
+            _buildMediaTile(
+              icon: Icons.videocam,
+              title: 'Записать видео',
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
             ),
-            ListTile(
-              leading: const Icon(Icons.video_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать видео из галереи'),
+            _buildMediaTile(
+              icon: Icons.video_library,
+              title: 'Выбрать видео из галереи',
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -85,19 +103,40 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
     }
 
     if (file != null) {
-      Logger.debug('📁 Выбран файл: ${file.path}');
+      Logger.debug('Выбран файл: ${file.path}');
       final mediaFile = File(file.path);
       final exists = await mediaFile.exists();
-      Logger.debug('📁 Файл существует: $exists');
+      Logger.debug('Файл существует: $exists');
       if (exists) {
         final size = await mediaFile.length();
-        Logger.debug('📁 Размер файла: ${(size / 1024).toStringAsFixed(2)} KB');
+        Logger.debug('Размер файла: ${(size / 1024).toStringAsFixed(2)} KB');
       }
       setState(() {
         _selectedMedia = mediaFile;
         _isVideo = isVideo;
       });
     }
+  }
+
+  Widget _buildMediaTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _gold.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _gold.withOpacity(0.3)),
+        ),
+        child: Icon(icon, color: _gold, size: 20),
+      ),
+      title: Text(title, style: TextStyle(color: Colors.white.withOpacity(0.9))),
+      onTap: onTap,
+    );
   }
 
   void _clearMedia() {
@@ -121,7 +160,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
 
       // Загружаем медиа, если выбрано
       if (_selectedMedia != null) {
-        Logger.debug('📤 Начинаем загрузку медиа: ${_selectedMedia!.path}');
+        Logger.debug('Начинаем загрузку медиа: ${_selectedMedia!.path}');
         setState(() => _isUploading = true);
 
         mediaUrl = await MediaUploadService.uploadMedia(
@@ -130,10 +169,10 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
         );
 
         setState(() => _isUploading = false);
-        Logger.debug('📤 Результат загрузки медиа: $mediaUrl');
+        Logger.debug('Результат загрузки медиа: $mediaUrl');
 
         if (mediaUrl == null) {
-          Logger.error('❌ Ошибка загрузки медиа - URL не получен');
+          Logger.error('Ошибка загрузки медиа - URL не получен');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -215,15 +254,9 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          color: _emeraldDark,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -236,12 +269,12 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: isBroadcast
-                      ? [Colors.orange[400]!, Colors.deepOrange[600]!]
-                      : [const Color(0xFF00897B), const Color(0xFF004D40)],
+                      ? [Colors.orange.withOpacity(0.3), _emeraldDark]
+                      : [_emerald, _emeraldDark],
                 ),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
               ),
               child: Row(
@@ -250,12 +283,19 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: isBroadcast
+                          ? Colors.orange.withOpacity(0.15)
+                          : _gold.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isBroadcast
+                            ? Colors.orange.withOpacity(0.3)
+                            : _gold.withOpacity(0.3),
+                      ),
                     ),
                     child: Icon(
                       isBroadcast ? Icons.campaign_rounded : Icons.send_rounded,
-                      color: Colors.white,
+                      color: isBroadcast ? Colors.orange : _gold,
                       size: 26,
                     ),
                   ),
@@ -279,7 +319,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                                 : widget.client!.phone,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withOpacity(0.6),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -289,7 +329,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                             'Сообщение получат все клиенты',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withOpacity(0.5),
                             ),
                           ),
                       ],
@@ -298,9 +338,9 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
-                    color: Colors.white,
+                    color: Colors.white70,
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.2),
+                      backgroundColor: Colors.white.withOpacity(0.1),
                     ),
                   ),
                 ],
@@ -322,19 +362,19 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                           padding: const EdgeInsets.all(14),
                           margin: const EdgeInsets.only(bottom: 20),
                           decoration: BoxDecoration(
-                            color: Colors.orange[50],
+                            color: Colors.orange.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.orange[200]!),
+                            border: Border.all(color: Colors.orange.withOpacity(0.25)),
                           ),
                           child: Row(
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange[100],
+                                  color: Colors.orange.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: Icon(Icons.info_outline, color: Colors.orange[700], size: 22),
+                                child: Icon(Icons.info_outline, color: Colors.orange.withOpacity(0.8), size: 22),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -342,7 +382,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                                   'Это сообщение будет отправлено всем зарегистрированным клиентам',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: Colors.orange[900],
+                                    color: Colors.orange.withOpacity(0.9),
                                     height: 1.4,
                                   ),
                                 ),
@@ -354,23 +394,26 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                       // Поле ввода текста
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey[200]!),
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
                         child: TextFormField(
                           controller: _textController,
+                          style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                          cursorColor: _gold,
                           decoration: InputDecoration(
                             labelText: 'Текст сообщения',
-                            labelStyle: TextStyle(color: Colors.grey[600]),
+                            labelStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
                             hintText: 'Введите текст сообщения...',
-                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.all(16),
                             prefixIcon: Padding(
                               padding: const EdgeInsets.only(left: 12, right: 8),
-                              child: Icon(Icons.message_rounded, color: Colors.grey[400], size: 22),
+                              child: Icon(Icons.message_rounded, color: Colors.white.withOpacity(0.3), size: 22),
                             ),
+                            errorStyle: TextStyle(color: Colors.red[300]),
                           ),
                           maxLines: 5,
                           minLines: 3,
@@ -389,36 +432,32 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                       if (_selectedMedia != null) ...[
                         Container(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.white.withOpacity(0.08)),
                           ),
                           child: Stack(
                             children: [
                               ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                                 child: _isVideo
                                     ? Container(
                                         height: 160,
                                         width: double.infinity,
                                         decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [Colors.grey[800]!, Colors.grey[900]!],
-                                          ),
+                                          color: _night,
                                         ),
-                                        child: const Column(
+                                        child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.videocam_rounded, color: Colors.white, size: 48),
-                                            SizedBox(height: 8),
-                                            Text('Видео выбрано', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                                            Icon(Icons.videocam_rounded, color: _gold, size: 48),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Видео выбрано',
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.7),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       )
@@ -428,17 +467,17 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                                         width: double.infinity,
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) {
-                                          Logger.error('❌ Ошибка загрузки изображения: $error');
+                                          Logger.error('Ошибка загрузки изображения: $error');
                                           return Container(
                                             height: 160,
                                             width: double.infinity,
-                                            color: Colors.grey[200],
+                                            color: _night,
                                             child: Column(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
-                                                Icon(Icons.broken_image_rounded, color: Colors.grey[400], size: 48),
+                                                Icon(Icons.broken_image_rounded, color: Colors.white.withOpacity(0.3), size: 48),
                                                 const SizedBox(height: 8),
-                                                Text('Ошибка загрузки', style: TextStyle(color: Colors.grey[500])),
+                                                Text('Ошибка загрузки', style: TextStyle(color: Colors.white.withOpacity(0.4))),
                                               ],
                                             ),
                                           );
@@ -499,8 +538,9 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                           padding: const EdgeInsets.all(14),
                           margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
+                            color: _gold.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _gold.withOpacity(0.2)),
                           ),
                           child: Row(
                             children: [
@@ -509,13 +549,13 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  color: Colors.blue[600],
+                                  color: _gold,
                                 ),
                               ),
                               const SizedBox(width: 14),
                               Text(
                                 'Загрузка медиа...',
-                                style: TextStyle(color: Colors.blue[700], fontWeight: FontWeight.w500),
+                                style: TextStyle(color: _gold.withOpacity(0.9), fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
@@ -534,8 +574,8 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                               : 'Прикрепить фото/видео',
                         ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF004D40),
-                          side: BorderSide(color: Colors.grey[300]!),
+                          foregroundColor: Colors.white.withOpacity(0.7),
+                          side: BorderSide(color: Colors.white.withOpacity(0.15)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -552,12 +592,12 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: _night,
                 borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
                 ),
-                border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
               ),
               child: Row(
                 children: [
@@ -565,8 +605,8 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                     child: OutlinedButton(
                       onPressed: _isSending ? null : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey[700],
-                        side: BorderSide(color: Colors.grey[300]!),
+                        foregroundColor: Colors.white.withOpacity(0.7),
+                        side: BorderSide(color: Colors.white.withOpacity(0.15)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -578,32 +618,43 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: ElevatedButton.icon(
+                    child: OutlinedButton.icon(
                       onPressed: _isSending ? null : _sendMessage,
                       icon: _isSending
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 18,
                               width: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  isBroadcast ? Colors.orange : _gold,
+                                ),
                               ),
                             )
-                          : Icon(isBroadcast ? Icons.campaign_rounded : Icons.send_rounded, size: 20),
+                          : Icon(
+                              isBroadcast ? Icons.campaign_rounded : Icons.send_rounded,
+                              size: 20,
+                            ),
                       label: Text(
                         _isSending
                             ? 'Отправка...'
                             : (isBroadcast ? 'Отправить всем' : 'Отправить'),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isBroadcast ? Colors.deepOrange : const Color(0xFF004D40),
-                        foregroundColor: Colors.white,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isBroadcast ? Colors.orange : _gold,
+                        side: BorderSide(
+                          color: isBroadcast
+                              ? Colors.orange.withOpacity(0.4)
+                              : _gold.withOpacity(0.4),
+                        ),
+                        backgroundColor: isBroadcast
+                            ? Colors.orange.withOpacity(0.15)
+                            : _gold.withOpacity(0.15),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        elevation: 2,
                       ),
                     ),
                   ),
@@ -616,4 +667,3 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
     );
   }
 }
-

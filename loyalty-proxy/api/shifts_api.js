@@ -75,7 +75,7 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
     }
 
     // Get FCM token from /var/www/fcm-tokens/{phone}.json
-    const normalizedPhone = foundEmployee.phone.replace(/[\s+]/g, '');
+    const normalizedPhone = foundEmployee.phone.replace(/[^\d]/g, '');
     const tokenFile = path.join(`${DATA_DIR}/fcm-tokens`, `${normalizedPhone}.json`);
 
     if (!await fileExists(tokenFile)) {

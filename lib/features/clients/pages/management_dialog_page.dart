@@ -28,6 +28,11 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
 
+  static const _emerald = Color(0xFF1A4D4D);
+  static const _emeraldDark = Color(0xFF0D2E2E);
+  static const _night = Color(0xFF051515);
+  static const _gold = Color(0xFFD4AF37);
+
   @override
   void initState() {
     super.initState();
@@ -89,28 +94,41 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   Future<void> _showMediaPicker() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
+      backgroundColor: _emeraldDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             ListTile(
-              leading: const Icon(Icons.photo_camera, color: Color(0xFF004D40)),
-              title: const Text('Сделать фото'),
+              leading: Icon(Icons.photo_camera, color: _gold),
+              title: Text('Сделать фото', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать фото из галереи'),
+              leading: Icon(Icons.photo_library, color: _gold),
+              title: Text('Выбрать фото из галереи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam, color: Color(0xFF004D40)),
-              title: const Text('Записать видео'),
+              leading: Icon(Icons.videocam, color: _gold),
+              title: Text('Записать видео', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
             ),
             ListTile(
-              leading: const Icon(Icons.video_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать видео из галереи'),
+              leading: Icon(Icons.video_library, color: _gold),
+              title: Text('Выбрать видео из галереи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
             const SizedBox(height: 8),
@@ -243,14 +261,21 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
       alignment: isFromManager ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
         margin: EdgeInsets.only(
-          left: isFromManager ? 8 : 48,
-          right: isFromManager ? 48 : 8,
+          left: isFromManager ? 12 : 56,
+          right: isFromManager ? 56 : 12,
           bottom: 8,
         ),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isFromManager ? Colors.grey[200] : const Color(0xFF004D40),
+          color: isFromManager
+              ? Colors.white.withOpacity(0.08)
+              : _gold.withOpacity(0.15),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isFromManager
+                ? Colors.white.withOpacity(0.1)
+                : _gold.withOpacity(0.25),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,13 +286,13 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.business, size: 14, color: Colors.grey[600]),
+                    Icon(Icons.business, size: 14, color: _gold.withOpacity(0.7)),
                     const SizedBox(width: 4),
                     Text(
                       'Руководство',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: _gold.withOpacity(0.8),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -278,19 +303,22 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
               Text(
                 message.text,
                 style: TextStyle(
-                  color: isFromManager ? Colors.black87 : Colors.white,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
             if (message.imageUrl != null) ...[
               const SizedBox(height: 8),
-              MediaMessageWidget(mediaUrl: message.imageUrl, maxHeight: 200),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: MediaMessageWidget(mediaUrl: message.imageUrl, maxHeight: 200),
+              ),
             ],
             const SizedBox(height: 4),
             Text(
               _formatTimestamp(message.timestamp),
               style: TextStyle(
                 fontSize: 10,
-                color: isFromManager ? Colors.grey : Colors.white70,
+                color: Colors.white.withOpacity(0.35),
               ),
             ),
           ],
@@ -302,153 +330,254 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(Icons.business, size: 24),
-            const SizedBox(width: 8),
-            const Text('Связь с Руководством'),
-          ],
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
         ),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadMessages,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Нет сообщений',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 18),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Напишите сообщение руководству',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                            ),
-                          ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) => _buildMessage(_messages[index]),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
-          ),
-          // Предпросмотр прикреплённого медиа
-          if (_pendingMediaUrl != null)
-            Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.grey[100],
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _pendingIsVideo
-                        ? Container(
-                            width: 60,
-                            height: 60,
-                            color: Colors.black87,
-                            child: const Icon(Icons.videocam, color: Colors.white),
-                          )
-                        : AppCachedImage(
-                            imageUrl: _pendingMediaUrl!,
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => Container(
-                              width: 60,
-                              height: 60,
-                              color: Colors.grey,
-                              child: const Icon(Icons.image),
-                            ),
-                          ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _pendingIsVideo ? 'Видео прикреплено' : 'Фото прикреплено',
-                      style: const TextStyle(color: Colors.grey),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red),
-                    onPressed: _clearPendingMedia,
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _gold.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.business, size: 20, color: _gold),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Связь с Руководством',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _loadMessages,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: _isUploading ? null : _showMediaPicker,
-                  icon: _isUploading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.attach_file, color: Color(0xFF004D40)),
-                  tooltip: 'Прикрепить фото/видео',
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Написать руководству...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
+
+              // Messages
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.chat_bubble_outline, size: 40, color: Colors.white.withOpacity(0.3)),
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  'Нет сообщений',
+                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Напишите сообщение руководству',
+                                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) => _buildMessage(_messages[index]),
+                          ),
+              ),
+
+              // Предпросмотр прикреплённого медиа
+              if (_pendingMediaUrl != null)
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _night.withOpacity(0.9),
+                    border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: _pendingIsVideo
+                            ? Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(Icons.videocam, color: _gold),
+                              )
+                            : AppCachedImage(
+                                imageUrl: _pendingMediaUrl!,
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(Icons.image, color: Colors.white.withOpacity(0.3)),
+                                ),
+                              ),
                       ),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    maxLines: 3,
-                    minLines: 1,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _pendingIsVideo ? 'Видео прикреплено' : 'Фото прикреплено',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _clearPendingMedia,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.close, color: Colors.red.shade300, size: 18),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _isSending ? null : _sendMessage,
-                  icon: _isSending
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send, color: Color(0xFF004D40)),
+
+              // Input bar
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _night.withOpacity(0.9),
+                  border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
                 ),
-              ],
-            ),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _isUploading ? null : _showMediaPicker,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _isUploading
+                              ? Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                                  ),
+                                )
+                              : Icon(Icons.attach_file, color: _gold.withOpacity(0.7), size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
+                          cursorColor: _gold,
+                          decoration: InputDecoration(
+                            hintText: 'Написать руководству...',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.06),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                          maxLines: 3,
+                          minLines: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _isSending ? null : _sendMessage,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: _gold.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _gold.withOpacity(0.25)),
+                          ),
+                          child: _isSending
+                              ? Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                                  ),
+                                )
+                              : Icon(Icons.send, color: _gold, size: 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

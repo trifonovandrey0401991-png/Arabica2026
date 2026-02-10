@@ -13,6 +13,8 @@ import '../utils/logger.dart';
 ///
 /// Все feature-сервисы должны использовать этот класс для API-запросов.
 ///
+/// При получении 401 логирует предупреждение о необходимости авторизации.
+///
 /// Пример использования:
 /// ```dart
 /// // Получить список
@@ -31,6 +33,17 @@ import '../utils/logger.dart';
 /// );
 /// ```
 class BaseHttpService {
+  /// Логирование ошибок HTTP с детальной диагностикой 401/403
+  static void _logHttpError(int statusCode, String endpoint, String body) {
+    if (statusCode == 401) {
+      Logger.error('🔒 Требуется авторизация: $endpoint (токен: ${ApiConstants.sessionToken != null ? "есть" : "НЕТ"})');
+    } else if (statusCode == 403) {
+      Logger.error('🚫 Недостаточно прав: $endpoint');
+    } else {
+      Logger.error('❌ HTTP $statusCode on $endpoint');
+    }
+  }
+
   /// Получить список элементов с сервера.
   ///
   /// [endpoint] - путь API (например, '/api/tasks')
@@ -72,7 +85,7 @@ class BaseHttpService {
           Logger.error('❌ API error: ${result['error']}');
         }
       } else {
-        Logger.error('❌ HTTP ${response.statusCode} on $endpoint');
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return [];
     } catch (e) {
@@ -117,7 +130,7 @@ class BaseHttpService {
           Logger.error('❌ API error: ${result['error']}');
         }
       } else {
-        Logger.error('❌ HTTP ${response.statusCode} on $endpoint');
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -164,7 +177,7 @@ class BaseHttpService {
           Logger.error('❌ API error: ${result['error']}');
         }
       } else {
-        Logger.error('❌ HTTP ${response.statusCode} on $endpoint');
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -211,7 +224,7 @@ class BaseHttpService {
           Logger.error('❌ API error: ${result['error']}');
         }
       } else {
-        Logger.error('❌ HTTP ${response.statusCode} on $endpoint');
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -247,7 +260,7 @@ class BaseHttpService {
           Logger.error('❌ API error: ${result['error']}');
         }
       } else {
-        Logger.error('❌ HTTP ${response.statusCode} on $endpoint');
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return false;
     } catch (e) {
@@ -284,7 +297,7 @@ class BaseHttpService {
           return result;
         }
       } else {
-        Logger.error('❌ HTTP ${response.statusCode} on $endpoint');
+        _logHttpError(response.statusCode, endpoint, response.body);
         return {
           'success': false,
           'error': 'HTTP ${response.statusCode}',

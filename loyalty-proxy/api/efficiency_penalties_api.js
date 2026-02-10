@@ -369,12 +369,49 @@ function setupEfficiencyPenaltiesAPI(app) {
         return results;
       };
 
+      // Загрузка task-assignments: агрегатные месячные файлы (не индивидуальные)
+      const loadTaskAssignments = async () => {
+        const results = [];
+        try {
+          const filePath = path.join(`${DATA_DIR}/task-assignments`, `${month}.json`);
+          if (await fileExists(filePath)) {
+            const content = await fsp.readFile(filePath, 'utf8');
+            const data = JSON.parse(content);
+            const assignments = data.assignments || [];
+            for (const a of assignments) {
+              // Проверяем по reviewedAt, respondedAt или deadline
+              const dateToCheck = a.reviewedAt || a.respondedAt || a.deadline;
+              if (isInPeriod(dateToCheck)) results.push(a);
+            }
+          }
+        } catch (e) { /* skip */ }
+        return results;
+      };
+
+      // Загрузка RKO: единый metadata файл (не директория)
+      const loadRkoMetadata = async () => {
+        const results = [];
+        try {
+          const filePath = `${DATA_DIR}/rko-reports/rko_metadata.json`;
+          if (await fileExists(filePath)) {
+            const content = await fsp.readFile(filePath, 'utf8');
+            const parsed = JSON.parse(content);
+            // Поддержка обоих форматов: {items: [...]} и [...]
+            const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
+            for (const item of items) {
+              if (isInPeriod(item.date)) results.push(item);
+            }
+          }
+        } catch (e) { /* skip */ }
+        return results;
+      };
+
       const [tasks, reviews, productQuestions, orders, rko] = await Promise.all([
-        loadDir(`${DATA_DIR}/task-assignments`, 'createdAt'),
+        loadTaskAssignments(),
         loadDir(`${DATA_DIR}/reviews`, 'createdAt'),
-        loadDir(`${DATA_DIR}/product-questions`, 'createdAt'),
+        loadDir(`${DATA_DIR}/product-questions`, 'timestamp'),
         loadDir(`${DATA_DIR}/orders`, 'createdAt'),
-        loadDir(`${DATA_DIR}/rko`, 'date'),
+        loadRkoMetadata(),
       ]);
 
       const elapsed = Date.now() - startTime;

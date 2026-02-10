@@ -105,6 +105,14 @@ class ShiftQuestionService {
       final url = '${ApiConstants.serverUrl}$baseEndpoint/$questionId/reference-photo';
       final request = http.MultipartRequest('POST', Uri.parse(url));
 
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
+
       // Добавляем файл - читаем байты для поддержки веб и мобильных платформ
       final bytes = await photoFile.readAsBytes();
 
@@ -154,6 +162,16 @@ class ShiftQuestionService {
       Logger.error('❌ Ошибка загрузки эталонного фото', e);
       return null;
     }
+  }
+
+  /// Изменить порядок вопросов (массовое обновление order)
+  static Future<bool> reorderQuestions(List<Map<String, dynamic>> orders) async {
+    Logger.debug('📤 Обновление порядка вопросов: ${orders.length} шт.');
+
+    return await BaseHttpService.simplePatch(
+      endpoint: '$baseEndpoint/reorder',
+      body: {'orders': orders},
+    );
   }
 
   /// Удалить вопрос

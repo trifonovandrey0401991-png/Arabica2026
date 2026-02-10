@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/providers/order_provider.dart';
 import '../../../core/utils/logger.dart';
 
-/// Страница "Мои заказы" с улучшенным дизайном
+/// Страница "Мои заказы" (Dark Emerald тема)
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
 
@@ -12,6 +12,11 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateMixin {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = true;
   late AnimationController _animationController;
 
@@ -107,7 +112,6 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     }
   }
 
-  /// Форматирование цены из разных типов данных
   String _formatPrice(dynamic value) {
     if (value == null) return '0';
     if (value is num) return value.toStringAsFixed(0);
@@ -121,111 +125,142 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF004D40),
-      appBar: AppBar(
-        title: const Text(
-          'Мои заказы',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: const Color(0xFF004D40),
-        elevation: 0,
-        actions: [
-          // Кнопка обновления
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: () {
-                _animationController.reset();
-                _loadOrders();
-              },
-              tooltip: 'Обновить',
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF004D40),
-              const Color(0xFF00695C),
-              const Color(0xFF00796B),
-            ],
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: _isLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Загрузка заказов...',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 16,
+                    const SizedBox(width: 12),
+                    Icon(Icons.receipt_long_rounded, color: _gold, size: 24),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Мои заказы',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        _animationController.reset();
+                        _loadOrders();
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
                 ),
-              )
-            : ListenableBuilder(
-                listenable: OrderProvider.of(context),
-                builder: (context, _) {
-                  final orderProvider = OrderProvider.of(context);
-
-                  if (orderProvider.orders.isEmpty) {
-                    return _buildEmptyState();
-                  }
-
-                  return RefreshIndicator(
-                    onRefresh: _loadOrders,
-                    color: const Color(0xFF004D40),
-                    backgroundColor: Colors.white,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      itemCount: orderProvider.orders.length,
-                      itemBuilder: (context, index) {
-                        final order = orderProvider.orders[index];
-                        return AnimatedBuilder(
-                          animation: _animationController,
-                          builder: (context, child) {
-                            final delay = index * 0.1;
-                            final animationValue = Curves.easeOutCubic.transform(
-                              (_animationController.value - delay).clamp(0.0, 1.0),
-                            );
-                            return Transform.translate(
-                              offset: Offset(0, 30 * (1 - animationValue)),
-                              child: Opacity(
-                                opacity: animationValue,
-                                child: _buildOrderCard(context, order, orderProvider),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  );
-                },
               ),
+
+              // Содержимое
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                shape: BoxShape.circle,
+                              ),
+                              child: CircularProgressIndicator(
+                                color: _gold,
+                                strokeWidth: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Загрузка заказов...',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListenableBuilder(
+                        listenable: OrderProvider.of(context),
+                        builder: (context, _) {
+                          final orderProvider = OrderProvider.of(context);
+
+                          if (orderProvider.orders.isEmpty) {
+                            return _buildEmptyState();
+                          }
+
+                          return RefreshIndicator(
+                            onRefresh: _loadOrders,
+                            color: _gold,
+                            backgroundColor: _emeraldDark,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                              itemCount: orderProvider.orders.length,
+                              itemBuilder: (context, index) {
+                                final order = orderProvider.orders[index];
+                                return AnimatedBuilder(
+                                  animation: _animationController,
+                                  builder: (context, child) {
+                                    final delay = (index * 0.1).clamp(0.0, 0.8);
+                                    final animationValue = Curves.easeOutCubic.transform(
+                                      (_animationController.value - delay).clamp(0.0, 1.0),
+                                    );
+                                    return Transform.translate(
+                                      offset: Offset(0, 30 * (1 - animationValue)),
+                                      child: Opacity(
+                                        opacity: animationValue,
+                                        child: _buildOrderCard(context, order, orderProvider),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -238,16 +273,16 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.receipt_long_outlined,
-              size: 80,
-              color: Colors.white.withOpacity(0.7),
+              size: 72,
+              color: Colors.white.withOpacity(0.3),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
           const Text(
             'У вас пока нет заказов',
             style: TextStyle(
@@ -256,25 +291,38 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             'Ваши заказы появятся здесь',
             style: TextStyle(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.7),
+              fontSize: 15,
+              color: Colors.white.withOpacity(0.5),
             ),
           ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded),
-            label: const Text('Вернуться в меню'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.2),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 28),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.15)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back_rounded, color: _gold, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Вернуться в меню',
+                    style: TextStyle(
+                      color: _gold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -288,89 +336,68 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     final statusColor = _getStatusColor(order.status);
     final statusIcon = _getStatusIcon(order.status);
 
-    // Получаем фото первого товара
     final firstItemPhotoId = order.itemsData?.isNotEmpty == true
         ? order.itemsData![0]['photoId'] as String?
         : null;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        child: Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            childrenPadding: EdgeInsets.zero,
-            leading: _buildOrderAvatar(order, firstItemPhotoId, statusColor, statusIcon),
-            title: _buildOrderTitle(order),
-            subtitle: _buildOrderSubtitle(order, dateTime, statusColor),
-            trailing: _buildOrderPrice(order),
-            children: [
-              _buildOrderDetails(context, order, orderProvider),
-            ],
-          ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: EdgeInsets.zero,
+          iconColor: Colors.white.withOpacity(0.4),
+          collapsedIconColor: Colors.white.withOpacity(0.4),
+          leading: _buildOrderAvatar(order, firstItemPhotoId, statusColor, statusIcon),
+          title: _buildOrderTitle(order),
+          subtitle: _buildOrderSubtitle(order, dateTime, statusColor),
+          trailing: _buildOrderPrice(order),
+          children: [
+            _buildOrderDetails(context, order, orderProvider),
+          ],
         ),
       ),
     );
   }
 
-  /// Проверяет, является ли заказ неподтвержденным (пропущенным)
   bool _isUnconfirmedOrder(Order order) {
-    // Неподтвержденный = pending + нет acceptedBy + нет rejectedBy + прошло больше 24 часов
     if (order.status != 'pending') return false;
     if (order.acceptedBy != null && order.acceptedBy!.isNotEmpty) return false;
     if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) return false;
 
     final hoursSinceCreated = DateTime.now().difference(order.createdAt).inHours;
-    return hoursSinceCreated >= 24; // Более 24 часов без ответа
+    return hoursSinceCreated >= 24;
   }
 
   Widget _buildOrderAvatar(Order order, String? firstItemPhotoId, Color statusColor, IconData statusIcon) {
-    // Определяем цвет и иконку на основе статуса принятия/отказа
     Color avatarColor = statusColor;
     IconData avatarIcon = statusIcon;
 
     if (order.acceptedBy != null && order.acceptedBy!.isNotEmpty) {
-      // Если заказ принят - зелёная галочка
       avatarColor = Colors.green;
       avatarIcon = Icons.check_circle_rounded;
     } else if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) {
-      // Если заказ отклонён - красный крестик
       avatarColor = Colors.red;
       avatarIcon = Icons.cancel_rounded;
     } else if (_isUnconfirmedOrder(order)) {
-      // Если заказ неподтверждён (пропущен) - красный крестик
       avatarColor = Colors.red;
       avatarIcon = Icons.cancel_rounded;
     }
 
     return Container(
-      width: 60,
-      height: 60,
+      width: 52,
+      height: 52,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: avatarColor.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(14),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: firstItemPhotoId != null && firstItemPhotoId.isNotEmpty
             ? Image.asset(
                 'assets/images/$firstItemPhotoId.jpg',
@@ -387,20 +414,13 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
   Widget _buildStatusIcon(Color statusColor, IconData statusIcon) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            statusColor.withOpacity(0.8),
-            statusColor,
-          ],
-        ),
+        color: statusColor.withOpacity(0.2),
       ),
       child: Center(
         child: Icon(
           statusIcon,
-          color: Colors.white,
-          size: 30,
+          color: statusColor,
+          size: 26,
         ),
       ),
     );
@@ -411,10 +431,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
       order.orderNumber != null
           ? 'Заказ ${order.orderNumber}'
           : 'Заказ ${order.id.substring(order.id.length - 6)}',
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.bold,
-        fontSize: 17,
-        color: Color(0xFF1A1A1A),
+        fontSize: 16,
+        color: Colors.white.withOpacity(0.9),
       ),
     );
   }
@@ -428,20 +448,45 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           children: [
             Icon(
               Icons.calendar_today_rounded,
-              size: 14,
-              color: Colors.grey[500],
+              size: 13,
+              color: Colors.white.withOpacity(0.4),
             ),
             const SizedBox(width: 4),
             Text(
               '${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year} в ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}',
               style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[600],
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.4),
               ),
             ),
           ],
         ),
-        // Показываем информацию об отказе
+        const SizedBox(height: 6),
+        // Статус бейдж
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: statusColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: statusColor.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_getStatusIcon(order.status), size: 12, color: statusColor),
+              const SizedBox(width: 4),
+              Text(
+                _getStatusText(order.status),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: statusColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Информация об отказе
         if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(
@@ -465,9 +510,9 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                     Expanded(
                       child: Text(
                         'Отказал: ${order.rejectedBy}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.red[700],
+                          color: Colors.red,
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 2,
@@ -482,7 +527,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                     'Причина: ${order.rejectionReason}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.red[800],
+                      color: Colors.red[300],
                     ),
                     maxLines: 10,
                     overflow: TextOverflow.fade,
@@ -498,26 +543,18 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
 
   Widget _buildOrderPrice(Order order) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF004D40), Color(0xFF00695C)],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004D40).withOpacity(0.3),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: _gold.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _gold.withOpacity(0.3)),
       ),
       child: Text(
-        '${order.totalPrice.toStringAsFixed(0)} руб.',
-        style: const TextStyle(
-          fontSize: 16,
+        '${order.totalPrice.toStringAsFixed(0)} р.',
+        style: TextStyle(
+          fontSize: 15,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: _gold,
         ),
       ),
     );
@@ -525,12 +562,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
 
   Widget _buildOrderDetails(BuildContext context, Order order, OrderProvider orderProvider) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,88 +576,83 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF004D40).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: _gold.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.shopping_basket_rounded,
-                  color: Color(0xFF004D40),
-                  size: 20,
+                  color: _gold,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              const SizedBox(width: 10),
+              Text(
                 'Товары в заказе',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Color(0xFF1A1A1A),
+                  fontSize: 15,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           // Список товаров
           ...(order.itemsData ?? []).map((item) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF004D40).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        color: _emerald,
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
                         child: Text(
                           '×${item['quantity'] ?? 1}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF004D40),
-                            fontSize: 13,
+                            color: Colors.white,
+                            fontSize: 12,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         item['name'] ?? 'Товар',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.8),
                         ),
                       ),
                     ),
                     Text(
                       '${_formatPrice(item['total'] ?? item['price'] ?? 0)} руб.',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF004D40),
+                        color: _gold,
                       ),
                     ),
                   ],
                 ),
               )),
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: Colors.white.withOpacity(0.1)),
+          const SizedBox(height: 12),
           // Комментарий
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -628,97 +660,90 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Colors.amber.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       Icons.comment_rounded,
-                      color: Colors.amber[700],
-                      size: 20,
+                      color: Colors.amber[600],
+                      size: 18,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  const SizedBox(width: 10),
+                  Text(
                     'Комментарий',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Color(0xFF1A1A1A),
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                 ],
               ),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    _showCommentDialog(context, order, orderProvider);
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: order.comment != null && order.comment!.isNotEmpty
-                            ? [Colors.amber[600]!, Colors.amber[700]!]
-                            : [const Color(0xFF004D40), const Color(0xFF00695C)],
+              GestureDetector(
+                onTap: () {
+                  _showCommentDialog(context, order, orderProvider);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: order.comment != null && order.comment!.isNotEmpty
+                        ? Colors.amber.withOpacity(0.15)
+                        : _gold.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: order.comment != null && order.comment!.isNotEmpty
+                          ? Colors.amber.withOpacity(0.3)
+                          : _gold.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        order.comment != null && order.comment!.isNotEmpty
+                            ? Icons.edit_rounded
+                            : Icons.add_rounded,
+                        size: 14,
+                        color: order.comment != null && order.comment!.isNotEmpty
+                            ? Colors.amber
+                            : _gold,
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (order.comment != null && order.comment!.isNotEmpty
-                                  ? Colors.amber
-                                  : const Color(0xFF004D40))
-                              .withOpacity(0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
+                      const SizedBox(width: 4),
+                      Text(
+                        order.comment != null && order.comment!.isNotEmpty
+                            ? 'Изменить'
+                            : 'Добавить',
+                        style: TextStyle(
+                          color: order.comment != null && order.comment!.isNotEmpty
+                              ? Colors.amber
+                              : _gold,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          order.comment != null && order.comment!.isNotEmpty
-                              ? Icons.edit_rounded
-                              : Icons.add_rounded,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          order.comment != null && order.comment!.isNotEmpty
-                              ? 'Изменить'
-                              : 'Добавить',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           // Блок комментария
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: order.comment != null && order.comment!.isNotEmpty
-                  ? Colors.amber.withOpacity(0.1)
-                  : Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
+                  ? Colors.amber.withOpacity(0.08)
+                  : Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: order.comment != null && order.comment!.isNotEmpty
-                    ? Colors.amber.withOpacity(0.3)
-                    : Colors.grey[300]!,
+                    ? Colors.amber.withOpacity(0.2)
+                    : Colors.white.withOpacity(0.06),
               ),
             ),
             child: Text(
@@ -726,10 +751,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   ? order.comment!
                   : 'Комментарий не добавлен',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: order.comment != null && order.comment!.isNotEmpty
-                    ? Colors.grey[800]
-                    : Colors.grey[500],
+                    ? Colors.white.withOpacity(0.7)
+                    : Colors.white.withOpacity(0.3),
                 fontStyle: order.comment != null && order.comment!.isNotEmpty
                     ? FontStyle.normal
                     : FontStyle.italic,
@@ -741,7 +766,6 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     );
   }
 
-  /// Диалог для ввода комментария к заказу
   void _showCommentDialog(
     BuildContext context,
     Order order,
@@ -756,17 +780,18 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
+        backgroundColor: _emeraldDark,
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF004D40).withOpacity(0.1),
+                color: _gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.comment_rounded,
-                color: Color(0xFF004D40),
+                color: _gold,
                 size: 24,
               ),
             ),
@@ -776,6 +801,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
+                color: Colors.white,
               ),
             ),
           ],
@@ -783,22 +809,24 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         content: TextField(
           controller: controller,
           maxLines: 5,
+          style: TextStyle(color: Colors.white.withOpacity(0.9)),
+          cursorColor: _gold,
           decoration: InputDecoration(
             hintText: 'Введите комментарий к заказу...',
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: Colors.white.withOpacity(0.06),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Color(0xFF004D40), width: 2),
+              borderSide: BorderSide(color: _gold, width: 2),
             ),
           ),
         ),
@@ -811,13 +839,13 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             child: Text(
               'Отмена',
               style: TextStyle(
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          ElevatedButton(
-            onPressed: () {
+          GestureDetector(
+            onTap: () {
               final comment = controller.text.trim();
               orderProvider.updateOrderComment(
                 order.id,
@@ -841,7 +869,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       ),
                     ],
                   ),
-                  backgroundColor: const Color(0xFF004D40),
+                  backgroundColor: _emerald,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -851,18 +879,21 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_gold.withOpacity(0.9), _gold],
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 2,
-            ),
-            child: const Text(
-              'Сохранить',
-              style: TextStyle(fontWeight: FontWeight.w600),
+              child: const Text(
+                'Сохранить',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
             ),
           ),
         ],

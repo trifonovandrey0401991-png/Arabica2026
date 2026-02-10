@@ -891,7 +891,7 @@ function setupReferralsAPI(app) {
         });
       }
 
-      const normalizedPhone = phone.replace(/[\s\+]/g, '');
+      const normalizedPhone = phone.replace(/[^\d]/g, '');
       const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
       const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
 

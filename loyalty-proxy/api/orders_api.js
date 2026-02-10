@@ -25,7 +25,7 @@ function setupOrdersAPI(app) {
     try {
       const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;
       console.log('POST /api/orders clientPhone:', clientPhone, 'shop:', shopAddress);
-      const normalizedPhone = clientPhone.replace(/[\s+]/g, '');
+      const normalizedPhone = clientPhone.replace(/[^\d]/g, '');
 
       const order = await ordersModule.createOrder({
         clientPhone: normalizedPhone,
@@ -50,7 +50,7 @@ function setupOrdersAPI(app) {
       console.log('GET /api/orders', req.query);
       const filters = {};
       if (req.query.clientPhone) {
-        filters.clientPhone = req.query.clientPhone.replace(/[\s+]/g, '');
+        filters.clientPhone = req.query.clientPhone.replace(/[^\d]/g, '');
       }
       if (req.query.status) filters.status = req.query.status;
       if (req.query.shopAddress) filters.shopAddress = req.query.shopAddress;

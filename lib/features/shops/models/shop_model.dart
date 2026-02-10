@@ -75,19 +75,6 @@ class Shop {
     };
   }
 
-  /// Получить иконку по названию магазина
-  /// Используем outlined иконки для лучшей видимости на темном фоне
-  static IconData _getIconForShop(String shopName) {
-    final name = shopName.toLowerCase();
-    if (name.contains('пятигорск')) return Icons.store_outlined;
-    if (name.contains('ессентуки')) return Icons.store_mall_directory_outlined;
-    if (name.contains('кисловодск')) return Icons.local_cafe_outlined;
-    if (name.contains('железноводск')) return Icons.coffee_outlined;
-    if (name.contains('минеральные')) return Icons.restaurant_outlined;
-    if (name.contains('ставрополь')) return Icons.shopping_bag_outlined;
-    return Icons.store_outlined; // По умолчанию
-  }
-
   /// Загрузить список магазинов с сервера
   /// Использует кэширование на 10 минут для уменьшения запросов
   static Future<List<Shop>> loadShopsFromServer() async {
@@ -117,66 +104,9 @@ class Shop {
     }
   }
 
-  /// Загрузить список магазинов (алиас для loadShopsFromServer)
-  /// Оставлен для обратной совместимости
-  static Future<List<Shop>> loadShopsFromGoogleSheets() async {
-    return loadShopsFromServer();
-  }
-
-  /// Получить координаты магазинов по адресу
-  static Map<String, Map<String, double>> getShopCoordinates() {
-    return {
-      'с.Винсады,ул Подгорная 156д (На Выезде)': {
-        'latitude': 44.091173,
-        'longitude': 42.952451,
-      },
-      'Лермонтов,ул Пятигорская 19': {
-        'latitude': 44.100923,
-        'longitude': 42.967543,
-      },
-      'Лермонтов,Комсомольская 1 (На Площади)': {
-        'latitude': 44.104619,
-        'longitude': 42.970543,
-      },
-      'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )': {
-        'latitude': 44.105379,
-        'longitude': 42.978421,
-      },
-      'Ессентуки , ул пятигорская 149/1 (Золотушка)': {
-        'latitude': 44.055559,
-        'longitude': 42.911012,
-      },
-      'Иноземцево , ул Гагарина 1': {
-        'latitude': 44.080153,
-        'longitude': 43.081593,
-      },
-      'Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)': {
-        'latitude': 44.061053,
-        'longitude': 43.063672,
-      },
-      'Пятигорск,ул Коллективная 26а': {
-        'latitude': 44.032997,
-        'longitude': 43.042525,
-      },
-    };
-  }
-
-  /// Получить список магазинов по умолчанию (fallback)
+  /// Получить пустой список магазинов (fallback при ошибке сервера)
   static List<Shop> _getDefaultShops() {
-    return [
-      Shop(
-        id: 'shop_default_1',
-        name: 'Арабика Пятигорск',
-        address: 'г. Пятигорск, ул. Ленина, 10',
-        icon: Icons.store,
-      ),
-      Shop(
-        id: 'shop_default_2',
-        name: 'Арабика Ессентуки',
-        address: 'г. Ессентуки, ул. Мира, 5',
-        icon: Icons.store_mall_directory,
-      ),
-    ];
+    return [];
   }
 }
 

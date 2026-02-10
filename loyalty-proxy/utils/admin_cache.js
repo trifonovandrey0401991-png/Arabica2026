@@ -32,10 +32,11 @@ let preloadComplete = false;
 
 /**
  * Нормализация телефона для консистентного ключа кэша
+ * M-11: Унифицировано — только цифры (как sanitizePhone в file_helpers)
  */
 function normalizePhone(phone) {
   if (!phone) return '';
-  return phone.replace(/[\s+]/g, '');
+  return phone.replace(/[^\d]/g, '');
 }
 
 /**

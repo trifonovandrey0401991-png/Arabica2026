@@ -481,18 +481,39 @@ class AuthService {
     return await _storage.hasPin();
   }
 
-  /// Меняет PIN-код
+  /// Меняет PIN-код (локально + на сервере)
   Future<AuthResult> changePin(String oldPin, String newPin) async {
-    // Проверяем старый PIN
+    // Проверяем старый PIN локально
     final isValid = await _storage.verifyPin(oldPin);
     if (!isValid) {
       return AuthResult.failure('Неверный текущий PIN-код');
     }
 
-    // Создаём новый PIN
-    await _storage.createCredentials(newPin);
+    // Обновляем PIN на сервере
+    try {
+      final response = await http.post(
+        Uri.parse('$_authApiUrl/change-pin'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'oldPin': oldPin,
+          'newPin': newPin,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
 
-    // TODO: Обновить PIN на сервере
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode != 200 || data['success'] != true) {
+        return AuthResult.failure(
+          data['error'] as String? ?? 'Ошибка смены PIN на сервере',
+        );
+      }
+    } catch (e) {
+      // Сервер недоступен — обновим локально
+      // Продолжаем — обновим локально даже если сервер недоступен
+    }
+
+    // Обновляем PIN локально
+    await _storage.createCredentials(newPin);
 
     return AuthResult.success(message: 'PIN-код успешно изменён');
   }

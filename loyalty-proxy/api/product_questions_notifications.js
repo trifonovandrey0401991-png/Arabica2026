@@ -86,7 +86,7 @@ async function getAllEmployees() {
  */
 async function getFcmTokenByPhone(phone) {
   try {
-    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
     if (!(await fileExists(tokenFile))) {

@@ -177,6 +177,14 @@ class LoyaltyGamificationService {
       final uri = Uri.parse('${ApiConstants.serverUrl}/api/loyalty-gamification/upload-badge');
       final request = http.MultipartRequest('POST', uri);
 
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
+
       request.files.add(
         http.MultipartFile.fromBytes(
           'badge',
@@ -188,7 +196,7 @@ class LoyaltyGamificationService {
       request.fields['levelId'] = levelId.toString();
 
       final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
+        ApiConstants.uploadTimeout,
         onTimeout: () {
           throw Exception('Таймаут при загрузке значка');
         },

@@ -211,7 +211,7 @@ class BackgroundGpsService {
       Logger.debug('[Geofence] GPS: ${position.latitude}, ${position.longitude}');
 
       // Отправляем на сервер для проверки геозоны
-      final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/geofence/client-check'),
         headers: ApiConstants.headersWithApiKey,

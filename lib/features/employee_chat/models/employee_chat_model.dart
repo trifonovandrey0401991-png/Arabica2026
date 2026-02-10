@@ -159,8 +159,8 @@ class EmployeeChat {
     if (type != EmployeeChatType.group || creatorPhone == null) {
       return false;
     }
-    final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
-    final normalizedCreator = creatorPhone!.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+    final normalizedCreator = creatorPhone!.replaceAll(RegExp(r'[\s\+]'), '');
     return normalizedPhone == normalizedCreator;
   }
 
@@ -169,7 +169,7 @@ class EmployeeChat {
 
   /// Получить имя участника по телефону
   String getParticipantName(String phone) {
-    final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     return participantNames?[normalizedPhone] ?? phone;
   }
 }

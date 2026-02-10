@@ -674,24 +674,23 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const { phone } = req.params;
       console.log('GET /api/product-question-dialogs/client/:phone', phone);
 
-      const dialogs = [];
+      let dialogs = [];
 
       if (await fileExists(PRODUCT_QUESTION_DIALOGS_DIR)) {
         const allFiles = await fsp.readdir(PRODUCT_QUESTION_DIALOGS_DIR);
         const files = allFiles.filter(f => f.endsWith('.json'));
 
-        for (const file of files) {
+        // Параллельное чтение файлов (вместо последовательного for...of)
+        const results = await Promise.all(files.map(async (file) => {
           try {
             const data = await fsp.readFile(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
-            const dialog = JSON.parse(data);
-
-            if (dialog.clientPhone === phone) {
-              dialogs.push(dialog);
-            }
+            return JSON.parse(data);
           } catch (e) {
             console.error(`Error reading dialog ${file}:`, e);
+            return null;
           }
-        }
+        }));
+        dialogs = results.filter(d => d && d.clientPhone === phone);
       }
 
       // Сортировать по lastMessageTime
@@ -1088,23 +1087,22 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const { phone } = req.params;
       console.log('GET /api/product-questions/client/:phone', phone);
 
-      const questions = [];
+      let questions = [];
       if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
         const allFiles = await fsp.readdir(PRODUCT_QUESTIONS_DIR);
         const files = allFiles.filter(f => f.endsWith('.json'));
 
-        for (const file of files) {
+        // Параллельное чтение файлов (вместо последовательного for...of)
+        const results = await Promise.all(files.map(async (file) => {
           try {
             const data = await fsp.readFile(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
-            const question = JSON.parse(data);
-
-            if (question.clientPhone === phone) {
-              questions.push(question);
-            }
+            return JSON.parse(data);
           } catch (e) {
             console.error(`Error reading question ${file}:`, e);
+            return null;
           }
-        }
+        }));
+        questions = results.filter(q => q && q.clientPhone === phone);
       }
 
       // Собираем все сообщения в единый массив

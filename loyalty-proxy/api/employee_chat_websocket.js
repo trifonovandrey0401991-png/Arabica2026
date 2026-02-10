@@ -81,7 +81,7 @@ function setupChatWebSocket(server) {
     // Используем phone из token (более надёжный)
     userPhone = tokenUser.phone || userPhone;
 
-    const normalizedPhone = userPhone.replace(/[\s+]/g, '');
+    const normalizedPhone = userPhone.replace(/[^\d]/g, '');
     console.log(`📱 WebSocket: подключился ${normalizedPhone}`);
 
     // Регистрируем соединение
@@ -469,7 +469,7 @@ function notifyReactionRemoved(chatId, messageId, reaction, phone) {
  * Проверить онлайн ли пользователь
  */
 function isUserOnline(phone) {
-  const normalizedPhone = phone.replace(/[\s+]/g, '');
+  const normalizedPhone = phone.replace(/[^\d]/g, '');
   const status = onlineStatus.get(normalizedPhone);
   return status?.online === true;
 }

@@ -704,7 +704,7 @@ app.post('/api/fcm-tokens', async (req, res) => {
       return res.status(400).json({ success: false, error: 'phone и token обязательны' });
     }
 
-    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedPhone = phone.replace(/[^\d]/g, '');
 
     const tokenDir = `${DATA_DIR}/fcm-tokens`;
     if (!await fileExists(tokenDir)) {
@@ -921,14 +921,14 @@ app.post("/api/app-version", async (req, res) => {
       return res.status(403).json({ error: "Требуется авторизация" });
     }
     
-    const normalizedPhone = employeePhone.replace(/[\s\+]/g, "");
+    const normalizedPhone = employeePhone.replace(/[^\d]/g, "");
     let isAdminOrDev = false;
 
     const employeeFiles = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith(".json"));
     for (const file of employeeFiles) {
       try {
         const emp = JSON.parse(await fsp.readFile(path.join(EMPLOYEES_DIR, file), "utf8"));
-        if (emp.phone && emp.phone.replace(/[\s\+]/g, "") === normalizedPhone && (emp.isAdmin || emp.role === 'developer')) {
+        if (emp.phone && emp.phone.replace(/[^\d]/g, "") === normalizedPhone && (emp.isAdmin || emp.role === 'developer')) {
           isAdminOrDev = true;
           break;
         }

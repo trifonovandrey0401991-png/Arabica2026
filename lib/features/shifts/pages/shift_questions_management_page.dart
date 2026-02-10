@@ -937,6 +937,33 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
     });
   }
 
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex--;
+      final item = _questions.removeAt(oldIndex);
+      _questions.insert(newIndex, item);
+      _applyFilters();
+    });
+
+    // Отправляем новый порядок на сервер
+    final orders = <Map<String, dynamic>>[];
+    for (var i = 0; i < _questions.length; i++) {
+      orders.add({'id': _questions[i].id, 'order': i + 1});
+    }
+    ShiftQuestionService.reorderQuestions(orders).then((success) {
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Порядок сохранён', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.green[700],
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
+  }
+
   Widget _buildContent() {
     if (_isLoading) {
       return Center(
@@ -976,22 +1003,61 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       return _buildNoResultsState();
     }
 
+    final bool hasActiveFilter = _selectedTypeFilter != null || _searchQuery.isNotEmpty;
+
     return Column(
       children: [
         // Показать активные фильтры
-        if (_selectedTypeFilter != null || _searchQuery.isNotEmpty)
+        if (hasActiveFilter)
           _buildActiveFiltersBar(),
         // Список вопросов
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            itemCount: _filteredQuestions.length,
-            itemBuilder: (context, index) {
-              final question = _filteredQuestions[index];
-              final originalIndex = _questions.indexOf(question);
-              return _buildQuestionCard(question, originalIndex);
-            },
-          ),
+          child: hasActiveFilter
+              // При активном фильтре — обычный список (без drag-and-drop)
+              ? ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  itemCount: _filteredQuestions.length,
+                  itemBuilder: (context, index) {
+                    final question = _filteredQuestions[index];
+                    final originalIndex = _questions.indexOf(question);
+                    return _buildQuestionCard(question, originalIndex, showDragHandle: false);
+                  },
+                )
+              // Без фильтра — drag-and-drop для изменения порядка
+              : ReorderableListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  itemCount: _filteredQuestions.length,
+                  proxyDecorator: (child, index, animation) {
+                    return AnimatedBuilder(
+                      animation: animation,
+                      builder: (context, child) {
+                        final animValue = Curves.easeInOut.transform(animation.value);
+                        final elevation = 4.0 + animValue * 8.0;
+                        final scale = 1.0 + animValue * 0.02;
+                        return Transform.scale(
+                          scale: scale,
+                          child: Material(
+                            color: Colors.transparent,
+                            elevation: elevation,
+                            shadowColor: _gold.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(14),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: child,
+                    );
+                  },
+                  onReorder: _onReorder,
+                  itemBuilder: (context, index) {
+                    final question = _filteredQuestions[index];
+                    return _buildQuestionCard(
+                      question, index,
+                      key: ValueKey(question.id),
+                      showDragHandle: true,
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -1098,10 +1164,11 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
     );
   }
 
-  Widget _buildQuestionCard(ShiftQuestion question, int index) {
+  Widget _buildQuestionCard(ShiftQuestion question, int index, {Key? key, bool showDragHandle = false}) {
     final Color typeColor = _getAnswerTypeColor(question);
 
     return Container(
+      key: key,
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
@@ -1119,10 +1186,23 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             children: [
               // Верхняя часть карточки
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
+                padding: EdgeInsets.fromLTRB(showDragHandle ? 4 : 16, 14, 12, 12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Drag handle (только без фильтра)
+                    if (showDragHandle)
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 4, top: 6),
+                          child: Icon(
+                            Icons.drag_indicator_rounded,
+                            color: Colors.white.withOpacity(0.3),
+                            size: 22,
+                          ),
+                        ),
+                      ),
                     // Номер вопроса
                     Container(
                       width: 40,

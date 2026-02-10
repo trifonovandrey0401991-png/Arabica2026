@@ -655,6 +655,48 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
     }
   });
 
+  // ========== Обновление статуса РКО (подтверждение/отклонение) ==========
+
+  app.put('/api/rko/:reportId/status', async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      const { status, rating, confirmedBy, confirmedAt, rejectedBy, rejectedAt, rejectReason } = req.body;
+      console.log(`📝 PUT /api/rko/${reportId}/status:`, status);
+
+      if (!status || !['confirmed', 'rejected'].includes(status)) {
+        return res.status(400).json({ success: false, error: 'status must be "confirmed" or "rejected"' });
+      }
+
+      const metadata = await loadRKOMetadata();
+      const itemIndex = metadata.items.findIndex(rko => rko.id === reportId || rko.fileName === reportId);
+
+      if (itemIndex === -1) {
+        return res.status(404).json({ success: false, error: 'РКО не найден' });
+      }
+
+      // Обновляем статус
+      if (status === 'confirmed') {
+        metadata.items[itemIndex].status = 'confirmed';
+        metadata.items[itemIndex].rating = rating;
+        metadata.items[itemIndex].confirmedBy = confirmedBy;
+        metadata.items[itemIndex].confirmedAt = confirmedAt || new Date().toISOString();
+      } else {
+        metadata.items[itemIndex].status = 'rejected';
+        metadata.items[itemIndex].rejectedBy = rejectedBy;
+        metadata.items[itemIndex].rejectedAt = rejectedAt || new Date().toISOString();
+        metadata.items[itemIndex].rejectReason = rejectReason;
+      }
+
+      await saveRKOMetadata(metadata);
+
+      console.log(`✅ РКО ${reportId} ${status}`);
+      res.json({ success: true, item: metadata.items[itemIndex] });
+    } catch (error) {
+      console.error('Ошибка обновления статуса РКО:', error);
+      res.status(500).json({ success: false, error: error.message || 'Ошибка обновления статуса' });
+    }
+  });
+
   // ========== API для pending/failed РКО отчетов ==========
 
   // Получить pending РКО отчеты

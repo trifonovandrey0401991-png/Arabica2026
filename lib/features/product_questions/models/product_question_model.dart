@@ -16,6 +16,7 @@ class ProductQuestion {
   final String? lastAnswerTime;
   final bool isNetworkWide;
   final List<ProductQuestionMessage> messages;
+  final List<Map<String, dynamic>> rawShops; // Сырые данные shops[] для эффективности
 
   ProductQuestion({
     required this.id,
@@ -32,6 +33,7 @@ class ProductQuestion {
     this.lastAnswerTime,
     this.isNetworkWide = false,
     required this.messages,
+    this.rawShops = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -78,6 +80,16 @@ class ProductQuestion {
       lastAnswerTime = json['lastAnswerTime'] as String?;
     }
 
+    // Сохраняем сырые данные shops[] для использования в эффективности
+    final rawShops = <Map<String, dynamic>>[];
+    if (json['shops'] != null && json['shops'] is List) {
+      for (final shop in json['shops'] as List) {
+        if (shop is Map<String, dynamic>) {
+          rawShops.add(shop);
+        }
+      }
+    }
+
     return ProductQuestion(
       id: json['id'] ?? '',
       clientPhone: json['clientPhone'] ?? '',
@@ -95,6 +107,7 @@ class ProductQuestion {
       messages: (json['messages'] as List<dynamic>?)
           ?.map((m) => ProductQuestionMessage.fromJson(m as Map<String, dynamic>))
           .toList() ?? [],
+      rawShops: rawShops,
     );
   }
 

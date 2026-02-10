@@ -86,7 +86,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       // Используем тот же метод, что и в меню "Сотрудники"
       // Это гарантирует, что имена будут совпадать с отображением в системе
       final employees = await EmployeesPage.loadEmployeesForNotifications();
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await Shop.loadShopsFromServer();
       setState(() {
         _allEmployees = employees;
         _allShops = shops;

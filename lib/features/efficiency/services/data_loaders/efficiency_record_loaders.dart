@@ -324,6 +324,8 @@ Future<List<EfficiencyRecord>> loadReviewRecords(
 /// Загрузить записи по поиску товара (ответы на вопросы клиентов)
 ///
 /// Баллы начисляются сотруднику, который ответил на вопрос.
+/// Для сетевых вопросов (isNetworkWide) — запись создаётся ПО КАЖДОМУ магазину,
+/// в котором сотрудник ответил (через rawShops).
 /// Неотвеченные вопросы не учитываются (нет конкретного виновного).
 Future<List<EfficiencyRecord>> loadProductSearchRecords(
   DateTime start,
@@ -343,11 +345,40 @@ Future<List<EfficiencyRecord>> loadProductSearchRecords(
       // Проверяем период
       if (questionDate.isBefore(start) || questionDate.isAfter(end)) continue;
 
-      // Если вопрос отвечен - создаём запись для ответившего сотрудника
-      if (question.isAnswered &&
+      // Если есть rawShops — итерируем по каждому магазину (H-10 fix)
+      if (question.rawShops.isNotEmpty) {
+        for (final shop in question.rawShops) {
+          final shopAnswered = shop['isAnswered'] == true;
+          final shopAnsweredByName = shop['answeredByName'] as String?;
+          final shopAddress = shop['shopAddress'] as String? ?? '';
+
+          if (!shopAnswered || shopAnsweredByName == null || shopAnsweredByName.isEmpty) {
+            continue;
+          }
+
+          // Пропускаем "Вся сеть" — это не реальный магазин
+          if (shopAddress == 'Вся сеть') continue;
+
+          final answerTimeStr = shop['lastAnswerTime'] as String?;
+          final answerDate = answerTimeStr != null
+              ? DateTime.tryParse(answerTimeStr)
+              : questionDate;
+
+          final record = await EfficiencyCalculationService.createProductSearchRecord(
+            id: '${question.id}_$shopAddress',
+            shopAddress: shopAddress,
+            employeeName: shopAnsweredByName,
+            date: answerDate ?? questionDate,
+            answered: true,
+          );
+
+          records.add(record);
+        }
+      }
+      // Fallback для вопросов без rawShops (старый формат)
+      else if (question.isAnswered &&
           question.answeredByName != null &&
           question.answeredByName!.isNotEmpty) {
-        // Используем время ответа если есть, иначе время вопроса
         final answerDate = question.lastAnswerTime != null
             ? DateTime.tryParse(question.lastAnswerTime!)
             : questionDate;
@@ -362,8 +393,6 @@ Future<List<EfficiencyRecord>> loadProductSearchRecords(
 
         records.add(record);
       }
-      // Примечание: неотвеченные вопросы не учитываем,
-      // т.к. нет конкретного сотрудника для начисления штрафа
     }
 
     Logger.debug('Loaded ${records.length} product search efficiency records');

@@ -205,23 +205,21 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         }
       }
 
-      // Загружаем премии/штрафы
-      BonusPenaltySummary? bonusSummary;
-      if (_employeeId != null && _employeeId!.isNotEmpty) {
-        bonusSummary = await BonusPenaltyService.getSummary(_employeeId!);
-      }
+      // Загружаем премии/штрафы, баллы за приглашения и тесты ПАРАЛЛЕЛЬНО
+      final hasEmployeeId = _employeeId != null && _employeeId!.isNotEmpty;
+      final parallelResults = await Future.wait([
+        if (hasEmployeeId) BonusPenaltyService.getSummary(_employeeId!) else Future.value(null),
+        if (hasEmployeeId) ReferralService.getEmployeePoints(_employeeId!) else Future.value(null),
+        TestResultService.getResults(),
+      ]);
 
-      // Загружаем баллы за приглашения
-      EmployeeReferralPoints? referralPoints;
-      if (_employeeId != null && _employeeId!.isNotEmpty) {
-        referralPoints = await ReferralService.getEmployeePoints(_employeeId!);
-      }
+      final BonusPenaltySummary? bonusSummary = parallelResults[0] as BonusPenaltySummary?;
+      final EmployeeReferralPoints? referralPoints = parallelResults[1] as EmployeeReferralPoints?;
 
-      // Загружаем результаты тестирования для текущего сотрудника
       double? avgScore;
       int totalTests = 0;
       try {
-        final testResults = await TestResultService.getResults();
+        final testResults = parallelResults[2] as List<dynamic>;
         // Фильтруем по телефону текущего сотрудника
         final myTests = testResults.where((t) {
           final phone = _employeeId?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
@@ -231,7 +229,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
         if (myTests.isNotEmpty) {
           totalTests = myTests.length;
-          final totalScore = myTests.fold<int>(0, (sum, t) => sum + t.score);
+          final totalScore = myTests.fold<int>(0, (sum, t) => sum + (t.score as int));
           // Средний балл = сумма баллов / количество тестов
           avgScore = totalScore / totalTests;
         }

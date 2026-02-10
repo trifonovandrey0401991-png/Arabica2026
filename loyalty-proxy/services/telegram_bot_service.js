@@ -75,7 +75,7 @@ async function initBot() {
 
       let phone = contact.phone_number;
       // Нормализуем номер (убираем +, пробелы)
-      phone = phone.replace(/[\s+]/g, '');
+      phone = phone.replace(/[^\d]/g, '');
       // Если начинается с 8, меняем на 7
       if (phone.startsWith('8') && phone.length === 11) {
         phone = '7' + phone.substring(1);
@@ -128,7 +128,7 @@ async function initBot() {
       let phone = match[1].trim();
 
       // Нормализуем номер
-      phone = phone.replace(/[\s+\-()]/g, '');
+      phone = phone.replace(/[^\d]/g, '');
       if (phone.startsWith('8') && phone.length === 11) {
         phone = '7' + phone.substring(1);
       }

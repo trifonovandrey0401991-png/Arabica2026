@@ -262,7 +262,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
 
   Future<Shop?> _showShopDialog(BuildContext context) async {
     try {
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await Shop.loadShopsFromServer();
       if (!context.mounted) return null;
 
       return showModalBottomSheet<Shop>(

@@ -18,6 +18,11 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
 
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   String _selectedShift = 'day'; // 'day' или 'night'
   List<Shop> _shops = [];
   List<String> _selectedShopAddresses = [];
@@ -69,14 +74,14 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.restore, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text('Черновик восстановлен'),
+                  Icon(Icons.restore, color: _gold, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Черновик восстановлен', style: TextStyle(color: Colors.white.withOpacity(0.9))),
                 ],
               ),
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: _emeraldDark,
               duration: const Duration(seconds: 2),
             ),
           );
@@ -140,9 +145,9 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
 
     if (_selectedShopAddresses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Выберите хотя бы один магазин'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Выберите хотя бы один магазин'),
+          backgroundColor: Colors.red.shade700,
         ),
       );
       return;
@@ -166,9 +171,15 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Анкета успешно отправлена!'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Анкета успешно отправлена!'),
+            ],
+          ),
+          backgroundColor: _emerald,
         ),
       );
 
@@ -178,9 +189,9 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ошибка при отправке анкеты'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Ошибка при отправке анкеты'),
+          backgroundColor: Colors.red.shade700,
         ),
       );
     }
@@ -189,223 +200,248 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('Анкета соискателя'),
-        backgroundColor: const Color(0xFF004D40),
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Секция 1: Личные данные
-                  _buildSectionCard(
-                    title: 'Личные данные',
-                    icon: Icons.person_outline,
-                    iconColor: const Color(0xFF004D40),
-                    children: [
-                      // ФИО
-                      _buildInputLabel('ФИО', required: true),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _fullNameController,
-                        decoration: _buildInputDecoration(
-                          hintText: 'Иванов Иван Иванович',
-                          prefixIcon: Icons.badge_outlined,
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Введите ФИО';
-                          }
-                          if (value.trim().split(' ').length < 2) {
-                            return 'Введите полное ФИО';
-                          }
-                          return null;
-                        },
+                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
-                      const SizedBox(height: 20),
-
-                      // Номер телефона
-                      _buildInputLabel('Номер телефона', required: true),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: _buildInputDecoration(
-                          hintText: '+7 900 123 45 67',
-                          prefixIcon: Icons.phone_outlined,
-                        ),
-                        keyboardType: TextInputType.phone,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Введите номер телефона';
-                          }
-                          final digits = value.replaceAll(RegExp(r'[^\d]'), '');
-                          if (digits.length < 10) {
-                            return 'Введите корректный номер телефона';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Секция 2: Желаемое время работы
-                  _buildSectionCard(
-                    title: 'Желаемое время работы',
-                    icon: Icons.schedule_outlined,
-                    iconColor: Colors.orange,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildShiftOption(
-                              value: 'day',
-                              label: 'Дневная смена',
-                              subtitle: '08:00 - 20:00',
-                              icon: Icons.wb_sunny_outlined,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildShiftOption(
-                              value: 'night',
-                              label: 'Ночная смена',
-                              subtitle: '20:00 - 08:00',
-                              icon: Icons.nightlight_outlined,
-                              color: Colors.indigo,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Секция 3: Выбор магазинов
-                  _buildSectionCard(
-                    title: 'Где хотите работать',
-                    icon: Icons.store_outlined,
-                    iconColor: Colors.teal,
-                    subtitle: 'Можно выбрать несколько магазинов',
-                    children: [
-                      // Счётчик выбранных
-                      if (_selectedShopAddresses.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF004D40).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF004D40),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Выбрано магазинов: ${_selectedShopAddresses.length}',
-                                style: const TextStyle(
-                                  color: Color(0xFF004D40),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      // Список магазинов
-                      ..._shops.map((shop) => _buildShopCheckbox(shop)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Кнопка отправки
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF004D40), Color(0xFF00796B)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF004D40).withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submitApplication,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Анкета соискателя',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : Form(
+                        key: _formKey,
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          children: [
+                            // Секция 1: Личные данные
+                            _buildSectionCard(
+                              title: 'Личные данные',
+                              icon: Icons.person_outline,
+                              accentColor: _gold,
                               children: [
-                                Icon(Icons.send_rounded, size: 22),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Отправить анкету',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
+                                _buildInputLabel('ФИО', required: true),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _fullNameController,
+                                  decoration: _buildInputDecoration(
+                                    hintText: 'Иванов Иван Иванович',
+                                    prefixIcon: Icons.badge_outlined,
                                   ),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                                  textCapitalization: TextCapitalization.words,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Введите ФИО';
+                                    }
+                                    if (value.trim().split(' ').length < 2) {
+                                      return 'Введите полное ФИО';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Номер телефона
+                                _buildInputLabel('Номер телефона', required: true),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _phoneController,
+                                  decoration: _buildInputDecoration(
+                                    hintText: '+7 900 123 45 67',
+                                    prefixIcon: Icons.phone_outlined,
+                                  ),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                                  keyboardType: TextInputType.phone,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Введите номер телефона';
+                                    }
+                                    final digits = value.replaceAll(RegExp(r'[^\d]'), '');
+                                    if (digits.length < 10) {
+                                      return 'Введите корректный номер телефона';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ],
                             ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                            const SizedBox(height: 14),
+
+                            // Секция 2: Желаемое время работы
+                            _buildSectionCard(
+                              title: 'Желаемое время работы',
+                              icon: Icons.schedule_outlined,
+                              accentColor: Colors.orange,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildShiftOption(
+                                        value: 'day',
+                                        label: 'Дневная смена',
+                                        subtitle: '08:00 - 20:00',
+                                        icon: Icons.wb_sunny_outlined,
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildShiftOption(
+                                        value: 'night',
+                                        label: 'Ночная смена',
+                                        subtitle: '20:00 - 08:00',
+                                        icon: Icons.nightlight_outlined,
+                                        color: Colors.indigo[300]!,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Секция 3: Выбор магазинов
+                            _buildSectionCard(
+                              title: 'Где хотите работать',
+                              icon: Icons.store_outlined,
+                              accentColor: _gold,
+                              subtitle: 'Можно выбрать несколько магазинов',
+                              children: [
+                                // Счётчик выбранных
+                                if (_selectedShopAddresses.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      color: _gold.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: _gold.withOpacity(0.2)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.check_circle, color: _gold, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Выбрано магазинов: ${_selectedShopAddresses.length}',
+                                          style: TextStyle(
+                                            color: _gold,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                // Список магазинов
+                                ..._shops.map((shop) => _buildShopCheckbox(shop)),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Кнопка отправки
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: _isSubmitting ? null : _submitApplication,
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: _gold.withOpacity(0.5)),
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  backgroundColor: _gold.withOpacity(0.12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: _isSubmitting
+                                    ? SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: _gold,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.send_rounded, size: 22, color: _gold),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            'Отправить анкету',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: _gold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildSectionCard({
     required String title,
     required IconData icon,
-    required Color iconColor,
+    required Color accentColor,
     String? subtitle,
     required List<Widget> children,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,7 +450,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.08),
+              color: accentColor.withOpacity(0.08),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -425,10 +461,10 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.15),
+                    color: accentColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: iconColor, size: 22),
+                  child: Icon(icon, color: accentColor, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -440,7 +476,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
+                          color: Colors.white.withOpacity(0.9),
                         ),
                       ),
                       if (subtitle != null) ...[
@@ -449,7 +485,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                           subtitle,
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[600],
+                            color: Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -480,15 +516,15 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
+            color: Colors.white.withOpacity(0.6),
           ),
         ),
         if (required) ...[
           const SizedBox(width: 4),
-          const Text(
+          Text(
             '*',
             style: TextStyle(
-              color: Colors.red,
+              color: _gold,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -503,31 +539,32 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
   }) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(color: Colors.grey[400]),
-      prefixIcon: Icon(prefixIcon, color: Colors.grey[500]),
+      hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
+      prefixIcon: Icon(prefixIcon, color: Colors.white.withOpacity(0.3)),
       filled: true,
-      fillColor: Colors.grey[50],
+      fillColor: Colors.white.withOpacity(0.06),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF004D40), width: 2),
+        borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red),
+        borderSide: BorderSide(color: Colors.red.shade300),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 2),
+        borderSide: BorderSide(color: Colors.red.shade300, width: 2),
       ),
+      errorStyle: TextStyle(color: Colors.red.shade300),
     );
   }
 
@@ -543,17 +580,17 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
     return InkWell(
       onTap: () {
         setState(() => _selectedShift = value);
-        _saveDraft(); // Сохраняем черновик при изменении смены
+        _saveDraft();
       },
       borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.12) : Colors.grey[50],
+          color: isSelected ? color.withOpacity(0.12) : Colors.white.withOpacity(0.04),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? color : Colors.grey[300]!,
+            color: isSelected ? color.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -562,12 +599,12 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isSelected ? color.withOpacity(0.15) : Colors.grey[200],
+                color: isSelected ? color.withOpacity(0.2) : Colors.white.withOpacity(0.06),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: isSelected ? color : Colors.grey[500],
+                color: isSelected ? color : Colors.white.withOpacity(0.4),
                 size: 28,
               ),
             ),
@@ -578,7 +615,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? color : Colors.grey[700],
+                color: isSelected ? color : Colors.white.withOpacity(0.6),
               ),
             ),
             const SizedBox(height: 4),
@@ -586,16 +623,12 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
               subtitle,
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? color.withOpacity(0.8) : Colors.grey[500],
+                color: isSelected ? color.withOpacity(0.8) : Colors.white.withOpacity(0.35),
               ),
             ),
             if (isSelected) ...[
               const SizedBox(height: 8),
-              Icon(
-                Icons.check_circle,
-                color: color,
-                size: 20,
-              ),
+              Icon(Icons.check_circle, color: color, size: 20),
             ],
           ],
         ),
@@ -617,7 +650,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
               _selectedShopAddresses.add(shop.address);
             }
           });
-          _saveDraft(); // Сохраняем черновик при изменении магазинов
+          _saveDraft();
         },
         borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
@@ -625,11 +658,11 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: isSelected
-                ? const Color(0xFF004D40).withOpacity(0.08)
-                : Colors.grey[50],
+                ? _gold.withOpacity(0.1)
+                : Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? const Color(0xFF004D40) : Colors.grey[300]!,
+              color: isSelected ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.1),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -641,10 +674,10 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF004D40) : Colors.white,
+                  color: isSelected ? _gold : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF004D40) : Colors.grey[400]!,
+                    color: isSelected ? _gold : Colors.white.withOpacity(0.3),
                     width: 2,
                   ),
                 ),
@@ -662,13 +695,13 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFF004D40).withOpacity(0.15)
-                      : Colors.grey[200],
+                      ? _gold.withOpacity(0.15)
+                      : Colors.white.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   shop.icon,
-                  color: isSelected ? const Color(0xFF004D40) : Colors.grey[500],
+                  color: isSelected ? _gold : Colors.white.withOpacity(0.4),
                   size: 20,
                 ),
               ),
@@ -684,8 +717,8 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: isSelected
-                            ? const Color(0xFF004D40)
-                            : Colors.grey[800],
+                            ? Colors.white.withOpacity(0.95)
+                            : Colors.white.withOpacity(0.7),
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -693,7 +726,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                       shop.address,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[600],
+                        color: Colors.white.withOpacity(0.4),
                       ),
                     ),
                   ],

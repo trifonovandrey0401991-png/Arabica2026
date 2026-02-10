@@ -97,26 +97,40 @@ async function cleanOldMessages(chat) {
   return chat;
 }
 
-// Helper: Get all employees (async)
+// In-memory cache for employees (TTL: 30 seconds)
+let _employeesCache = null;
+let _employeesCacheTime = 0;
+const EMPLOYEES_CACHE_TTL = 30000; // 30 seconds
+
+// Helper: Get all employees (async, with cache + parallel reads)
 async function getAllEmployees() {
+  // Return cached if fresh
+  if (_employeesCache && (Date.now() - _employeesCacheTime) < EMPLOYEES_CACHE_TTL) {
+    return _employeesCache;
+  }
+
   const employees = [];
   try {
     await fsPromises.access(EMPLOYEES_DIR);
     const files = await fsPromises.readdir(EMPLOYEES_DIR);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
 
-    for (const file of jsonFiles) {
+    // Parallel reads instead of sequential
+    const results = await Promise.all(jsonFiles.map(async (file) => {
       try {
         const content = await fsPromises.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
-        try {
-          employees.push(JSON.parse(content));
-        } catch (parseError) {
-          console.error(`JSON parse error for employee file ${file}:`, parseError.message);
-        }
-      } catch (readError) {
-        console.error(`Error reading employee file ${file}:`, readError.message);
+        return JSON.parse(content);
+      } catch (e) {
+        console.error(`Error reading employee file ${file}:`, e.message);
+        return null;
       }
-    }
+    }));
+
+    employees.push(...results.filter(Boolean));
+
+    // Update cache
+    _employeesCache = employees;
+    _employeesCacheTime = Date.now();
   } catch (e) {
     if (e.code !== 'ENOENT') {
       console.error('Error reading employees directory:', e.message);
@@ -125,7 +139,7 @@ async function getAllEmployees() {
   return employees;
 }
 
-// Helper: Get employee by phone (async)
+// Helper: Get employee by phone (async, uses cached getAllEmployees)
 async function getEmployeeByPhone(phone) {
   const employees = await getAllEmployees();
   return employees.find(e => e.phone === phone);
@@ -140,30 +154,25 @@ function createPrivateChatId(phone1, phone2) {
   return `private_${sorted[0]}_${sorted[1]}`;
 }
 
-// Helper: Get FCM tokens for phones (async)
+// Helper: Get FCM tokens for phones (async, parallel reads)
 async function getFcmTokens(phones) {
-  const tokens = [];
-  for (const phone of phones) {
+  const results = await Promise.all(phones.map(async (phone) => {
     const tokenFile = path.join(FCM_TOKENS_DIR, `${phone}.json`);
     try {
-      await fsPromises.access(tokenFile);
       const content = await fsPromises.readFile(tokenFile, 'utf8');
-      try {
-        const data = JSON.parse(content);
-        if (data.token) {
-          tokens.push({ phone, token: data.token });
-        }
-      } catch (parseError) {
-        console.error(`JSON parse error for FCM token ${phone}:`, parseError.message);
+      const data = JSON.parse(content);
+      if (data.token) {
+        return { phone, token: data.token };
       }
+      return null;
     } catch (e) {
-      // Файл не существует - это нормально, у пользователя может не быть токена
       if (e.code !== 'ENOENT') {
         console.error(`Error reading FCM token for ${phone}:`, e.message);
       }
+      return null;
     }
-  }
-  return tokens;
+  }));
+  return results.filter(Boolean);
 }
 
 // Helper: Send push notification
@@ -243,12 +252,12 @@ async function deleteChat(chatId) {
 
 // Helper: Get participant name (employee or client) (async)
 async function getParticipantName(phone) {
-  const normalizedPhone = phone.replace(/[\s+]/g, '');
+  const normalizedPhone = phone.replace(/[^\d]/g, '');
 
   // Сначала ищем в сотрудниках
   const employees = await getAllEmployees();
   const employee = employees.find(e => {
-    const empPhone = (e.phone || '').replace(/[\s+]/g, '');
+    const empPhone = (e.phone || '').replace(/[^\d]/g, '');
     return empPhone === normalizedPhone;
   });
   if (employee && employee.name) {
@@ -359,66 +368,70 @@ function setupEmployeeChatAPI(app) {
       try {
         await fsPromises.access(EMPLOYEE_CHATS_DIR);
         const allFiles = await fsPromises.readdir(EMPLOYEE_CHATS_DIR);
-        const files = allFiles.filter(f => f.endsWith('.json'));
+        const files = allFiles.filter(f => f.endsWith('.json') && f !== 'general.json');
 
-        for (const file of files) {
-          if (file === 'general.json') continue;
-
+        // Параллельное чтение всех файлов чатов (вместо последовательного for...of)
+        const chatResults = await Promise.all(files.map(async (file) => {
           try {
             const content = await fsPromises.readFile(path.join(EMPLOYEE_CHATS_DIR, file), 'utf8');
-            let chat;
-            try {
-              chat = JSON.parse(content);
-            } catch (parseError) {
-              console.error(`JSON parse error for chat file ${file}:`, parseError.message);
-              continue;
-            }
-            chat = await cleanOldMessages(chat);
-
-            // For private chats, only show if user is participant
-            if (chat.type === 'private') {
-              if (!(chat.participants || []).includes(phone)) continue;
-
-              // Get other participant's name
-              const otherPhone = chat.participants.find(p => p !== phone);
-              const otherEmployee = await getEmployeeByPhone(otherPhone);
-              chat.name = otherEmployee?.name || otherPhone;
-            }
-
-            // For shop chats, only show if user is a member (or if admin - show all)
-            if (chat.type === 'shop') {
-              if (!isAdminUser && (!chat.shopMembers || !chat.shopMembers.includes(phone))) continue;
-            }
-
-            // For group chats, only show if user is a participant (or if admin - show all)
-            if (chat.type === 'group') {
-              const normalizedPhone = phone.replace(/[\s+]/g, '');
-              const normalizedParticipants = (chat.participants || []).map(p => p.replace(/[\s+]/g, ''));
-              if (!isAdminUser && !normalizedParticipants.includes(normalizedPhone)) continue;
-            }
-
-            const unread = (chat.messages || []).filter(m =>
-              m.senderPhone !== phone && !(m.readBy || []).includes(phone)
-            ).length;
-
-            chats.push({
-              id: chat.id,
-              type: chat.type,
-              name: chat.name,
-              shopAddress: chat.shopAddress,
-              participants: chat.participants,
-              participantNames: chat.participantNames,
-              imageUrl: chat.imageUrl,
-              creatorPhone: chat.creatorPhone,
-              creatorName: chat.creatorName,
-              unreadCount: unread,
-              lastMessage: chat.messages?.length > 0
-                ? chat.messages[chat.messages.length - 1]
-                : null
-            });
+            return JSON.parse(content);
           } catch (e) {
-            console.error(`Error processing chat file ${file}:`, e.message);
+            console.error(`Error reading/parsing chat file ${file}:`, e.message);
+            return null;
           }
+        }));
+        const allChats = chatResults.filter(Boolean);
+
+        // Кэш сотрудников — загружаем один раз, а не для каждого приватного чата
+        let employeesCache = null;
+        const getEmployeeCached = async (empPhone) => {
+          if (!employeesCache) {
+            employeesCache = await getAllEmployees();
+          }
+          return employeesCache.find(e => e.phone === empPhone);
+        };
+
+        const normalizedPhone = phone.replace(/[^\d]/g, '');
+
+        for (const chat of allChats) {
+          // Фильтрация по участию — БЕЗ чтения лишних файлов
+          if (chat.type === 'private') {
+            if (!(chat.participants || []).includes(phone)) continue;
+            const otherPhone = chat.participants.find(p => p !== phone);
+            const otherEmployee = await getEmployeeCached(otherPhone);
+            chat.name = otherEmployee?.name || otherPhone;
+          }
+
+          if (chat.type === 'shop') {
+            if (!isAdminUser && (!chat.shopMembers || !chat.shopMembers.includes(phone))) continue;
+          }
+
+          if (chat.type === 'group') {
+            const normalizedParticipants = (chat.participants || []).map(p => p.replace(/[^\d]/g, ''));
+            if (!isAdminUser && !normalizedParticipants.includes(normalizedPhone)) continue;
+          }
+
+          // Подсчёт непрочитанных — только фильтрация массива, без записи на диск
+          const messages = chat.messages || [];
+          const unread = messages.filter(m =>
+            m.senderPhone !== phone && !(m.readBy || []).includes(phone)
+          ).length;
+
+          chats.push({
+            id: chat.id,
+            type: chat.type,
+            name: chat.name,
+            shopAddress: chat.shopAddress,
+            participants: chat.participants,
+            participantNames: chat.participantNames,
+            imageUrl: chat.imageUrl,
+            creatorPhone: chat.creatorPhone,
+            creatorName: chat.creatorName,
+            unreadCount: unread,
+            lastMessage: messages.length > 0
+              ? messages[messages.length - 1]
+              : null
+          });
         }
       } catch (e) {
         // Directory doesn't exist - это нормально при первом запуске
@@ -533,7 +546,7 @@ function setupEmployeeChatAPI(app) {
           type: 'employee_chat',
           chatId: chatId,
           messageId: message.id
-        });
+        }).catch(e => console.error('Push error:', e.message));
       }
 
       // WebSocket: мгновенное уведомление о новом сообщении
@@ -598,8 +611,10 @@ function setupEmployeeChatAPI(app) {
       let chat = await loadChat(chatId);
 
       if (!chat) {
-        const employee1 = await getEmployeeByPhone(phone1);
-        const employee2 = await getEmployeeByPhone(phone2);
+        // One read instead of two separate getEmployeeByPhone calls
+        const allEmployees = await getAllEmployees();
+        const employee1 = allEmployees.find(e => e.phone === phone1);
+        const employee2 = allEmployees.find(e => e.phone === phone2);
 
         chat = {
           id: chatId,
@@ -671,16 +686,16 @@ function setupEmployeeChatAPI(app) {
         return res.status(404).json({ success: false, error: 'Shop chat not found' });
       }
 
-      // Получаем информацию о каждом участнике
-      const members = [];
-      for (const phone of (chat.shopMembers || [])) {
-        const employee = await getEmployeeByPhone(phone);
-        members.push({
+      // Получаем информацию о всех участниках (один запрос вместо N)
+      const allEmployees = await getAllEmployees();
+      const members = (chat.shopMembers || []).map(phone => {
+        const employee = allEmployees.find(e => e.phone === phone);
+        return {
           phone,
           name: employee?.name || phone,
           position: employee?.position || ''
-        });
-      }
+        };
+      });
 
       res.json({ success: true, members, shopAddress: chat.shopAddress });
     } catch (error) {
@@ -1101,7 +1116,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       const groupId = `group_${Date.now()}_${randomString(8)}`;
-      const normalizedCreatorPhone = creatorPhone.replace(/[\s+]/g, '');
+      const normalizedCreatorPhone = creatorPhone.replace(/[^\d]/g, '');
 
       // Собрать имена участников
       const participantNames = {};
@@ -1110,7 +1125,7 @@ function setupEmployeeChatAPI(app) {
       // Нормализуем телефоны участников и получаем их имена
       const normalizedParticipants = [normalizedCreatorPhone];
       for (const phone of participants) {
-        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        const normalizedPhone = phone.replace(/[^\d]/g, '');
         if (normalizedPhone !== normalizedCreatorPhone && !normalizedParticipants.includes(normalizedPhone)) {
           normalizedParticipants.push(normalizedPhone);
           participantNames[normalizedPhone] = await getParticipantName(phone);
@@ -1157,7 +1172,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       // Только создатель может редактировать
-      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      const normalizedRequester = requesterPhone.replace(/[^\d]/g, '');
       if (chat.creatorPhone !== normalizedRequester) {
         console.log('❌ Отказ: редактирование группы не создателем');
         return res.status(403).json({ success: false, error: 'Только создатель может редактировать группу' });
@@ -1197,7 +1212,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       // Только создатель может добавлять участников
-      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      const normalizedRequester = requesterPhone.replace(/[^\d]/g, '');
       if (chat.creatorPhone !== normalizedRequester) {
         console.log('❌ Отказ: добавление участников не создателем');
         return res.status(403).json({ success: false, error: 'Только создатель может добавлять участников' });
@@ -1210,7 +1225,7 @@ function setupEmployeeChatAPI(app) {
 
       // Добавляем новых участников
       for (const phone of phones) {
-        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        const normalizedPhone = phone.replace(/[^\d]/g, '');
         if (!chat.participants.includes(normalizedPhone)) {
           chat.participants.push(normalizedPhone);
           chat.participantNames[normalizedPhone] = await getParticipantName(phone);
@@ -1244,13 +1259,13 @@ function setupEmployeeChatAPI(app) {
       }
 
       // Только создатель может удалять участников
-      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      const normalizedRequester = requesterPhone.replace(/[^\d]/g, '');
       if (chat.creatorPhone !== normalizedRequester) {
         console.log('❌ Отказ: удаление участника не создателем');
         return res.status(403).json({ success: false, error: 'Только создатель может удалять участников' });
       }
 
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
+      const normalizedPhone = phone.replace(/[^\d]/g, '');
 
       // Нельзя удалить создателя
       if (normalizedPhone === chat.creatorPhone) {
@@ -1291,7 +1306,7 @@ function setupEmployeeChatAPI(app) {
         return res.status(404).json({ success: false, error: 'Группа не найдена' });
       }
 
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
+      const normalizedPhone = phone.replace(/[^\d]/g, '');
 
       // Создатель не может выйти - должен удалить группу
       if (normalizedPhone === chat.creatorPhone) {
@@ -1333,7 +1348,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       // Только создатель может удалить группу
-      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      const normalizedRequester = requesterPhone.replace(/[^\d]/g, '');
       if (chat.creatorPhone !== normalizedRequester) {
         console.log('❌ Отказ: удаление группы не создателем');
         return res.status(403).json({ success: false, error: 'Только создатель может удалить группу' });

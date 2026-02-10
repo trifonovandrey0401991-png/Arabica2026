@@ -67,4 +67,34 @@ class TestQuestionService {
       endpoint: '$baseEndpoint/$id',
     );
   }
+
+  /// Получить настройки теста (длительность в минутах)
+  static Future<int> getTestDurationMinutes() async {
+    try {
+      final response = await BaseHttpService.getRaw(
+        endpoint: ApiConstants.testSettingsEndpoint,
+      );
+      if (response != null && response['settings'] != null) {
+        final settings = response['settings'] as Map<String, dynamic>;
+        return settings['durationMinutes'] as int? ?? 7;
+      }
+    } catch (e) {
+      Logger.warning('Не удалось загрузить настройки теста: $e');
+    }
+    return 7;
+  }
+
+  /// Сохранить длительность теста
+  static Future<bool> saveTestDurationMinutes(int minutes) async {
+    try {
+      final response = await BaseHttpService.postRaw(
+        endpoint: ApiConstants.testSettingsEndpoint,
+        body: {'durationMinutes': minutes},
+      );
+      return response != null && response['success'] == true;
+    } catch (e) {
+      Logger.error('Ошибка сохранения настроек теста', e);
+      return false;
+    }
+  }
 }

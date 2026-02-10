@@ -20,7 +20,7 @@ const SHIFT_QUESTIONS_DIR = `${DATA_DIR}/shift-questions`;
 })();
 
 function setupShiftQuestionsAPI(app, { upload } = {}) {
-  // Получить все вопросы
+  // Получить все вопросы (отсортированные по order)
   app.get('/api/shift-questions', async (req, res) => {
     try {
       console.log('GET /api/shift-questions:', req.query);
@@ -40,6 +40,13 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
           }
         }
       }
+
+      // Сортировка по полю order (вопросы без order — в конец)
+      questions.sort((a, b) => {
+        const orderA = typeof a.order === 'number' ? a.order : 999999;
+        const orderB = typeof b.order === 'number' ? b.order : 999999;
+        return orderA - orderB;
+      });
 
       // Фильтр по магазину (если указан)
       let filteredQuestions = questions;
@@ -104,6 +111,21 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
+      // Определяем order для нового вопроса (в конец списка)
+      let maxOrder = 0;
+      try {
+        const existingFiles = await fsp.readdir(SHIFT_QUESTIONS_DIR);
+        for (const f of existingFiles) {
+          if (f.endsWith('.json')) {
+            try {
+              const d = await fsp.readFile(path.join(SHIFT_QUESTIONS_DIR, f), 'utf8');
+              const q = JSON.parse(d);
+              if (typeof q.order === 'number' && q.order > maxOrder) maxOrder = q.order;
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
+
       const questionData = {
         id: questionId,
         question: req.body.question,
@@ -112,6 +134,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
         shops: req.body.shops || null,
         referencePhotos: req.body.referencePhotos || {},
         isAiCheck: req.body.isAiCheck || false,
+        order: typeof req.body.order === 'number' ? req.body.order : maxOrder + 1,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -160,6 +183,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
         ...(req.body.shops !== undefined && { shops: req.body.shops }),
         ...(req.body.referencePhotos !== undefined && { referencePhotos: req.body.referencePhotos }),
         ...(req.body.isAiCheck !== undefined && { isAiCheck: req.body.isAiCheck }),
+        ...(req.body.order !== undefined && { order: req.body.order }),
         updatedAt: new Date().toISOString()
       };
 
@@ -237,6 +261,37 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
       }
     });
   }
+
+  // Изменить порядок вопросов (массовое обновление order)
+  app.patch('/api/shift-questions/reorder', async (req, res) => {
+    try {
+      const { orders } = req.body; // [{id, order}, ...]
+      if (!Array.isArray(orders)) {
+        return res.status(400).json({ success: false, error: 'orders должен быть массивом' });
+      }
+
+      console.log(`PATCH /api/shift-questions/reorder: ${orders.length} вопросов`);
+
+      let updated = 0;
+      for (const item of orders) {
+        const sanitizedId = item.id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
+        if (await fileExists(filePath)) {
+          const data = await fsp.readFile(filePath, 'utf8');
+          const question = JSON.parse(data);
+          question.order = item.order;
+          question.updatedAt = new Date().toISOString();
+          await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+          updated++;
+        }
+      }
+
+      res.json({ success: true, message: `Порядок обновлен для ${updated} вопросов`, updated });
+    } catch (error) {
+      console.error('Ошибка изменения порядка:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 
   // Удалить вопрос
   app.delete('/api/shift-questions/:questionId', async (req, res) => {

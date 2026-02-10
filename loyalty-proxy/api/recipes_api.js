@@ -6,6 +6,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const multer = require('multer');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
@@ -27,7 +28,57 @@ const RECIPE_PHOTOS_DIR = `${DATA_DIR}/recipe-photos`;
   }
 })();
 
+// Настройка multer для загрузки фото рецептов
+const recipePhotoStorage = multer.diskStorage({
+  destination: async function (req, file, cb) {
+    if (!await fileExists(RECIPE_PHOTOS_DIR)) {
+      await fsp.mkdir(RECIPE_PHOTOS_DIR, { recursive: true });
+    }
+    cb(null, RECIPE_PHOTOS_DIR);
+  },
+  filename: function (req, file, cb) {
+    const safeId = sanitizeId(req.body.recipeId || `recipe_${Date.now()}`);
+    cb(null, `${safeId}.jpg`);
+  }
+});
+
+const uploadRecipePhoto = multer({
+  storage: recipePhotoStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Разрешены только изображения (JPEG, PNG, GIF, WebP)'));
+    }
+  }
+});
+
 function setupRecipesAPI(app) {
+  // POST /api/recipes/upload-photo - загрузить фото рецепта
+  // ВАЖНО: этот route должен быть ПЕРЕД /api/recipes/:id
+  app.post('/api/recipes/upload-photo', uploadRecipePhoto.single('photo'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'Файл не загружен' });
+      }
+
+      const recipeId = sanitizeId(req.body.recipeId || '');
+      if (!recipeId) {
+        return res.status(400).json({ success: false, error: 'recipeId обязателен' });
+      }
+
+      const photoUrl = `/api/recipes/photo/${recipeId}`;
+      console.log(`✅ Фото рецепта загружено: ${recipeId} (${req.file.size} bytes)`);
+
+      res.json({ success: true, photoUrl });
+    } catch (error) {
+      console.error('Ошибка загрузки фото рецепта:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // GET /api/recipes - получить все рецепты
   app.get('/api/recipes', async (req, res) => {
     try {
@@ -36,14 +87,16 @@ function setupRecipesAPI(app) {
 
       if (await fileExists(RECIPES_DIR)) {
         const files = (await fsp.readdir(RECIPES_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
-          try {
+        // Параллельное чтение всех файлов (вместо последовательного)
+        const results = await Promise.allSettled(
+          files.map(async (file) => {
             const content = await fsp.readFile(path.join(RECIPES_DIR, file), 'utf8');
-            const recipe = JSON.parse(content);
-            recipes.push(recipe);
-          } catch (e) {
-            console.error(`Ошибка чтения ${file}:`, e);
-          }
+            return JSON.parse(content);
+          })
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled') recipes.push(r.value);
+          else console.error('Ошибка чтения рецепта:', r.reason?.message);
         }
       }
 

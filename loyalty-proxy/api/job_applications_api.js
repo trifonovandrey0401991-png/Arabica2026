@@ -102,7 +102,7 @@ async function sendPushToAdmins(title, body) {
         const employeeData = JSON.parse(await fsp.readFile(path.join(employeesDir, file), 'utf8'));
 
         if (employeeData.isAdmin && employeeData.phone) {
-          const normalizedPhone = employeeData.phone.replace(/[\s+]/g, '');
+          const normalizedPhone = employeeData.phone.replace(/[^\d]/g, '');
           const tokenFile = path.join(fcmTokensDir, `${normalizedPhone}.json`);
 
           if (await fileExists(tokenFile)) {

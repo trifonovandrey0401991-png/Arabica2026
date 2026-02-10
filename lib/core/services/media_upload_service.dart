@@ -29,6 +29,15 @@ class MediaUploadService {
       final uri = Uri.parse('${ApiConstants.serverUrl}/upload-photo');
 
       final request = http.MultipartRequest('POST', uri);
+
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
+
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',

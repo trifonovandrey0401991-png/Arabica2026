@@ -11,6 +11,7 @@ const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const TEST_QUESTIONS_DIR = `${DATA_DIR}/test-questions`;
 const TEST_RESULTS_DIR = `${DATA_DIR}/test-results`;
+const TEST_SETTINGS_FILE = `${DATA_DIR}/test-settings.json`;
 
 // Ensure directories exist
 (async () => {
@@ -135,7 +136,15 @@ function setupTestsAPI(app) {
         for (const file of files) {
           try {
             const content = await fsp.readFile(path.join(TEST_QUESTIONS_DIR, file), 'utf8');
-            questions.push(JSON.parse(content));
+            const q = JSON.parse(content);
+            // Migrate old answerA/B/C format to options array
+            if (!q.options && (q.answerA || q.answerB || q.answerC)) {
+              q.options = [q.answerA, q.answerB, q.answerC].filter(Boolean);
+              delete q.answerA;
+              delete q.answerB;
+              delete q.answerC;
+            }
+            questions.push(q);
           } catch (e) {
             console.error(`Ошибка чтения ${file}:`, e);
           }
@@ -153,9 +162,7 @@ function setupTestsAPI(app) {
       const question = {
         id: `test_question_${Date.now()}`,
         question: req.body.question,
-        answerA: req.body.answerA,
-        answerB: req.body.answerB,
-        answerC: req.body.answerC,
+        options: req.body.options || [],
         correctAnswer: req.body.correctAnswer,
         createdAt: new Date().toISOString(),
       };
@@ -180,10 +187,12 @@ function setupTestsAPI(app) {
       }
       const question = JSON.parse(await fsp.readFile(questionFile, 'utf8'));
       if (req.body.question) question.question = req.body.question;
-      if (req.body.answerA) question.answerA = req.body.answerA;
-      if (req.body.answerB) question.answerB = req.body.answerB;
-      if (req.body.answerC) question.answerC = req.body.answerC;
+      if (req.body.options) question.options = req.body.options;
       if (req.body.correctAnswer) question.correctAnswer = req.body.correctAnswer;
+      // Remove old answerA/B/C fields if migrating
+      delete question.answerA;
+      delete question.answerB;
+      delete question.answerC;
       question.updatedAt = new Date().toISOString();
       await fsp.writeFile(questionFile, JSON.stringify(question, null, 2), 'utf8');
       res.json({ success: true, question });
@@ -269,6 +278,45 @@ function setupTestsAPI(app) {
       });
     } catch (error) {
       console.error('Ошибка сохранения результата теста:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== TEST SETTINGS (duration etc.) =====
+
+  app.get('/api/test-settings', async (req, res) => {
+    try {
+      let settings = { durationMinutes: 7 };
+      if (await fileExists(TEST_SETTINGS_FILE)) {
+        try {
+          const data = await fsp.readFile(TEST_SETTINGS_FILE, 'utf8');
+          settings = JSON.parse(data);
+        } catch (e) {
+          console.error('Error reading test settings:', e);
+        }
+      }
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error('Error getting test settings:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/test-settings', async (req, res) => {
+    try {
+      const durationMinutes = parseInt(req.body.durationMinutes);
+      if (!durationMinutes || durationMinutes < 1 || durationMinutes > 120) {
+        return res.status(400).json({ success: false, error: 'durationMinutes must be between 1 and 120' });
+      }
+      const settings = {
+        durationMinutes,
+        updatedAt: new Date().toISOString(),
+      };
+      await fsp.writeFile(TEST_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      console.log(`✅ Test settings updated: ${durationMinutes} minutes`);
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error('Error saving test settings:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

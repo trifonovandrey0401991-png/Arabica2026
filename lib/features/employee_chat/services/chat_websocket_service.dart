@@ -58,7 +58,7 @@ class ChatWebSocketService {
       return;
     }
 
-    _userPhone = userPhone.replaceAll(RegExp(r'[\s+]'), '');
+    _userPhone = userPhone.replaceAll(RegExp(r'[\s\+]'), '');
 
     try {
       // Формируем WebSocket URL

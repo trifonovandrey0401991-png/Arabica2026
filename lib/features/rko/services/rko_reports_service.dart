@@ -34,6 +34,14 @@ class RKOReportsService {
         Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/upload'),
       );
 
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
+
       // Добавляем файл (.docx)
       // Для веб используем fromBytes, для мобильных fromPath
       if (kIsWeb) {
@@ -52,9 +60,6 @@ class RKOReportsService {
           await http.MultipartFile.fromPath('docx', pdfFile.path),
         );
       }
-
-      // Добавляем API key
-      request.headers.addAll(ApiConstants.headersWithApiKey);
 
       // Добавляем метаданные (используем нормализованную дату)
       request.fields['fileName'] = fileName;
@@ -254,19 +259,19 @@ class RKOReportsService {
     String? reportDate,
   }) async {
     try {
-      final url = '${ApiConstants.serverUrl}$baseEndpoint-reports/$reportId';
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/$reportId/status';
       Logger.debug('Подтверждение РКО: $reportId');
 
       final response = await http.put(
         Uri.parse(url),
-        headers: ApiConstants.headersWithApiKey,
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode({
           'status': 'confirmed',
           'rating': rating,
           'confirmedBy': adminName,
           'confirmedAt': DateTime.now().toIso8601String(),
         }),
-      ).timeout(ApiConstants.shortTimeout);
+      ).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -307,19 +312,19 @@ class RKOReportsService {
     String? reportDate,
   }) async {
     try {
-      final url = '${ApiConstants.serverUrl}$baseEndpoint-reports/$reportId';
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/$reportId/status';
       Logger.debug('Отклонение РКО: $reportId');
 
       final response = await http.put(
         Uri.parse(url),
-        headers: ApiConstants.headersWithApiKey,
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode({
           'status': 'rejected',
           'rejectedBy': adminName,
           'rejectedAt': DateTime.now().toIso8601String(),
           'rejectReason': comment,
         }),
-      ).timeout(ApiConstants.shortTimeout);
+      ).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);

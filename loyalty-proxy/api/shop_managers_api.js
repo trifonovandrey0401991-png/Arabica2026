@@ -85,10 +85,11 @@ async function saveShopManagers(data) {
 
 /**
  * Нормализация телефона
+ * M-11: Унифицировано — только цифры (как sanitizePhone в file_helpers)
  */
 function normalizePhone(phone) {
   if (!phone) return '';
-  return phone.toString().replace(/[\s\+]/g, '');
+  return phone.toString().replace(/[^\d]/g, '');
 }
 
 /**
