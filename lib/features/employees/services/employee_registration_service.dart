@@ -69,10 +69,23 @@ class EmployeeRegistrationService {
       }
 
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      if (normalizedPhone.isEmpty) {
+        _lastUploadError = 'Некорректный номер телефона';
+        return null;
+      }
       final uri = Uri.parse('${ApiConstants.serverUrl}/upload-employee-photo');
       Logger.debug('   URI: $uri');
 
       final request = http.MultipartRequest('POST', uri);
+
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
+
       final fileName = '${normalizedPhone}_$photoType.jpg';
       Logger.debug('📤 Загрузка фото: $fileName (${bytes.length} байт)');
 
@@ -180,11 +193,23 @@ class EmployeeRegistrationService {
       }
 
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      if (normalizedPhone.isEmpty) {
+        _lastUploadError = 'Некорректный номер телефона';
+        return null;
+      }
 
       final uri = Uri.parse('${ApiConstants.serverUrl}/upload-employee-photo');
       Logger.debug('   URI: $uri');
 
       final request = http.MultipartRequest('POST', uri);
+
+      // Добавляем заголовки авторизации
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        request.headers['X-API-Key'] = ApiConstants.apiKey!;
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+      }
 
       final fileName = '${normalizedPhone}_$photoType.jpg';
       Logger.debug('📤 Загрузка фото: $fileName (${bytes.length} байт)');
@@ -238,6 +263,7 @@ class EmployeeRegistrationService {
   /// Сохранить регистрацию сотрудника
   static Future<bool> saveRegistration(EmployeeRegistration registration) async {
     final normalizedPhone = registration.phone.replaceAll(RegExp(r'[\s\+]'), '');
+    if (normalizedPhone.isEmpty) return false;
     final registrationToSave = registration.copyWith(phone: normalizedPhone);
 
     Logger.debug('💾 Сохранение регистрации для телефона: $normalizedPhone');
@@ -252,6 +278,7 @@ class EmployeeRegistrationService {
   /// Получить регистрацию по телефону
   static Future<EmployeeRegistration?> getRegistration(String phone) async {
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+    if (normalizedPhone.isEmpty) return null;
     Logger.debug('🔍 Запрос регистрации для телефона: $normalizedPhone');
 
     return await BaseHttpService.get<EmployeeRegistration>(
@@ -269,6 +296,7 @@ class EmployeeRegistrationService {
     String adminName,
   ) async {
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+    if (normalizedPhone.isEmpty) return false;
     Logger.debug('🔐 Верификация сотрудника: $normalizedPhone, статус: $isVerified');
 
     return await BaseHttpService.simplePost(

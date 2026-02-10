@@ -747,4 +747,85 @@ router.post('/refresh-session', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/auth/change-pin
+ * Смена PIN-кода (требуется авторизация + старый PIN)
+ */
+router.post('/change-pin', async (req, res) => {
+  try {
+    const { oldPin, newPin } = req.body;
+
+    if (!oldPin || !newPin) {
+      return res.status(400).json({ error: 'Требуются oldPin и newPin' });
+    }
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Требуется авторизация' });
+    }
+
+    const normalizedPhone = normalizePhone(req.user.phone);
+
+    // File lock для атомарности
+    const pinLockPath = path.join(PINS_DIR, `${normalizedPhone}.lock`);
+    const result = await withLock(pinLockPath, async () => {
+      const pinData = await getPinData(normalizedPhone);
+
+      if (!pinData) {
+        return { status: 404, body: { error: 'Пользователь не найден' } };
+      }
+
+      // Проверяем блокировку
+      if (pinData.lockedUntil && Date.now() < pinData.lockedUntil) {
+        const remainingMinutes = Math.ceil((pinData.lockedUntil - Date.now()) / 60000);
+        return { status: 423, body: { error: `Аккаунт заблокирован. Попробуйте через ${remainingMinutes} мин.` } };
+      }
+
+      // Проверяем старый PIN
+      const { valid } = await verifyPin(oldPin, pinData);
+      if (!valid) {
+        pinData.failedAttempts++;
+        if (pinData.failedAttempts >= MAX_PIN_ATTEMPTS) {
+          pinData.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+          pinData.failedAttempts = 0;
+          await savePinData(normalizedPhone, pinData);
+          return { status: 423, body: { error: 'Превышено количество попыток. Аккаунт заблокирован на 15 минут.' } };
+        }
+        await savePinData(normalizedPhone, pinData);
+        const remaining = MAX_PIN_ATTEMPTS - pinData.failedAttempts;
+        return { status: 401, body: { error: `Неверный старый PIN-код. Осталось попыток: ${remaining}` } };
+      }
+
+      // Старый PIN верный — обновляем на новый
+      pinData.failedAttempts = 0;
+      pinData.lockedUntil = null;
+
+      if (bcrypt) {
+        pinData.pinHash = await bcrypt.hash(newPin, BCRYPT_ROUNDS);
+        pinData.salt = '';
+        pinData.hashType = 'bcrypt';
+      } else {
+        const salt = generateSalt();
+        pinData.pinHash = hashPinSha256(newPin, salt);
+        pinData.salt = salt;
+        pinData.hashType = 'sha256';
+      }
+      pinData.updatedAt = Date.now();
+
+      await savePinData(normalizedPhone, pinData);
+      return { status: 200 };
+    });
+
+    if (result.status !== 200) {
+      return res.status(result.status).json(result.body);
+    }
+
+    console.log(`✅ PIN changed for: ${normalizedPhone}`);
+    res.json({ success: true, message: 'PIN-код успешно изменён' });
+
+  } catch (error) {
+    console.error('Change PIN error:', error);
+    res.status(500).json({ error: 'Ошибка смены PIN' });
+  }
+});
+
 module.exports = router;

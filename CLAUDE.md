@@ -11,32 +11,21 @@
 ЕСЛИ КОД РАБОТАЕТ — НЕ ТРОГАЙ ЕГО БЕЗ МОЕГО РАЗРЕШЕНИЯ
 ```
 
-Приложение работает. 33 модуля протестированы.
-Твоя задача — помогать, а не ломать.
-
 ---
 
 ## 📚 ОБЯЗАТЕЛЬНО ЧИТАЙ ПЕРЕД РАБОТОЙ
 
 | Файл | Что содержит | Когда читать |
 |------|--------------|--------------|
-| `ARCHITECTURE_COMPLETE.md` | ВСЯ архитектура: 33 модуля, 240+ API, 7 schedulers, 12 категорий эффективности, структура /var/www/, роли | **Перед ЛЮБЫМ изменением** |
-
-
-**Детали архитектуры ищи в `ARCHITECTURE_COMPLETE.md`, НЕ здесь!**
+| `ARCHITECTURE_COMPLETE.md` | ВСЯ архитектура: 35 модулей, 240+ API, 8 schedulers | **Перед ЛЮБЫМ изменением** |
+| `PROJECT_MAP.md` | Карта зависимостей: что от чего зависит, что сломается | **Перед изменением любого файла** |
+| `ISSUES_FOUND.md` | 53 проблемы с приоритетами (C/H/M/L) | **Перед исправлением багов** |
 
 ---
 
 ## 🚫 НИКОГДА НЕ ДЕЛАЙ БЕЗ РАЗРЕШЕНИЯ
 
-| Действие | Почему опасно |
-|----------|---------------|
-| `git push` | Отправит код на сервер |
-| `git reset --hard` | Удалит изменения безвозвратно |
-| Удаление файлов | Потеря работы |
-| Изменение рабочего кода | Сломает приложение |
-| Деплой на сервер | Сломает продакшн |
-| `npm install` новых пакетов | Сломает зависимости |
+`git push` | `git reset --hard` | Удаление файлов | Изменение рабочего кода | Деплой | `npm install`
 
 ---
 
@@ -45,12 +34,15 @@
 ### Перед изменением:
 ```
 1. Прочитай ARCHITECTURE_COMPLETE.md (нужный раздел)
-2. Спроси: "Можно изменить файл X?"
-3. Дождись "да"
-4. Создай бэкап (если > 20 строк)
+2. Открой PROJECT_MAP.md → найди модуль → проверь "ЕСЛИ ИЗМЕНИТЬ"
+3. Спроси: "Можно изменить файл X? Затронет модули: Y, Z"
+4. Дождись "да"
 5. Сделай МИНИМАЛЬНЫЕ изменения
 6. Покажи что изменил
-7. Запусти тесты
+7. Тесты:
+   - flutter analyze (Flutter ошибки)
+   - node tests/api-test.js (55 API эндпоинтов — все должны быть OK)
+   - flutter test (если есть unit тесты)
 ```
 
 ### Принцип:
@@ -61,63 +53,32 @@
 
 ---
 
-## 💾 БЭКАПЫ
-
-```bash
-# Локальный файл
-cp файл.dart файл.dart.backup-$(date +%Y%m%d)
-
-# На сервере
-ssh root@arabica26.ru "cp /path/file.js /path/file.js.backup-$(date +%Y%m%d)"
-```
-
----
-
-## 🧪 ТЕСТИРОВАНИЕ
-
-```bash
-flutter analyze    # Проверка ошибок
-flutter test       # Запуск тестов
-```
-
-**Если тесты падают — НЕ говори "готово"!**
-
----
-
-## 🚀 ДЕПЛОЙ (только с разрешения!)
-
-```bash
-# 1. Бэкап
-ssh root@arabica26.ru "cp /root/arabica_app/loyalty-proxy/index.js /root/arabica_app/loyalty-proxy/index.js.backup-$(date +%Y%m%d-%H%M%S)"
-
-# 2. Обновить
-ssh root@arabica26.ru "cd /root/arabica_app && git pull origin refactoring/full-restructure"
-
-# 3. Перезапустить
-ssh root@arabica26.ru "pm2 restart loyalty-proxy"
-
-# 4. Проверить
-ssh root@arabica26.ru "pm2 logs loyalty-proxy --lines 20 --nostream"
-```
-
-✅ Должно быть: "Proxy listening on port 3000"
-
----
-
 ## 📄 АКТУАЛИЗАЦИЯ ДОКУМЕНТАЦИИ
 
-**После ЛЮБОГО изменения кода → обновить `ARCHITECTURE_COMPLETE.md`:**
+**После ЛЮБОГО изменения кода → обновить ТРИ файла:**
 
-| Изменение | Раздел в документации |
-|-----------|----------------------|
-| API endpoint | Раздел 5.2 |
-| Flutter модуль | Раздел 4 |
-| Scheduler | Раздел 7 |
-| Настройки баллов | Раздел 8 |
-| Данные /var/www/ | Раздел 10 |
-| Роли/доступы | Раздел 9 |
+### `ARCHITECTURE_COMPLETE.md` — что существует
+| Изменение | Раздел |
+|-----------|--------|
+| API endpoint | 5.2 | Flutter модуль | 4 | Scheduler | 7 |
+| Настройки баллов | 8 | Данные /var/www/ | 10 | Роли | 9 |
 
-**⚠️ Документация должна быть актуальна на 100%!**
+### `PROJECT_MAP.md` — как модули связаны
+| Изменение | Что обновить |
+|-----------|-------------|
+| Новый API endpoint | Раздел модуля → "API эндпоинты" |
+| Новый import/зависимость | "Зависит от" и "От него зависят" |
+| Новый модуль | Блок в разделе 4 + категория (3) + матрица влияния (5) |
+| Удалённый модуль/API | Убрать из всех разделов |
+| Изменение модели | Раздел 7 "Общие модели данных" |
+| Новый scheduler | Раздел 6 "Планировщики" |
+
+### `ISSUES_FOUND.md` — статус проблем
+| Действие | Что обновить |
+|----------|-------------|
+| Исправлена ошибка | ❌ → ✅ + дата |
+| Новая ошибка | Добавить номер (C/H/M/L-XX) + обновить сводку |
+| Отложена | ❌ → ⏸️ + причина |
 
 ---
 
@@ -125,13 +86,14 @@ ssh root@arabica26.ru "pm2 logs loyalty-proxy --lines 20 --nostream"
 
 ```
 □ Прочитал ARCHITECTURE_COMPLETE.md
-□ Спросил разрешения
-□ Получил "да"
-□ Создал бэкап
+□ Проверил PROJECT_MAP.md — какие модули затронет
 □ flutter analyze — ОК
+□ node tests/api-test.js — 55/55 OK
 □ flutter test — ОК
 □ Показал результат
-□ Обновил документацию
+□ Обновил ARCHITECTURE_COMPLETE.md
+□ Обновил PROJECT_MAP.md
+□ Обновил ISSUES_FOUND.md
 ```
 
 ---
@@ -147,38 +109,30 @@ ssh root@arabica26.ru "pm2 logs loyalty-proxy --lines 20 --nostream"
 
 ---
 
-## 🚨 ЕСЛИ СЛОМАЛОСЬ
-
-```
-1. СТОП
-2. Сказать что сломалось
-3. Показать ошибку
-4. Предложить: откатить или исправить
-5. Ждать решения
-```
-
----
-
-## 🔧 ПОЛЕЗНЫЕ КОМАНДЫ
+## 🚀 ДЕПЛОЙ (только с разрешения!)
 
 ```bash
-# Flutter
-flutter analyze
-flutter test
-flutter build appbundle --obfuscate --split-debug-info=build/debug-info
-flutter clean
-
-# Git
-git status
-git diff
-git log --oneline -10
-
-# Сервер
-ssh root@arabica26.ru "pm2 status"
-ssh root@arabica26.ru "pm2 logs loyalty-proxy --lines 50"
+ssh root@arabica26.ru "cp /root/arabica_app/loyalty-proxy/index.js /root/arabica_app/loyalty-proxy/index.js.backup-$(date +%Y%m%d-%H%M%S)"
+ssh root@arabica26.ru "cd /root/arabica_app && git pull origin refactoring/full-restructure"
 ssh root@arabica26.ru "pm2 restart loyalty-proxy"
+ssh root@arabica26.ru "pm2 logs loyalty-proxy --lines 20 --nostream"
+# После деплоя — обязательно:
+node tests/api-test.js   # Все 55 эндпоинтов должны быть OK
 ```
 
 ---
 
-*Вся архитектура в `ARCHITECTURE_COMPLETE.md` — читай его!*
+## 🧪 ТЕСТИРОВАНИЕ
+
+```
+Запуск всех тестов: tests/run-all-tests.bat
+
+Уровень 1 — Smoke:     HTTP 200 от всех эндпоинтов
+Уровень 2 — Structure:  Правильный формат ответа (поля, тип)
+Уровень 3 — Analyze:    flutter analyze без ошибок
+
+Тесты: tests/api-test.js (55 эндпоинтов)
+Раннер: tests/run-all-tests.bat (все 3 уровня)
+
+⚠️ ЕСЛИ ТЕСТЫ НЕ ПРОХОДЯТ — НЕ ГОВОРИ "ГОТОВО"!
+```

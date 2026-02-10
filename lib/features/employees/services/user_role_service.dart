@@ -201,108 +201,16 @@ class UserRoleService {
         return apiRole;
       }
 
-      // ЕСЛИ не найден через API, проверяем через сервер
-      Logger.debug('📊 Проверка роли через сервер...');
-
-      final result = await BaseHttpService.getRaw(
-        endpoint: '?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
-        timeout: ApiConstants.shortTimeout,
-      );
-
-      if (result == null || result['success'] != true) {
-        Logger.debug('⚠️ Сервер вернул success: false, используем роль клиента по умолчанию');
-        return UserRoleData(
-          role: UserRole.client,
-          displayName: result?['clientName'] ?? '',
-          phone: normalizedPhone,
-        );
-      }
-
-      // Определяем роль на основе данных
-      UserRole role = UserRole.client;
-      String displayName = result['clientName'] ?? ''; // Имя из столбца A
-      String? employeeName = result['employeeName']; // Имя из столбца G
-
-      // Проверяем столбец H (админ) или столбец G (сотрудник)
-      final adminValue = result['isAdmin'];
-      final isAdminFromServer = adminValue == 1 || adminValue == '1';
-      final isEmployeeFromServer = employeeName != null && employeeName.isNotEmpty;
-
-      // Если пользователь определён как сотрудник/админ, проверяем верификацию
-      if (isAdminFromServer || isEmployeeFromServer) {
-        final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
-        final isVerified = registration?.isVerified ?? false;
-        Logger.debug('   Верификация: $isVerified');
-
-        if (!isVerified) {
-          Logger.debug('⚠️ Сотрудник не верифицирован, будет показан как клиент');
-          return UserRoleData(
-            role: UserRole.client,
-            displayName: displayName,
-            phone: normalizedPhone,
-          );
-        }
-
-        // Сотрудник верифицирован - устанавливаем роль
-        if (isAdminFromServer) {
-          role = UserRole.admin;
-          if (employeeName != null && employeeName.isNotEmpty) {
-            displayName = employeeName;
-          }
-        } else {
-          role = UserRole.employee;
-          displayName = employeeName!;
-        }
-      }
-
-      Logger.debug('✅ Роль определена через сервер: ${role.name}');
-      Logger.debug('   Имя для отображения: $displayName');
-      if (employeeName != null) {
-        Logger.debug('   Имя сотрудника (G): $employeeName');
-      }
-
-      // Загружаем мультитенантные данные (managedShopIds, managedEmployees)
-      List<String> managedShopIds = [];
-      List<String> managedEmployees = [];
-      String? primaryShopId;
-      bool canSeeAllManagerShops = false;
-
-      if (role == UserRole.admin || role == UserRole.employee) {
-        final multitenantRole = await getMultitenantRole(normalizedPhone);
-        if (multitenantRole != null) {
-          final mtRole = multitenantRole['role'] as String?;
-          if (mtRole == 'developer') {
-            role = UserRole.developer;
-            Logger.debug('🔧 Роль повышена до DEVELOPER (из мультитенантности)');
-          } else if (mtRole == 'admin') {
-            role = UserRole.admin;
-            managedShopIds = (multitenantRole['managedShopIds'] as List?)
-                ?.map((e) => e.toString())
-                .toList() ?? [];
-            managedEmployees = (multitenantRole['managedEmployees'] as List?)
-                ?.map((e) => e.toString())
-                .toList() ?? [];
-          } else if (mtRole == 'manager') {
-            role = UserRole.manager;
-            primaryShopId = multitenantRole['primaryShopId'] as String?;
-            managedShopIds = (multitenantRole['managedShopIds'] as List?)
-                ?.map((e) => e.toString())
-                .toList() ?? [];
-            canSeeAllManagerShops = multitenantRole['canSeeAllManagerShops'] == true;
-          }
-          Logger.debug('   Мультитенантность: магазины=${managedShopIds.length}, сотрудники=${managedEmployees.length}');
-        }
-      }
+      // Не найден как сотрудник — значит клиент.
+      // Имя берём из SharedPreferences (сохранено при регистрации).
+      Logger.debug('ℹ️ Сотрудник не найден через API, назначаем роль клиента');
+      final prefs = await SharedPreferences.getInstance();
+      final cachedName = prefs.getString('user_name') ?? '';
 
       return UserRoleData(
-        role: role,
-        displayName: displayName,
+        role: UserRole.client,
+        displayName: cachedName,
         phone: normalizedPhone,
-        employeeName: role != UserRole.client ? employeeName : null,
-        managedShopIds: managedShopIds,
-        managedEmployees: managedEmployees,
-        primaryShopId: primaryShopId,
-        canSeeAllManagerShops: canSeeAllManagerShops,
       );
     } catch (e) {
       Logger.debug('❌ Ошибка получения роли: $e');
@@ -337,6 +245,7 @@ class UserRoleService {
       }
 
       await prefs.setBool('user_can_see_all_manager_shops', roleData.canSeeAllManagerShops);
+      await prefs.setInt('user_role_saved_at', DateTime.now().millisecondsSinceEpoch);
 
       Logger.debug('✅ Роль сохранена: ${roleData.role.name}');
       if (roleData.managedShopIds.isNotEmpty) {
@@ -367,6 +276,16 @@ class UserRoleService {
 
       if (roleStr == null) {
         return null;
+      }
+
+      // Проверяем срок давности кэша (30 минут)
+      final savedAt = prefs.getInt('user_role_saved_at');
+      if (savedAt != null) {
+        final age = DateTime.now().millisecondsSinceEpoch - savedAt;
+        if (age > 30 * 60 * 1000) {
+          Logger.debug('⚠️ Кэш роли устарел (${(age / 60000).toStringAsFixed(0)} мин), требуется обновление');
+          return null;
+        }
       }
 
       UserRole role;
@@ -414,6 +333,7 @@ class UserRoleService {
       await prefs.remove('user_managed_employees');
       await prefs.remove('user_primary_shop_id');
       await prefs.remove('user_can_see_all_manager_shops');
+      await prefs.remove('user_role_saved_at');
 
       // Очищаем кэш мультитенантной роли
       clearMultitenantCache();

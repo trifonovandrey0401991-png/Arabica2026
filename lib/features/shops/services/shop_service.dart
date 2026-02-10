@@ -150,8 +150,8 @@ class ShopService {
     final roleData = await UserRoleService.loadUserRole();
 
     if (roleData == null) {
-      Logger.debug('⚠️ Роль не загружена, возвращаем все магазины');
-      return allShops;
+      Logger.debug('⚠️ Роль не загружена, возвращаем пустой список (fail-secure)');
+      return [];
     }
 
     Logger.debug('🏪 Фильтрация магазинов для роли: ${roleData.role.name}');
@@ -219,7 +219,7 @@ class ShopService {
   static Future<bool> hasAccessToShop(String shopIdOrAddress) async {
     final roleData = await UserRoleService.loadUserRole();
 
-    if (roleData == null) return true;
+    if (roleData == null) return false;
 
     switch (roleData.role) {
       case UserRole.developer:

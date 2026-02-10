@@ -18,11 +18,17 @@ class ManagerEfficiencyService {
     required String phone,
     required String month,
   }) async {
+    // M-03 fix: валидация формата YYYY-MM
+    if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(month)) {
+      Logger.warning('Invalid month format: "$month", expected YYYY-MM');
+      return null;
+    }
+
     Logger.debug('Fetching manager efficiency for $phone, month: $month');
 
     try {
       final result = await BaseHttpService.get<ManagerEfficiencyData>(
-        endpoint: '$_baseEndpoint?phone=$phone&month=$month',
+        endpoint: '$_baseEndpoint?phone=${Uri.encodeComponent(phone)}&month=$month',
         fromJson: (json) => ManagerEfficiencyData.fromJson(json),
         itemKey: 'data',
       );

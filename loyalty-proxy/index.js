@@ -292,6 +292,18 @@ const PUBLIC_WRITE_PATHS = [
   '/api/auth',           // Регистрация, вход, сброс PIN
   '/api/shop-products',  // Синхронизация товаров (своя авторизация по x-sync-key)
   '/api/fcm-tokens',     // Регистрация FCM push-токенов (вызывается до/после логина)
+  '/api/geofence',           // Проверка геозоны клиента (вызывается без admin-сессии)
+  '/api/geofence-settings',  // Настройки геозоны (сохранение из админки)
+  '/api/shops',          // CRUD магазинов (управление из приложения)
+  '/api/shop-settings',  // Настройки магазинов (управление из приложения)
+  '/api/recipes',        // CRUD рецептов + загрузка фото
+  '/api/employee-registration', // Регистрация сотрудников + верификация
+  '/upload-employee-photo',     // Загрузка фото документов сотрудников
+  '/api/shift-questions',       // CRUD + reorder вопросов пересменки
+  '/api/test-questions',        // CRUD вопросов тестирования
+  '/api/test-settings',         // Настройки тестирования (длительность)
+  '/api/clients',               // Сообщения клиентам + рассылка
+  '/api/client-dialogs',        // Диалоги с руководством + сетевые сообщения
 ];
 
 app.use((req, res, next) => {
@@ -307,7 +319,8 @@ app.use((req, res, next) => {
 
   // Требуем авторизацию
   if (!req.user) {
-    console.warn(`⚠️ Unauthenticated write blocked: ${req.method} ${req.path}`);
+    const authHeader = req.headers['authorization'];
+    console.warn(`⚠️ Unauthenticated write blocked: ${req.method} ${req.path} | Auth header: ${authHeader ? authHeader.substring(0, 20) + '...' : 'MISSING'}`);
     return res.status(401).json({
       success: false,
       error: 'Требуется авторизация. Войдите в приложение.'
@@ -653,6 +666,16 @@ app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), (req, res
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Файл не загружен' });
+    }
+
+    // C-06 fix: проверка владельца — авторизованный не-админ может загружать только свои фото
+    const requestPhone = (req.body.phone || '').replace(/[^\d]/g, '');
+    if (req.user && !req.user.isAdmin) {
+      const userPhone = (req.user.phone || '').replace(/[^\d]/g, '');
+      if (userPhone && requestPhone && userPhone !== requestPhone) {
+        console.warn(`⚠️ Попытка загрузки фото для чужого номера: ${requestPhone} (сессия: ${userPhone})`);
+        return res.status(403).json({ success: false, error: 'Можно загружать фото только для своего номера' });
+      }
     }
 
     const fileUrl = `https://arabica26.ru/employee-photos/${req.file.filename}`;

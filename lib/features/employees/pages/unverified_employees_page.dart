@@ -27,34 +27,35 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
 
   Future<List<Employee>> _loadUnverifiedEmployees() async {
     try {
-      // Загружаем всех сотрудников с сервера
-      final allEmployees = await EmployeeService.getEmployees();
+      // M-06/M-10 fix: загружаем сотрудников и ВСЕ регистрации параллельно (2 запроса вместо N+1)
+      final results = await Future.wait([
+        EmployeeService.getEmployees(),
+        EmployeeRegistrationService.getAllRegistrations(),
+      ]).timeout(const Duration(seconds: 30));
+
+      final allEmployees = results[0] as List<Employee>;
+      final allRegistrations = results[1] as List<EmployeeRegistration>;
+
+      // Индекс регистраций по телефону для быстрого поиска O(1)
+      final registrationsByPhone = <String, EmployeeRegistration>{};
+      for (final reg in allRegistrations) {
+        final phone = reg.phone.replaceAll(RegExp(r'[\s\+]'), '');
+        if (phone.isNotEmpty) {
+          registrationsByPhone[phone] = reg;
+        }
+      }
+
       final List<Employee> employees = [];
 
-      // Фильтруем только сотрудников с телефоном
-      for (var employee in allEmployees) {
-        if (employee.phone != null && employee.phone!.isNotEmpty) {
-          // Нормализуем телефон
-          final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
-          
-          // Проверяем регистрацию
-          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
-          
-          // Показываем только тех, у кого была снята верификация
-          // (есть регистрация, verifiedAt != null, но isVerified = false)
-          if (registration != null) {
-            Logger.debug('Проверка для не верифицированных: ${employee.name}');
-            Logger.debug('isVerified: ${registration.isVerified}, verifiedAt: ${registration.verifiedAt}');
+      for (final employee in allEmployees) {
+        if (employee.phone == null || employee.phone!.isEmpty) continue;
+        final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+        final registration = registrationsByPhone[normalizedPhone];
 
-            if (registration.verifiedAt != null && !registration.isVerified) {
-              Logger.success('Добавлен в список не верифицированных: ${employee.name}');
-              employees.add(employee);
-              _registrations[normalizedPhone] = registration;
-            } else {
-              Logger.debug('Не подходит: verifiedAt=${registration.verifiedAt}, isVerified=${registration.isVerified}');
-            }
-          } else {
-            Logger.debug('Регистрация не найдена для: ${employee.name}');
+        if (registration != null) {
+          if (registration.verifiedAt != null && !registration.isVerified) {
+            employees.add(employee);
+            _registrations[normalizedPhone] = registration;
           }
         }
       }

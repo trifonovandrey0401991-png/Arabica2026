@@ -83,7 +83,7 @@ class KPIService {
           for (var rkoJson in (shopRKOs['currentMonth'] as List<dynamic>)) {
             try {
               allRKOs.add(RKOMetadata.fromJson(rkoJson as Map<String, dynamic>));
-            } catch (e) { Logger.debug('KPI: skip malformed RKO in currentMonth: $e'); }
+            } catch (e) { Logger.warning('KPI: skip malformed RKO in currentMonth: $e'); }
           }
         }
 
@@ -94,7 +94,7 @@ class KPIService {
               for (var rkoJson in (monthData['items'] as List<dynamic>)) {
                 try {
                   allRKOs.add(RKOMetadata.fromJson(rkoJson as Map<String, dynamic>));
-                } catch (e) { Logger.debug('KPI: skip malformed RKO in months: $e'); }
+                } catch (e) { Logger.warning('KPI: skip malformed RKO in months: $e'); }
               }
             }
           }
@@ -207,7 +207,7 @@ class KPIService {
                 try {
                   final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
                   allRKOs.add(rko);
-                } catch (e) { Logger.debug('KPI: skip malformed RKO in months: $e'); }
+                } catch (e) { Logger.warning('KPI: skip malformed RKO in months: $e'); }
               }
             }
           }
@@ -273,7 +273,7 @@ class KPIService {
         AttendanceService.getAttendanceRecords(),
         KPIScheduleIntegrationService.getScheduleForMonth(now.year, now.month),
         KPIScheduleIntegrationService.getScheduleForMonth(prevMonth.year, prevMonth.month),
-      ]);
+      ]).timeout(const Duration(seconds: 30));
 
       // Получаем разрешённые адреса магазинов для мультитенантности
       final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
@@ -515,8 +515,8 @@ class KPIService {
         RecountService.getReports(employeeName: employeeName),
         RKOReportsService.getEmployeeRKOs(employeeName),
         EnvelopeReportService.getReportsForCurrentUser(),
-        ShiftHandoverReportService.getReports(employeeName: employeeName),
-      ]);
+        ShiftHandoverReportService.getReportsForCurrentUser(),
+      ]).timeout(const Duration(seconds: 30));
 
       final attendanceRecords = results[0] as List<dynamic>;
       final filteredAttendance = KPIFilters.filterAttendanceByMonths(
@@ -551,7 +551,7 @@ class KPIService {
               for (var rkoJson in (monthData['items'] as List<dynamic>)) {
                 try {
                   allRKOs.add(RKOMetadata.fromJson(rkoJson as Map<String, dynamic>));
-                } catch (e) { Logger.debug('KPI: skip malformed RKO in months: $e'); }
+                } catch (e) { Logger.warning('KPI: skip malformed RKO in months: $e'); }
               }
             }
           }
@@ -740,7 +740,7 @@ class KPIService {
         KPIScheduleIntegrationService.getShopMonthScheduleStats(shopAddress: shopAddress, year: currentMonth.year, month: currentMonth.month),
         KPIScheduleIntegrationService.getShopMonthScheduleStats(shopAddress: shopAddress, year: previousMonth.year, month: previousMonth.month),
         KPIScheduleIntegrationService.getShopMonthScheduleStats(shopAddress: shopAddress, year: twoMonthsAgo.year, month: twoMonthsAgo.month),
-      ]);
+      ]).timeout(const Duration(seconds: 30));
 
       final allAttendance = results[0] as List<dynamic>;
       final allShifts = results[1] as List<dynamic>;
@@ -767,7 +767,7 @@ class KPIService {
               if (rkoJson is Map<String, dynamic>) {
                 allRKOs.add(RKOMetadata.fromJson(rkoJson));
               }
-            } catch (e) { Logger.debug('KPI: skip malformed RKO in currentMonth: $e'); }
+            } catch (e) { Logger.warning('KPI: skip malformed RKO in currentMonth: $e'); }
           }
         }
         // Парсим months
@@ -981,14 +981,22 @@ class KPIService {
       month: month,
     );
 
-    // Собираем данные по дням
+    // Собираем данные по дням ПАРАЛЛЕЛЬНО
     final Map<String, KPIShopDayData> dayDataCache = {};
+    final daysToLoad = <int>[];
     for (int day = 1; day <= daysInMonth; day++) {
       final date = DateTime(year, month, day);
-      // Пропускаем будущие даты
       if (date.isAfter(now)) break;
+      daysToLoad.add(day);
+    }
 
-      final dayData = await getShopDayData(shopAddress, date);
+    final dayResults = await Future.wait(
+      daysToLoad.map((day) => getShopDayData(shopAddress, DateTime(year, month, day))),
+    );
+
+    for (int i = 0; i < daysToLoad.length; i++) {
+      final day = daysToLoad[i];
+      final dayData = dayResults[i];
       dayDataCache['$year-$month-$day'] = dayData;
 
       if (dayData.employeesData.isNotEmpty) {
@@ -1002,46 +1010,51 @@ class KPIService {
       }
     }
 
-    // Считаем пропуски и опоздания по графику
+    // Считаем пропуски и опоздания по графику ПАРАЛЛЕЛЬНО
     int missedDays = 0;
+
+    // Собираем все проверки опозданий для параллельного выполнения
+    final lateCheckFutures = <Future<bool>>[];
+
     for (final entry in scheduleStats.entries) {
       final entryDate = DateTime(entry.date.year, entry.date.month, entry.date.day);
       final dayKey = '${entryDate.year}-${entryDate.month}-${entryDate.day}';
       final dayData = dayDataCache[dayKey];
 
       if (dayData == null || dayData.employeesData.isEmpty) {
-        // Сотрудник должен был работать, но данных нет
         missedDays++;
       } else {
-        // Ищем запись конкретного сотрудника
         final employeeData = dayData.employeesData.where((e) => e.employeeName == entry.employeeName).toList();
         if (employeeData.isEmpty) {
           missedDays++;
         } else {
-          // Проверяем опоздание
           for (final data in employeeData) {
             if (data.attendanceTime != null) {
-              final scheduleCheck = await KPIScheduleIntegrationService.checkEmployeeSchedule(
-                employeeName: entry.employeeName,
-                shopAddress: shopAddress,
-                date: entryDate,
+              lateCheckFutures.add(
+                KPIScheduleIntegrationService.checkEmployeeSchedule(
+                  employeeName: entry.employeeName,
+                  shopAddress: shopAddress,
+                  date: entryDate,
+                ).then((scheduleCheck) {
+                  if (scheduleCheck.isScheduled && scheduleCheck.scheduledStartTime != null) {
+                    final latenessInfo = KPIScheduleIntegrationService.calculateLateness(
+                      attendanceTime: data.attendanceTime,
+                      scheduledStartTime: scheduleCheck.scheduledStartTime,
+                    );
+                    return latenessInfo.isLate;
+                  }
+                  return false;
+                }),
               );
-
-              if (scheduleCheck.isScheduled && scheduleCheck.scheduledStartTime != null) {
-                final latenessInfo = KPIScheduleIntegrationService.calculateLateness(
-                  attendanceTime: data.attendanceTime,
-                  scheduledStartTime: scheduleCheck.scheduledStartTime,
-                );
-
-                if (latenessInfo.isLate) {
-                  lateArrivals++;
-                }
-              }
             }
           }
         }
       }
     }
+
+    // Выполняем все проверки опозданий параллельно
+    final lateResults = await Future.wait(lateCheckFutures);
+    lateArrivals = lateResults.where((isLate) => isLate).length;
 
     return KPIShopMonthStats(
       shopAddress: shopAddress,

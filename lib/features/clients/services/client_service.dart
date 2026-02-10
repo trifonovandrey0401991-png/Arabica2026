@@ -24,10 +24,11 @@ class ClientService {
 
   /// Получить переписку с клиентом
   static Future<List<ClientMessage>> getClientMessages(String clientPhone) async {
-    Logger.debug('Загрузка сообщений для клиента: $clientPhone');
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
+    Logger.debug('Загрузка сообщений для клиента: $normalizedPhone');
 
     return await BaseHttpService.getList<ClientMessage>(
-      endpoint: '${ApiConstants.clientsEndpoint}/$clientPhone/messages',
+      endpoint: '${ApiConstants.clientsEndpoint}/${Uri.encodeComponent(normalizedPhone)}/messages',
       fromJson: (json) => ClientMessage.fromJson(json),
       listKey: 'messages',
     );
@@ -41,7 +42,8 @@ class ClientService {
     String? senderPhone,
   }) async {
     try {
-      Logger.debug('Отправка сообщения клиенту: $clientPhone');
+      final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
+      Logger.debug('Отправка сообщения клиенту: $normalizedPhone');
 
       final requestBody = <String, dynamic>{
         'text': text,
@@ -50,7 +52,7 @@ class ClientService {
       if (senderPhone != null) requestBody['senderPhone'] = senderPhone;
 
       final result = await BaseHttpService.postRaw(
-        endpoint: '${ApiConstants.clientsEndpoint}/$clientPhone/messages',
+        endpoint: '${ApiConstants.clientsEndpoint}/${Uri.encodeComponent(normalizedPhone)}/messages',
         body: requestBody,
         timeout: ApiConstants.longTimeout,
       );
@@ -101,10 +103,13 @@ class ClientService {
       );
 
       if (result != null) {
-        Logger.debug('Сообщение отправлено ${result['sentCount']} клиентам');
+        // M-08 fix: clamp к неотрицательным значениям
+        final sentCount = (result['sentCount'] as int?) ?? 0;
+        final totalClients = (result['totalClients'] as int?) ?? 0;
+        Logger.debug('Сообщение отправлено $sentCount клиентам');
         return {
-          'sentCount': result['sentCount'] ?? 0,
-          'totalClients': result['totalClients'] ?? 0,
+          'sentCount': sentCount < 0 ? 0 : sentCount,
+          'totalClients': totalClients < 0 ? 0 : totalClients,
         };
       }
       return null;
@@ -132,7 +137,7 @@ class ClientService {
 
       final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
       return await BaseHttpService.simplePost(
-        endpoint: '/api/client-dialogs/$normalizedPhone/network/read-by-admin',
+        endpoint: '/api/client-dialogs/${Uri.encodeComponent(normalizedPhone)}/network/read-by-admin',
         body: {},
       );
     } catch (e) {

@@ -8,6 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('../efficiency_calc');
+const { withLock } = require('../utils/file_lock');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -866,111 +867,120 @@ module.exports = function setupRatingWheelAPI(app) {
         return res.status(400).json({ success: false, error: 'employeeId обязателен' });
       }
 
-      // Проверяем доступные прокрутки
-      const spinsDir = path.join(FORTUNE_WHEEL_DIR, 'spins');
-      if (!(await fileExists(spinsDir))) {
-        return res.status(400).json({ success: false, error: 'Нет доступных прокруток' });
-      }
-
-      const now = new Date();
-
-      // Находим месяц с доступными прокрутками
-      const files = await fsp.readdir(spinsDir);
-      let spinMonth = null;
-      let spinData = null;
-      let spinFilePath = null;
-
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-        const filePath = path.join(spinsDir, file);
-        const content = await fsp.readFile(filePath, 'utf8');
-        const data = JSON.parse(content);
-
-        // Проверяем срок истечения
-        const expiresAt = data.expiresAt || data.spins?.[employeeId]?.expiresAt;
-        if (expiresAt && new Date(expiresAt) < now) {
-          console.log(`⏰ Прокрутки для ${file} истекли (${expiresAt}), пропускаем`);
-          continue; // Пропускаем истёкшие прокрутки
+      // H-03 fix: блокировка по employeeId для предотвращения race condition
+      const lockPath = path.join(FORTUNE_WHEEL_DIR, `spin-lock-${employeeId}`);
+      const result = await withLock(lockPath, async () => {
+        // Проверяем доступные прокрутки
+        const spinsDir = path.join(FORTUNE_WHEEL_DIR, 'spins');
+        if (!(await fileExists(spinsDir))) {
+          return { status: 400, body: { success: false, error: 'Нет доступных прокруток' } };
         }
 
-        if (data.spins && data.spins[employeeId] && data.spins[employeeId].available > 0) {
-          spinMonth = file.replace('.json', '');
-          spinData = data;
-          spinFilePath = filePath;
-          break;
+        const now = new Date();
+
+        // Находим месяц с доступными прокрутками
+        const files = await fsp.readdir(spinsDir);
+        let spinMonth = null;
+        let spinData = null;
+        let spinFilePath = null;
+
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          const filePath = path.join(spinsDir, file);
+          const content = await fsp.readFile(filePath, 'utf8');
+          const data = JSON.parse(content);
+
+          // Проверяем срок истечения
+          const expiresAt = data.expiresAt || data.spins?.[employeeId]?.expiresAt;
+          if (expiresAt && new Date(expiresAt) < now) {
+            console.log(`⏰ Прокрутки для ${file} истекли (${expiresAt}), пропускаем`);
+            continue;
+          }
+
+          if (data.spins && data.spins[employeeId] && data.spins[employeeId].available > 0) {
+            spinMonth = file.replace('.json', '');
+            spinData = data;
+            spinFilePath = filePath;
+            break;
+          }
         }
-      }
 
-      if (!spinData) {
-        return res.status(400).json({ success: false, error: 'Нет доступных прокруток или прокрутки истекли' });
-      }
-
-      // Получаем настройки секторов
-      const settingsPath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
-      let sectors;
-      if (await fileExists(settingsPath)) {
-        const settingsContent = await fsp.readFile(settingsPath, 'utf8');
-        const settings = JSON.parse(settingsContent);
-        sectors = settings.sectors;
-      } else {
-        sectors = getDefaultWheelSectors();
-      }
-
-      // Выбираем случайный сектор по вероятности
-      const totalProb = sectors.reduce((sum, s) => sum + s.probability, 0);
-      let random = Math.random() * totalProb;
-      let selectedSector = sectors[0];
-
-      for (const sector of sectors) {
-        random -= sector.probability;
-        if (random <= 0) {
-          selectedSector = sector;
-          break;
+        if (!spinData) {
+          return { status: 400, body: { success: false, error: 'Нет доступных прокруток или прокрутки истекли' } };
         }
-      }
 
-      // Уменьшаем количество прокруток
-      spinData.spins[employeeId].available--;
-      spinData.spins[employeeId].used = (spinData.spins[employeeId].used || 0) + 1;
-      await fsp.writeFile(spinFilePath, JSON.stringify(spinData, null, 2), 'utf8');
+        // Получаем настройки секторов
+        const settingsPath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
+        let sectors;
+        if (await fileExists(settingsPath)) {
+          const settingsContent = await fsp.readFile(settingsPath, 'utf8');
+          const settings = JSON.parse(settingsContent);
+          sectors = settings.sectors;
+        } else {
+          sectors = getDefaultWheelSectors();
+        }
 
-      // Сохраняем в историю
-      const historyDir = path.join(FORTUNE_WHEEL_DIR, 'history');
-      await fsp.mkdir(historyDir, { recursive: true });
+        // Выбираем случайный сектор по вероятности
+        const totalProb = sectors.reduce((sum, s) => sum + s.probability, 0);
+        let random = Math.random() * totalProb;
+        let selectedSector = sectors[0];
 
-      const currentMonth = getCurrentMonth();
-      const historyPath = path.join(historyDir, `${currentMonth}.json`);
-      let historyData = { records: [] };
-      if (await fileExists(historyPath)) {
-        const historyContent = await fsp.readFile(historyPath, 'utf8');
-        historyData = JSON.parse(historyContent);
-      }
+        for (const sector of sectors) {
+          random -= sector.probability;
+          if (random <= 0) {
+            selectedSector = sector;
+            break;
+          }
+        }
 
-      const spinRecord = {
-        id: `spin_${Date.now()}`,
-        employeeId,
-        employeeName: employeeName || 'Сотрудник',
-        rewardMonth: spinMonth,
-        position: spinData.spins[employeeId].position,
-        sectorIndex: selectedSector.index,
-        prize: selectedSector.text,
-        spunAt: new Date().toISOString(),
-        isProcessed: false,
-        processedBy: null,
-        processedAt: null
-      };
+        // Уменьшаем количество прокруток (атомарно внутри lock)
+        spinData.spins[employeeId].available--;
+        spinData.spins[employeeId].used = (spinData.spins[employeeId].used || 0) + 1;
+        await fsp.writeFile(spinFilePath, JSON.stringify(spinData, null, 2), 'utf8');
 
-      historyData.records.push(spinRecord);
-      await fsp.writeFile(historyPath, JSON.stringify(historyData, null, 2), 'utf8');
+        // Сохраняем в историю
+        const historyDir = path.join(FORTUNE_WHEEL_DIR, 'history');
+        await fsp.mkdir(historyDir, { recursive: true });
 
-      console.log(`✅ Прокрутка: ${employeeName} выиграл "${selectedSector.text}"`);
+        const currentMonth = getCurrentMonth();
+        const historyPath = path.join(historyDir, `${currentMonth}.json`);
+        let historyData = { records: [] };
+        if (await fileExists(historyPath)) {
+          const historyContent = await fsp.readFile(historyPath, 'utf8');
+          historyData = JSON.parse(historyContent);
+        }
 
-      res.json({
-        success: true,
-        sector: selectedSector,
-        remainingSpins: spinData.spins[employeeId].available,
-        spinRecord
+        const spinRecord = {
+          id: `spin_${Date.now()}`,
+          employeeId,
+          employeeName: employeeName || 'Сотрудник',
+          rewardMonth: spinMonth,
+          position: spinData.spins[employeeId].position,
+          sectorIndex: selectedSector.index,
+          prize: selectedSector.text,
+          spunAt: new Date().toISOString(),
+          isProcessed: false,
+          processedBy: null,
+          processedAt: null
+        };
+
+        historyData.records.push(spinRecord);
+        await fsp.writeFile(historyPath, JSON.stringify(historyData, null, 2), 'utf8');
+
+        console.log(`✅ Прокрутка: ${employeeName} выиграл "${selectedSector.text}"`);
+
+        return {
+          status: 200,
+          body: {
+            success: true,
+            sector: selectedSector,
+            remainingSpins: spinData.spins[employeeId].available,
+            spinRecord
+          }
+        };
       });
+
+      res.status(result.status).json(result.body);
     } catch (error) {
       console.error('❌ Ошибка прокрутки колеса:', error);
       res.status(500).json({ success: false, error: error.message });

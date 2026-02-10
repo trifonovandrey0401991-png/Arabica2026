@@ -8,6 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const multer = require('multer');
 const crypto = require('crypto');
+const { isAdminPhone } = require('../utils/admin_cache');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -344,7 +345,14 @@ function setupLoyaltyGamificationAPI(app) {
   app.post('/api/loyalty-gamification/settings', async (req, res) => {
     try {
       console.log('POST /api/loyalty-gamification/settings');
-      const { levels, wheel } = req.body;
+      const { levels, wheel, employeePhone } = req.body;
+
+      // SECURITY: только админ/разработчик может менять настройки
+      const normalizedPhone = sanitizePhone(employeePhone);
+      if (!isAdminPhone(normalizedPhone)) {
+        console.warn(`SECURITY: non-admin tried to update gamification settings: ${normalizedPhone}`);
+        return res.status(403).json({ success: false, error: 'Доступ запрещён — только для администраторов' });
+      }
 
       const settings = await loadSettings();
 
@@ -368,6 +376,17 @@ function setupLoyaltyGamificationAPI(app) {
   app.post('/api/loyalty-gamification/upload-badge', upload.single('badge'), async (req, res) => {
     try {
       console.log('POST /api/loyalty-gamification/upload-badge');
+
+      // H-05 fix: проверка admin прав ПЕРЕД обработкой файла
+      if (!req.user || !req.user.isAdmin) {
+        // Удаляем уже загруженный файл если не админ
+        if (req.file && req.file.path) {
+          const fsp = require('fs').promises;
+          await fsp.unlink(req.file.path).catch(() => {});
+        }
+        console.warn(`⚠️ Non-admin badge upload attempt: ${req.user?.phone || 'anonymous'}`);
+        return res.status(403).json({ success: false, error: 'Только администратор может загружать бейджи' });
+      }
 
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'No file uploaded' });
@@ -839,25 +858,36 @@ function setupLoyaltyGamificationAPI(app) {
 
       await savePrize(prize);
 
-      // Apply prize to client account
+      // H-14 fix: Apply prize to client account with rollback on failure
       const clientPath = path.join(CLIENTS_DIR, `${prize.clientPhone}.json`);
-      if (await fileExists(clientPath)) {
-        const content = await fsp.readFile(clientPath, 'utf8');
-        const client = JSON.parse(content);
+      try {
+        if (await fileExists(clientPath)) {
+          const content = await fsp.readFile(clientPath, 'utf8');
+          const client = JSON.parse(content);
 
-        if (prize.prizeType === 'bonus_points') {
-          client.points = (client.points || 0) + prize.prizeValue;
-        } else if (prize.prizeType === 'free_drink') {
-          client.freeDrinks = (client.freeDrinks || 0) + prize.prizeValue;
+          if (prize.prizeType === 'bonus_points') {
+            client.points = (client.points || 0) + prize.prizeValue;
+          } else if (prize.prizeType === 'free_drink') {
+            client.freeDrinks = (client.freeDrinks || 0) + prize.prizeValue;
+          }
+          // discount and merch are noted but don't change client fields
+
+          client.updatedAt = new Date().toISOString();
+          await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
         }
-        // discount and merch are noted but don't change client fields
-
-        client.updatedAt = new Date().toISOString();
-        await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
+      } catch (clientError) {
+        // Rollback: возвращаем приз в pending
+        console.error(`⚠️ Ошибка начисления приза клиенту, откат: ${clientError.message}`);
+        prize.status = 'pending';
+        prize.issuedBy = null;
+        prize.issuedByName = null;
+        prize.issuedAt = null;
+        await savePrize(prize);
+        return res.status(500).json({ success: false, error: 'Ошибка начисления приза клиенту. Попробуйте снова.' });
       }
 
-      // Update spin history
-      if (prize.spinId) {
+      // Update spin history (search by prizeId — spinRecord links via prizeId field)
+      if (prizeId) {
         // Find and update in wheel history
         const files = await fsp.readdir(WHEEL_HISTORY_DIR);
         for (const file of files) {

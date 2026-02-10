@@ -136,13 +136,14 @@ class EfficiencyDataService {
       ]);
 
       final result = parallelResults[1] as Map<String, dynamic>?;
-      final penaltyRecords = parallelResults[2] as List<EfficiencyRecord>;
-      final taskRecords = parallelResults[3] as List<EfficiencyRecord>;
-      final reviewRecords = parallelResults[4] as List<EfficiencyRecord>;
-      final productSearchRecords = parallelResults[5] as List<EfficiencyRecord>;
-      final orderRecords = parallelResults[6] as List<EfficiencyRecord>;
-      final rkoRecords = parallelResults[7] as List<EfficiencyRecord>;
-      final shops = parallelResults[8] as List<dynamic>;
+      // H-08 fix: safe cast с null-check — загрузчики могут вернуть null при ошибке
+      final penaltyRecords = (parallelResults[2] as List<EfficiencyRecord>?) ?? <EfficiencyRecord>[];
+      final taskRecords = (parallelResults[3] as List<EfficiencyRecord>?) ?? <EfficiencyRecord>[];
+      final reviewRecords = (parallelResults[4] as List<EfficiencyRecord>?) ?? <EfficiencyRecord>[];
+      final productSearchRecords = (parallelResults[5] as List<EfficiencyRecord>?) ?? <EfficiencyRecord>[];
+      final orderRecords = (parallelResults[6] as List<EfficiencyRecord>?) ?? <EfficiencyRecord>[];
+      final rkoRecords = (parallelResults[7] as List<EfficiencyRecord>?) ?? <EfficiencyRecord>[];
+      final shops = (parallelResults[8] as List<dynamic>?) ?? <dynamic>[];
 
       if (result == null || result['success'] != true) {
         Logger.warning('Batch API вернул пустой результат, используем fallback');
@@ -270,9 +271,14 @@ class EfficiencyDataService {
     for (final record in records) {
       if (record.employeeName.isEmpty) continue;
 
-      // Для записей без shopAddress (задачи, штрафы за задачи) - включаем
-      // Для записей с shopAddress - проверяем что это реальный магазин
-      if (record.shopAddress.isNotEmpty && !validAddresses.contains(record.shopAddress)) {
+      // Штрафы (shiftPenalty) всегда фильтруем по магазину — исключаем чужие
+      if (record.category == EfficiencyCategory.shiftPenalty) {
+        if (record.shopAddress.isEmpty || !validAddresses.contains(record.shopAddress)) {
+          continue;
+        }
+      } else if (record.shopAddress.isNotEmpty && !validAddresses.contains(record.shopAddress)) {
+        // Для остальных записей с shopAddress - проверяем что это реальный магазин
+        // Записи без shopAddress (задачи) - включаем
         continue;
       }
 
