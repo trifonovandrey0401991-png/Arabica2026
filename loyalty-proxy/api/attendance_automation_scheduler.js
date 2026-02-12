@@ -148,9 +148,22 @@ async function getAttendanceSettings() {
 // Shops Loading
 // ============================================
 async function getAllShops() {
-  const shopsFile = path.join(SHOPS_DIR, 'shops.json');
-  const data = await loadJsonFile(shopsFile, { shops: [] });
-  return data.shops || [];
+  const shops = [];
+  try {
+    if (!(await fileExists(SHOPS_DIR))) return shops;
+    const files = await fsp.readdir(SHOPS_DIR);
+    for (const file of files) {
+      if (file.startsWith('shop_') && file.endsWith('.json')) {
+        const shop = await loadJsonFile(path.join(SHOPS_DIR, file));
+        if (shop && shop.address) {
+          shops.push(shop);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[AttendanceScheduler] Error reading shops directory:', e.message);
+  }
+  return shops;
 }
 
 // ============================================

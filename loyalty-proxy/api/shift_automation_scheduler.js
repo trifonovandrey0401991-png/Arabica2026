@@ -37,6 +37,7 @@ const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const SHIFT_AUTOMATION_STATE_DIR = `${DATA_DIR}/shift-automation-state`;
+const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 const STATE_FILE = path.join(SHIFT_AUTOMATION_STATE_DIR, 'state.json');
 
 // Constants
@@ -132,9 +133,22 @@ async function getShiftSettings() {
 // Shops Loading
 // ============================================
 async function getAllShops() {
-  const shopsFile = path.join(SHOPS_DIR, 'shops.json');
-  const data = await loadJsonFile(shopsFile, { shops: [] });
-  return data.shops || [];
+  const shops = [];
+  try {
+    if (!(await fileExists(SHOPS_DIR))) return shops;
+    const files = await fsp.readdir(SHOPS_DIR);
+    for (const file of files) {
+      if (file.startsWith('shop_') && file.endsWith('.json')) {
+        const shop = await loadJsonFile(path.join(SHOPS_DIR, file));
+        if (shop && shop.address) {
+          shops.push(shop);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[ShiftScheduler] Error reading shops directory:', e.message);
+  }
+  return shops;
 }
 
 // ============================================
@@ -387,28 +401,66 @@ async function assignPenaltyFromSchedule(report) {
 }
 
 // ============================================
-// 5. Assign Penalty Direct (for rejected reports)
+// 5. Find Admin (manager) for Shop
+// ============================================
+async function findAdminForShop(shopAddress) {
+  try {
+    // 1. Найти shopId по адресу
+    const shops = await getAllShops();
+    const shop = shops.find(s => s.address === shopAddress);
+    if (!shop) {
+      console.log(`[ShiftScheduler] Shop not found by address: ${shopAddress}`);
+      return null;
+    }
+
+    // 2. Найти manager, у которого этот shopId в managedShops
+    const managersData = await loadJsonFile(SHOP_MANAGERS_FILE, { developers: [], managers: [], storeManagers: [] });
+    const manager = (managersData.managers || []).find(m =>
+      (m.managedShops || []).includes(shop.id)
+    );
+
+    if (!manager) {
+      console.log(`[ShiftScheduler] No manager found for shop ${shop.id} (${shopAddress})`);
+      return null;
+    }
+
+    return {
+      phone: manager.phone,
+      name: manager.name || 'Управляющий',
+      employeeId: `admin_${manager.phone}`
+    };
+  } catch (e) {
+    console.error(`[ShiftScheduler] Error finding admin for shop:`, e.message);
+    return null;
+  }
+}
+
+// ============================================
+// 6. Assign Penalty to Admin (for rejected reports — admin didn't review in time)
 // ============================================
 async function assignPenaltyDirect(report) {
   const settings = await getShiftSettings();
 
-  if (!report.employeeId || !report.employeeName) {
-    console.log(`[ShiftScheduler] Cannot assign penalty - no employee info in report ${report.id}`);
-    return;
-  }
+  // Штраф идёт АДМИНУ (управляющему) магазина, а не сотруднику
+  const admin = await findAdminForShop(report.shopAddress);
 
-  await createPenalty({
-    employeeId: report.employeeId,
-    employeeName: report.employeeName,
-    shopAddress: report.shopAddress,
-    points: settings.missedPenalty,
-    reason: `Пересменка отклонена (админ не проверил вовремя)`,
-    sourceId: report.id
-  });
+  if (admin) {
+    await createPenalty({
+      employeeId: admin.employeeId,
+      employeeName: admin.name,
+      shopAddress: report.shopAddress,
+      points: settings.missedPenalty,
+      reason: `Пересменка отклонена (не проверена вовремя). Сотрудник: ${report.employeeName || 'неизвестен'}`,
+      sourceId: `${report.id}_admin_penalty`
+    });
+    console.log(`[ShiftScheduler] Admin penalty assigned to ${admin.name} for shop ${report.shopAddress}`);
+  } else {
+    console.log(`[ShiftScheduler] Cannot assign admin penalty - no manager found for shop ${report.shopAddress} (report ${report.id})`);
+  }
 }
 
 // ============================================
-// 6. Create Penalty
+// 7. Create Penalty
 // ============================================
 async function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
   const now = new Date();
