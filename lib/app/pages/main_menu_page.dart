@@ -62,6 +62,7 @@ import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../core/services/app_update_service.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/network_management/pages/network_management_page.dart';
+import 'manager_grid_page.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/execution_chain/services/execution_chain_service.dart';
 import '../../features/execution_chain/models/execution_chain_model.dart';
@@ -559,8 +560,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
 
-          // 5 кнопок + 4 отступа между ними
-          final buttonCount = 5;
+          // 7 кнопок + 6 отступов между ними
+          final buttonCount = 7;
           final spacing = 12.0;
           final totalSpacing = spacing * (buttonCount - 1);
           final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
@@ -594,6 +595,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   _loadTotalReportsCount();
                 },
                 badge: _totalReportsCount,
+              ),
+              SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.manage_accounts_outlined,
+                'Управляющая(ий)',
+                'Отчёты и управление',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage())),
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
