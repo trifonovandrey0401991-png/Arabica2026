@@ -429,6 +429,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
   Widget build(BuildContext context) {
     final role = _userRole?.role ?? UserRole.client;
 
+    // Админ и управляющий сразу видят ManagerGridPage
+    if (role == UserRole.admin || role == UserRole.manager) {
+      return ManagerGridPage(
+        isHomePage: true,
+        userName: _userName,
+        onLogout: _logout,
+      );
+    }
+
     return Scaffold(
       backgroundColor: _night,
       body: Container(
@@ -462,7 +471,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       case UserRole.employee:
         return _buildEmployeeMenu();
       case UserRole.manager:
-        return _buildEmployeeMenu(); // Manager видит меню сотрудника
       case UserRole.admin:
         return _buildAdminMenu();
       case UserRole.developer:

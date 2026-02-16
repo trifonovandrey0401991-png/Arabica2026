@@ -49,9 +49,18 @@ import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/services/referral_service.dart';
 import '../../features/orders/services/order_service.dart';
 
-/// Страница-сетка для управляющего: 21 отчёт + 4 управления = 25 (4×7)
+/// Страница-сетка для управляющего: 8 отчётов + 7 работа с сотрудниками + 3 эффективность + 7 работа с клиентами = 25
 class ManagerGridPage extends StatefulWidget {
-  const ManagerGridPage({super.key});
+  final bool isHomePage;
+  final String? userName;
+  final VoidCallback? onLogout;
+
+  const ManagerGridPage({
+    super.key,
+    this.isHomePage = false,
+    this.userName,
+    this.onLogout,
+  });
 
   @override
   State<ManagerGridPage> createState() => _ManagerGridPageState();
@@ -204,9 +213,9 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
   @override
   Widget build(BuildContext context) {
     final sections = _getSections(context);
-    final pad = 12.w;
+    final pad = 10.w;
     const int cols = 4;
-    final spacing = 6.w;
+    final spacing = 4.w;
 
     return Scaffold(
       backgroundColor: _night,
@@ -227,37 +236,66 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                 padding: EdgeInsets.fromLTRB(pad, 6.h, pad, 0),
                 child: SizedBox(
                   height: 40,
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.8), size: 20),
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            'Управляющая(ий)',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.95),
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: 1,
+                  child: widget.isHomePage
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.userName != null ? 'Привет, ${_getFirstName(widget.userName)}!' : 'Управляющая(ий)',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.95),
+                                fontSize: 18.sp,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
-                        ),
+                          GestureDetector(
+                            onTap: widget.onLogout,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              ),
+                              child: Icon(Icons.logout_rounded, color: Colors.white.withOpacity(0.8), size: 20),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              ),
+                              child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.8), size: 20),
+                            ),
+                          ),
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                'Управляющая(ий)',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.95),
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 40),
+                        ],
                       ),
-                      SizedBox(width: 40),
-                    ],
-                  ),
                 ),
               ),
               SizedBox(height: 8.h),
@@ -266,24 +304,24 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final tileW = (constraints.maxWidth - pad * 2 - spacing * (cols - 1)) / cols;
-                    final tileH = tileW * 1.1;
-                    final iconSize = (tileH * 0.32).clamp(18.0, 28.0);
-                    final fontSize = (tileH * 0.13).clamp(8.0, 11.0);
+                    final tileH = tileW * 0.85;
+                    final iconSize = (tileH * 0.28).clamp(16.0, 22.0);
+                    final fontSize = (tileH * 0.12).clamp(7.0, 9.5);
 
                     return SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(pad, 0, pad, 8.h),
+                      padding: EdgeInsets.fromLTRB(pad, 0, pad, 4.h),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           for (final section in sections) ...[
                             if (section['title'] != null)
                               Padding(
-                                padding: EdgeInsets.only(bottom: 6.h, top: 4.h),
+                                padding: EdgeInsets.only(bottom: 3.h, top: 2.h),
                                 child: Text(
                                   section['title'] as String,
                                   style: TextStyle(
                                     color: _gold,
-                                    fontSize: 12.sp,
+                                    fontSize: 10.sp,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.5,
                                   ),
@@ -308,42 +346,43 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                               )).toList(),
                             ),
                           ],
-                          SizedBox(height: 10.h),
-                          // Кнопки "Сотрудники" и "Клиенты"
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildRoleButton(
-                                  context,
-                                  icon: Icons.badge_outlined,
-                                  label: 'Сотрудники',
-                                  color: Color(0xFF4CAF50),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => EmployeePanelPage()),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: _buildRoleButton(
-                                  context,
-                                  icon: Icons.person_outline_rounded,
-                                  label: 'Клиенты',
-                                  color: Color(0xFF42A5F5),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => ClientFunctionsPage()),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 4.h),
                         ],
                       ),
                     );
                   },
+                ),
+              ),
+              // Кнопки "Сотрудники" и "Клиенты" — прижаты к низу
+              Padding(
+                padding: EdgeInsets.fromLTRB(pad, 4.h, pad, 6.h),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildRoleButton(
+                        context,
+                        icon: Icons.badge_outlined,
+                        label: 'Сотрудники',
+                        color: Color(0xFF4CAF50),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => EmployeePanelPage()),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: _buildRoleButton(
+                        context,
+                        icon: Icons.person_outline_rounded,
+                        label: 'Клиенты',
+                        color: Color(0xFF42A5F5),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ClientFunctionsPage()),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -374,7 +413,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
           Container(
             decoration: BoxDecoration(
               color: color != null ? tileColor.withOpacity(0.15) : tileColor,
-              borderRadius: BorderRadius.circular(10.r),
+              borderRadius: BorderRadius.circular(8.r),
               border: Border.all(color: borderColor),
             ),
             child: Column(
@@ -385,9 +424,9 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                   size: iconSize,
                   color: color ?? Colors.white.withOpacity(0.8),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 2),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 3.w),
+                  padding: EdgeInsets.symmetric(horizontal: 2.w),
                   child: Text(
                     label,
                     style: TextStyle(
@@ -438,7 +477,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 4, horizontal: 10.w),
+        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 10.w),
         decoration: BoxDecoration(
           color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(10.r),
@@ -446,23 +485,30 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 20),
+            Icon(icon, color: color, size: 26),
             SizedBox(width: 8.w),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.95),
-                  fontSize: 13.sp,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded, color: color.withOpacity(0.6), size: 14),
+            Icon(Icons.arrow_forward_ios_rounded, color: color.withOpacity(0.6), size: 18),
           ],
         ),
       ),
     );
+  }
+
+  String _getFirstName(String? fullName) {
+    if (fullName == null || fullName.isEmpty) return 'Гость';
+    final parts = fullName.trim().split(' ');
+    if (parts.length >= 2) return parts[1];
+    return parts[0];
   }
 
   List<Map<String, dynamic>> _getSections(BuildContext context) {
@@ -556,7 +602,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
         ],
       },
       // ═══════════════════════════════════════
-      // 2. РАБОТА С СОТРУДНИКАМИ (4 шт.)
+      // 2. РАБОТА С СОТРУДНИКАМИ (7 шт.)
       // ═══════════════════════════════════════
       {
         'title': 'Работа с сотрудниками',
@@ -589,10 +635,31 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
             'badge': _shiftTransferCount,
           },
           {
-            'icon': Icons.assignment_outlined,
-            'label': 'Задачи (упр)',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => TaskManagementPage(createdBy: 'admin'))),
-            'color': _gold,
+            'icon': Icons.casino_outlined,
+            'label': 'Колесо (Сотр)',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => WheelReportsPage())),
+            'color': null,
+            'badge': null,
+          },
+          {
+            'icon': Icons.psychology_outlined,
+            'label': 'Обучение ИИ',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
+            'color': null,
+            'badge': null,
+          },
+          {
+            'icon': Icons.calendar_month_outlined,
+            'label': 'График',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => WorkSchedulePage())),
+            'color': null,
+            'badge': null,
+          },
+          {
+            'icon': Icons.account_balance_wallet_outlined,
+            'label': 'Штрафы',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => BonusPenaltyManagementPage())),
+            'color': null,
             'badge': null,
           },
         ],
@@ -620,13 +687,20 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
             'color': null,
             'badge': _withdrawalsCount,
           },
+          {
+            'icon': Icons.assignment_outlined,
+            'label': 'Задачи (упр)',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => TaskManagementPage(createdBy: 'admin'))),
+            'color': null,
+            'badge': null,
+          },
         ],
       },
       // ═══════════════════════════════════════
-      // 4. ОСТАЛЬНОЕ (без группировки)
+      // 4. РАБОТА С КЛИЕНТАМИ (7 шт.)
       // ═══════════════════════════════════════
       {
-        'title': null,
+        'title': 'Работа с клиентами',
         'items': <Map<String, dynamic>>[
           {
             'icon': Icons.star_outline_rounded,
@@ -670,13 +744,6 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
             'badge': _referralsCount,
           },
           {
-            'icon': Icons.casino_outlined,
-            'label': 'Колесо (Сотр)',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => WheelReportsPage())),
-            'color': null,
-            'badge': null,
-          },
-          {
             'icon': Icons.emoji_events_outlined,
             'label': 'Колесо (Кл)',
             'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientWheelPrizesReportPage())),
@@ -694,31 +761,10 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
             'badge': _ordersCount,
           },
           {
-            'icon': Icons.psychology_outlined,
-            'label': 'Обучение ИИ',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
-            'color': null,
-            'badge': null,
-          },
-          {
-            'icon': Icons.calendar_month_outlined,
-            'label': 'График',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => WorkSchedulePage())),
-            'color': _gold,
-            'badge': null,
-          },
-          {
             'icon': Icons.groups_outlined,
             'label': 'Клиенты',
             'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientsManagementPage())),
-            'color': _gold,
-            'badge': null,
-          },
-          {
-            'icon': Icons.account_balance_wallet_outlined,
-            'label': 'Штрафы',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => BonusPenaltyManagementPage())),
-            'color': _gold,
+            'color': null,
             'badge': null,
           },
         ],

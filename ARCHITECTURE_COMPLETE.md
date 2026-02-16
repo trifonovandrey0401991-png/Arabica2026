@@ -1,7 +1,7 @@
 # Arabica - Полная архитектурная документация
 
-**Версия:** 2.4.0
-**Дата обновления:** 2026-02-09
+**Версия:** 2.5.0
+**Дата обновления:** 2026-02-17
 **Автор:** Claude Code (полный архитектурный анализ + аудит безопасности + полный аудит 09.02.2026)
 **Назначение:** Исчерпывающая документация для любого IT-специалиста
 
@@ -82,7 +82,7 @@
 │  │                    Node.js + Express (PM2)                             │  │
 │  │                      loyalty-proxy/index.js                            │  │
 │  │  ┌─────────────┬─────────────┬─────────────┬─────────────────────┐    │  │
-│  │  │  56 API     │ 8 Schedulers│  WebSocket  │  Static Files       │    │  │
+│  │  │  67 API     │10 Schedulers│  WebSocket  │  Static Files       │    │  │
 │  │  │  modules    │ (cron jobs) │  (chat)     │  (photos, media)    │    │  │
 │  │  └─────────────┴─────────────┴─────────────┴─────────────────────┘    │  │
 │  └───────────────────────────────┬───────────────────────────────────────┘  │
@@ -92,7 +92,7 @@
 │  ┌────▼─────┐           ┌────────▼────────┐         ┌───────▼───────┐       │
 │  │ /var/www │           │  Firebase FCM   │         │  Telegram Bot │       │
 │  │  (JSON)  │           │  (push notify)  │         │  (OTP auth)   │       │
-│  │ 70+ dirs │           │                 │         │               │       │
+│  │ 103 dirs │           │                 │         │               │       │
 │  └──────────┘           └─────────────────┘         └───────────────┘       │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -108,24 +108,44 @@ arabica2026/
 │   ├── main.dart                   # Точка входа приложения
 │   ├── app/                        # Главные страницы и сервисы
 │   │   ├── pages/
+│   │   │   ├── client_functions_page.dart
+│   │   │   ├── data_management_page.dart
 │   │   │   ├── main_menu_page.dart
+│   │   │   ├── manager_grid_page.dart
 │   │   │   ├── my_dialogs_page.dart
-│   │   │   └── reports_page.dart
+│   │   │   ├── reports_page.dart
+│   │   │   └── role_test_page.dart
 │   │   └── services/
+│   │       ├── my_dialogs_counter_service.dart
+│   │       └── reports_counter_service.dart
 │   ├── core/                       # Базовые сервисы и утилиты
 │   │   ├── constants/
-│   │   │   └── api_constants.dart  # URL сервера, таймауты
+│   │   │   ├── api_constants.dart  # URL сервера, таймауты
+│   │   │   ├── api_key.dart        # API ключ
+│   │   │   └── app_constants.dart  # Константы приложения
 │   │   ├── services/
-│   │   │   ├── base_http_service.dart
-│   │   │   ├── base_report_service.dart  # Базовый сервис отчётов (CRUD + multitenancy + push)
-│   │   │   ├── firebase_service.dart
-│   │   │   ├── notification_service.dart
-│   │   │   └── background_gps_service.dart
+│   │   │   ├── app_update_service.dart        # Проверка обновлений
+│   │   │   ├── background_gps_service.dart    # Геофенсинг
+│   │   │   ├── base_http_service.dart         # Базовый HTTP
+│   │   │   ├── base_report_service.dart       # Базовый сервис отчётов (CRUD + multitenancy + push)
+│   │   │   ├── employee_push_service.dart     # Push-уведомления сотрудникам
+│   │   │   ├── firebase_core_stub.dart        # Stub для web
+│   │   │   ├── firebase_service.dart          # FCM токены, push
+│   │   │   ├── firebase_service_stub.dart     # Stub для web
+│   │   │   ├── firebase_wrapper.dart          # Firebase инициализация
+│   │   │   ├── html_stub.dart                 # Stub для web
+│   │   │   ├── media_upload_service.dart      # Загрузка медиа
+│   │   │   ├── multitenancy_filter_service.dart # Фильтрация по магазинам
+│   │   │   ├── notification_service.dart      # Локальные уведомления
+│   │   │   ├── photo_upload_service.dart      # Загрузка фото (mobile + web)
+│   │   │   └── report_notification_service.dart # Уведомления об отчётах
 │   │   └── utils/
-│   │       ├── logger.dart
 │   │       ├── cache_manager.dart
-│   │       └── date_formatter.dart
-│   ├── features/                   # 33 функциональных модуля
+│   │       ├── date_formatter.dart
+│   │       ├── error_handler.dart    # Обработка ошибок
+│   │       ├── logger.dart
+│   │       └── phone_normalizer.dart # Нормализация телефонов
+│   ├── features/                   # 35 функциональных модулей
 │   │   ├── auth/                   # Авторизация
 │   │   ├── attendance/             # Посещаемость
 │   │   ├── shifts/                 # Пересменки
@@ -166,7 +186,7 @@ arabica2026/
 
 ```javascript
 // Middleware стек (порядок применения)
-1. bodyParser.json({ limit: "50mb" })     // Парсинг JSON
+1. bodyParser.json({ limit: "10mb" })     // Парсинг JSON
 2. helmet()                                // Security headers (XSS, clickjacking)
 3. cors(corsOptions)                       // CORS (только разрешённые домены)
 4. compression({ level: 6 })               // GZIP сжатие (10MB → ~1MB)
@@ -594,7 +614,9 @@ class AuthCredentials {
 | 32 | ИИ распознавание | `ai_training/` | Админ | В разработке | Z-отчёты, сигареты, шаблоны фото |
 | 33 | Управление сетью | `network_management/` | Developer | Работает | Настройки |
 | 34 | Кофемашины | `coffee_machine/` | Сотрудник, Админ | Работает | OCR счётчиков, шаблоны, автоматизация |
-| 35 | Передача смен | `shift_transfers/` | Сотрудник, Админ | Работает | Обмен сменами между сотрудниками |
+| 35 | Цепочки выполнения | `execution_chain/` | Админ | Работает | Цепочки задач для автоматизации |
+
+> **Примечание:** Передача смен (`shift_transfers`) — НЕ отдельный модуль, а часть `work_schedule/` (shift_transfer_model.dart, shift_transfer_service.dart, shift_transfer_requests_page.dart).
 
 ---
 
@@ -1032,55 +1054,74 @@ tests/
 loyalty-proxy/
 ├── index.js                              # Точка входа (middleware, schedulers, routes, PUBLIC_WRITE_PATHS)
 │
-├── api/                                  # 49 API модулей
-│   ├── auth_api.js                       # Авторизация (600 строк)
-│   ├── attendance_api.js                 # Посещаемость (380 строк)
-│   ├── shifts_api.js                     # Пересменки (520 строк)
-│   ├── recount_api.js                    # Пересчёты (450 строк)
-│   ├── envelope_api.js                   # Конверты (420 строк)
-│   ├── rko_api.js                        # РКО (480 строк)
-│   ├── orders_api.js                     # Заказы (450 строк)
-│   ├── employees_api.js                  # Сотрудники (450 строк)
-│   ├── shops_api.js                      # Магазины (450 строк)
-│   ├── tasks_api.js                      # Задачи (520 строк)
-│   ├── employee_chat_api.js              # Чат (1386 строк)
-│   ├── employee_chat_websocket.js        # WebSocket (450 строк)
-│   ├── geofence_api.js                   # Геофенсинг (520 строк)
-│   ├── loyalty_api.js                    # Лояльность (480 строк)
-│   ├── loyalty_promo_api.js              # Промо-акции (450 строк)
-│   ├── master_catalog_api.js             # Мастер-каталог (1306 строк)
-│   ├── cigarette_vision_api.js           # ИИ распознавание (880 строк)
-│   ├── shift_ai_verification_api.js      # ИИ верификация (871 строк)
-│   ├── data_cleanup_api.js               # Очистка данных (576 строк)
-│   ├── media_api.js                      # Загрузка медиа (520 строк)
-│   ├── points_settings_api.js            # Настройки баллов (1442 строк)
-│   ├── efficiency_penalties_api.js       # Штрафы (520 строк)
-│   ├── manager_efficiency_api.js         # Эффективность менеджеров (610 строк)
-│   ├── product_questions_api.js          # Поиск товара (1290 строк)
-│   ├── reviews_api.js                    # Отзывы (400 строк)
-│   ├── tests_api.js                      # Тесты (450 строк)
-│   ├── training_api.js                   # Обучение (480 строк)
-│   ├── work_schedule_api.js              # График работы (420 строк)
-│   ├── shift_transfers_api.js            # Передача смен (670 строк)
-│   ├── withdrawals_api.js                # Выемки (500 строк)
-│   ├── suppliers_api.js                  # Поставщики (480 строк)
-│   ├── shop_settings_api.js              # Настройки магазинов (480 строк)
-│   ├── shop_coordinates_api.js           # Координаты (450 строк)
-│   ├── shop_managers_api.js              # Менеджеры магазинов (520 строк)
-│   ├── shop_products_api.js              # Товары магазинов (520 строк)
-│   ├── pending_api.js                    # Pending отчёты (770 строк)
-│   ├── z_report_api.js                   # Z-отчёты (500 строк)
-│   ├── recurring_tasks_api.js            # Циклические задачи (594 строк)
-│   ├── task_points_settings_api.js       # Настройки баллов задач (480 строк)
-│   ├── clients_api.js                    # Клиенты (661 строк)
+├── api/                                  # 67 API модулей (включая schedulers и notifications)
+│   │
+│   │── CORE API ──────────────────────────────────────────────────
+│   ├── auth_api.js                       # Авторизация
+│   ├── attendance_api.js                 # Посещаемость
+│   ├── shifts_api.js                     # Пересменки
+│   ├── shift_questions_api.js            # Вопросы пересменок
+│   ├── recount_api.js                    # Пересчёты
+│   ├── recount_questions_api.js          # Вопросы пересчётов
+│   ├── recount_points_api.js             # Баллы за пересчёт
+│   ├── envelope_api.js                   # Конверты
+│   ├── rko_api.js                        # РКО
+│   ├── orders_api.js                     # Заказы
+│   ├── order_timeout_api.js              # Таймауты заказов + скрытый шедулер
+│   ├── employees_api.js                  # Сотрудники
+│   ├── employee_registration_api.js      # Регистрация сотрудников
+│   ├── shops_api.js                      # Магазины
+│   ├── shop_settings_api.js              # Настройки магазинов
+│   ├── shop_coordinates_api.js           # Координаты
+│   ├── shop_managers_api.js              # Менеджеры магазинов
+│   ├── shop_products_api.js              # Товары магазинов
+│   ├── tasks_api.js                      # Задачи
+│   ├── recurring_tasks_api.js            # Циклические задачи
+│   ├── task_points_settings_api.js       # Настройки баллов задач
+│   ├── clients_api.js                    # Клиенты
+│   ├── employee_chat_api.js              # Чат сотрудников
+│   ├── employee_chat_websocket.js        # WebSocket чата
+│   ├── geofence_api.js                   # Геофенсинг
+│   ├── loyalty_gamification_api.js       # Геймификация лояльности
+│   ├── loyalty_promo_api.js              # Промо-акции
+│   ├── master_catalog_api.js             # Мастер-каталог
+│   ├── cigarette_vision_api.js           # ИИ распознавание
+│   ├── shift_ai_verification_api.js      # ИИ верификация
+│   ├── data_cleanup_api.js               # Очистка данных + авто-очистка шедулер
+│   ├── media_api.js                      # Загрузка медиа
+│   ├── points_settings_api.js            # Настройки баллов
+│   ├── efficiency_penalties_api.js       # Штрафы эффективности
+│   ├── manager_efficiency_api.js         # Эффективность менеджеров
+│   ├── product_questions_api.js          # Поиск товара
+│   ├── reviews_api.js                    # Отзывы
+│   ├── tests_api.js                      # Тесты
+│   ├── training_api.js                   # Обучение
+│   ├── work_schedule_api.js              # График работы
+│   ├── shift_transfers_api.js            # Передача смен
+│   ├── shift_handover_questions_api.js   # Вопросы сдачи смены
+│   ├── withdrawals_api.js                # Выемки
+│   ├── suppliers_api.js                  # Поставщики
+│   ├── pending_api.js                    # Pending отчёты
+│   ├── z_report_api.js                   # Z-отчёты
+│   ├── bonus_penalties_api.js            # Премии/штрафы
+│   ├── coffee_machine_api.js             # Кофемашины
+│   ├── dashboard_batch_api.js            # Batch endpoint для главного меню
+│   ├── execution_chain_api.js            # Цепочки выполнения
+│   ├── menu_api.js                       # Меню
+│   ├── rating_wheel_api.js               # Рейтинг + колесо
+│   ├── referrals_api.js                  # Рефералы
+│   ├── job_applications_api.js           # Заявки на работу
+│   ├── report_notifications_api.js       # Push отчётов
+│   ├── product_questions_penalty_scheduler.js # Штрафы поиска товара
 │   │
 │   │── AUTOMATION SCHEDULERS ──────────────────────────────────────
-│   ├── attendance_automation_scheduler.js   # Посещаемость (822 строк)
-│   ├── envelope_automation_scheduler.js     # Конверты (650 строк)
-│   ├── shift_automation_scheduler.js        # Пересменки (690 строк)
-│   ├── shift_handover_automation_scheduler.js # Сдача смены (853 строк)
-│   ├── rko_automation_scheduler.js          # РКО (719 строк)
-│   ├── recount_automation_scheduler.js      # Пересчёты (788 строк)
+│   ├── attendance_automation_scheduler.js   # Посещаемость
+│   ├── envelope_automation_scheduler.js     # Конверты
+│   ├── shift_automation_scheduler.js        # Пересменки
+│   ├── shift_handover_automation_scheduler.js # Сдача смены
+│   ├── rko_automation_scheduler.js          # РКО
+│   ├── recount_automation_scheduler.js      # Пересчёты
+│   ├── coffee_machine_automation_scheduler.js # Кофемашины
 │   │
 │   │── NOTIFICATIONS ──────────────────────────────────────────────
 │   ├── master_catalog_notifications.js
@@ -1089,36 +1130,39 @@ loyalty-proxy/
 │
 ├── modules/
 │   ├── orders.js                         # Логика заказов
-│   └── cigarette-vision.js               # ИИ модуль
+│   ├── cigarette-vision.js               # ИИ модуль (сигареты)
+│   ├── counter-ocr.js                    # OCR счётчиков кофемашин
+│   ├── z-report-ocr.js                   # OCR Z-отчётов
+│   ├── z-report-templates.js             # Шаблоны Z-отчётов
+│   ├── z-report-vision.js                # ИИ Z-отчётов
+│   └── ocr_server.py                     # Python OCR сервер (EasyOCR)
 │
 ├── services/
 │   └── telegram_bot_service.js           # Telegram бот для OTP
 │
 ├── utils/
 │   ├── admin_cache.js                    # Кэш для админ-запросов
-│   ├── pagination.js                     # Пагинация
 │   ├── async_fs.js                       # Async файловые операции с locking
+│   ├── data_cache.js                     # Кэш employees/shops данных
+│   ├── file_helpers.js                   # Утилиты для файлов (sanitizeId, fileExists, maskPhone)
 │   ├── file_lock.js                      # File locking (защита от race conditions)
+│   ├── pagination.js                     # Пагинация
+│   ├── session_middleware.js             # Session middleware (token → session index)
 │   └── test_file_lock.js                 # Тесты для file locking
 │
 ├── efficiency_calc.js                    # Расчёт эффективности (1078 строк)
-├── rating_wheel_api.js                   # Рейтинг + колесо
-├── referrals_api.js                      # Рефералы
-├── job_applications_api.js               # Заявки на работу
-├── order_notifications_api.js            # Push заказов
-├── order_timeout_api.js                  # Таймауты заказов
-├── report_notifications_api.js           # Push отчётов
-├── product_questions_penalty_scheduler.js # Штрафы поиска товара
-├── recount_points_api.js                 # Баллы за пересчёт
-│
+├── ecosystem.config.js                   # PM2 конфигурация
 ├── firebase-admin-config.js              # Firebase конфиг
-└── package.json                          # Зависимости
+├── rko_docx_processor.py                 # Генерация DOCX для РКО
+├── rko_pdf_generator.py                  # Генерация PDF для РКО
+├── package.json                          # Зависимости
+└── package-lock.json                     # Lock-файл зависимостей
 ```
 
 **Общая статистика:**
 - ~37000 строк JavaScript кода
-- 56 API файлов (49 в api/ + 7 в корне loyalty-proxy/)
-- 8 Scheduler'ов
+- 67 API файлов в api/ + 1 в корне (efficiency_calc.js)
+- 10 Scheduler'ов (8 именованных + order_timeout + auto_cleanup)
 - 503+ endpoints
 
 ## 5.2 ПОЛНАЯ ТАБЛИЦА API ENDPOINTS (240+)
@@ -1914,15 +1958,18 @@ Scheduler (каждые 5 минут)
 
 ## 7.1 Обзор всех Scheduler'ов
 
-| Scheduler | Интервал | Утреннее окно | Вечернее окно | Штраф |
-|-----------|----------|---------------|---------------|-------|
-| Attendance | 5 мин | 07:00-09:00 | 19:00-21:00 | -2 |
-| Envelope | 5 мин | 07:00-09:00 | 19:00-21:00 | -5 |
-| Shift | 5 мин | 07:00-13:00 | 14:00-23:00 | -3 |
-| Shift Handover | 5 мин | 07:00-14:00 | 14:00-23:00 | -3 |
-| RKO | 5 мин | 07:00-14:00 | 14:00-23:00 | -3 |
-| Recount | 5 мин | 08:00-14:00 | 14:00-23:00 | -3 |
-| Product Questions | 5 мин | N/A | N/A | -1 |
+| # | Scheduler | Файл | Интервал | Утреннее окно | Вечернее окно | Штраф |
+|---|-----------|------|----------|---------------|---------------|-------|
+| 1 | Attendance | `attendance_automation_scheduler.js` | 5 мин | 07:00-09:00 | 19:00-21:00 | -2 |
+| 2 | Envelope | `envelope_automation_scheduler.js` | 5 мин | 07:00-09:00 | 19:00-21:00 | -5 |
+| 3 | Shift | `shift_automation_scheduler.js` | 5 мин | 07:00-13:00 | 14:00-23:00 | -3 |
+| 4 | Shift Handover | `shift_handover_automation_scheduler.js` | 5 мин | 07:00-14:00 | 14:00-23:00 | -3 |
+| 5 | RKO | `rko_automation_scheduler.js` | 5 мин | 07:00-14:00 | 14:00-23:00 | -3 |
+| 6 | Recount | `recount_automation_scheduler.js` | 5 мин | 08:00-14:00 | 14:00-23:00 | -3 |
+| 7 | Coffee Machine | `coffee_machine_automation_scheduler.js` | 5 мин | 07:00-09:00 | 19:00-21:00 | -3 |
+| 8 | Product Questions | `product_questions_penalty_scheduler.js` | 5 мин | N/A | N/A | -1 |
+| 9 | Order Timeout | `order_timeout_api.js` (скрытый) | 1 мин | N/A | N/A | штраф |
+| 10 | Auto Cleanup | `data_cleanup_api.js` (скрытый) | ежедневно 3:00 | N/A | N/A | N/A |
 
 ## 7.2 ATTENDANCE AUTOMATION SCHEDULER
 
@@ -2654,166 +2701,166 @@ async function checkManagerAccess(phone, shopAddress) {
 
 ## 10.1 Дерево директорий
 
+**104 директории**, сгруппированные по модулям:
+
 ```
 /var/www/
-├── attendance/                    # Отметки посещаемости
-│   └── YYYY-MM-DD.json           # Отметки за день
 │
+│ ─── АВТОРИЗАЦИЯ ───
+├── auth-otp/                      # OTP-коды для входа
+├── auth-pins/                     # PIN-коды сотрудников
+├── auth-sessions/                 # Сессии пользователей
+│
+│ ─── СОТРУДНИКИ ───
+├── employees/                     # Данные сотрудников (employees.json)
+├── employee-chats/                # Чаты сотрудников (сообщения)
+├── employee-photos/               # Фото сотрудников
+├── employee-ratings/              # Рейтинг сотрудников
+├── employee-registrations/        # Заявки на регистрацию
+│
+│ ─── МАГАЗИНЫ ───
+├── shops/                         # Список магазинов (shops.json)
+├── shop-coordinates/              # GPS-координаты магазинов
+├── shop-products/                 # Товары магазинов
+├── shop-settings/                 # Настройки магазинов ({shopAddress}.json)
+├── shop-settings-photos/          # Фото для настроек магазинов
+│
+│ ─── ГРАФИКИ РАБОТЫ ───
+├── work-schedules/                # Графики (YYYY-MM.json)
+├── work-schedule-templates/       # Шаблоны графиков
+│
+│ ─── ПОСЕЩАЕМОСТЬ ───
+├── attendance/                    # Отметки (YYYY-MM-DD.json)
 ├── attendance-pending/            # Pending отметки
-│   └── pending_att_*.json        # Ожидающие отметки
+├── attendance-automation-state/   # Состояние scheduler'а
 │
-├── shift-reports/                 # Отчёты пересменок
-│   └── YYYY-MM-DD.json           # Отчёты за день
+│ ─── ПЕРЕСМЕНКИ ───
+├── shift-reports/                 # Отчёты пересменок (YYYY-MM-DD.json)
+├── shift-photos/                  # Фото пересменок (nginx static)
+├── shift-questions/               # Вопросы пересменок
+├── shift-question-photos/         # Фото к вопросам
+├── shift-reference-photos/        # Эталонные фото
+├── shift-ai-annotations/         # ИИ-аннотации фото
+├── shift-ai-settings/            # Настройки ИИ-верификации
+├── shift-automation-state/        # Состояние scheduler'а
+├── pending-shift-reports/         # Pending пересменки
 │
-├── shift-pending/                 # Pending пересменки
-│   └── pending_shift_*.json
-│
-├── recount-reports/               # Отчёты пересчётов
-│   └── YYYY-MM-DD.json
-│
-├── recount-pending/               # Pending пересчёты
-│   └── pending_recount_*.json
-│
-├── shift-handover-reports/        # Сдача смены
-│   └── report_*.json             # Каждый отчёт отдельным файлом
-│
+│ ─── СДАЧА СМЕНЫ ───
+├── shift-handover-reports/        # Отчёты сдачи смены
 ├── shift-handover-pending/        # Pending сдачи смены
-│   └── pending_handover_*.json
+├── shift-handover-questions/      # Вопросы сдачи смены
+├── shift-handover-question-photos/ # Фото к вопросам
+├── shift-handover-automation-state/ # Состояние scheduler'а
 │
-├── rko/                           # РКО документы
-│   ├── YYYY-MM/
-│   │   └── rko_shopName_date.json
-│   └── rko_metadata.json         # Метаданные всех РКО
+│ ─── ПЕРЕСЧЁТЫ ───
+├── recount-reports/               # Отчёты пересчётов
+├── recount-questions/             # Вопросы пересчётов
+├── recount-question-photos/       # Фото к вопросам
+├── recount-points/                # Баллы за пересчёты
+├── recount-settings/              # Настройки пересчётов
+├── recount-automation-state/      # Состояние scheduler'а
+├── pending-recount-reports/       # Pending пересчёты
 │
+│ ─── РКО ───
+├── rko-reports/                   # РКО документы
+├── rko-files/                     # Сгенерированные файлы РКО
 ├── rko-pending/                   # Pending РКО
-│   └── pending_rko_*.json
+├── rko-uploads-temp/              # Временные файлы загрузки
+├── rko-automation-state/          # Состояние scheduler'а
 │
-├── envelope-reports/              # Конверты
-│   └── env_YYYYMMDD_shop_shift.json
-│
+│ ─── КОНВЕРТЫ ───
+├── envelope-reports/              # Отчёты конвертов
 ├── envelope-pending/              # Pending конверты
-│   └── pending_env_*.json
+├── envelope-questions/            # Вопросы конвертов
+├── envelope-question-photos/      # Фото к вопросам
+├── envelope-automation-state/     # Состояние scheduler'а
 │
-├── work-schedules/                # Графики работы
-│   └── YYYY-MM.json              # График на месяц
+│ ─── КОФЕМАШИНЫ ───
+├── coffee-machine-reports/        # Отчёты кофемашин
+├── coffee-machine-pending/        # Pending отчёты
+├── coffee-machine-photos/         # Фото счётчиков (nginx static)
+├── coffee-machine-shop-configs/   # Привязки машин к магазинам
+├── coffee-machine-templates/      # Шаблоны машин (WMF, BW3, BW4)
+├── coffee-machine-training/       # Обучающие данные OCR
+├── coffee-machine-automation-state/ # Состояние scheduler'а
 │
-├── employees/                     # Сотрудники
-│   └── employees.json            # Все сотрудники
+│ ─── ЗАКАЗЫ ───
+├── orders/                        # Заказы (YYYY-MM-DD/)
 │
-├── shops/                         # Магазины
-│   └── shops.json                # Все магазины
+│ ─── ЗАДАЧИ ───
+├── tasks/                         # Задачи (YYYY-MM.json)
+├── task-assignments/              # Назначения задач
+├── task-media/                    # Медиа к задачам
+├── recurring-tasks/               # Циклические задачи (шаблоны)
+├── recurring-task-instances/      # Инстансы циклических задач
+├── execution-chain/               # Цепочки выполнения
 │
-├── shop-managers/                 # Менеджеры
-│   ├── developers.json
-│   ├── managers.json
-│   └── store-managers.json
+│ ─── ТОВАРНЫЕ ВОПРОСЫ ───
+├── product-questions/             # Вопросы о товарах
+├── product-question-dialogs/      # Диалоги (чат с менеджером)
+├── product-question-photos/       # Фото товаров (nginx static)
+├── product-question-penalty-state/ # Состояние авто-штрафов
 │
-├── shop-coordinates/              # Координаты магазинов
-│   └── coordinates.json
+│ ─── КЛИЕНТЫ И ЛОЯЛЬНОСТЬ ───
+├── clients/                       # Клиенты (clients.json)
+├── client-dialogs/                # Диалоги с клиентами
+├── client-messages/               # Сообщения клиентам
+├── client-messages-management/    # Управление сообщениями
+├── client-messages-network/       # Сетевые рассылки
+├── loyalty-gamification/          # Геймификация (уровни, колесо)
+├── loyalty-transactions/          # История транзакций баллов
+├── fortune-wheel/                 # Колесо фортуны (прокрутки)
 │
-├── shop-settings/                 # Настройки магазинов
-│   └── {shopAddress}.json
+│ ─── МЕНЮ И РЕЦЕПТЫ ───
+├── menu/                          # Меню магазинов
+├── recipes/                       # Рецепты
+├── recipe-photos/                 # Фото рецептов
+├── master-catalog/                # Мастер-каталог товаров
 │
-├── clients/                       # Клиенты
-│   └── clients.json
+│ ─── ЭФФЕКТИВНОСТЬ И БАЛЛЫ ───
+├── efficiency/                    # Данные эффективности
+├── efficiency-penalties/          # Автоштрафы (YYYY-MM.json)
+├── bonus-penalties/               # Ручные бонусы/штрафы
+├── points-settings/               # Настройки баллов (по модулям)
 │
-├── client-reviews/                # Отзывы клиентов
-│   └── YYYY-MM.json
-│
-├── loyalty/                       # Лояльность
-│   ├── {phone}.json              # Баллы клиента
-│   └── transactions/
-│       └── YYYY-MM.json          # История транзакций
-│
-├── loyalty-gamification-settings.json  # Настройки геймификации (в разработке)
-│   # { levels: [...], wheel: { enabled, freeDrinksPerSpin, sectors: [...] } }
-│
-├── wheel-history/                 # История прокруток колеса (в разработке)
-│   └── {phone}.json              # Прокрутки клиента
-│
-├── orders/                        # Заказы
-│   └── YYYY-MM-DD/
-│       └── order_*.json
-│
-├── tasks/                         # Задачи
-│   └── YYYY-MM.json
-│
-├── recurring-tasks/               # Циклические задачи
-│   ├── templates.json            # Шаблоны
-│   └── instances/
-│       └── YYYY-MM-DD.json
-│
-├── test-questions/                # Вопросы для тестов
-│   └── questions.json
-│
+│ ─── ОБУЧЕНИЕ И ТЕСТЫ ───
+├── training-articles/             # Статьи обучения
+├── training-articles-media/       # Медиа к статьям
+├── test-questions/                # Вопросы тестов
 ├── test-results/                  # Результаты тестов
-│   └── YYYY-MM.json
 │
-├── training-articles/             # Статьи для обучения
-│   └── articles.json
+│ ─── УВЕДОМЛЕНИЯ И PUSH ───
+├── report-notifications/          # Настройки уведомлений об отчётах
+├── geofence-notifications/        # Геолокационные уведомления
+├── network-messages/              # Сетевые сообщения
+├── fcm-tokens/                    # Firebase Cloud Messaging токены
 │
-├── product-questions/             # Поиск товара
-│   └── question_*.json
+│ ─── ФИНАНСЫ ───
+├── withdrawals/                   # Выемки (YYYY-MM.json)
+├── main_cash/                     # Главная касса
 │
-├── product-question-dialogs/      # Диалоги поиска
-│   └── dialog_*.json
+│ ─── ОТЗЫВЫ ───
+├── reviews/                       # Отзывы клиентов
 │
-├── product-question-photos/      # Фото к вопросам о товарах (nginx static)
-│   └── product_question_*.jpg
-│
-├── employee-chat/                 # Чат сотрудников
-│   ├── messages/
-│   │   └── YYYY-MM-DD.json
-│   └── groups.json
-│
-├── efficiency-penalties/          # Штрафы
-│   └── YYYY-MM.json
-│
-├── points-settings/               # Настройки баллов
-│   ├── shift_points_settings.json
-│   ├── recount_points_settings.json
-│   ├── attendance_points_settings.json
-│   └── ...
-│
-├── fcm-tokens/                    # Firebase токены
-│   └── tokens.json
-│
+│ ─── ПОСТАВЩИКИ И ВАКАНСИИ ───
 ├── suppliers/                     # Поставщики
-│   └── suppliers.json
-│
 ├── job-applications/              # Заявки на работу
-│   └── applications.json
 │
-├── referrals/                     # Рефералы
-│   └── referrals.json
+│ ─── ЧАТ-МЕДИА ───
+├── chat-media/                    # Медиа из чатов сотрудников
 │
-├── withdrawals/                   # Выемки
-│   └── YYYY-MM.json
+│ ─── ИИ РАСПОЗНАВАНИЕ ───
+├── ai-recognition-stats/          # Статистика ИИ-распознавания
 │
-├── media/                         # Загруженные медиа
-│   ├── shift-handover/
-│   ├── chat/
-│   └── products/
+│ ─── Z-ОТЧЁТЫ ───
+├── z-report-samples/              # Образцы Z-отчётов
 │
-├── cigarette-vision/              # ИИ распознавание
-│   ├── samples/
-│   ├── models/
-│   └── settings.json
-│
-├── z-report-templates/            # Шаблоны Z-отчётов
-│   └── templates.json
-│
-├── automation-state/              # Состояние schedulers
-│   ├── attendance_state.json
-│   ├── envelope_state.json
-│   ├── shift_state.json
-│   ├── handover_state.json
-│   ├── rko_state.json
-│   ├── recount_state.json
-│   └── product_questions_state.json
-│
-└── app-logs/                      # Логи приложения
-    └── YYYY-MM-DD.json
+│ ─── СИСТЕМНЫЕ ───
+├── data/                          # Общие данные
+├── cache/                         # Кэш
+├── html/                          # Статические HTML-файлы
+├── dbf-sync-settings/             # Настройки синхронизации DBF
+└── app-logs/                      # Логи приложения (YYYY-MM-DD.json)
 ```
 
 ## 10.2 JSON Schemas основных сущностей
@@ -3218,7 +3265,7 @@ async function checkManagerAccess(phone, shopAddress) {
 ## 12.2 Потоки push-уведомлений
 
 ```
-8 Schedulers (каждые 5 мин) ──┐
+10 Schedulers (каждые 5 мин) ──┐
                                ├──→ Firebase FCM ──→ Сотрудник (штраф/напоминание)
 API endpoints (POST confirm) ──┤                 ──→ Админ (новый отчёт на проверку)
                                ├──→ WebSocket ────→ Чат real-time
@@ -3291,6 +3338,8 @@ Client broadcast ──────────────┘
 | 6 | envelope | UTC+3 ✅ | -5 | Moderate | 🟠 5-мин окно генерации |
 | 7 | coffee_machine | UTC+3 ✅ | -3 | Moderate | 🟠 5-мин окно генерации |
 | 8 | product_questions | ❌ LOCAL | -1 | Robust | 🔴 `getHours()` = LOCAL time! |
+| 9 | order_timeout | UTC+3 ✅ | штраф | Moderate | 🟡 Скрытый в order_timeout_api.js |
+| 10 | auto_cleanup | UTC+3 ✅ | N/A | Robust | 🟡 Скрытый в data_cleanup_api.js |
 
 ## 13.4 Влияние на Fortune Wheel
 
@@ -3429,7 +3478,7 @@ Client broadcast ──────────────┘
 
 **Конец документации**
 
-*Последнее обновление: 2026-02-09*
+*Последнее обновление: 2026-02-17*
 *Автор: Claude Code*
-*Версия: 2.4.0 (после полного аудита 09.02.2026: безопасность + цепочки данных + schedulers + масштабируемость + производительность + flutter analyze)*
+*Версия: 2.5.0 (аудит файлового инвентаря 17.02.2026: api/ 49→67, schedulers 8→10, /var/www/ dirs ~55→104, lib/core/ + lib/app/ полное обновление)*
 

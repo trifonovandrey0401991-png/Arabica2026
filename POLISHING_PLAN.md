@@ -2,7 +2,7 @@
 
 > **Метод**: Boy Scout Rule + Rule of Three
 > **Принцип**: Улучшай только то, что трогаешь. Обобщай только то, что повторяется 3+ раз.
-> **Дата анализа**: 16.02.2026 (на основе реального кода, не документации)
+> **Дата анализа**: 16.02.2026 (обновлено после 3-го глубокого анализа кода)
 
 ---
 
@@ -12,7 +12,7 @@
 
 | # | Правило | Пример |
 |---|---------|--------|
-| F-01 | Цвета ТОЛЬКО через тему (создать `lib/core/theme/`) | `Theme.of(context).primaryColor` вместо `Color(0xFF1A4D4D)` |
+| F-01 | Цвета ТОЛЬКО через тему (создать `lib/core/theme/`) | `AppColors.darkEmerald` вместо `Color(0xFF1A4D4D)` |
 | F-02 | `setState` ТОЛЬКО внутри `if (mounted)` | `if (mounted) setState(() { ... });` |
 | F-03 | Любой `async` callback → проверка `mounted` перед setState | После `await` всегда `if (!mounted) return;` |
 | F-04 | Фото через `pickImage` ВСЕГДА с `maxWidth: 1280, imageQuality: 75` | Без исключений — экономит 80% трафика |
@@ -20,19 +20,24 @@
 | F-06 | `AppCachedImage` для всех сетевых изображений | Уже выполнено (83 использования) |
 | F-07 | Размер файла: максимум 500 строк на страницу | Выносить виджеты в отдельные файлы |
 | F-08 | Константы — в отдельный файл, не хардкод | URL, размеры, тексты |
+| F-09 | URL сервера — ТОЛЬКО из `api_constants.dart` | Нельзя хардкодить `https://arabica26.ru` |
+| F-10 | `TextEditingController` в диалогах — ОБЯЗАТЕЛЬНО dispose | Создавать в StatefulWidget или вручную `controller.dispose()` |
+| F-11 | При 401 от сервера — автоматический выход на экран входа | Не показывать пустые экраны |
 
 ### Backend — Обязательные правила
 
 | # | Правило | Пример |
 |---|---------|--------|
-| B-01 | Запись файлов ТОЛЬКО через `writeJsonFile` из `async_fs.js` | Атомарная запись: temp → rename |
-| B-02 | Каждый шедулер ОБЯЗАН иметь `isRunning` guard | `if (isRunning) return; isRunning = true; try { ... } finally { isRunning = false; }` |
+| B-01 | Запись JSON-файлов через `writeJsonFile` из `async_fs.js` | Запись с блокировкой (file_lock) |
+| B-02 | Каждый шедулер/setInterval ОБЯЗАН иметь `isRunning` guard | Включая встроенные шедулеры в API-файлах |
 | B-03 | Каждый API-эндпоинт ОБЯЗАН проверять `req.user` | Кроме публичных (auth, job_application, loyalty scan) |
 | B-04 | Утилиты (`getMoscowTime`, `sanitizeId` и т.д.) — ТОЛЬКО импорт из `utils/` | Нельзя копировать в каждый файл |
 | B-05 | Все шедулеры — `setTimeout` при старте (5-15 сек задержка) | Чтобы сервер успел инициализироваться |
 | B-06 | Время — ТОЛЬКО через `getMoscowTime()` или `getUTCHours() + 3` | Нельзя использовать голый `getHours()` |
 | B-07 | Пагинация — Flutter ОБЯЗАН отправлять `?page=1` | Сервер не должен возвращать ВСЕ записи |
 | B-08 | Новые файлы: если уже есть 3+ похожих → базовый класс/функция | Rule of Three |
+| B-09 | Read-modify-write — ТОЛЬКО через `withLock` из `file_lock.js` | Нельзя читать → менять → писать без блокировки |
+| B-10 | Проверка admin — ТОЛЬКО через `req.user.isAdmin` из session | Нельзя принимать isAdmin из body запроса |
 
 ### Запреты
 
@@ -48,12 +53,12 @@
 
 ## ФАЗА 0: КРИТИЧЕСКИЕ БАГИ (делать первым)
 
-> Это реальные баги, найденные в коде. Без их исправления сервер нестабилен.
+> Реальные баги, найденные в коде. Без их исправления — потеря данных и дыры в безопасности.
 
-### 0.1 — Overlap protection для 8 шедулеров
+### 0.1 — Overlap protection для 8 шедулеров + 1 скрытый
 **Риск**: 🔴 Потеря/повреждение отчётов
-**Проблема**: Ни один из 8 шедулеров не проверяет, завершился ли предыдущий запуск. Если обработка занимает больше интервала — два процесса пишут в одни файлы одновременно.
-**Файлы**:
+**Проблема**: Ни один шедулер не проверяет, завершился ли предыдущий запуск.
+**Файлы** (8 именованных шедулеров):
 - `loyalty-proxy/api/shift_automation_scheduler.js`
 - `loyalty-proxy/api/recount_automation_scheduler.js`
 - `loyalty-proxy/api/rko_automation_scheduler.js`
@@ -63,55 +68,78 @@
 - `loyalty-proxy/api/coffee_machine_automation_scheduler.js`
 - `loyalty-proxy/api/product_questions_penalty_scheduler.js`
 
-**Решение**: Добавить в КАЖДЫЙ шедулер:
+**+ Скрытый шедулер:**
+- `loyalty-proxy/api/order_timeout_api.js` — `setInterval(checkExpiredOrders, 60000)` внутри API-файла. При overlap создаёт **дублирование штрафов**.
+
+**Решение**: Добавить `isRunning` guard в КАЖДЫЙ:
 ```javascript
 let isRunning = false;
-
 async function processReports() {
-  if (isRunning) {
-    console.log('[scheduler-name] Previous run still active, skipping');
-    return;
-  }
+  if (isRunning) { console.log('[name] Previous run still active, skipping'); return; }
   isRunning = true;
-  try {
-    // ... существующий код ...
-  } catch (err) {
-    console.error('[scheduler-name] Error:', err.message);
-  } finally {
-    isRunning = false;
-  }
+  try { /* ... */ } catch (err) { console.error('[name] Error:', err.message); }
+  finally { isRunning = false; }
 }
 ```
 
 ### 0.2 — Auth проверки в 8 API-файлах
 **Риск**: 🔴 Безопасность — любой с API-ключом может менять данные
-**Проблема**: Эти файлы НЕ проверяют `req.user` (кто делает запрос):
-- `loyalty-proxy/api/bonus_penalties_api.js`
-- `loyalty-proxy/api/training_api.js`
-- `loyalty-proxy/api/shops_api.js`
-- `loyalty-proxy/api/work_schedule_api.js`
-- `loyalty-proxy/api/rko_api.js`
-- `loyalty-proxy/api/menu_api.js`
-- `loyalty-proxy/api/withdrawals_api.js`
-- `loyalty-proxy/api/points_settings_api.js`
-
-**Решение**: Добавить проверку `req.user` в каждый endpoint, который изменяет данные (POST/PUT/DELETE). GET-эндпоинты можно оставить без проверки. Пример из `data_cleanup_api.js` (уже правильно сделано):
-```javascript
-router.post('/cleanup', isAdmin, async (req, res) => { ... });
-```
+**Файлы**: bonus_penalties, training, shops, work_schedule, rko, menu, withdrawals, points_settings
+**Решение**: `if (!req.user) return res.status(401).json({ error: 'Unauthorized' });` в POST/PUT/DELETE
 
 ### 0.3 — Баг getHours() в shift_handover
 **Риск**: 🟠 Неправильное время → отчёты попадают в неправильный день
-**Файл**: `loyalty-proxy/api/shift_handover_automation_scheduler.js`, строка ~270
-**Проблема**: Используется голый `getHours()` — это системное время сервера (может быть UTC), а не московское.
-**Решение**: Заменить на `getMoscowTime().getHours()` или `(date.getUTCHours() + 3) % 24`
+**Файл**: `shift_handover_automation_scheduler.js`, строка ~270
+**Решение**: `(new Date(report.createdAt).getUTCHours() + 3) % 24`
 
 ### 0.4 — Startup delay для 2 шедулеров
 **Риск**: 🟡 При pm2 restart шедулеры стартуют до готовности сервера
-**Файлы**:
-- `loyalty-proxy/api/envelope_automation_scheduler.js` — нет setTimeout
-- `loyalty-proxy/api/coffee_machine_automation_scheduler.js` — нет setTimeout
-**Решение**: Обернуть инициализацию в `setTimeout(() => { ... }, 10000)` как в остальных 6 шедулерах.
+**Файлы**: envelope_automation_scheduler, coffee_machine_automation_scheduler
+**Решение**: `setTimeout(() => { ... }, 10000)`
+
+### 0.5 — Принудительный logout без авторизации
+**Риск**: 🔴 Любой может выбросить любого пользователя
+**Файл**: `loyalty-proxy/api/auth_api.js` — `POST /api/auth/logout`
+**Проблема**: Принимает `{phone: "79001234567"}` и удаляет сессию без проверки кто это делает
+**Решение**: Проверять `req.user` — пользователь может logout только себя, или admin может logout любого
+
+### 0.6 — Регистрация чужого номера
+**Риск**: 🔴 Блокировка реального сотрудника
+**Файл**: `loyalty-proxy/api/auth_api.js` — `POST /api/auth/register`
+**Проблема**: Любой может зарегистрировать незанятый номер с произвольным PIN
+**Решение**: Регистрация только если номер есть в списке сотрудников (`data_cache.employees`)
+
+### 0.7 — isAdmin из body запроса (shift_transfers)
+**Риск**: 🟠 Обход проверки прав
+**Файл**: `loyalty-proxy/api/shift_transfers_api.js`, строка ~611
+**Проблема**: Deprecated код принимает `isAdmin: true` из body вместо проверки session
+**Решение**: Удалить else-ветку, требовать phone всегда
+
+### 0.8 — app-version: admin из body
+**Риск**: 🟠 Принудительное обновление всем пользователям
+**Файл**: `loyalty-proxy/api/app_version_api.js`
+**Проблема**: Проверяет админа по `body.employeePhone` вместо `req.user`
+**Решение**: Заменить на `req.user.isAdmin`
+
+### 0.9 — Показ неправильного заказа при push-уведомлении
+**Риск**: 🟠 Сотрудник может принять/отклонить чужой заказ
+**Файл**: `lib/core/services/notification_service.dart`
+**Проблема**: `firstWhere(..., orElse: () => orders.first)` — если заказ не найден, показывает ПЕРВЫЙ попавшийся
+**Решение**: Если заказ не найден → показать список заказов, не конкретный заказ
+
+### 0.10 — Swap не активен (OOM-kill при пиковой нагрузке)
+**Риск**: 🔴 Сервер убивает процессы при нехватке RAM
+**Проблема**: `/swapfile` (2 GB) существует, но НЕ подключён. При пиковой нагрузке (OCR 968 MB + loyalty-proxy + 210 пользователей) — система убьёт процесс без предупреждения.
+**Решение**: `swapon /swapfile` + добавить в `/etc/fstab`
+
+### 0.11 — 12.6 GB мусора на production-сервере
+**Риск**: 🟠 Диск занят на 66%, хотя данные приложения = 186 MB
+**Проблема**: На сервере установлены инструменты сборки, которые не нужны в production:
+- `/root/Android/` — 5.8 GB (Android SDK)
+- `/root/.cache/` — 4.2 GB (кэш сборки)
+- `/root/flutter/` — 1.4 GB (Flutter SDK)
+- `/root/.gradle/` — 1.2 GB (Gradle кэш)
+**Решение**: Удалить всё — APK собирается на локальном компьютере, не на сервере
 
 ---
 
@@ -120,54 +148,51 @@ router.post('/cleanup', isAdmin, async (req, res) => { ... });
 > Защита от падений при росте данных и нагрузки.
 
 ### 1.1 — Безопасная запись файлов в API
-**Проблема**: Шедулеры используют безопасный `writeJsonFile` (атомарная запись), но некоторые API-файлы используют сырой `fsp.writeFile` (при сбое = потеря файла).
-**Файлы с проблемой**:
-- `loyalty-proxy/api/geofence_api.js`
-- `loyalty-proxy/api/order_timeout_api.js`
-- `loyalty-proxy/api/recurring_tasks_api.js`
-- `loyalty-proxy/api/report_notifications_api.js`
-**Решение**: Заменить `fsp.writeFile` на `writeJsonFile` из `utils/async_fs.js`
+**Проблема**: Некоторые API-файлы используют сырой `fsp.writeFile` (при крэше = потеря файла)
+**Файлы**: geofence_api, order_timeout_api, recurring_tasks_api, report_notifications_api
+**Решение**: Заменить на `writeJsonFile` из `utils/async_fs.js`
+**Важно**: `writeJsonFile` использует file_lock для защиты от конкурентной записи, но НЕ использует temp+rename. Для критичных данных рекомендуется добавить temp+rename в будущем.
 
 ### 1.2 — getMoscowTime() → общая утилита
-**Проблема**: Функция `getMoscowTime()` скопирована в 7 файлах шедулеров (идентичный код × 7).
-**Решение**:
-1. Создать `loyalty-proxy/utils/moscow_time.js` с единой функцией
-2. В каждом шедулере заменить локальную копию на `const { getMoscowTime } = require('../utils/moscow_time')`
+**Проблема**: `getMoscowTime()` скопирована в 7 файлах шедулеров
+**Решение**: Создать `loyalty-proxy/utils/moscow_time.js`, заменить локальные копии
 
 ### 1.3 — Пагинация: обязательная отправка page из Flutter
-**Проблема**: Если Flutter не отправляет `?page=`, сервер возвращает ВСЕ записи. Даже с пагинацией — все файлы читаются с диска, потом нарезаются в памяти.
+**Проблема**: Без `?page=` сервер возвращает ВСЕ записи. Все файлы читаются с диска каждый раз.
 **Решение (поэтапно)**:
-1. **Сначала**: Flutter — добавить `?page=1&limit=50` во ВСЕ запросы списков
-2. **Потом**: Сервер — дефолтная пагинация (page=1, limit=50) если параметры не переданы
-3. **В будущем**: Индексные файлы вместо чтения всех файлов
+1. Flutter — добавить `?page=1&limit=50` во ВСЕ запросы списков
+2. Сервер — дефолтная пагинация если параметры не переданы
+3. В будущем — индексные файлы
 
 ### 1.4 — Расширить data_cache
-**Проблема**: `data_cache.js` кэширует только employees + shops (2 из 35+ модулей). Остальные модули читают файлы с диска на КАЖДЫЙ запрос.
-**Решение**: Добавить кэширование для частых запросов:
-- Настройки точек (points_settings) — читаются на каждом экране эффективности
-- Список магазинов (shops) — уже кэшируется
-- Шаблоны вопросов (questions) — одинаковые для всех сотрудников
+**Проблема**: Кэш покрывает только employees + shops (2 из 35+ модулей)
+**Решение**: Добавить кэш для points_settings, шаблонов вопросов
 
 ### 1.5 — Серверное сжатие фото
-**Проблема**: 9 multer upload handlers принимают фото как есть. Sharp установлен, но используется ТОЛЬКО для OCR. Фото с камеры занимают 5-10 МБ каждое.
-**Решение**: После multer upload добавить middleware:
-```javascript
-const sharp = require('sharp');
-async function compressUpload(req, res, next) {
-  if (req.file && req.file.mimetype.startsWith('image/')) {
-    const compressed = await sharp(req.file.path)
-      .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-    await fsp.writeFile(req.file.path, compressed);
-  }
-  next();
-}
-```
+**Проблема**: 9 multer upload handlers принимают фото без сжатия (5-10 МБ каждое)
+**Решение**: middleware с sharp (resize 1920px, JPEG q80). Для бинарных данных использовать `fsp.writeFile` с обработкой ошибок (writeJsonFile работает только с JSON).
 
 ### 1.6 — Очистка chat-media
-**Проблема**: `data_cleanup_api.js` чистит 6 категорий (shifts, handover, envelope, recount, rko, coffee-machine), но **chat-media НЕ включена**. Фото чатов копятся бесконечно.
-**Решение**: Добавить категорию `chat-media` в data_cleanup_api.js
+**Проблема**: chat-media НЕ включена в категории очистки
+**Решение**: Добавить `chat-media` в data_cleanup_api.js
+
+### 1.7 — File locking для чатов (read-modify-write race)
+**Проблема**: При одновременной отправке сообщений в чат (clients_api.js) — read/modify/write без блокировки. Одно сообщение теряется.
+**Решение**: Обернуть в `withLock(filePath, async () => { read → modify → write })`
+
+### 1.8 — File locking для заказов
+**Проблема**: Два сотрудника принимают один заказ одновременно (orders.js) — гонка данных
+**Решение**: `withLock` для `updateOrderStatus`
+
+### 1.9 — Graceful shutdown — закрытие WebSocket
+**Проблема**: При pm2 restart WebSocket-подключения НЕ закрываются. Старые клиенты висят на мёртвом процессе.
+**Файл**: `loyalty-proxy/index.js`, gracefulShutdown
+**Решение**: Сохранить ссылку на `wss`, вызвать `wss.close()` в gracefulShutdown
+
+### 1.10 — WebSocket: лимит подключений на один телефон
+**Проблема**: Баг в клиенте может открыть сотни подключений с одного номера (reconnect loop)
+**Файл**: `employee_chat_websocket.js`
+**Решение**: Максимум 3 подключения на один телефон. При превышении — закрывать самое старое.
 
 ---
 
@@ -176,156 +201,93 @@ async function compressUpload(req, res, next) {
 > Предотвращение крашей и утечек памяти.
 
 ### 2.1 — mounted guard для setState
-**Проблема**: 1,570 вызовов setState, из них ~844 БЕЗ проверки `if (mounted)`. Краш при переходе между экранами если async-операция завершается после dispose.
-**Правило (Boy Scout)**: При работе с ЛЮБЫМ файлом — проверить все setState в нём и добавить `if (mounted)` где отсутствует.
-**Шаблон**:
-```dart
-// БЫЛО:
-final data = await api.loadData();
-setState(() { _data = data; });
-
-// СТАЛО:
-final data = await api.loadData();
-if (!mounted) return;
-setState(() { _data = data; });
-```
+**Проблема**: ~844 вызовов setState БЕЗ `if (mounted)`. Краш при быстрой навигации.
+**Решение**: Boy Scout Rule — добавлять `if (!mounted) return;` при работе с каждым файлом.
 
 ### 2.2 — Сжатие фото в 3 страницах задач
-**Проблема**: Эти страницы используют `pickImage` без параметров качества — загружают полноразмерные фото (5-10 МБ):
-- `lib/features/tasks/pages/task_response_page.dart`
-- `lib/features/tasks/pages/recurring_task_response_page.dart`
-- `lib/features/tasks/pages/create_task_page.dart`
-**Решение**: Добавить `maxWidth: 1280, imageQuality: 75` в вызовы pickImage
+**Файлы**: task_response_page, recurring_task_response_page, create_task_page
+**Решение**: `pickImage(..., maxWidth: 1280, imageQuality: 75)`
 
 ### 2.3 — Web-платформа: сжатие фото
-**Проблема**: `PhotoUploadService` сжимает фото на мобильном (>500KB → 1280px, JPEG q75), но на web пропускает сжатие полностью.
-**Решение**: Добавить web-сжатие через canvas API или пакет `image` для web
+**Файл**: `photo_upload_service.dart`
+**Решение**: В ветке `kIsWeb` добавить сжатие через пакет `image` (уже в pubspec)
 
 ### 2.4 — Главное меню: 12 API-вызовов при открытии
-**Файл**: `lib/app/pages/main_menu_page.dart`
-**Проблема**: При открытии главного меню делается 12 отдельных HTTP-запросов.
-**Решение**: Использовать существующий `dashboard_batch_api.js` — один запрос вместо 12.
+**Решение**: Использовать существующий `dashboard_batch_api.js` — один запрос вместо 12
+
+### 2.5 — Auto-logout при 401
+**Проблема**: При истёкшей сессии экраны показываются пустыми, пользователь не понимает что происходит
+**Файл**: `lib/core/services/base_http_service.dart`
+**Решение**: При получении 401 — очистить session token, перейти на экран входа
+
+### 2.6 — TextEditingController в диалогах
+**Проблема**: Контроллеры созданные внутри `showDialog` не вызывают `dispose()` — утечка памяти
+**Файлы**: bonus_penalty_management_page, notification_service, schedule_bulk_operations_dialog
+**Решение**: При Boy Scout Rule — оборачивать диалоги в StatefulBuilder с dispose, или вызывать `.dispose()` явно
+
+### 2.7 — Хардкод URL сервера в Flutter
+**Проблема**: 9 мест с хардкодом `https://arabica26.ru` вместо `ApiConstants.baseUrl`
+**Файлы**: menu_page, kpi pages, product_questions, recipes
+**Решение**: Заменить на `ApiConstants.baseUrl`
+
+### 2.8 — WebSocket: reconnect после 10 неудач
+**Проблема**: После 10 неудачных попыток реконнекта WebSocket навсегда отключается. Чат не работает до перезапуска приложения.
+**Файл**: `chat_websocket_service.dart`
+**Решение**: Через 5 минут после исчерпания попыток — сбросить счётчик и попробовать снова
 
 ---
 
 ## ФАЗА 3: BACKEND DRY (убрать дублирование)
 
-> Применяем Rule of Three — эти паттерны повторяются 7-8 раз.
+> Rule of Three — обобщаем то, что повторяется 3+ раз.
 
 ### 3.1 — BaseReportScheduler
-**Проблема**: 8 шедулеров содержат ~95% одинакового кода (~700 строк × 8 = ~5,600 строк дублирования):
-- Чтение конфигов → проверка времени → поиск pending → генерация отчёта → уведомление
-**Решение**: Создать `loyalty-proxy/utils/base_report_scheduler.js`:
-```javascript
-class BaseReportScheduler {
-  constructor({ name, dataDir, pendingDir, stateDir, configDir, intervalMs }) { ... }
-  // Общая логика: isRunning guard, getMoscowTime, loadConfigs, findPending, saveFinalReport, sendPush
-  // Абстрактные методы для переопределения:
-  // - buildReport(pending, config) → reportData
-  // - getReportFileName(date, shopId) → string
-}
-```
-Каждый конкретный шедулер: ~50-100 строк вместо ~700.
+**Проблема**: 8 шедулеров × ~700 строк = ~5,600 строк дублирования
+**Решение**: `loyalty-proxy/utils/base_report_scheduler.js` — базовый класс
 
 ### 3.2 — Вынести дублированные утилиты из API-файлов
-**Проблема**: Многие API-файлы определяют ЛОКАЛЬНЫЕ копии функций вместо импорта из `utils/`:
-- `sanitizeId()` — копии в нескольких файлах
-- `fileExists()` — копии в нескольких файлах
-- `getMoscowTime()` — 7 копий в шедулерах
-**Решение**: При работе с файлом (Boy Scout Rule) — заменить локальную копию на импорт из `utils/file_helpers.js`
+**Проблема**: sanitizeId(), fileExists() — локальные копии вместо импорта
+**Решение**: Boy Scout Rule — заменять на `require('../utils/file_helpers')`
 
 ---
 
 ## ФАЗА 4: FLUTTER DRY (убрать дублирование)
 
-> Применяем Rule of Three — только для паттернов с 3+ копиями.
-
 ### 4.1 — Централизовать тему (цвета)
-**Проблема**:
-- `Color(0xFF1A4D4D)` → 128 файлов
-- `Color(0xFF0D2E2E)` → 116 файлов
-- `Color(0xFF004D40)` → 70 файлов
-**Решение**:
-1. Создать `lib/core/theme/app_colors.dart`:
-```dart
-class AppColors {
-  static const darkEmerald = Color(0xFF1A4D4D);
-  static const deepDark = Color(0xFF0D2E2E);
-  static const teal = Color(0xFF004D40);
-  // ... остальные цвета
-}
-```
-2. Применять по Boy Scout Rule: при работе с файлом заменять хардкод на `AppColors.xxx`
+**Проблема**: Color(0xFF1A4D4D) в 128 файлах, Color(0xFF0D2E2E) в 116, Color(0xFF004D40) в 70
+**Решение**: `lib/core/theme/app_colors.dart` + Boy Scout Rule
 
 ### 4.2 — Scaffold для страниц настроек баллов (15 страниц)
-**Файлы**: `lib/features/efficiency/pages/settings_tabs/*_points_settings_page.dart` (15 файлов)
-**Проблема**: 15 почти идентичных страниц настроек баллов. Каждая ~150-250 строк.
-**Решение**: Создать `GenericPointsSettingsScaffold` с параметрами:
-- Название модуля
-- Список настроек (слайдеры, переключатели)
-- API endpoint для сохранения
-
 ### 4.3 — Scaffold для страниц управления вопросами (7 страниц)
-**Файлы**: `*_questions_management_page.dart` (shift, handover, envelope, recount, coffee_machine, product_questions, test)
-**Проблема**: 7 страниц с одинаковой логикой: загрузить список → добавить/удалить/переупорядочить
-**Решение**: `QuestionsManagementScaffold` с параметрами (тип вопроса, API-эндпоинт)
-
 ### 4.4 — Scaffold для страниц списка отчётов (7 страниц)
-**Файлы**: `*_reports_list_page.dart` (shift, handover, envelope, recount, rko, coffee_machine, product_questions)
-**Проблема**: 7 страниц с одинаковой логикой: фильтр по дате/магазину → список отчётов → детали
-**Решение**: `ReportListScaffold` с параметрами (API-endpoint, поля отчёта, виджет деталей)
-
 ### 4.5 — Scaffold для страниц выбора магазина (6 страниц)
-**Файлы**: `*_shop_selection_page.dart` (shift, handover, recount, review, product_questions, attendance)
-**Проблема**: 6 одинаковых страниц: загрузить магазины → показать список → выбрать → перейти
-**Решение**: `ShopSelectionScaffold` с параметром `onShopSelected`
-
-### 4.6 — Разбить крупные файлы
-**Проблема**:
-- `cigarette_training_page.dart` — 4,002 строки
-- `work_schedule_page.dart` — 2,949 строк
-**Решение**: Вынести внутренние виджеты в отдельные файлы `widgets/`. Делать при работе с файлом (Boy Scout Rule), не специально.
+### 4.6 — Разбить крупные файлы (4002 и 2949 строк)
 
 ---
 
 ## ФАЗА 5: МОНИТОРИНГ И ЗАЩИТА
 
-### 5.1 — Health endpoint
-**Решение**: Добавить `GET /api/health` который возвращает:
-```json
-{
-  "status": "ok",
-  "uptime": 123456,
-  "memory": { "used": "180MB", "total": "2048MB" },
-  "disk": { "used": "1.2GB", "free": "18GB" },
-  "schedulers": { "shift": "running", "recount": "running", ... },
-  "lastErrors": []
-}
-```
-
+### 5.1 — Расширить Health endpoint (disk, schedulers, lastErrors)
 ### 5.2 — Автоочистка старых фото по расписанию
-**Проблема**: Фото-директории растут бесконечно. Ручная очистка через data_cleanup_api — только по запросу.
-**Решение**: Добавить cron-задачу или шедулер для автоочистки фото старше N дней (настраиваемо).
-
-### 5.3 — Логирование ошибок шедулеров
-**Проблема**: Ошибки шедулеров идут в pm2 logs и теряются при ротации.
-**Решение**: Писать ошибки в файл `/var/www/scheduler-errors/YYYY-MM-DD.json` для анализа.
+### 5.3 — Логирование ошибок шедулеров в файл
 
 ---
 
 ## ПОРЯДОК ВЫПОЛНЕНИЯ
 
 ```
-ФАЗА 0 → ФАЗА 1 → ФАЗА 2 → ФАЗА 3 → ФАЗА 4 → ФАЗА 5
- баги    сервер    Flutter    backend    Flutter    мониторинг
-                  стабильн.    DRY        DRY
+ФАЗА 0 (0.10-0.11 сервер подготовка) → ФАЗА 0 (баги) → ФАЗА 1 → ФАЗА 2 → ФАЗА 3 → ФАЗА 4 → ФАЗА 5
+  swap + очистка мусора              баги/security   сервер    Flutter    backend    Flutter    мониторинг
+                                                              стабильн.    DRY        DRY
 ```
 
-**Boy Scout Rule применяется ВСЕГДА**: при работе с любым файлом в рамках другой задачи — попутно исправляем:
-- Добавляем `if (mounted)` к setState
-- Заменяем хардкод цветов на `AppColors.xxx`
-- Заменяем локальные утилиты на импорт из `utils/`
-- Добавляем `req.user` проверку если отсутствует
+**Boy Scout Rule применяется ВСЕГДА** при работе с любым файлом:
+- `if (mounted)` к setState
+- Цвета → `AppColors.xxx`
+- Локальные утилиты → импорт из `utils/`
+- `req.user` проверка если отсутствует
+- `TextEditingController.dispose()` в диалогах
+- URL → `ApiConstants.baseUrl`
 
 ---
 
@@ -341,6 +303,9 @@ class AppColors {
 | `data_cache` для employees + shops | ✅ Работает, обновление каждые 5 мин |
 | `file_lock.js` с withLock | ✅ Существует (30s lock, 15s operation timeout) |
 | Rate limiting в index.js | ✅ 500/мин общий, 10/мин auth, 50/мин финансы |
+| Timer/AnimationController/ScrollController dispose | ✅ Все проверены, утечек нет |
+| StreamSubscription cancel в dispose | ✅ Все проверены, утечек нет |
+| addListener/removeListener | ✅ Все используют dispose контроллера |
 
 ---
 
@@ -350,13 +315,21 @@ class AppColors {
 |---------|----------|
 | setState без mounted guard | ~844 из 1,570 |
 | Хардкод цветов (файлов) | 128 + 116 + 70 |
-| Шедулеры без overlap protection | 8 из 8 |
+| Шедулеры без overlap protection | 9 из 9 (включая order_timeout) |
 | API без проверки req.user | 8 файлов |
+| Публичные эндпоинты с опасными действиями | 2 (logout, register) |
+| isAdmin из body вместо session | 2 файла (shift_transfers, app_version) |
 | Копии getMoscowTime | 7 |
 | API с сырым fsp.writeFile | 4 файла |
+| Read-modify-write без блокировки | 2 (чаты, заказы) |
 | Файлы >1000 строк | 2 (4002 и 2949) |
 | pickImage без сжатия | 3 страницы |
+| Хардкод URL сервера | 9 мест |
+| TextEditingController без dispose | 3+ диалога |
 | Модули без серверного кэша | ~33 из 35 |
+| Swap не активен | /swapfile 2GB есть, но не подключён |
+| Мусор на сервере (SDK, кэш) | 12.6 GB из 31 GB занятых |
+| Свободное место на диске | 17 GB (66% занято) |
 
 ---
 
