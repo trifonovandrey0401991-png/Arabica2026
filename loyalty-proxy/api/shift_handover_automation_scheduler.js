@@ -267,7 +267,7 @@ async function checkIfShiftHandoverSubmitted(shopAddress, shiftType, today) {
         // Определяем смену по времени создания отчёта
         let reportShiftType = 'morning';
         if (report.createdAt) {
-          const createdHour = new Date(report.createdAt).getHours();
+          const createdHour = (new Date(report.createdAt).getUTCHours() + 3) % 24;
           reportShiftType = createdHour >= 14 ? 'evening' : 'morning';
         }
 
@@ -803,14 +803,19 @@ async function startShiftHandoverAutomationScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(async () => {
-    await runScheduledChecks();
-  }, CHECK_INTERVAL_MS);
+  let isRunning = false;
+  const guardedCheck = async () => {
+    if (isRunning) { console.log('[ShiftHandoverScheduler] Previous run still active, skipping'); return; }
+    isRunning = true;
+    try { await runScheduledChecks(); }
+    catch (err) { console.error('[ShiftHandoverScheduler] Scheduler error:', err.message); }
+    finally { isRunning = false; }
+  };
+
+  setInterval(guardedCheck, CHECK_INTERVAL_MS);
 
   // First check after 6 seconds (offset from other schedulers)
-  setTimeout(async () => {
-    await runScheduledChecks();
-  }, 6000);
+  setTimeout(guardedCheck, 6000);
 }
 
 // ============================================

@@ -322,11 +322,20 @@ function setupOrderTimeoutAPI(app) {
   });
 
   // Запускаем scheduler каждую минуту
+  let isRunning = false;
+  const guardedCheck = async () => {
+    if (isRunning) { console.log('[OrderTimeout] Previous run still active, skipping'); return; }
+    isRunning = true;
+    try { await checkExpiredOrders(); }
+    catch (err) { console.error('[OrderTimeout] Scheduler error:', err.message); }
+    finally { isRunning = false; }
+  };
+
   console.log('Starting order timeout scheduler (every 60 seconds)...');
-  setInterval(checkExpiredOrders, 60 * 1000);
+  setInterval(guardedCheck, 60 * 1000);
 
   // Первый запуск через 10 секунд после старта
-  setTimeout(checkExpiredOrders, 10 * 1000);
+  setTimeout(guardedCheck, 10 * 1000);
 
   console.log('Order Timeout API initialized');
 }

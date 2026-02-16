@@ -845,10 +845,10 @@ startShiftHandoverAutomationScheduler();
 startAttendanceAutomationScheduler();
 
 // Start Envelope automation scheduler (auto-create reports, check deadlines, penalties)
-startEnvelopeAutomationScheduler();
+setTimeout(() => startEnvelopeAutomationScheduler(), 10000);
 
 // Start Coffee Machine automation scheduler (auto-create reports, check deadlines, penalties)
-startCoffeeMachineAutomation();
+setTimeout(() => startCoffeeMachineAutomation(), 12000);
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);

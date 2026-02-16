@@ -690,14 +690,19 @@ async function startRkoAutomationScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(async () => {
-    await runScheduledChecks();
-  }, CHECK_INTERVAL_MS);
+  let isRunning = false;
+  const guardedCheck = async () => {
+    if (isRunning) { console.log('[RkoScheduler] Previous run still active, skipping'); return; }
+    isRunning = true;
+    try { await runScheduledChecks(); }
+    catch (err) { console.error('[RkoScheduler] Scheduler error:', err.message); }
+    finally { isRunning = false; }
+  };
+
+  setInterval(guardedCheck, CHECK_INTERVAL_MS);
 
   // First check after 4 seconds (slightly offset from other schedulers)
-  setTimeout(async () => {
-    await runScheduledChecks();
-  }, 4000);
+  setTimeout(guardedCheck, 4000);
 }
 
 // ============================================

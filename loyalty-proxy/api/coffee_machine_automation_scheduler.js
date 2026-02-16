@@ -447,7 +447,10 @@ async function startCoffeeMachineAutomation() {
     }
   }
 
+  let isRunning = false;
   setInterval(async () => {
+    if (isRunning) { console.log('[CoffeeMachine Automation] Previous run still active, skipping'); return; }
+    isRunning = true;
     try {
       const moscow = getMoscowTime();
       const settings = await getCoffeeMachineSettings();
@@ -494,6 +497,8 @@ async function startCoffeeMachineAutomation() {
       }
     } catch (error) {
       console.error('[CoffeeMachine Automation] Ошибка:', error);
+    } finally {
+      isRunning = false;
     }
   }, CHECK_INTERVAL_MS);
 

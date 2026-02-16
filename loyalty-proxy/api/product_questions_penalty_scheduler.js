@@ -397,14 +397,19 @@ async function startScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Check every 5 minutes
-  setInterval(async () => {
-    await checkUnreadQuestionsAndDialogs();
-  }, 5 * 60 * 1000);
+  let isRunning = false;
+  const guardedCheck = async () => {
+    if (isRunning) { console.log('[ProductQuestions] Previous run still active, skipping'); return; }
+    isRunning = true;
+    try { await checkUnreadQuestionsAndDialogs(); }
+    catch (err) { console.error('[ProductQuestions] Scheduler error:', err.message); }
+    finally { isRunning = false; }
+  };
+
+  setInterval(guardedCheck, 5 * 60 * 1000);
 
   // First check after 1 second
-  setTimeout(async () => {
-    await checkUnreadQuestionsAndDialogs();
-  }, 1000);
+  setTimeout(guardedCheck, 1000);
 }
 
 function setupProductQuestionsPenaltyScheduler() {

@@ -603,7 +603,10 @@ async function startScheduler() {
   }
 
   // Запустить проверку каждые 5 минут
+  let isRunning = false;
   setInterval(async () => {
+    if (isRunning) { console.log('[Envelope Automation] Previous run still active, skipping'); return; }
+    isRunning = true;
     try {
       const moscow = getMoscowTime();
       const settings = await getEnvelopeSettings();
@@ -651,6 +654,8 @@ async function startScheduler() {
 
     } catch (error) {
       console.error('[Envelope Automation] Ошибка:', error);
+    } finally {
+      isRunning = false;
     }
   }, CHECK_INTERVAL_MS);
 

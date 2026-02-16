@@ -713,14 +713,19 @@ async function startRecountAutomationScheduler() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Run checks every 5 minutes
-  setInterval(async () => {
-    await runScheduledChecks();
-  }, CHECK_INTERVAL_MS);
+  let isRunning = false;
+  const guardedCheck = async () => {
+    if (isRunning) { console.log('[RecountScheduler] Previous run still active, skipping'); return; }
+    isRunning = true;
+    try { await runScheduledChecks(); }
+    catch (err) { console.error('[RecountScheduler] Scheduler error:', err.message); }
+    finally { isRunning = false; }
+  };
+
+  setInterval(guardedCheck, CHECK_INTERVAL_MS);
 
   // First check after 3 seconds (slightly offset from shift scheduler)
-  setTimeout(async () => {
-    await runScheduledChecks();
-  }, 3000);
+  setTimeout(guardedCheck, 3000);
 }
 
 // ============================================
