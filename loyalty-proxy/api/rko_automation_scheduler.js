@@ -14,16 +14,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const { fileExists } = require('../utils/file_helpers');
+const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('../utils/moscow_time');
 
 // Импортируем функции отправки push-уведомлений
 let sendPushNotification = null;
@@ -53,22 +45,6 @@ const STATE_FILE = path.join(RKO_AUTOMATION_STATE_DIR, 'state.json');
 const PENALTY_CATEGORY = 'rko_missed_penalty';
 const PENALTY_CATEGORY_NAME = 'Пропущенный РКО';
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
-const MOSCOW_OFFSET_HOURS = 3; // UTC+3 для московского времени
-
-// ============================================
-// Moscow Time Helper
-// ============================================
-function getMoscowTime() {
-  const now = new Date();
-  // Создаём дату в московском времени (UTC+3)
-  const moscowTime = new Date(now.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
-  return moscowTime;
-}
-
-function getMoscowDateString() {
-  const moscow = getMoscowTime();
-  return moscow.toISOString().split('T')[0]; // YYYY-MM-DD в московском времени
-}
 
 // ============================================
 // Helper: Load JSON file safely

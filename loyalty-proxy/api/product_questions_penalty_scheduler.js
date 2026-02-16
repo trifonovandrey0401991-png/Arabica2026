@@ -7,6 +7,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
+const { fileExists } = require('../utils/file_helpers');
 
 // Directories
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -23,16 +24,6 @@ const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const PENALTY_POINTS = -1;
 const CATEGORY_CODE = 'product_question_penalty';
 const CATEGORY_NAME = 'Неотвеченный вопрос о товаре';
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ============================================
 // Dynamic Timeout from Settings

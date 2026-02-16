@@ -14,6 +14,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
+const { fileExists } = require('../utils/file_helpers');
+const { getMoscowTime } = require('../utils/moscow_time');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -29,16 +31,6 @@ const POINTS_SETTINGS_FILE = `${DATA_DIR}/points-settings/coffee_machine_points_
 // Интервал проверки: 5 минут
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // Ensure directories exist
 (async () => {
   for (const dir of [PENDING_DIR, REPORTS_DIR, STATE_DIR, SHOP_CONFIGS_DIR]) {
@@ -48,14 +40,6 @@ async function fileExists(filePath) {
   }
 })();
 
-/**
- * Получение московского времени (UTC+3)
- */
-function getMoscowTime() {
-  const utc = new Date();
-  const moscowOffset = 3;
-  return new Date(utc.getTime() + moscowOffset * 60 * 60 * 1000);
-}
 
 /**
  * Загрузка настроек баллов для кофемашин

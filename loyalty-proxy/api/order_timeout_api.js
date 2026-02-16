@@ -7,6 +7,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sendPushNotification } = require('./report_notifications_api');
+const { fileExists } = require('../utils/file_helpers');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -25,16 +26,6 @@ const DEFAULT_ORDER_SETTINGS = {
   timeoutMinutes: 15,
   missedOrderPenalty: -2
 };
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Хелперы
 async function loadJsonFile(filePath, defaultValue = null) {

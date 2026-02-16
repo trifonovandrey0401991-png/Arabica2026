@@ -14,6 +14,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
+const { fileExists } = require('../utils/file_helpers');
+const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('../utils/moscow_time');
 
 // Импортируем функции отправки push-уведомлений
 let sendPushNotification = null;
@@ -45,31 +47,6 @@ const PENALTY_CATEGORY_NAME = 'Сдача смены - пропуск';
 
 // Constants
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
-const MOSCOW_OFFSET_HOURS = 3; // UTC+3 для московского времени
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// ============================================
-// Moscow Time Helper
-// ============================================
-function getMoscowTime() {
-  const now = new Date();
-  const moscowTime = new Date(now.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
-  return moscowTime;
-}
-
-function getMoscowDateString() {
-  const moscow = getMoscowTime();
-  return moscow.toISOString().split('T')[0];
-}
 
 // ============================================
 // Helper: Load JSON file safely

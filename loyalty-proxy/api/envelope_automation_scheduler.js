@@ -7,6 +7,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
+const { fileExists } = require('../utils/file_helpers');
+const { getMoscowTime } = require('../utils/moscow_time');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -20,16 +22,6 @@ const POINTS_SETTINGS_FILE = `${DATA_DIR}/points-settings/envelope_points_settin
 
 // Интервал проверки: 5 минут
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Ensure directories exist (async IIFE)
 (async () => {
@@ -115,14 +107,6 @@ async function loadAllSubmittedReportsForDate(date) {
   return submittedSet;
 }
 
-/**
- * Получение московского времени (UTC+3)
- */
-function getMoscowTime() {
-  const utc = new Date();
-  const moscowOffset = 3; // UTC+3
-  return new Date(utc.getTime() + moscowOffset * 60 * 60 * 1000);
-}
 
 /**
  * Загрузка настроек конвертов
