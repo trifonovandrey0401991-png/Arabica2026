@@ -1182,6 +1182,7 @@ async function saveCountingTrainingSample({
   productName,
   shopAddress,
   employeeAnswer,
+  selectedRegion,
 }) {
   try {
     if (!imageBase64 || !productId) {
@@ -1228,6 +1229,7 @@ async function saveCountingTrainingSample({
       status: 'pending',
       shopAddress: shopAddress || '',
       employeeAnswer: employeeAnswer || null,
+      selectedRegion: selectedRegion || null,
       imageFileName,
       imageUrl: `/api/cigarette-vision/counting-pending-images/${imageFileName}`,
       createdAt: timestamp,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчёта по поиску товаров - статистика по магазинам
 class ProductQuestionsReportPage extends StatefulWidget {
@@ -12,10 +13,10 @@ class ProductQuestionsReportPage extends StatefulWidget {
 }
 
 class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   Map<String, ShopQuestionStats> _shopStats = {};
@@ -91,7 +92,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -104,7 +105,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -114,19 +115,19 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Отчет (Поиск товаров)',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -138,10 +139,10 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -166,10 +167,10 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                                   ),
                                   child: Icon(Icons.search_off, size: 40, color: Colors.white.withOpacity(0.3)),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   'Нет данных о вопросах',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
                                 ),
                               ],
                             ),
@@ -179,7 +180,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                             color: _gold,
                             backgroundColor: _emeraldDark,
                             child: ListView.builder(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16.w),
                               itemCount: _shopStats.length,
                               itemBuilder: (context, index) {
                                 final shopAddress = _shopStats.keys.elementAt(index);
@@ -201,10 +202,10 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
 
   Widget _buildShopCard(String shopAddress, ShopQuestionStats stats, bool isExpanded, int unreadCount) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -213,7 +214,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               onTap: () async {
                 if (!isExpanded) {
                   await ProductQuestionService.markShopViewedByAdmin(shopAddress);
@@ -235,7 +236,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                 }
               },
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14.w),
                 child: Row(
                   children: [
                     Stack(
@@ -246,29 +247,29 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                           height: 40,
                           decoration: BoxDecoration(
                             color: _emerald,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(10.r),
                           ),
-                          child: const Icon(Icons.store, color: Colors.white, size: 22),
+                          child: Icon(Icons.store, color: Colors.white, size: 22),
                         ),
                         if (unreadCount > 0)
                           Positioned(
                             right: -6,
                             top: -6,
                             child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
+                              padding: EdgeInsets.all(4.w),
+                              decoration: BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
                               ),
-                              constraints: const BoxConstraints(
+                              constraints: BoxConstraints(
                                 minWidth: 18,
                                 minHeight: 18,
                               ),
                               child: Text(
                                 unreadCount.toString(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10,
+                                  fontSize: 10.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                                 textAlign: TextAlign.center,
@@ -277,7 +278,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                           ),
                       ],
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,7 +292,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                           ),
                           Text(
                             'За всё время',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
                           ),
                         ],
                       ),
@@ -301,7 +302,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                       answered: stats.answeredAll,
                       unanswered: stats.unansweredAll,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
                       color: Colors.white.withOpacity(0.4),
@@ -314,16 +315,16 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
           // Развёрнутая информация
           if (isExpanded)
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Divider(color: Colors.white.withOpacity(0.1)),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: [
                       Icon(Icons.calendar_month, size: 20, color: _gold),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         'За текущий месяц (${_getCurrentMonthName()}):',
                         style: TextStyle(
@@ -333,7 +334,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildDetailedStats(stats),
                 ],
               ),
@@ -349,10 +350,10 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
     required int unanswered,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
@@ -363,25 +364,25 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.white.withOpacity(0.8),
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
           ),
-          Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13)),
+          Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13.sp)),
           Text(
             '$answered',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.green,
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
           ),
-          Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13)),
+          Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13.sp)),
           Text(
             '$unanswered',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: unanswered > 0 ? Colors.red : Colors.white.withOpacity(0.3),
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
           ),
         ],
@@ -415,12 +416,12 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
             color: _emerald.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -453,11 +454,11 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
     return Column(
       children: [
         Icon(icon, color: color, size: 28),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 24.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -465,7 +466,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: Colors.white.withOpacity(0.4),
           ),
         ),
@@ -475,7 +476,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
 
   String _getCurrentMonthName() {
     final now = DateTime.now();
-    const months = [
+    final months = [
       'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
     ];

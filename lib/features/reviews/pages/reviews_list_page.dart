@@ -6,6 +6,7 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../../clients/pages/management_dialogs_list_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка отзывов, сгруппированных по магазинам (для админа)
 class ReviewsListPage extends StatefulWidget {
@@ -16,10 +17,10 @@ class ReviewsListPage extends StatefulWidget {
 }
 
 class _ReviewsListPageState extends State<ReviewsListPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   Map<String, ShopReviewStats> _shopStats = {};
@@ -100,7 +101,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -113,7 +114,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -123,19 +124,19 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Отзывы покупателей',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -147,10 +148,10 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -175,10 +176,10 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                                   ),
                                   child: Icon(Icons.reviews, size: 40, color: Colors.white.withOpacity(0.3)),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   'Нет отзывов',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
                                 ),
                               ],
                             ),
@@ -188,7 +189,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                             color: _gold,
                             backgroundColor: _emeraldDark,
                             child: ListView.builder(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16.w),
                               itemCount: _shopStats.length + 1,
                               itemBuilder: (context, index) {
                                 // Первый элемент - "Связь с руководством"
@@ -215,27 +216,27 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
 
   Widget _buildManagementCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.orange.withOpacity(0.3)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () async {
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const ManagementDialogsListPage(),
+                builder: (context) => ManagementDialogsListPage(),
               ),
             );
             _loadManagementUnreadCount();
           },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 Stack(
@@ -246,25 +247,25 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                       height: 44,
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
-                      child: const Icon(Icons.business, color: Colors.orange, size: 24),
+                      child: Icon(Icons.business, color: Colors.orange, size: 24),
                     ),
                     if (_managementUnreadCount > 0)
                       Positioned(
                         right: -4,
                         top: -4,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
+                          padding: EdgeInsets.all(4.w),
+                          decoration: BoxDecoration(
                             color: Colors.red,
                             shape: BoxShape.circle,
                           ),
                           child: Text(
                             _managementUnreadCount > 9 ? '9+' : '$_managementUnreadCount',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -272,7 +273,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                       ),
                   ],
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,10 +285,10 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         'Сообщения от клиентов',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13.sp),
                       ),
                     ],
                   ),
@@ -303,16 +304,16 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
 
   Widget _buildShopCard(String shopAddress, ShopReviewStats stats) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () async {
             await Navigator.push(
               context,
@@ -326,7 +327,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
             _loadReviews();
           },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 Container(
@@ -334,11 +335,11 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: _emerald,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                  child: const Icon(Icons.store, color: Colors.white, size: 24),
+                  child: Icon(Icons.store, color: Colors.white, size: 24),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,56 +351,56 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Всего отзывов: ${stats.total}',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13.sp),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           // Положительные
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                             decoration: BoxDecoration(
                               color: Colors.green.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.check_circle, color: Colors.green, size: 14),
-                                const SizedBox(width: 2),
+                                Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                SizedBox(width: 2),
                                 Text(
                                   '${stats.positive}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.green,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           // Отрицательные
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                             decoration: BoxDecoration(
                               color: Colors.red.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.cancel, color: Colors.red, size: 14),
-                                const SizedBox(width: 2),
+                                Icon(Icons.cancel, color: Colors.red, size: 14),
+                                SizedBox(width: 2),
                                 Text(
                                   '${stats.negative}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.red,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                   ),
                                 ),
                               ],
@@ -407,18 +408,18 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                           ),
                           // Непрочитанные
                           if (stats.unread > 0) ...[
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Text(
                                 'новых: ${stats.unread}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

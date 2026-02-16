@@ -189,10 +189,10 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
             const diffMinutes = (now - questionTime) / (1000 * 60);
             const isExpired = diffMinutes >= EXPIRED_MINUTES;
 
-            // Считаем только неотвеченные и не просроченные вопросы
-            // (просроченные показываются на другой вкладке)
-            if (!isExpired) {
-              // Проверяем, есть ли хотя бы один неотвеченный магазин
+            // Считаем неотвеченные (не просроченные) + вопросы с новым сообщением от клиента
+            if (question.hasUnreadFromClient) {
+              unansweredCount++;
+            } else if (!isExpired) {
               const hasUnansweredShop = question.shops && question.shops.some(s => !s.isAnswered);
               if (hasUnansweredShop) {
                 unansweredCount++;
@@ -287,6 +287,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.get('/api/product-questions/:questionId', async (req, res) => {
     try {
       const { questionId } = req.params;
+      const since = req.query.since; // Инкрементальная загрузка: только новые сообщения
       console.log('GET /api/product-questions/:questionId', questionId);
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
@@ -294,7 +295,23 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       if (await fileExists(filePath)) {
         const content = await fsp.readFile(filePath, 'utf8');
         const question = JSON.parse(content);
-        res.json({ success: true, question });
+
+        // Если передан since — вернуть только новые сообщения + метаданные
+        if (since && question.messages) {
+          const sinceDate = new Date(since);
+          const newMessages = question.messages.filter(m => new Date(m.timestamp) > sinceDate);
+          res.json({
+            success: true,
+            question: {
+              ...question,
+              messages: newMessages,
+            },
+            incremental: true,
+            totalMessages: question.messages.length,
+          });
+        } else {
+          res.json({ success: true, question });
+        }
       } else {
         res.status(404).json({ success: false, error: 'Question not found' });
       }
@@ -491,6 +508,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
             msg.isRead = true;
           }
         });
+      }
+
+      // Сбрасываем флаг непрочитанных
+      if (readerType === 'employee') {
+        question.hasUnreadFromClient = false;
       }
 
       await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
@@ -842,6 +864,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.get('/api/product-question-dialogs/:dialogId', async (req, res) => {
     try {
       const { dialogId } = req.params;
+      const since = req.query.since; // Инкрементальная загрузка
       console.log('GET /api/product-question-dialogs/:dialogId', dialogId);
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
@@ -853,7 +876,22 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const data = await fsp.readFile(filePath, 'utf8');
       const dialog = JSON.parse(data);
 
-      res.json({ success: true, dialog });
+      // Если передан since — вернуть только новые сообщения + метаданные
+      if (since && dialog.messages) {
+        const sinceDate = new Date(since);
+        const newMessages = dialog.messages.filter(m => new Date(m.timestamp) > sinceDate);
+        res.json({
+          success: true,
+          dialog: {
+            ...dialog,
+            messages: newMessages,
+          },
+          incremental: true,
+          totalMessages: dialog.messages.length,
+        });
+      } else {
+        res.json({ success: true, dialog });
+      }
     } catch (error) {
       console.error('Error getting dialog:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -1142,6 +1180,69 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       res.json(response);
     } catch (error) {
       console.error('Error getting client questions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/product-questions/client/:phone/reply - Клиент отвечает в диалоге вопроса
+  app.post('/api/product-questions/client/:phone/reply', async (req, res) => {
+    try {
+      const { phone } = req.params;
+      const { text, imageUrl, questionId } = req.body;
+      console.log('POST /api/product-questions/client/:phone/reply', maskPhone(phone), 'questionId:', questionId);
+
+      if (!text) {
+        return res.status(400).json({ success: false, error: 'Missing required field: text' });
+      }
+
+      // Если передан questionId — добавляем сообщение в конкретный вопрос
+      let filePath;
+      if (questionId) {
+        filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+      } else {
+        return res.status(400).json({ success: false, error: 'Missing required field: questionId' });
+      }
+
+      if (!(await fileExists(filePath))) {
+        return res.status(404).json({ success: false, error: 'Question not found' });
+      }
+
+      const content = await fsp.readFile(filePath, 'utf8');
+      const question = JSON.parse(content);
+      const timestamp = new Date().toISOString();
+      const messageId = `msg_${Date.now()}`;
+
+      const newMessage = {
+        id: messageId,
+        senderType: 'client',
+        senderPhone: phone,
+        senderName: question.clientName || 'Клиент',
+        shopAddress: null,
+        text: text,
+        imageUrl: imageUrl || null,
+        timestamp
+      };
+
+      if (!question.messages) {
+        question.messages = [];
+      }
+      question.messages.push(newMessage);
+      question.hasUnreadFromClient = true;
+
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2));
+      console.log(`✅ Client reply added to question ${questionId}`);
+
+      // Уведомляем сотрудников о новом сообщении от клиента
+      try {
+        const { notifyQuestionCreated } = require('./product_questions_notifications');
+        await notifyQuestionCreated(question);
+      } catch (e) {
+        console.error('Error sending notification:', e);
+      }
+
+      res.json({ success: true, message: newMessage });
+    } catch (error) {
+      console.error('Error sending client reply:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

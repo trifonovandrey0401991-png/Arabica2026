@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Кнопка сохранения для страниц настроек
 ///
@@ -30,12 +31,12 @@ class SettingsSaveButton extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: gradientColors,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: gradientColors[0].withOpacity(0.4),
             blurRadius: 12,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -45,13 +46,13 @@ class SettingsSaveButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(vertical: 16.h),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
           ),
         ),
         child: isSaving
-            ? const SizedBox(
+            ? SizedBox(
                 height: 24,
                 width: 24,
                 child: CircularProgressIndicator(
@@ -63,10 +64,10 @@ class SettingsSaveButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(icon, size: 22),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Text(
                     text,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -101,14 +102,14 @@ class SettingsSectionTitle extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: gradientColors,
             ),
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(2.r),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 18,
+          style: TextStyle(
+            fontSize: 18.sp,
             fontWeight: FontWeight.bold,
             color: Color(0xFF2D3436),
           ),
@@ -145,17 +146,17 @@ class SettingsHeaderCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: gradientColors,
         ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(28.r),
+          bottomRight: Radius.circular(28.r),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 24.h),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: Row(
           children: [
@@ -164,7 +165,7 @@ class SettingsHeaderCard extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 icon,
@@ -172,16 +173,16 @@ class SettingsHeaderCard extends StatelessWidget {
                 size: 26,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -189,7 +190,7 @@ class SettingsHeaderCard extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 13,
+                      fontSize: 13.sp,
                     ),
                   ),
                 ],
@@ -220,21 +221,21 @@ class SettingsInfoBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           Icon(icon, color: color, size: 20),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: color.shade900,
               ),
             ),

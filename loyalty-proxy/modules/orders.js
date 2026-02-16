@@ -286,7 +286,7 @@ async function sendOrderNotification(order, type) {
       token,
       notification: { title, body },
       data: {
-        type: 'order',
+        type: 'order_status',
         orderId: order.id,
         orderNumber: String(order.orderNumber),
         shopAddress: order.shopAddress,

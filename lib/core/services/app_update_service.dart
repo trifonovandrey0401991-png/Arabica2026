@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Информация о версии приложения с сервера
 class AppVersionInfo {
@@ -183,7 +184,7 @@ class AppUpdateService {
       final response = await http.get(
         Uri.parse('${ApiConstants.serverUrl}/api/app-version'),
         headers: ApiConstants.jsonHeaders,
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -256,8 +257,8 @@ class AppUpdateService {
   static void _showUpdateDownloadedSnackbar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Обновление загружено'),
-        duration: const Duration(seconds: 10),
+        content: Text('Обновление загружено'),
+        duration: Duration(seconds: 10),
         action: SnackBarAction(
           label: 'Установить',
           onPressed: () async {
@@ -283,23 +284,23 @@ class AppUpdateService {
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF004D40).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Color(0xFF004D40).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.system_update,
                   color: Color(0xFF004D40),
                   size: 28,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: Text(
                   'Требуется обновление',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -312,24 +313,24 @@ class AppUpdateService {
             children: [
               Text(
                 versionInfo.updateMessage,
-                style: const TextStyle(fontSize: 15),
+                style: TextStyle(fontSize: 15.sp),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: Colors.orange.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.warning_amber, color: Colors.orange[700], size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         'Для продолжения работы необходимо обновить приложение',
-                        style: TextStyle(fontSize: 13),
+                        style: TextStyle(fontSize: 13.sp),
                       ),
                     ),
                   ],
@@ -360,14 +361,14 @@ class AppUpdateService {
                     }
                   }
                 },
-                icon: const Icon(Icons.download),
-                label: const Text('Обновить'),
+                icon: Icon(Icons.download),
+                label: Text('Обновить'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
+                  backgroundColor: Color(0xFF004D40),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                 ),
               ),

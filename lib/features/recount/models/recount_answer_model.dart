@@ -21,6 +21,10 @@ class RecountAnswer {
   final String? aiAnnotatedImageUrl; // URL фото с разметкой ИИ
   final String? productId; // ID товара (для отслеживания ошибок ИИ)
 
+  // Поля для интерактивного ИИ-потока
+  final Map<String, double>? selectedRegion; // Область товара {x, y, width, height} 0.0-1.0
+  final int? employeeConfirmedQuantity; // Количество, подтверждённое сотрудником
+
   // Поля для решения админа по ошибке ИИ
   final bool? employeeReportedAiError; // Сотрудник нажал "ИИ ошибся"
   final String? aiErrorAdminDecision; // "approved_for_training" | "rejected_bad_photo" | null
@@ -46,6 +50,8 @@ class RecountAnswer {
     this.aiMismatch,
     this.aiAnnotatedImageUrl,
     this.productId,
+    this.selectedRegion,
+    this.employeeConfirmedQuantity,
     this.employeeReportedAiError,
     this.aiErrorAdminDecision,
     this.aiErrorDecisionBy,
@@ -143,6 +149,8 @@ class RecountAnswer {
     'aiMismatch': aiMismatch,
     'aiAnnotatedImageUrl': aiAnnotatedImageUrl,
     'productId': productId,
+    'selectedRegion': selectedRegion,
+    'employeeConfirmedQuantity': employeeConfirmedQuantity,
     'employeeReportedAiError': employeeReportedAiError,
     'aiErrorAdminDecision': aiErrorAdminDecision,
     'aiErrorDecisionBy': aiErrorDecisionBy,
@@ -170,6 +178,11 @@ class RecountAnswer {
     aiMismatch: json['aiMismatch'],
     aiAnnotatedImageUrl: json['aiAnnotatedImageUrl'],
     productId: json['productId'],
+    selectedRegion: json['selectedRegion'] != null
+        ? Map<String, double>.from(
+            (json['selectedRegion'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
+        : null,
+    employeeConfirmedQuantity: json['employeeConfirmedQuantity'],
     employeeReportedAiError: json['employeeReportedAiError'],
     aiErrorAdminDecision: json['aiErrorAdminDecision'],
     aiErrorDecisionBy: json['aiErrorDecisionBy'],
@@ -198,6 +211,8 @@ class RecountAnswer {
     bool? aiMismatch,
     String? aiAnnotatedImageUrl,
     String? productId,
+    Map<String, double>? selectedRegion,
+    int? employeeConfirmedQuantity,
     bool? employeeReportedAiError,
     String? aiErrorAdminDecision,
     String? aiErrorDecisionBy,
@@ -222,6 +237,8 @@ class RecountAnswer {
       aiMismatch: aiMismatch ?? this.aiMismatch,
       aiAnnotatedImageUrl: aiAnnotatedImageUrl ?? this.aiAnnotatedImageUrl,
       productId: productId ?? this.productId,
+      selectedRegion: selectedRegion ?? this.selectedRegion,
+      employeeConfirmedQuantity: employeeConfirmedQuantity ?? this.employeeConfirmedQuantity,
       employeeReportedAiError: employeeReportedAiError ?? this.employeeReportedAiError,
       aiErrorAdminDecision: aiErrorAdminDecision ?? this.aiErrorAdminDecision,
       aiErrorDecisionBy: aiErrorDecisionBy ?? this.aiErrorDecisionBy,

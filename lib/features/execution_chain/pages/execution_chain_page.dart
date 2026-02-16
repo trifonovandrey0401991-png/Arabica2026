@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/execution_chain_model.dart';
 import '../services/execution_chain_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница настройки цепочки выполнений (только для админа)
 class ExecutionChainPage extends StatefulWidget {
@@ -11,10 +12,10 @@ class ExecutionChainPage extends StatefulWidget {
 }
 
 class _ExecutionChainPageState extends State<ExecutionChainPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -93,7 +94,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка сохранения'),
+            content: Text('Ошибка сохранения'),
             backgroundColor: Colors.red.shade700,
           ),
         );
@@ -121,7 +122,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -134,7 +135,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
             children: [
               _buildAppBar(),
               if (_isLoading)
-                const Expanded(
+                Expanded(
                   child: Center(
                     child: CircularProgressIndicator(color: _gold),
                   ),
@@ -150,7 +151,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 16.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -161,19 +162,19 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Цепочка Выполнений',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -181,33 +182,33 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
 
   Widget _buildBody() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
       children: [
         // Переключатель активности
         _buildEnabledSwitch(),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // Секция: доступные модули
         _buildSectionTitle('Модули'),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         ..._allModules.map(_buildModuleCheckbox),
 
         if (_activeSteps.isNotEmpty) ...[
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           _buildSectionTitle('Порядок выполнения'),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             'Перетащите для изменения порядка',
             style: TextStyle(
               color: Colors.white.withOpacity(0.4),
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildReorderableList(),
         ],
 
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
         _buildSaveButton(),
       ],
     );
@@ -215,9 +216,9 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
 
   Widget _buildEnabledSwitch() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: _enabled ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.15),
         ),
@@ -230,13 +231,13 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
             color: _enabled ? _gold : Colors.white.withOpacity(0.5),
             size: 24,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               _enabled ? 'Цепочка активна' : 'Цепочка выключена',
               style: TextStyle(
                 color: _enabled ? _gold : Colors.white.withOpacity(0.7),
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -259,7 +260,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
       title,
       style: TextStyle(
         color: Colors.white.withOpacity(0.6),
-        fontSize: 14,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
       ),
@@ -269,18 +270,18 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
   Widget _buildModuleCheckbox(_ModuleItem module) {
     final isActive = _isModuleActive(module.id);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: EdgeInsets.only(bottom: 6.h),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: InkWell(
           onTap: () => _toggleModule(module),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           splashColor: Colors.white.withOpacity(0.1),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
                 color: isActive ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
               ),
@@ -293,13 +294,13 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
                   color: isActive ? _gold : Colors.white.withOpacity(0.5),
                   size: 22,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     module.name,
                     style: TextStyle(
                       color: isActive ? Colors.white : Colors.white.withOpacity(0.7),
-                      fontSize: 15,
+                      fontSize: 15.sp,
                     ),
                   ),
                 ),
@@ -310,7 +311,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
                   checkColor: _night,
                   side: BorderSide(color: Colors.white.withOpacity(0.3)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(4.r),
                   ),
                 ),
               ],
@@ -324,14 +325,14 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
   Widget _buildReorderableList() {
     return ReorderableListView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      physics: NeverScrollableScrollPhysics(),
       itemCount: _activeSteps.length,
       proxyDecorator: (child, index, animation) {
         return Material(
           color: Colors.transparent,
           elevation: 4,
           shadowColor: _gold.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           child: child,
         );
       },
@@ -346,10 +347,10 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
         final module = _activeSteps[index];
         return Container(
           key: ValueKey(module.id),
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          margin: EdgeInsets.only(bottom: 6.h),
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: _gold.withOpacity(0.25)),
             color: _gold.withOpacity(0.06),
           ),
@@ -366,27 +367,27 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
                 child: Center(
                   child: Text(
                     '${index + 1}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _gold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Icon(
                 module.icon,
                 color: _gold.withOpacity(0.8),
                 size: 20,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   module.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 15,
+                    fontSize: 15.sp,
                   ),
                 ),
               ),
@@ -416,11 +417,11 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
           foregroundColor: _night,
           disabledBackgroundColor: _gold.withOpacity(0.3),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
           ),
         ),
         child: _isSaving
-            ? const SizedBox(
+            ? SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
@@ -428,10 +429,10 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
                   color: _night,
                 ),
               )
-            : const Text(
+            : Text(
                 'Сохранить',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),

@@ -3,6 +3,7 @@ import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../services/main_cash_service.dart';
 import '../widgets/turnover_calendar.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница деталей магазина (баланс и оборот)
 class ShopBalanceDetailsPage extends StatefulWidget {
@@ -24,10 +25,10 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
   bool _isLoading = true;
 
   // Dark Emerald palette
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -76,7 +77,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -89,7 +90,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             children: [
               // Custom header row
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -99,7 +100,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: Icon(
                           Icons.arrow_back,
@@ -108,19 +109,19 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         widget.shopAddress,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     GestureDetector(
                       onTap: _loadBalance,
                       child: Container(
@@ -128,7 +129,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: Icon(
                           Icons.refresh,
@@ -143,10 +144,10 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
 
               // TabBar
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+                margin: EdgeInsets.symmetric(horizontal: 16.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: TabBar(
                   controller: _tabController,
@@ -154,19 +155,19 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
                   dividerColor: Colors.transparent,
-                  tabs: const [
+                  tabs: [
                     Tab(text: 'Баланс', icon: Icon(Icons.account_balance_wallet)),
                     Tab(text: 'Оборот', icon: Icon(Icons.calendar_today)),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // Body
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: _gold),
                       )
                     : TabBarView(
@@ -190,7 +191,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
         child: Text(
           'Нет данных о балансе',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 18.sp,
             color: Colors.white.withOpacity(0.5),
           ),
         ),
@@ -198,19 +199,19 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(24.w),
       child: Column(
         children: [
-          const SizedBox(height: 40),
+          SizedBox(height: 40),
           Text(
             'Текущий баланс кассы',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 20.sp,
               fontWeight: FontWeight.bold,
               color: _gold,
             ),
           ),
-          const SizedBox(height: 40),
+          SizedBox(height: 40),
 
           // ООО
           _buildBalanceRow(
@@ -218,7 +219,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             _balance!.oooBalance,
             Colors.blue,
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // ИП
           _buildBalanceRow(
@@ -227,9 +228,9 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             Colors.orange,
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Divider(thickness: 2, color: Colors.white.withOpacity(0.1)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Итого
           Row(
@@ -238,7 +239,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
               Text(
                 'Итого:',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.white.withOpacity(0.9),
                 ),
@@ -246,7 +247,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
               Text(
                 '${_formatFullAmount(_balance!.totalBalance)} руб',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 28.sp,
                   fontWeight: FontWeight.bold,
                   color: _balance!.totalBalance < 0
                       ? Colors.red
@@ -256,15 +257,15 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             ],
           ),
 
-          const SizedBox(height: 60),
+          SizedBox(height: 60),
 
           // Детальная информация
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,11 +274,11 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                   'Детали',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildDetailRow('Поступления ООО:', _balance!.oooTotalIncome),
                 _buildDetailRow('Выемки ООО:', -_balance!.oooTotalWithdrawals),
                 Divider(color: Colors.white.withOpacity(0.1)),
@@ -302,14 +303,14 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
               height: 12,
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(3.r),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               '$label:',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 20.sp,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
@@ -318,7 +319,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
         Text(
           '${_formatFullAmount(amount)} руб',
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 22.sp,
             fontWeight: FontWeight.bold,
             color: amount < 0 ? Colors.red : Colors.white.withOpacity(0.9),
           ),
@@ -329,7 +330,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
 
   Widget _buildDetailRow(String label, double amount) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

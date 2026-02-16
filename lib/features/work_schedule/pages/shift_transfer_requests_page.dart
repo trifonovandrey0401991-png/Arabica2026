@@ -4,6 +4,7 @@ import '../models/shift_transfer_model.dart';
 import '../models/work_schedule_model.dart';
 import '../services/shift_transfer_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница заявок на передачу смен (для раздела Отчёты)
 class ShiftTransferRequestsPage extends StatefulWidget {
@@ -14,10 +15,10 @@ class ShiftTransferRequestsPage extends StatefulWidget {
 }
 
 class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   List<ShiftTransferRequest> _notifications = [];
   bool _isLoading = false;
@@ -56,7 +57,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -69,7 +70,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -79,19 +80,19 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Заявки на смены',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -103,10 +104,10 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -131,15 +132,15 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                                   ),
                                   child: Icon(Icons.check_circle_outline, size: 40, color: Colors.white.withOpacity(0.3)),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   'Нет заявок на передачу смен',
-                                  style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
+                                  style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5)),
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Text(
                                   'Здесь появятся заявки, требующие вашего одобрения',
-                                  style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.3)),
+                                  style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.3)),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
@@ -150,7 +151,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                             color: _gold,
                             backgroundColor: _emeraldDark,
                             child: ListView.builder(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16.w),
                               itemCount: _notifications.length,
                               itemBuilder: (context, index) {
                                 final request = _notifications[index];
@@ -170,10 +171,10 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     final isUnread = !request.isReadByAdmin;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
           color: isUnread ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
           width: isUnread ? 2 : 1,
@@ -182,7 +183,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () async {
             if (isUnread) {
               final prefs = await SharedPreferences.getInstance();
@@ -192,7 +193,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
             }
           },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -203,7 +204,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                       Container(
                         width: 10,
                         height: 10,
-                        margin: const EdgeInsets.only(right: 8),
+                        margin: EdgeInsets.only(right: 8.w),
                         decoration: BoxDecoration(
                           color: _gold,
                           shape: BoxShape.circle,
@@ -214,21 +215,21 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         'Заявка на передачу смены',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           color: isUnread ? _gold : Colors.white.withOpacity(0.9),
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
                         'Ожидает одобрения',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.sp,
                           color: Colors.orange[300],
                           fontWeight: FontWeight.w500,
                         ),
@@ -236,9 +237,9 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Divider(color: Colors.white.withOpacity(0.1), height: 1),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
 
                 // Информация о передаче
                 Row(
@@ -249,14 +250,14 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         children: [
                           Text(
                             'Передаёт:',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             request.fromEmployeeName,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               color: Colors.white.withOpacity(0.9),
                             ),
                             maxLines: 2,
@@ -272,15 +273,15 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         children: [
                           Text(
                             request.acceptedBy.length > 1 ? 'Принявшие:' : 'Принимает:',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           if (request.acceptedBy.length > 1)
                             Text(
                               '${request.acceptedBy.length} чел.',
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                                fontSize: 14.sp,
                                 color: _gold,
                               ),
                               textAlign: TextAlign.right,
@@ -292,7 +293,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                                   : (request.acceptedByEmployeeName ?? 'Неизвестно'),
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                                fontSize: 14.sp,
                                 color: Colors.white.withOpacity(0.9),
                               ),
                               maxLines: 2,
@@ -307,12 +308,12 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
 
                 // Список принявших (если несколько)
                 if (request.acceptedBy.length > 1) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: _gold.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(color: _gold.withOpacity(0.2)),
                     ),
                     child: Column(
@@ -321,28 +322,28 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         Row(
                           children: [
                             Icon(Icons.people, size: 16, color: _gold),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(
                               'Готовы принять смену:',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 13.sp,
                                 fontWeight: FontWeight.w600,
                                 color: _gold,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         ...request.acceptedBy.map((accepted) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
+                          padding: EdgeInsets.only(bottom: 4.h),
                           child: Row(
                             children: [
                               Icon(Icons.person, size: 14, color: Colors.white.withOpacity(0.4)),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   accepted.employeeName,
-                                  style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.7)),
+                                  style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.7)),
                                 ),
                               ),
                             ],
@@ -352,14 +353,14 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
 
                 // Детали смены
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Column(
                     children: [
@@ -368,13 +369,13 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         'Дата:',
                         '${request.shiftDate.day}.${request.shiftDate.month.toString().padLeft(2, '0')}.${request.shiftDate.year}',
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       _buildDetailRow(
                         Icons.access_time,
                         'Смена:',
                         request.shiftType.label,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       _buildDetailRow(
                         Icons.store,
                         'Магазин:',
@@ -386,23 +387,23 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
 
                 // Комментарий
                 if (request.comment != null && request.comment!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: Colors.blue.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.comment, size: 18, color: Colors.blue[300]),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             request.comment!,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.blue[200],
                               fontStyle: FontStyle.italic,
                             ),
@@ -413,7 +414,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                   ),
                 ],
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 // Кнопки действий
                 Row(
@@ -421,25 +422,25 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _declineRequest(request),
-                        icon: const Icon(Icons.close, size: 18),
-                        label: const Text('Отклонить'),
+                        icon: Icon(Icons.close, size: 18),
+                        label: Text('Отклонить'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red[300],
                           side: BorderSide(color: Colors.red[300]!),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _approveRequest(request),
-                        icon: const Icon(Icons.check, size: 18),
-                        label: const Text('Одобрить'),
+                        icon: Icon(Icons.check, size: 18),
+                        label: Text('Одобрить'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green[700],
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
                         ),
                       ),
                     ),
@@ -457,16 +458,16 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     return Row(
       children: [
         Icon(icon, size: 16, color: Colors.white.withOpacity(0.3)),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.4)),
+          style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.4)),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Expanded(
           child: Text(
             value,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.8)),
+            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.8)),
             textAlign: TextAlign.right,
           ),
         ),
@@ -490,7 +491,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Одобрить заявку?'),
+        title: Text('Одобрить заявку?'),
         content: SingleChildScrollView(
           child: Text(
             'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
@@ -501,12 +502,12 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Одобрить', style: TextStyle(color: Colors.white)),
+            child: Text('Одобрить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -520,7 +521,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Заявка одобрена, график обновлен'),
               backgroundColor: Colors.green,
             ),
@@ -530,7 +531,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка одобрения заявки'),
               backgroundColor: Colors.red,
             ),
@@ -544,7 +545,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     final selectedEmployee = await showDialog<AcceptedByEmployee>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выберите сотрудника'),
+        title: Text('Выберите сотрудника'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -556,17 +557,17 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                 'Выберите кому передать смену:',
                 style: TextStyle(color: Colors.grey[700]),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               ...request.acceptedBy.map((accepted) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.only(bottom: 8.h),
                 child: InkWell(
                   onTap: () => Navigator.pop(context, accepted),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
                       children: [
@@ -575,12 +576,12 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                           backgroundColor: Colors.green[100],
                           child: Icon(Icons.person, color: Colors.green[700], size: 20),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             accepted.employeeName,
-                            style: const TextStyle(
-                              fontSize: 15,
+                            style: TextStyle(
+                              fontSize: 15.sp,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -591,10 +592,10 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                   ),
                 ),
               )),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Остальным сотрудникам придёт уведомление об отклонении.',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey[500], fontStyle: FontStyle.italic),
               ),
             ],
           ),
@@ -602,7 +603,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
         ],
       ),
@@ -613,7 +614,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Подтвердите выбор'),
+        title: Text('Подтвердите выбор'),
         content: SingleChildScrollView(
           child: Text(
             'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
@@ -625,12 +626,12 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Подтвердить', style: TextStyle(color: Colors.white)),
+            child: Text('Подтвердить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -654,7 +655,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка одобрения заявки'),
               backgroundColor: Colors.red,
             ),
@@ -678,7 +679,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Отклонить заявку?'),
+        title: Text('Отклонить заявку?'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -689,21 +690,21 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                 'от ${request.fromEmployeeName} будет отклонена.',
               ),
               if (request.acceptedBy.length > 1) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   'Следующие сотрудники получат уведомление об отклонении:',
-                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13.sp),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ...request.acceptedBy.map((a) => Padding(
-                  padding: const EdgeInsets.only(left: 8, bottom: 4),
-                  child: Text('• ${a.employeeName}', style: const TextStyle(fontSize: 13)),
+                  padding: EdgeInsets.only(left: 8.w, bottom: 4.h),
+                  child: Text('• ${a.employeeName}', style: TextStyle(fontSize: 13.sp)),
                 )),
               ] else ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Принявший: $acceptedText',
-                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13.sp),
                 ),
               ],
             ],
@@ -712,12 +713,12 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Отклонить', style: TextStyle(color: Colors.white)),
+            child: Text('Отклонить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -728,7 +729,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Заявка отклонена'),
               backgroundColor: Colors.orange,
             ),
@@ -738,7 +739,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка отклонения заявки'),
               backgroundColor: Colors.red,
             ),

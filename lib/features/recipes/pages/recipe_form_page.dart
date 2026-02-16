@@ -5,6 +5,7 @@ import '../models/recipe_model.dart';
 import '../services/recipe_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class RecipeFormPage extends StatefulWidget {
   final Recipe? recipe; // Если передан, то редактирование, иначе создание
@@ -19,7 +20,7 @@ class RecipeFormPage extends StatefulWidget {
 }
 
 class _RecipeFormPageState extends State<RecipeFormPage> {
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -90,16 +91,16 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
+              topLeft: Radius.circular(24.r),
+              topRight: Radius.circular(24.r),
             ),
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -109,25 +110,25 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     height: 4,
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(2.r),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   // Заголовок
                   Row(
                     children: [
                       Icon(Icons.add_photo_alternate_rounded, color: _primaryColor, size: 28),
-                      const SizedBox(width: 12),
-                      const Text(
+                      SizedBox(width: 12),
+                      Text(
                         'Выберите источник фото',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   // Галерея
                   _buildImageSourceOption(
                     icon: Icons.photo_library_rounded,
@@ -139,7 +140,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                       _pickImage(ImageSource.gallery);
                     },
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   // Камера
                   _buildImageSourceOption(
                     icon: Icons.camera_alt_rounded,
@@ -151,7 +152,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                       _pickImage(ImageSource.camera);
                     },
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                 ],
               ),
             ),
@@ -172,12 +173,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14.w),
           decoration: BoxDecoration(
             border: Border.all(color: color.withOpacity(0.3)),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
           ),
           child: Row(
             children: [
@@ -186,11 +187,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                 height: 48,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(icon, color: color, size: 26),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,16 +199,16 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w600,
                         color: color,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.grey[600],
                       ),
                     ),
@@ -262,7 +263,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             Logger.warning('Фото не загружено для рецепта ${savedRecipe.id}');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('Рецепт создан, но фото не удалось загрузить. Попробуйте добавить фото через редактирование.'),
                   backgroundColor: Colors.orange,
                   duration: Duration(seconds: 4),
@@ -301,7 +302,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             Logger.warning('Фото не загружено для рецепта ${widget.recipe!.id}');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('Рецепт сохранён, но фото не удалось загрузить. Попробуйте ещё раз.'),
                   backgroundColor: Colors.orange,
                   duration: Duration(seconds: 4),
@@ -314,7 +315,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Рецепт успешно сохранен'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
@@ -329,7 +330,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           SnackBar(
             content: Text('Ошибка сохранения: ${e.toString()}'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
+            duration: Duration(seconds: 5),
           ),
         );
       }
@@ -364,7 +365,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -374,10 +375,10 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                   title: 'Фото напитка',
                   subtitle: 'Добавьте красивое фото',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 // Карточка фото
                 _buildPhotoCard(),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Основная информация
                 _buildSectionHeader(
@@ -385,7 +386,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                   title: 'Основная информация',
                   subtitle: 'Название, категория и цена',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildFormCard(
                   children: [
                     _buildTextField(
@@ -401,14 +402,14 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         return null;
                       },
                     ),
-                    const Divider(height: 24),
+                    Divider(height: 24),
                     _buildTextField(
                       controller: _categoryController,
                       label: 'Категория',
                       hint: 'Например: Кофе, Чай, Десерты',
                       icon: Icons.category_rounded,
                     ),
-                    const Divider(height: 24),
+                    Divider(height: 24),
                     _buildTextField(
                       controller: _priceController,
                       label: 'Цена',
@@ -419,7 +420,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Ингредиенты
                 _buildSectionHeader(
@@ -427,7 +428,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                   title: 'Ингредиенты',
                   subtitle: 'Список компонентов',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildFormCard(
                   children: [
                     _buildMultilineTextField(
@@ -439,7 +440,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Приготовление
                 _buildSectionHeader(
@@ -447,7 +448,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                   title: 'Приготовление',
                   subtitle: 'Пошаговая инструкция',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildFormCard(
                   children: [
                     _buildMultilineTextField(
@@ -459,11 +460,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: 28),
 
                 // Кнопка сохранения
                 _buildSaveButton(),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
               ],
             ),
           ),
@@ -485,18 +486,18 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           height: 40,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, color: Colors.white, size: 22),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 17,
+              style: TextStyle(
+                fontSize: 17.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -504,7 +505,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             Text(
               subtitle,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
@@ -521,12 +522,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -540,16 +541,16 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: _primaryColor.withOpacity(0.08),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20.r),
+                  topRight: Radius.circular(20.r),
                 ),
               ),
               child: hasPhoto
                   ? ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20.r),
+                        topRight: Radius.circular(20.r),
                       ),
                       child: _selectedPhoto != null
                           ? Image.file(
@@ -571,15 +572,15 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           ),
           // Кнопка выбора фото
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Material(
               color: _primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               child: InkWell(
                 onTap: _isSaving ? null : _showImageSourceDialog,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                  padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 20.w),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -588,11 +589,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         color: _primaryColor,
                         size: 22,
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Text(
                         hasPhoto ? 'Изменить фото' : 'Добавить фото',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                           color: _primaryColor,
                         ),
@@ -619,11 +620,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             size: 48,
             color: _primaryColor.withOpacity(0.3),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             'Нажмите, чтобы добавить фото',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: _primaryColor.withOpacity(0.5),
             ),
           ),
@@ -637,17 +638,17 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.12),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(18.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: children,
@@ -675,11 +676,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           height: 44,
           decoration: BoxDecoration(
             color: _primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Icon(icon, color: _primaryColor, size: 22),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(
           child: TextFormField(
             controller: controller,
@@ -693,21 +694,21 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               suffixStyle: TextStyle(
                 color: _primaryColor,
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 16.sp,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: Colors.grey[300]!),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: _primaryColor, width: 2),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: Colors.grey[300]!),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             ),
             validator: validator,
           ),
@@ -735,18 +736,18 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         hintStyle: TextStyle(color: Colors.grey[400]),
         alignLabelWithHint: true,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: _primaryColor, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
-        contentPadding: const EdgeInsets.all(16),
+        contentPadding: EdgeInsets.all(16.w),
       ),
     );
   }
@@ -758,12 +759,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         gradient: LinearGradient(
           colors: [Colors.white, Colors.white.withOpacity(0.95)],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -771,9 +772,9 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: _isSaving ? null : _saveRecipe,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(18.r),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18),
+            padding: EdgeInsets.symmetric(vertical: 18.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -786,22 +787,22 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                       valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
                   Text(
                     'Сохранение...',
                     style: TextStyle(
-                      fontSize: 17,
+                      fontSize: 17.sp,
                       fontWeight: FontWeight.bold,
                       color: _primaryColor,
                     ),
                   ),
                 ] else ...[
                   Icon(Icons.check_circle_rounded, color: _primaryColor, size: 26),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Text(
                     widget.recipe == null ? 'Создать рецепт' : 'Сохранить изменения',
                     style: TextStyle(
-                      fontSize: 17,
+                      fontSize: 17.sp,
                       fontWeight: FontWeight.bold,
                       color: _primaryColor,
                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Generic страница настроек баллов
 ///
@@ -125,7 +126,7 @@ class _GenericPointsSettingsPageState<T>
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Настройки сохранены'),
               backgroundColor: Colors.green,
             ),
@@ -152,12 +153,12 @@ class _GenericPointsSettingsPageState<T>
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -165,11 +166,11 @@ class _GenericPointsSettingsPageState<T>
                   Card(
                     color: Colors.blue[50],
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       child: Row(
                         children: [
                           Icon(Icons.info_outline, color: Colors.blue[700]),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               widget.infoText,
@@ -180,7 +181,7 @@ class _GenericPointsSettingsPageState<T>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Min points slider
                   _buildSliderSection(
@@ -195,7 +196,7 @@ class _GenericPointsSettingsPageState<T>
                       setState(() => _minPoints = value);
                     },
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Zero threshold slider
                   _buildSliderSection(
@@ -210,7 +211,7 @@ class _GenericPointsSettingsPageState<T>
                       setState(() => _zeroThreshold = value.toInt());
                     },
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Max points slider
                   _buildSliderSection(
@@ -225,12 +226,12 @@ class _GenericPointsSettingsPageState<T>
                       setState(() => _maxPoints = value);
                     },
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Preview card
                   _buildPreviewCard(),
 
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Save button
                   SizedBox(
@@ -239,13 +240,13 @@ class _GenericPointsSettingsPageState<T>
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveSettings,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
+                        backgroundColor: Color(0xFF004D40),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                       ),
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
@@ -253,10 +254,10 @@ class _GenericPointsSettingsPageState<T>
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Сохранить настройки',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
@@ -284,19 +285,19 @@ class _GenericPointsSettingsPageState<T>
       children: [
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: 16.sp,
             fontWeight: FontWeight.w600,
           ),
         ),
         Text(
           subtitle,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 13.sp,
             color: Colors.grey[600],
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -308,7 +309,7 @@ class _GenericPointsSettingsPageState<T>
                 label: isInteger
                     ? value.toInt().toString()
                     : value.toStringAsFixed(1),
-                activeColor: const Color(0xFF004D40),
+                activeColor: Color(0xFF004D40),
                 onChanged: onChanged,
               ),
             ),
@@ -319,8 +320,8 @@ class _GenericPointsSettingsPageState<T>
                 isInteger
                     ? value.toInt().toString()
                     : value.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF004D40),
                 ),
@@ -334,22 +335,22 @@ class _GenericPointsSettingsPageState<T>
 
   Widget _buildPreviewCard() {
     return Card(
-      color: const Color(0xFFE0F2F1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Color(0xFFE0F2F1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Предпросмотр баллов',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF004D40),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ...List.generate(
               widget.previewMax - widget.previewMin + 1,
               (index) {
@@ -359,14 +360,14 @@ class _GenericPointsSettingsPageState<T>
                 final isZero = points == 0;
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: EdgeInsets.symmetric(vertical: 4.h),
                   child: Row(
                     children: [
                       SizedBox(
                         width: 100,
                         child: Text(
                           '${widget.previewLabel} $value:',
-                          style: const TextStyle(fontSize: 14),
+                          style: TextStyle(fontSize: 14.sp),
                         ),
                       ),
                       Text(
@@ -374,7 +375,7 @@ class _GenericPointsSettingsPageState<T>
                             ? '+${points.toStringAsFixed(1)}'
                             : points.toStringAsFixed(1),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
                           color: isZero
                               ? Colors.grey[700]

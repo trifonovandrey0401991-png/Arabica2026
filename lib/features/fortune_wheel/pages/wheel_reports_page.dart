@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/fortune_wheel_model.dart';
 import '../services/fortune_wheel_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчёта по Колесу Удачи (для админа)
 class WheelReportsPage extends StatefulWidget {
@@ -11,10 +12,10 @@ class WheelReportsPage extends StatefulWidget {
 }
 
 class _WheelReportsPageState extends State<WheelReportsPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   List<WheelSpinRecord> _records = [];
   bool _isLoading = true;
@@ -50,7 +51,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
-        title: const Text(
+        title: Text(
           'Обработать приз?',
           style: TextStyle(color: Colors.white),
         ),
@@ -60,13 +61,13 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
           children: [
             Text(
               'Сотрудник: ${record.employeeName}',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
             Text(
               'Приз: ${record.prize}',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'После отметки приз будет считаться выданным.',
               style: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -86,7 +87,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
             ),
-            child: const Text('Обработать'),
+            child: Text('Обработать'),
           ),
         ],
       ),
@@ -103,7 +104,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
         _loadRecords();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Приз отмечен как обработанный'),
               backgroundColor: Colors.green,
             ),
@@ -127,7 +128,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
       context: context,
       builder: (context) => SimpleDialog(
         backgroundColor: _emeraldDark,
-        title: const Text(
+        title: Text(
           'Выберите месяц',
           style: TextStyle(color: Colors.white),
         ),
@@ -136,7 +137,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
             onPressed: () => Navigator.pop(context, month),
             child: Text(
               _formatMonth(month),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
           );
         }).toList(),
@@ -167,7 +168,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -180,7 +181,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -190,29 +191,29 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
+                    SizedBox(width: 16),
+                    Expanded(
                       child: Text(
                         'Отчёт (Колесо)',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                         ),
                       ),
                     ),
                     TextButton.icon(
                       onPressed: _showMonthPicker,
-                      icon: const Icon(Icons.calendar_today, color: _gold, size: 18),
+                      icon: Icon(Icons.calendar_today, color: _gold, size: 18),
                       label: Text(
                         _formatMonth(_selectedMonth),
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                   ],
@@ -221,7 +222,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
 
               // Content
               if (_isLoading)
-                const Expanded(
+                Expanded(
                   child: Center(
                     child: CircularProgressIndicator(color: _gold),
                   ),
@@ -229,7 +230,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
               else ...[
                 // Статистика
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     border: Border(
@@ -269,7 +270,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                           backgroundColor: _emeraldDark,
                           onRefresh: _loadRecords,
                           child: ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             itemCount: _records.length,
                             itemBuilder: (context, index) {
                               return _buildRecordCard(_records[index]);
@@ -289,11 +290,11 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     return Column(
       children: [
         Icon(icon, color: color ?? _gold, size: 28),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
+          style: TextStyle(
+            fontSize: 20.sp,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -301,7 +302,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: Colors.white.withOpacity(0.5),
           ),
         ),
@@ -319,11 +320,11 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
             size: 80,
             color: Colors.white.withOpacity(0.3),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Нет прокруток за этот месяц',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
@@ -334,10 +335,10 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
 
   Widget _buildRecordCard(WheelSpinRecord record) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: record.isProcessed
               ? Colors.green.withOpacity(0.5)
@@ -346,7 +347,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -355,17 +356,17 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
               children: [
                 Text(
                   record.positionIcon,
-                  style: const TextStyle(fontSize: 24),
+                  style: TextStyle(fontSize: 24.sp),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         record.employeeName,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -373,7 +374,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                       Text(
                         '${record.position} место за ${_formatMonth(record.rewardMonth)}',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
@@ -383,31 +384,31 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                 Text(
                   record.formattedDate,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.white.withOpacity(0.5),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Приз
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(color: _gold.withOpacity(0.2)),
               ),
               child: Row(
                 children: [
-                  const Text('🎁', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 12),
+                  Text('🎁', style: TextStyle(fontSize: 20.sp)),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       record.prize,
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
                       ),
@@ -416,19 +417,19 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Статус и действия
             Row(
               children: [
                 // Статус
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
                     color: record.isProcessed
                         ? Colors.green.withOpacity(0.15)
                         : Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -438,27 +439,27 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                         size: 16,
                         color: record.isProcessed ? Colors.green : Colors.orange,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         record.isProcessed
                             ? 'Обработано${record.processedBy != null ? ' • ${record.processedBy}' : ''}'
                             : 'Ожидает обработки',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: record.isProcessed ? Colors.green[300] : Colors.orange[300],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Spacer(),
+                Spacer(),
 
                 // Кнопка обработки
                 if (!record.isProcessed)
                   TextButton.icon(
                     onPressed: () => _markAsProcessed(record),
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('Обработать'),
+                    icon: Icon(Icons.check, size: 18),
+                    label: Text('Обработать'),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.green,
                     ),

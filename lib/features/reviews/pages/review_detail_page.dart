@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница детального просмотра отзыва/диалога
 class ReviewDetailPage extends StatefulWidget {
@@ -92,7 +93,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка при отправке сообщения'),
               backgroundColor: Colors.red,
             ),
@@ -139,11 +140,11 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isAdmin ? 'Отзыв покупателя' : 'Мой отзыв'),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -154,7 +155,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
           children: [
             // Информация об отзыве
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               color: Colors.white.withOpacity(0.1),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,40 +170,40 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                             ? Colors.green
                             : Colors.red,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         _currentReview.reviewType == 'positive'
                             ? 'Положительный отзыв'
                             : 'Отрицательный отзыв',
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'Клиент: ${_currentReview.clientName}',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                   ),
                   Text(
                     'Телефон: ${_currentReview.clientPhone}',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                   ),
                   Text(
                     'Магазин: ${_currentReview.shopAddress}',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Card(
                     color: Colors.white,
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(12.w),
                       child: Text(
                         _currentReview.reviewText,
-                        style: const TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: 16.sp),
                       ),
                     ),
                   ),
@@ -212,14 +213,14 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
             // Список сообщений
             Expanded(
               child: sortedMessages.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         'Пока нет сообщений в диалоге',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+                        style: TextStyle(color: Colors.white, fontSize: 16.sp),
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       itemCount: sortedMessages.length,
                       itemBuilder: (context, index) {
                         final message = sortedMessages[index];
@@ -236,7 +237,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                               ? Alignment.centerRight
                               : Alignment.centerLeft,
                           child: Container(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: EdgeInsets.only(bottom: 12.h),
                             constraints: BoxConstraints(
                               maxWidth: MediaQuery.of(context).size.width * 0.75,
                             ),
@@ -245,7 +246,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                                   ? Colors.blue.withOpacity(0.9)
                                   : Colors.white,
                               child: Padding(
-                                padding: const EdgeInsets.all(12),
+                                padding: EdgeInsets.all(12.w),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -265,14 +266,14 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                                           Container(
                                             width: 8,
                                             height: 8,
-                                            decoration: const BoxDecoration(
+                                            decoration: BoxDecoration(
                                               color: Colors.blue,
                                               shape: BoxShape.circle,
                                             ),
                                           ),
                                       ],
                                     ),
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: 4),
                                     Text(
                                       message.text,
                                       style: TextStyle(
@@ -281,11 +282,11 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                                             : Colors.black,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: 4),
                                     Text(
                                       _formatDateTime(message.createdAt),
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         color: isAdminMessage
                                             ? Colors.white70
                                             : Colors.grey,
@@ -302,7 +303,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
             ),
             // Поле ввода сообщения
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               color: Colors.white.withOpacity(0.1),
               child: Row(
                 children: [
@@ -314,11 +315,11 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(24.r),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 12.h,
                         ),
                       ),
                       maxLines: null,
@@ -326,19 +327,19 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                       onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   IconButton(
                     icon: _isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.send),
+                        : Icon(Icons.send),
                     onPressed: _isLoading ? null : _sendMessage,
                     color: Colors.white,
                     style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
+                      backgroundColor: Color(0xFF004D40),
                     ),
                   ),
                 ],
@@ -352,8 +353,8 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
 
   String _formatDateTime(DateTime dateTime) {
     // Добавляем 3 часа для конвертации UTC в МСК (UTC+3)
-    final moscowDateTime = dateTime.add(const Duration(hours: 3));
-    final now = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final moscowDateTime = dateTime.add(Duration(hours: 3));
+    final now = DateTime.now().toUtc().add(Duration(hours: 3));
     final difference = now.difference(moscowDateTime);
 
     if (difference.inDays == 0) {

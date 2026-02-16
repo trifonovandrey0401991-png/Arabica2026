@@ -8,6 +8,7 @@ import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_personal_dialog_page.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница чата клиента по поиску товара (единый чат со всеми магазинами)
 class ProductQuestionClientDialogPage extends StatefulWidget {
@@ -18,12 +19,18 @@ class ProductQuestionClientDialogPage extends StatefulWidget {
 }
 
 class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientDialogPage> {
+  // Dark emerald + gold palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
 
   List<ProductQuestionMessage> _messages = [];
-  Set<String> _existingDialogShops = {}; // Магазины, с которыми уже есть персональные диалоги
+  Set<String> _existingDialogShops = {};
   bool _isLoading = true;
   bool _isSending = false;
   bool _isCreatingDialog = false;
@@ -36,8 +43,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
   void initState() {
     super.initState();
     _loadData();
-    // Автообновление каждые 5 секунд
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadMessages());
+    _refreshTimer = Timer.periodic(Duration(seconds: 5), (_) => _loadMessages());
   }
 
   @override
@@ -60,11 +66,8 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
       return;
     }
 
-    // Загружаем существующие персональные диалоги
     await _loadExistingDialogs();
     await _loadMessages();
-
-    // Помечаем все сообщения как прочитанные
     _markAllAsRead();
   }
 
@@ -93,12 +96,11 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
           _isLoading = false;
         });
 
-        // Прокрутка вниз при загрузке
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
           }
@@ -125,24 +127,66 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
 
   Future<void> _pickImage() async {
     try {
-      final source = await showDialog<ImageSource>(
+      final source = await showModalBottomSheet<ImageSource>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Выберите источник'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Галерея'),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Камера'),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-            ],
+        backgroundColor: Colors.transparent,
+        builder: (context) => Container(
+          decoration: BoxDecoration(
+            color: _night.withOpacity(0.98),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+            border: Border(top: BorderSide(color: _gold.withOpacity(0.2))),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: EdgeInsets.symmetric(vertical: 12.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Text(
+                    'Прикрепить фото',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(10.w),
+                    decoration: BoxDecoration(
+                      color: _emerald.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(Icons.photo_library, color: Colors.white.withOpacity(0.8)),
+                  ),
+                  title: Text('Галерея', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(10.w),
+                    decoration: BoxDecoration(
+                      color: _emerald.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(Icons.camera_alt, color: Colors.white.withOpacity(0.8)),
+                  ),
+                  title: Text('Камера', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       );
@@ -164,10 +208,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка выбора фото: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Ошибка выбора фото: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -202,19 +243,18 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
         await _loadMessages();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Не удалось отправить сообщение'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -244,26 +284,19 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     }
   }
 
-  /// Открыть диалог с магазином
   Future<void> _openShopDialog(String shopAddress, String? questionId) async {
     try {
-      // Проверяем телефон клиента
       if (_clientPhone == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ошибка: не удалось получить телефон клиента'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Ошибка: не удалось получить телефон клиента'), backgroundColor: Colors.red),
         );
         return;
       }
 
-      // Всегда ищем персональный диалог с этим магазином
       final dialogs = await ProductQuestionService.getClientPersonalDialogs(_clientPhone!);
       final existingDialog = dialogs.where((d) => d.shopAddress == shopAddress).firstOrNull;
 
       if (existingDialog != null) {
-        // Открываем существующий персональный диалог
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -275,20 +308,15 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
         );
         _loadMessages();
       } else {
-        // Создаем новый персональный диалог
         await _startPersonalDialog(shopAddress);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка при открытии диалога: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Ошибка при открытии диалога: $e'), backgroundColor: Colors.red),
       );
     }
   }
 
-  /// Создать персональный диалог с магазином
   Future<void> _startPersonalDialog(String shopAddress) async {
     if (_isCreatingDialog || _clientPhone == null) return;
 
@@ -304,12 +332,10 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
       );
 
       if (dialog != null && mounted) {
-        // Обновляем список существующих диалогов
         setState(() {
           _existingDialogShops.add(shopAddress);
         });
 
-        // Переходим на страницу персонального диалога
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -321,20 +347,14 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Не удалось создать диалог - сервер не вернул данные'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Не удалось создать диалог'), backgroundColor: Colors.red),
         );
         Logger.debug('createPersonalDialog returned null for shopAddress: $shopAddress');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка при создании диалога: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Ошибка при создании диалога: $e'), backgroundColor: Colors.red),
         );
         Logger.warning('Exception in createPersonalDialog: $e');
       }
@@ -355,100 +375,126 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     return Column(
       crossAxisAlignment: isClientMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
-        Align(
-          alignment: isClientMessage ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            padding: const EdgeInsets.all(12),
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
-            decoration: BoxDecoration(
-              color: isClientMessage ? const Color(0xFF004D40) : Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Для сообщений сотрудников показываем магазин и имя
-                if (!isClientMessage) ...[
-                  Text(
-                    '${message.shopAddress ?? "Магазин"} - ${message.senderName ?? "Сотрудник"}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 4.h),
+          child: Row(
+            mainAxisAlignment: isClientMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (isClientMessage) Spacer(flex: 1),
+              Flexible(
+                flex: 4,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                  decoration: BoxDecoration(
+                    gradient: isClientMessage
+                        ? LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [_emerald, _emeraldDark],
+                          )
+                        : null,
+                    color: isClientMessage ? null : Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(18.r),
+                      topRight: Radius.circular(18.r),
+                      bottomLeft: isClientMessage ? Radius.circular(18.r) : Radius.circular(4.r),
+                      bottomRight: isClientMessage ? Radius.circular(4.r) : Radius.circular(18.r),
+                    ),
+                    border: Border.all(
+                      color: _gold.withOpacity(0.5),
+                      width: 1.0,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                ],
-                // Фото
-                if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: AppCachedImage(
-                      imageUrl: message.imageUrl!.startsWith('http')
-                          ? message.imageUrl!
-                          : 'https://arabica26.ru${message.imageUrl}',
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, error, stackTrace) {
-                        return Container(
-                          height: 100,
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.broken_image, color: Colors.grey),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                // Текст
-                Text(
-                  message.text,
-                  style: TextStyle(
-                    color: isClientMessage ? Colors.white : Colors.black87,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!isClientMessage) ...[
+                        Text(
+                          '${message.shopAddress ?? "Магазин"} - ${message.senderName ?? "Сотрудник"}',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                            color: _gold.withOpacity(0.8),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                      ],
+                      if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12.r),
+                          child: AppCachedImage(
+                            imageUrl: message.imageUrl!.startsWith('http')
+                                ? message.imageUrl!
+                                : 'https://arabica26.ru${message.imageUrl}',
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, error, stackTrace) {
+                              return Container(
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Icon(Icons.broken_image_rounded, color: Colors.white.withOpacity(0.3)),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                      ],
+                      Text(
+                        message.text,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(isClientMessage ? 0.95 : 0.85),
+                          fontSize: 15.sp,
+                          height: 1.4,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        _formatTimestamp(message.timestamp),
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: Colors.white.withOpacity(isClientMessage ? 0.5 : 0.35),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                // Время
-                Text(
-                  _formatTimestamp(message.timestamp),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isClientMessage ? Colors.white70 : Colors.grey,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              if (!isClientMessage) Spacer(flex: 1),
+            ],
           ),
         ),
-        // Кнопка "Написать в магазин" под ответами сотрудников
+        // Button "Write to shop" under employee messages
         if (!isClientMessage && shopAddress != null) ...[
           Padding(
-            padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+            padding: EdgeInsets.only(left: 8.w, right: 8.w, bottom: 8.h),
             child: ElevatedButton.icon(
               onPressed: () => _openShopDialog(shopAddress, message.questionId),
-              icon: const Icon(Icons.store, size: 16),
-              label: const Text('Написать в магазин'),
+              icon: Icon(Icons.store_rounded, size: 16),
+              label: Text('Написать в магазин'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF004D40),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                textStyle: const TextStyle(fontSize: 12),
+                backgroundColor: _emerald,
+                foregroundColor: _gold,
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                textStyle: TextStyle(fontSize: 12.sp),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  side: BorderSide(color: _gold.withOpacity(0.3)),
+                ),
               ),
             ),
           ),
         ],
-        // Показываем "Диалог создан" если уже есть
         if (!isClientMessage && shopAddress != null && hasExistingDialog) ...[
           Padding(
-            padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+            padding: EdgeInsets.only(left: 8.w, right: 8.w, bottom: 8.h),
             child: Text(
               'Диалог создан',
               style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[600],
+                fontSize: 11.sp,
+                color: _gold.withOpacity(0.5),
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -461,117 +507,238 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Поиск Товара'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadMessages,
-            tooltip: 'Обновить',
+      backgroundColor: _night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.15, 0.4],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Список сообщений
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Нет сообщений',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          return _buildMessage(_messages[index]);
-                        },
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: EdgeInsets.fromLTRB(4.w, 8.h, 4.w, 8.h),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 22,
                       ),
-          ),
-          // Превью выбранного фото
-          if (_selectedImage != null)
-            Container(
-              height: 100,
-              padding: const EdgeInsets.all(8),
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      _selectedImage!,
-                      height: 84,
-                      fit: BoxFit.cover,
                     ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          _selectedImage = null;
-                        });
-                      },
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Поиск Товара',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            'Все диалоги',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: _gold.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    IconButton(
+                      icon: Icon(Icons.refresh_rounded, color: Colors.white.withOpacity(0.7), size: 22),
+                      onPressed: _loadMessages,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          // Поле ввода
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.photo),
-                  color: const Color(0xFF004D40),
-                  onPressed: _isSending ? null : _pickImage,
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'Написать сообщение...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    maxLines: null,
-                    enabled: !_isSending,
+              // Messages
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    borderRadius: BorderRadius.circular(18.r),
+                                    border: Border.all(color: _gold.withOpacity(0.3)),
+                                  ),
+                                  child: Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 32,
+                                    color: _gold.withOpacity(0.5),
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+                                Text(
+                                  'Нет сообщений',
+                                  style: TextStyle(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              return _buildMessage(_messages[index]);
+                            },
+                          ),
+              ),
+              // Photo preview
+              if (_selectedImage != null)
+                Container(
+                  height: 100,
+                  padding: EdgeInsets.all(8.w),
+                  color: _night.withOpacity(0.95),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12.r),
+                        child: Image.file(
+                          _selectedImage!,
+                          height: 84,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 0.h,
+                        right: 0.w,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedImage = null),
+                          child: Container(
+                            padding: EdgeInsets.all(4.w),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: _isSending
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send),
-                  color: const Color(0xFF004D40),
-                  onPressed: _isSending ? null : _sendMessage,
+              // Input field
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: _night.withOpacity(0.95),
+                  border: Border(top: BorderSide(color: _gold.withOpacity(0.15))),
                 ),
-              ],
-            ),
+                child: SafeArea(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        margin: EdgeInsets.only(bottom: 4.h),
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: _gold.withOpacity(0.2)),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.attach_file_rounded, color: _gold.withOpacity(0.7)),
+                          onPressed: _isSending ? null : _pickImage,
+                          iconSize: 22,
+                          constraints: BoxConstraints(minWidth: 44, minHeight: 44),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Container(
+                          constraints: BoxConstraints(maxHeight: 120),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(22.r),
+                            border: Border.all(color: _gold.withOpacity(0.2)),
+                          ),
+                          child: TextField(
+                            controller: _messageController,
+                            maxLines: 4,
+                            minLines: 1,
+                            textCapitalization: TextCapitalization.sentences,
+                            enabled: !_isSending,
+                            style: TextStyle(
+                              fontSize: 15.sp,
+                              height: 1.4,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Написать сообщение...',
+                              hintStyle: TextStyle(
+                                color: Colors.white.withOpacity(0.3),
+                                fontSize: 15.sp,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Container(
+                        margin: EdgeInsets.only(bottom: 4.h),
+                        child: GestureDetector(
+                          onTap: _isSending ? null : _sendMessage,
+                          child: Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: _emerald,
+                              borderRadius: BorderRadius.circular(23.r),
+                              border: Border.all(color: _gold.withOpacity(0.3)),
+                            ),
+                            child: Center(
+                              child: _isSending
+                                  ? SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: _gold,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.send_rounded,
+                                      color: _gold,
+                                      size: 22,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

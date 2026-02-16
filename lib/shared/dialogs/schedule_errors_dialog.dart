@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../features/work_schedule/work_schedule_validator.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог отображения ошибок в графике
 class ScheduleErrorsDialog extends StatelessWidget {
@@ -17,13 +18,13 @@ class ScheduleErrorsDialog extends StatelessWidget {
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(Icons.error_outline, color: Colors.red),
-          const SizedBox(width: 8),
-          const Expanded(
+          Icon(Icons.error_outline, color: Colors.red),
+          SizedBox(width: 8),
+          Expanded(
             child: Text('Ошибки в заполнении графика'),
           ),
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -36,17 +37,17 @@ class ScheduleErrorsDialog extends StatelessWidget {
             // Критичные ошибки
             if (validationResult.criticalErrors.isNotEmpty) ...[
               _buildSectionHeader('Критичные ошибки', Colors.red, validationResult.criticalErrors.length),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ...validationResult.criticalErrors.map((error) =>
                 _buildErrorTile(error, Colors.red, context)
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
 
             // Предупреждения
             if (validationResult.warnings.isNotEmpty) ...[
               _buildSectionHeader('Предупреждения', Colors.orange, validationResult.warnings.length),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ...validationResult.warnings.map((error) =>
                 _buildErrorTile(error, Colors.orange, context)
               ),
@@ -54,8 +55,8 @@ class ScheduleErrorsDialog extends StatelessWidget {
 
             // Если нет ошибок
             if (!validationResult.hasErrors)
-              const Padding(
-                padding: EdgeInsets.all(32.0),
+              Padding(
+                padding: EdgeInsets.all(32.0.w),
                 child: Center(
                   child: Column(
                     children: [
@@ -63,7 +64,7 @@ class ScheduleErrorsDialog extends StatelessWidget {
                       SizedBox(height: 16),
                       Text(
                         'Ошибок не найдено!',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -75,7 +76,7 @@ class ScheduleErrorsDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Закрыть'),
+          child: Text('Закрыть'),
         ),
       ],
     );
@@ -84,34 +85,34 @@ class ScheduleErrorsDialog extends StatelessWidget {
   /// Заголовок секции
   Widget _buildSectionHeader(String title, Color color, int count) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         border: Border.all(color: color, width: 2),
       ),
       child: Row(
         children: [
           Icon(Icons.warning, color: color),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             title,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
-          const Spacer(),
+          Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Text(
               count.toString(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
@@ -125,7 +126,7 @@ class ScheduleErrorsDialog extends StatelessWidget {
   /// Плитка ошибки
   Widget _buildErrorTile(ScheduleError error, Color color, BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
         leading: Icon(
           error.isCritical ? Icons.error : Icons.warning,
@@ -133,13 +134,13 @@ class ScheduleErrorsDialog extends StatelessWidget {
         ),
         title: Text(
           error.displayMessage,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: TextStyle(fontWeight: FontWeight.w500),
         ),
         subtitle: Text(
           _formatErrorDate(error.date),
           style: TextStyle(color: Colors.grey[600]),
         ),
-        trailing: const Icon(Icons.arrow_forward, color: Color(0xFF004D40)),
+        trailing: Icon(Icons.arrow_forward, color: Color(0xFF004D40)),
         onTap: () {
           Navigator.of(context).pop();
           onErrorTap(error);
@@ -157,7 +158,7 @@ class ScheduleErrorsDialog extends StatelessWidget {
 
   /// Получить название дня недели
   String _getWeekdayName(int weekday) {
-    const weekdays = {
+    final weekdays = {
       1: 'Понедельник',
       2: 'Вторник',
       3: 'Среда',
@@ -171,7 +172,7 @@ class ScheduleErrorsDialog extends StatelessWidget {
 
   /// Получить название месяца
   String _getMonthName(int month) {
-    const months = {
+    final months = {
       1: 'января',
       2: 'февраля',
       3: 'марта',

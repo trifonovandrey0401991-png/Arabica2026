@@ -10,6 +10,7 @@ import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../kpi/services/kpi_service.dart';
 import '../../kpi/models/kpi_models.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница моего графика (для просмотра личного графика сотрудника)
 class MySchedulePage extends StatefulWidget {
@@ -28,10 +29,11 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   bool _isLoading = false;
   String? _error;
 
-  // Цвета и градиенты
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00897B);
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00796B)];
+  // Dark Emerald palette
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   // Кэш времени смен для магазинов
   Map<String, Map<ShiftType, ShiftTimeInfo>> _shiftTimes = {};
@@ -312,66 +314,115 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text('Мой график'),
-        backgroundColor: _primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _selectMonth,
-            tooltip: 'Выбрать месяц',
+      backgroundColor: _night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _loadSchedule();
-              if (_tabController.index == 1) {
-                _loadNotifications();
-              }
-            },
-            tooltip: 'Обновить',
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
-          child: Container(
-            decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.9),
-            ),
-            child: Column(
-              children: [
-                // Верхний ряд - 3 вкладки
-                Row(
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0),
+                child: Row(
                   children: [
-                    Expanded(child: _buildTabButton(0, Icons.calendar_month, 'Расписание', null)),
-                    Expanded(child: _buildTabButton(1, Icons.notifications, 'Входящие', _unreadCount > 0 ? _unreadCount : null, Colors.red)),
-                    Expanded(child: _buildTabButton(2, Icons.send, 'Заявки', _outgoingUpdatesCount > 0 ? _outgoingUpdatesCount : null, Colors.green)),
+                    _buildAppBarButton(
+                      icon: Icons.arrow_back_ios_new_rounded,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Мой график',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _buildAppBarButton(
+                      icon: Icons.calendar_today,
+                      onTap: _selectMonth,
+                    ),
+                    SizedBox(width: 8),
+                    _buildAppBarButton(
+                      icon: Icons.refresh,
+                      onTap: () {
+                        _loadSchedule();
+                        if (_tabController.index == 1) _loadNotifications();
+                      },
+                    ),
                   ],
                 ),
-                // Нижний ряд - 2 вкладки
-                Row(
+              ),
+              // Tabs
+              Padding(
+                padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
+                child: Column(
                   children: [
-                    Expanded(child: _buildTabButton(3, Icons.check_circle_outline, 'Отработал', null)),
-                    Expanded(child: _buildTabButton(4, Icons.calendar_view_month, 'Общий', null)),
+                    // Верхний ряд - 3 вкладки
+                    Row(
+                      children: [
+                        Expanded(child: _buildTabButton(0, Icons.calendar_month, 'Расписание', null)),
+                        SizedBox(width: 6),
+                        Expanded(child: _buildTabButton(1, Icons.notifications, 'Входящие', _unreadCount > 0 ? _unreadCount : null, Colors.red)),
+                        SizedBox(width: 6),
+                        Expanded(child: _buildTabButton(2, Icons.send, 'Заявки', _outgoingUpdatesCount > 0 ? _outgoingUpdatesCount : null, Colors.green)),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                    // Нижний ряд - 2 вкладки
+                    Row(
+                      children: [
+                        Expanded(child: _buildTabButton(3, Icons.check_circle_outline, 'Отработал', null)),
+                        SizedBox(width: 6),
+                        Expanded(child: _buildTabButton(4, Icons.calendar_view_month, 'Общий', null)),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              // Body
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildScheduleTab(),
+                    _buildNotificationsTab(),
+                    _buildOutgoingRequestsTab(),
+                    _buildWorkedTab(),
+                    _buildGeneralScheduleTab(),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildScheduleTab(),
-          _buildNotificationsTab(),
-          _buildOutgoingRequestsTab(),
-          _buildWorkedTab(),
-          _buildGeneralScheduleTab(),
-        ],
+    );
+  }
+
+  Widget _buildAppBarButton({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Icon(icon, color: Colors.white.withOpacity(0.8), size: 20),
       ),
     );
   }
@@ -384,40 +435,42 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         setState(() {});
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isSelected ? Colors.white : Colors.transparent,
-              width: 3,
-            ),
+          color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: isSelected ? Colors.white : Colors.white60),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? Colors.white : Colors.white60,
+            Icon(icon, size: 16, color: isSelected ? _gold : Colors.white.withOpacity(0.5)),
+            SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (badge != null) ...[
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
                 decoration: BoxDecoration(
                   color: badgeColor ?? Colors.red,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Text(
                   '$badge',
-                  style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 10.sp, color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -433,23 +486,9 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryColor.withOpacity(0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: CircularProgressIndicator(color: _primaryColor, strokeWidth: 3),
-            ),
-            const SizedBox(height: 20),
-            Text('Загрузка графика...', style: TextStyle(color: Colors.grey[600])),
+            CircularProgressIndicator(color: _gold, strokeWidth: 3),
+            SizedBox(height: 20),
+            Text('Загрузка графика...', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ],
         ),
       );
@@ -486,30 +525,30 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildErrorState(String error, VoidCallback onRetry) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: Colors.red[50],
+                color: Colors.red.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.error_outline, size: 56, color: Colors.red[400]),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               'Ошибка',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.9)),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               error,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             _buildGradientButton('Повторить', Icons.refresh, onRetry),
           ],
         ),
@@ -520,34 +559,30 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildEmptyState(IconData icon, String title, String subtitle, VoidCallback onAction) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [_primaryColor.withOpacity(0.1), _accentColor.withOpacity(0.05)],
-                ),
+                color: _emerald.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 56, color: _primaryColor.withOpacity(0.5)),
+              child: Icon(icon, size: 56, color: Colors.white.withOpacity(0.4)),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               title,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.9)),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[500]),
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             _buildGradientButton('Обновить', Icons.refresh, onAction),
           ],
         ),
@@ -558,24 +593,18 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildGradientButton(String label, IconData icon, VoidCallback onPressed) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: _gradientColors),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryColor.withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: _emerald,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, color: Colors.white),
-        label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        label: Text(label, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
         ),
       ),
     );
@@ -595,15 +624,8 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     return Column(
       children: [
         // Заголовок с месяцем
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [_primaryColor.withOpacity(0.1), Colors.transparent],
-            ),
-          ),
+        Padding(
+          padding: EdgeInsets.all(16.w),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -612,24 +634,25 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                 children: [
                   Text(
                     '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D3436)),
+                    style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.95)),
                   ),
                   if (_employeeName != null)
                     Text(
                       _employeeName!,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp),
                     ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: _gradientColors),
-                  borderRadius: BorderRadius.circular(20),
+                  color: _gold.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(color: _gold.withOpacity(0.4)),
                 ),
                 child: Text(
                   '${entriesWithDates.length} смен',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: _gold, fontWeight: FontWeight.bold, fontSize: 13.sp),
                 ),
               ),
             ],
@@ -638,7 +661,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         // Список смен
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
             itemCount: entriesWithDates.length,
             itemBuilder: (context, index) {
               final entry = entriesWithDates[index];
@@ -661,36 +684,31 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         day.day == DateTime.now().day;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isToday ? Border.all(color: _primaryColor, width: 2) : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: isToday ? _gold.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+          width: isToday ? 1.5 : 1,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(14.w),
         child: Row(
           children: [
             // Дата
             Container(
-              width: 60,
-              height: 70,
+              width: 56,
+              height: 66,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isToday
-                      ? _gradientColors
-                      : [entry.shiftType.color.withOpacity(0.2), entry.shiftType.color.withOpacity(0.1)],
-                ),
-                borderRadius: BorderRadius.circular(12),
+                color: isToday
+                    ? _gold.withOpacity(0.2)
+                    : entry.shiftType.color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12.r),
+                border: isToday
+                    ? Border.all(color: _gold.withOpacity(0.4))
+                    : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -698,22 +716,22 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Text(
                     '${day.day}',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
-                      color: isToday ? Colors.white : entry.shiftType.color,
+                      color: isToday ? _gold : entry.shiftType.color,
                     ),
                   ),
                   Text(
                     _getWeekdayShort(day.weekday),
                     style: TextStyle(
-                      fontSize: 12,
-                      color: isToday ? Colors.white70 : entry.shiftType.color.withOpacity(0.7),
+                      fontSize: 12.sp,
+                      color: isToday ? _gold.withOpacity(0.7) : entry.shiftType.color.withOpacity(0.7),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 14),
             // Информация о смене
             Expanded(
               child: Column(
@@ -722,43 +740,43 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                         decoration: BoxDecoration(
                           color: entry.shiftType.color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.access_time, size: 14, color: entry.shiftType.color),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               entry.shiftType.label,
                               style: TextStyle(
                                 color: entry.shiftType.color,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                                fontSize: 13.sp,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         _getShiftTimeRange(entry),
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.store, size: 16, color: Colors.grey[500]),
-                      const SizedBox(width: 6),
+                      Icon(Icons.store, size: 16, color: Colors.white.withOpacity(0.4)),
+                      SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           entry.shopAddress,
-                          style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -771,14 +789,15 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
             // Индикатор
             if (isToday)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: _primaryColor,
-                  borderRadius: BorderRadius.circular(8),
+                  color: _gold.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: _gold.withOpacity(0.4)),
                 ),
-                child: const Text(
+                child: Text(
                   'Сегодня',
-                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: _gold, fontSize: 11.sp, fontWeight: FontWeight.w600),
                 ),
               ),
           ],
@@ -796,23 +815,17 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         .toList();
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatChip('Всего', '${futureEntries.length}', _primaryColor),
+          _buildStatChip('Всего', '${futureEntries.length}', _gold),
           _buildStatChip('Утро', '${futureEntries.where((e) => e.shiftType == ShiftType.morning).length}', ShiftType.morning.color),
           _buildStatChip('День', '${futureEntries.where((e) => e.shiftType == ShiftType.day).length}', ShiftType.day.color),
           _buildStatChip('Вечер', '${futureEntries.where((e) => e.shiftType == ShiftType.evening).length}', ShiftType.evening.color),
@@ -829,23 +842,23 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
           height: 44,
           decoration: BoxDecoration(
             color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Center(
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
         ),
       ],
     );
@@ -853,18 +866,18 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
   Widget _buildTransferButton() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 12.h),
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             colors: [Color(0xFFFF6B35), Color(0xFFF7C200)],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFF6B35).withOpacity(0.4),
+              color: Color(0xFFFF6B35).withOpacity(0.3),
               blurRadius: 15,
-              offset: const Offset(0, 8),
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -873,10 +886,10 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            padding: EdgeInsets.symmetric(vertical: 16.h),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.swap_horiz, color: Colors.white, size: 24),
@@ -886,7 +899,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 16.sp,
                 ),
               ),
             ],
@@ -899,20 +912,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildNotificationsTab() {
     if (_isLoadingNotifications) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: _primaryColor.withOpacity(0.2), blurRadius: 20)],
-              ),
-              child: CircularProgressIndicator(color: _primaryColor, strokeWidth: 3),
-            ),
-          ],
-        ),
+        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
       );
     }
 
@@ -927,9 +927,9 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadNotifications,
-      color: _primaryColor,
+      color: _gold,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _notifications.length,
         itemBuilder: (context, index) {
           final request = _notifications[index];
@@ -942,20 +942,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildOutgoingRequestsTab() {
     if (_isLoadingOutgoing) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: _primaryColor.withOpacity(0.2), blurRadius: 20)],
-              ),
-              child: CircularProgressIndicator(color: _primaryColor, strokeWidth: 3),
-            ),
-          ],
-        ),
+        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
       );
     }
 
@@ -970,9 +957,9 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadOutgoingRequests,
-      color: _primaryColor,
+      color: _gold,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _outgoingRequests.length,
         itemBuilder: (context, index) {
           final request = _outgoingRequests[index];
@@ -1008,7 +995,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       case ShiftTransferStatus.approved:
         statusIcon = Icons.check_circle;
         statusText = 'Одобрено! Смена передана';
-        statusGradient = [const Color(0xFF00b09b), const Color(0xFF96c93d)];
+        statusGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
         break;
       case ShiftTransferStatus.rejected:
         statusIcon = Icons.cancel;
@@ -1028,73 +1015,69 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: request.status == ShiftTransferStatus.approved
-            ? Border.all(color: Colors.green, width: 2)
-            : request.status == ShiftTransferStatus.declined || request.status == ShiftTransferStatus.rejected
-                ? Border.all(color: Colors.red.withOpacity(0.5), width: 1)
-                : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: request.status == ShiftTransferStatus.approved
+              ? Colors.green.withOpacity(0.5)
+              : request.status == ShiftTransferStatus.declined || request.status == ShiftTransferStatus.rejected
+                  ? Colors.red.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.1),
+          width: request.status == ShiftTransferStatus.approved ? 1.5 : 1,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Статус
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: statusGradient),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Row(
                 children: [
                   Icon(statusIcon, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       statusText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Информация
             _buildInfoRow(Icons.calendar_today, 'Дата', '${shiftDate.day} ${_getMonthName(shiftDate.month)} ${shiftDate.year}'),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _buildInfoRow(Icons.access_time, 'Смена', request.shiftType.label),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _buildInfoRow(Icons.store, 'Магазин', request.shopName.isNotEmpty ? request.shopName : request.shopAddress),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _buildInfoRow(Icons.person_outline, 'Кому', request.isBroadcast ? 'Всем сотрудникам' : request.toEmployeeName ?? 'Неизвестно'),
             if (request.acceptedByEmployeeName != null) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _buildInfoRow(Icons.person, 'Принял', request.acceptedByEmployeeName!),
             ],
             if (request.comment != null && request.comment!.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _buildInfoRow(Icons.comment, 'Комментарий', request.comment!),
             ],
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               'Отправлено: ${_formatDateTime(request.createdAt)}',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
             ),
           ],
         ),
@@ -1112,21 +1095,17 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     final shiftDate = request.shiftDate;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isUnread ? Border.all(color: Colors.orange, width: 2) : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isUnread ? 0.1 : 0.05),
-            blurRadius: isUnread ? 15 : 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: isUnread ? Colors.orange.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+          width: isUnread ? 1.5 : 1,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1137,71 +1116,72 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Container(
                     width: 12,
                     height: 12,
-                    margin: const EdgeInsets.only(right: 10),
-                    decoration: const BoxDecoration(
+                    margin: EdgeInsets.only(right: 10.w),
+                    decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
                     ),
                   ),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: _gradientColors),
-                    borderRadius: BorderRadius.circular(10),
+                    color: _emerald,
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
                   ),
-                  child: const Icon(Icons.swap_horiz, color: Colors.white, size: 20),
+                  child: Icon(Icons.swap_horiz, color: Colors.white, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         request.isBroadcast ? 'Запрос на передачу смены' : 'Запрос на передачу смены вам',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp, color: Colors.white.withOpacity(0.9)),
                       ),
                       Text(
                         'от ${request.fromEmployeeName}',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const Divider(height: 24),
+            Divider(height: 24, color: Colors.white.withOpacity(0.1)),
             // Информация
             _buildInfoRow(Icons.calendar_today, 'Дата', '${shiftDate.day} ${_getMonthName(shiftDate.month)} ${shiftDate.year}'),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _buildInfoRow(Icons.access_time, 'Смена', request.shiftType.label),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _buildInfoRow(Icons.store, 'Магазин', request.shopName.isNotEmpty ? request.shopName : request.shopAddress),
             if (request.comment != null && request.comment!.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _buildInfoRow(Icons.comment, 'Комментарий', request.comment!),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Показываем сколько человек уже приняли (если есть)
             if (request.acceptedBy.isNotEmpty) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                margin: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                margin: EdgeInsets.only(bottom: 12.h),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: Colors.orange.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.people, size: 16, color: Colors.orange[700]),
-                    const SizedBox(width: 8),
+                    Icon(Icons.people, size: 16, color: Colors.orange[300]),
+                    SizedBox(width: 8),
                     Text(
                       'Уже приняли: ${request.acceptedBy.length} чел.',
                       style: TextStyle(
-                        color: Colors.orange[800],
+                        color: Colors.orange[300],
                         fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: 13.sp,
                       ),
                     ),
                   ],
@@ -1215,32 +1195,33 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _rejectRequest(request),
-                      icon: const Icon(Icons.close, size: 18),
-                      label: const Text('Отклонить'),
+                      icon: Icon(Icons.close, size: 18),
+                      label: Text('Отклонить'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        foregroundColor: Colors.red[300],
+                        side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: _gradientColors),
-                        borderRadius: BorderRadius.circular(12),
+                        color: _emerald,
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.15)),
                       ),
                       child: ElevatedButton.icon(
                         onPressed: () => _acceptRequest(request),
-                        icon: const Icon(Icons.check, color: Colors.white, size: 18),
-                        label: const Text('Принять', style: TextStyle(color: Colors.white)),
+                        icon: Icon(Icons.check, color: Colors.white, size: 18),
+                        label: Text('Принять', style: TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                         ),
                       ),
                     ),
@@ -1249,17 +1230,19 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: request.status == ShiftTransferStatus.accepted
                       ? Colors.orange.withOpacity(0.15)
-                      : Colors.grey.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
+                      : Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Text(
                   request.status.label,
                   style: TextStyle(
-                    color: request.status == ShiftTransferStatus.accepted ? Colors.orange[800] : Colors.grey[700],
+                    color: request.status == ShiftTransferStatus.accepted
+                        ? Colors.orange[300]
+                        : Colors.white.withOpacity(0.5),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1275,20 +1258,20 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          padding: EdgeInsets.all(6.w),
           decoration: BoxDecoration(
-            color: _primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(8.r),
           ),
-          child: Icon(icon, size: 16, color: _primaryColor),
+          child: Icon(icon, size: 16, color: Colors.white.withOpacity(0.5)),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              Text(label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp)),
+              Text(value, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9))),
             ],
           ),
         ),
@@ -1305,7 +1288,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
             'на ${request.shiftDate.day} ${_getMonthName(request.shiftDate.month)}?\n\n'
             'После принятия запрос будет отправлен администратору на одобрение.',
         confirmText: 'Принять',
-        confirmColor: _primaryColor,
+        confirmColor: _emerald,
       ),
     );
 
@@ -1363,18 +1346,19 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     required Color confirmColor,
   }) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(title),
-      content: Text(content),
+      backgroundColor: _emeraldDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+      title: Text(title, style: TextStyle(color: Colors.white.withOpacity(0.9))),
+      content: Text(content, style: TextStyle(color: Colors.white.withOpacity(0.7))),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
+          child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
         ),
         Container(
           decoration: BoxDecoration(
             color: confirmColor,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -1382,7 +1366,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
             ),
-            child: Text(confirmText, style: const TextStyle(color: Colors.white)),
+            child: Text(confirmText, style: TextStyle(color: Colors.white)),
           ),
         ),
       ],
@@ -1394,15 +1378,15 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 12),
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        margin: EdgeInsets.all(16.w),
       ),
     );
   }
@@ -1412,15 +1396,15 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 12),
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        margin: EdgeInsets.all(16.w),
       ),
     );
   }
@@ -1507,7 +1491,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   }
 
   String _getMonthName(int month) {
-    const months = [
+    final months = [
       'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
     ];
@@ -1515,7 +1499,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   }
 
   String _getWeekdayShort(int weekday) {
-    const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
   }
 
@@ -1618,8 +1602,8 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
   Widget _buildWorkedTab() {
     if (_isLoadingWorked) {
-      return const Center(
-        child: CircularProgressIndicator(color: _primaryColor),
+      return Center(
+        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
       );
     }
 
@@ -1634,9 +1618,9 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadWorkedHistory,
-      color: _primaryColor,
+      color: _gold,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _workedShifts.length,
         itemBuilder: (context, index) {
           final item = _workedShifts[index];
@@ -1650,33 +1634,26 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     final day = item.entry.date;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
-          color: item.wasWorked ? Colors.green.withOpacity(0.5) : Colors.red.withOpacity(0.5),
-          width: 1.5,
+          color: item.wasWorked ? Colors.green.withOpacity(0.4) : Colors.red.withOpacity(0.4),
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(14.w),
         child: Row(
           children: [
             // Дата
             Container(
-              width: 60,
-              height: 70,
+              width: 56,
+              height: 66,
               decoration: BoxDecoration(
                 color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1684,22 +1661,22 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Text(
                     '${day.day}',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
-                      color: item.wasWorked ? Colors.green[700] : Colors.red[700],
+                      color: item.wasWorked ? Colors.green[400] : Colors.red[400],
                     ),
                   ),
                   Text(
                     _getWeekdayShort(day.weekday),
                     style: TextStyle(
-                      fontSize: 12,
-                      color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.7),
+                      fontSize: 12.sp,
+                      color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.6),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 14),
             // Информация
             Expanded(
               child: Column(
@@ -1708,31 +1685,31 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                         decoration: BoxDecoration(
                           color: item.entry.shiftType.color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
                           item.entry.shiftType.label,
                           style: TextStyle(
                             color: item.entry.shiftType.color,
                             fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.store, size: 16, color: Colors.grey[500]),
-                      const SizedBox(width: 6),
+                      Icon(Icons.store, size: 16, color: Colors.white.withOpacity(0.4)),
+                      SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           item.entry.shopAddress,
-                          style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1740,12 +1717,12 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                     ],
                   ),
                   if (item.details != null) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       item.details!,
                       style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 12.sp,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -1759,11 +1736,11 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
               height: 44,
               decoration: BoxDecoration(
                 color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 item.wasWorked ? Icons.check : Icons.close,
-                color: item.wasWorked ? Colors.green : Colors.red,
+                color: item.wasWorked ? Colors.green[400] : Colors.red[400],
                 size: 28,
               ),
             ),
@@ -1776,25 +1753,25 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   // ============== Вкладка "Общий" ==============
 
   Future<void> _loadGeneralSchedule() async {
-    Logger.debug('📅 _loadGeneralSchedule вызван, _isLoadingGeneral=$_isLoadingGeneral');
+    Logger.debug('_loadGeneralSchedule вызван, _isLoadingGeneral=$_isLoadingGeneral');
     if (_isLoadingGeneral) return;
 
     setState(() => _isLoadingGeneral = true);
 
     try {
-      Logger.debug('📅 Загрузка общего графика на месяц: $_selectedMonth');
+      Logger.debug('Загрузка общего графика на месяц: $_selectedMonth');
       final schedule = await WorkScheduleService.getSchedule(_selectedMonth);
-      Logger.debug('📅 Общий график загружен: ${schedule.entries.length} записей');
+      Logger.debug('Общий график загружен: ${schedule.entries.length} записей');
 
       final shops = await Shop.loadShopsFromServer();
-      Logger.debug('📅 Магазины загружены: ${shops.length}');
+      Logger.debug('Магазины загружены: ${shops.length}');
 
       if (mounted) {
         setState(() {
           _generalSchedule = schedule;
           _isLoadingGeneral = false;
         });
-        Logger.debug('📅 Состояние обновлено, _generalSchedule записей: ${_generalSchedule?.entries.length}');
+        Logger.debug('Состояние обновлено, _generalSchedule записей: ${_generalSchedule?.entries.length}');
       }
     } catch (e) {
       Logger.error('Ошибка загрузки общего графика', e);
@@ -1806,8 +1783,8 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
   Widget _buildGeneralScheduleTab() {
     if (_isLoadingGeneral) {
-      return const Center(
-        child: CircularProgressIndicator(color: _primaryColor),
+      return Center(
+        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
       );
     }
 
@@ -1831,9 +1808,9 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadGeneralSchedule,
-      color: _primaryColor,
+      color: _gold,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: sortedDates.length,
         itemBuilder: (context, index) {
           final date = sortedDates[index];
@@ -1855,33 +1832,34 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isToday ? Border.all(color: _primaryColor, width: 2) : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: isToday ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+          width: isToday ? 1.5 : 1,
+        ),
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          expansionTileTheme: ExpansionTileThemeData(
+            iconColor: Colors.white.withOpacity(0.6),
+            collapsedIconColor: Colors.white.withOpacity(0.4),
+          ),
+        ),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          tilePadding: EdgeInsets.symmetric(horizontal: 14.w),
           title: Row(
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isToday ? _gradientColors : [Colors.grey[200]!, Colors.grey[100]!],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                  color: isToday ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: isToday ? Border.all(color: _gold.withOpacity(0.4)) : null,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1890,46 +1868,47 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                       '${date.day}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: isToday ? Colors.white : Colors.grey[700],
+                        fontSize: 17.sp,
+                        color: isToday ? _gold : Colors.white.withOpacity(0.9),
                       ),
                     ),
                     Text(
                       _getWeekdayShort(date.weekday),
                       style: TextStyle(
-                        fontSize: 11,
-                        color: isToday ? Colors.white70 : Colors.grey[500],
+                        fontSize: 11.sp,
+                        color: isToday ? _gold.withOpacity(0.7) : Colors.white.withOpacity(0.5),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '${date.day} ${_getMonthName(date.month)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.9)),
                     ),
                     Text(
                       '${entries.length} сотр. в ${byShop.length} маг.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
                     ),
                   ],
                 ),
               ),
               if (isToday)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: _primaryColor,
-                    borderRadius: BorderRadius.circular(8),
+                    color: _gold.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: _gold.withOpacity(0.4)),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Сегодня',
-                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: _gold, fontSize: 11.sp, fontWeight: FontWeight.w600),
                   ),
                 ),
             ],
@@ -1949,54 +1928,54 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       ..sort((a, b) => a.shiftType.index.compareTo(b.shiftType.index));
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 12.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.store, size: 16, color: Colors.grey[500]),
-              const SizedBox(width: 8),
+              Icon(Icons.store, size: 16, color: Colors.white.withOpacity(0.4)),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   shopAddress,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 13.sp,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 6,
             children: sortedEntries.map((e) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: e.shiftType.color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     e.employeeName,
-                    style: TextStyle(fontSize: 12, color: e.shiftType.color),
+                    style: TextStyle(fontSize: 12.sp, color: e.shiftType.color),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                     decoration: BoxDecoration(
                       color: e.shiftType.color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(4.r),
                     ),
                     child: Text(
                       e.shiftType.label.isNotEmpty ? e.shiftType.label.substring(0, 1) : '?',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.bold,
                         color: e.shiftType.color,
                       ),
@@ -2035,8 +2014,9 @@ class _ShiftSelectionDialog extends StatelessWidget {
     required this.shiftTimes,
   });
 
-  static const _primaryColor = Color(0xFF004D40);
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00796B)];
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   String _getShiftTimeRange(WorkScheduleEntry entry) {
     final shopTimes = shiftTimes[entry.shopAddress];
@@ -2050,12 +2030,12 @@ class _ShiftSelectionDialog extends StatelessWidget {
   }
 
   String _getMonthName(int month) {
-    const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    final months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     return months[month - 1];
   }
 
   String _getWeekdayShort(int weekday) {
-    const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
   }
 
@@ -2071,54 +2051,67 @@ class _ShiftSelectionDialog extends StatelessWidget {
     ).toList();
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: _night,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Container(
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.9,
           maxHeight: MediaQuery.of(context).size.height * 0.7,
         ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.4, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(24.r),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Заголовок
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: _gradientColors),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
+            Padding(
+              padding: EdgeInsets.all(20.w),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.white.withOpacity(0.15)),
                     ),
-                    child: const Icon(Icons.swap_horiz, color: Colors.white, size: 24),
+                    child: Icon(Icons.swap_horiz, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 14),
-                  const Expanded(
+                  SizedBox(width: 14),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Выберите смену',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Colors.white.withOpacity(0.95), fontSize: 18.sp, fontWeight: FontWeight.bold),
                         ),
                         Text(
                           'для передачи другому сотруднику',
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.white),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: Icon(Icons.close, color: Colors.white.withOpacity(0.7), size: 20),
+                    ),
                   ),
                 ],
               ),
@@ -2127,101 +2120,107 @@ class _ShiftSelectionDialog extends StatelessWidget {
             Flexible(
               child: futureEntries.isEmpty
                   ? Padding(
-                      padding: const EdgeInsets.all(40),
+                      padding: EdgeInsets.all(40.w),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.event_busy, size: 56, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
+                          Icon(Icons.event_busy, size: 56, color: Colors.white.withOpacity(0.3)),
+                          SizedBox(height: 16),
                           Text(
                             'Нет доступных смен',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
                           ),
                         ],
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
                       shrinkWrap: true,
                       itemCount: futureEntries.length,
                       itemBuilder: (context, index) {
                         final entry = futureEntries[index];
                         final day = entry.date;
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: entry.shiftType.color.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '${day.day}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: entry.shiftType.color,
-                                    ),
-                                  ),
-                                  Text(
-                                    _getWeekdayShort(day.weekday),
-                                    style: TextStyle(fontSize: 10, color: entry.shiftType.color),
-                                  ),
-                                ],
-                              ),
+                        return GestureDetector(
+                          onTap: () => Navigator.pop(context, entry),
+                          child: Container(
+                            margin: EdgeInsets.only(bottom: 10.h),
+                            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(14.r),
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
                             ),
-                            title: Text(
-                              '${day.day} ${_getMonthName(day.month)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Row(
+                            child: Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  width: 48,
+                                  height: 48,
                                   decoration: BoxDecoration(
                                     color: entry.shiftType.color.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.circular(12.r),
                                   ),
-                                  child: Text(
-                                    entry.shiftType.label,
-                                    style: TextStyle(color: entry.shiftType.color, fontSize: 12),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '${day.day}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 17.sp,
+                                          color: entry.shiftType.color,
+                                        ),
+                                      ),
+                                      Text(
+                                        _getWeekdayShort(day.weekday),
+                                        style: TextStyle(fontSize: 10.sp, color: entry.shiftType.color),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _getShiftTimeRange(entry),
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${day.day} ${_getMonthName(day.month)}',
+                                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.9)),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                                            decoration: BoxDecoration(
+                                              color: entry.shiftType.color.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(6.r),
+                                            ),
+                                            child: Text(
+                                              entry.shiftType.label,
+                                              style: TextStyle(color: entry.shiftType.color, fontSize: 12.sp),
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            _getShiftTimeRange(entry),
+                                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.all(8.w),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                  child: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.5)),
                                 ),
                               ],
                             ),
-                            trailing: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: _primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.chevron_right, color: _primaryColor),
-                            ),
-                            onTap: () => Navigator.pop(context, entry),
                           ),
                         );
                       },
@@ -2258,8 +2257,10 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
   bool _sendToAll = false;
   final TextEditingController _commentController = TextEditingController();
 
-  static const _primaryColor = Color(0xFF004D40);
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00796B)];
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void dispose() {
@@ -2268,7 +2269,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
   }
 
   String _getMonthName(int month) {
-    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    final months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     return months[month - 1];
   }
 
@@ -2277,94 +2278,108 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
     final day = widget.entry.date;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: _night,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Container(
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.95,
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(24.r),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Заголовок
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: _gradientColors),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
+            Padding(
+              padding: EdgeInsets.all(20.w),
               child: Column(
                 children: [
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: EdgeInsets.all(10.w),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: Colors.white.withOpacity(0.15)),
                         ),
-                        child: const Icon(Icons.person_add, color: Colors.white, size: 24),
+                        child: Icon(Icons.person_add, color: Colors.white, size: 24),
                       ),
-                      const SizedBox(width: 14),
-                      const Expanded(
+                      SizedBox(width: 14),
+                      Expanded(
                         child: Text(
                           'Кому передать смену?',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Colors.white.withOpacity(0.95), fontSize: 18.sp, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.white),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Icon(Icons.close, color: Colors.white.withOpacity(0.7), size: 20),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   // Информация о смене
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 50,
-                          height: 50,
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10.r),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 '${day.day}',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18.sp),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 '${day.day} ${_getMonthName(day.month)} ${day.year}',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.bold),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 '${widget.entry.shiftType.label} (${widget.shiftTimeRange})',
-                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
                               ),
                               Text(
                                 widget.shopName,
-                                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -2380,12 +2395,12 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
             // Контент
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Кнопка "Отправить всем"
-                    InkWell(
+                    GestureDetector(
                       onTap: () {
                         setState(() {
                           _sendToAll = true;
@@ -2393,34 +2408,30 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                           _selectedEmployeeName = null;
                         });
                       },
-                      borderRadius: BorderRadius.circular(14),
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
-                          gradient: _sendToAll
-                              ? const LinearGradient(colors: _gradientColors)
-                              : null,
-                          color: _sendToAll ? null : Colors.grey[100],
-                          borderRadius: BorderRadius.circular(14),
+                          color: _sendToAll ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14.r),
                           border: Border.all(
-                            color: _sendToAll ? Colors.transparent : Colors.grey[300]!,
+                            color: _sendToAll ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
                           ),
                         ),
                         child: Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(10),
+                              padding: EdgeInsets.all(10.w),
                               decoration: BoxDecoration(
-                                color: _sendToAll ? Colors.white.withOpacity(0.2) : _primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
+                                color: _sendToAll ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(10.r),
                               ),
                               child: Icon(
                                 Icons.campaign,
-                                color: _sendToAll ? Colors.white : _primaryColor,
+                                color: _sendToAll ? _gold : Colors.white.withOpacity(0.5),
                                 size: 24,
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2429,48 +2440,48 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                                     'Отправить всем',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: _sendToAll ? Colors.white : Colors.grey[800],
+                                      color: _sendToAll ? _gold : Colors.white.withOpacity(0.8),
                                     ),
                                   ),
                                   Text(
                                     'Все сотрудники получат уведомление',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: _sendToAll ? Colors.white70 : Colors.grey[500],
+                                      fontSize: 12.sp,
+                                      color: _sendToAll ? _gold.withOpacity(0.7) : Colors.white.withOpacity(0.4),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             if (_sendToAll)
-                              const Icon(Icons.check_circle, color: Colors.white),
+                              Icon(Icons.check_circle, color: _gold),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     // Список сотрудников
                     Text(
                       'Или выберите сотрудника:',
-                      style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                      style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.6)),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Container(
-                      constraints: const BoxConstraints(maxHeight: 250),
+                      constraints: BoxConstraints(maxHeight: 250),
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey[200]!),
+                        color: Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: ListView.builder(
                         shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
                         itemCount: widget.employees.length,
                         itemBuilder: (context, index) {
                           final employee = widget.employees[index];
                           final isSelected = _selectedEmployeeId == employee.id && !_sendToAll;
 
-                          return InkWell(
+                          return GestureDetector(
                             onTap: () {
                               setState(() {
                                 _sendToAll = false;
@@ -2479,12 +2490,12 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                               });
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                              margin: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                               decoration: BoxDecoration(
-                                color: isSelected ? _primaryColor.withOpacity(0.1) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                                border: isSelected ? Border.all(color: _primaryColor) : null,
+                                color: isSelected ? _emerald.withOpacity(0.4) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10.r),
+                                border: isSelected ? Border.all(color: _emerald) : null,
                               ),
                               child: Row(
                                 children: [
@@ -2492,20 +2503,20 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                                     width: 40,
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: isSelected ? _primaryColor : Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(10),
+                                      color: isSelected ? _emerald : Colors.white.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(10.r),
                                     ),
                                     child: Center(
                                       child: Text(
                                         employee.name.isNotEmpty ? employee.name[0].toUpperCase() : '?',
                                         style: TextStyle(
-                                          color: isSelected ? Colors.white : Colors.grey[600],
+                                          color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2514,19 +2525,19 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                                           employee.name,
                                           style: TextStyle(
                                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                            color: isSelected ? _primaryColor : Colors.grey[800],
+                                            color: isSelected ? Colors.white : Colors.white.withOpacity(0.8),
                                           ),
                                         ),
                                         if (employee.phone != null)
                                           Text(
                                             employee.phone!,
-                                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                            style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
                                           ),
                                       ],
                                     ),
                                   ),
                                   if (isSelected)
-                                    const Icon(Icons.check_circle, color: _primaryColor, size: 22),
+                                    Icon(Icons.check_circle, color: _gold, size: 22),
                                 ],
                               ),
                             ),
@@ -2534,74 +2545,63 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     // Комментарий
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey[200]!),
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: TextField(
                         controller: _commentController,
+                        style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                        cursorColor: Colors.white,
                         decoration: InputDecoration(
                           labelText: 'Комментарий (необязательно)',
-                          labelStyle: TextStyle(color: Colors.grey[600]),
+                          labelStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
                           hintText: 'Причина передачи смены...',
-                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.all(16),
-                          prefixIcon: Icon(Icons.comment, color: Colors.grey[400]),
+                          contentPadding: EdgeInsets.all(16.w),
+                          prefixIcon: Icon(Icons.comment, color: Colors.white.withOpacity(0.3)),
                         ),
                         maxLines: 2,
                       ),
                     ),
+                    SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
             // Кнопки
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
-              ),
+              padding: EdgeInsets.all(20.w),
               child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(color: Colors.grey[400]!),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
                       ),
-                      child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
+                      child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: (_sendToAll || _selectedEmployeeId != null)
-                            ? const LinearGradient(colors: _gradientColors)
-                            : null,
-                        color: (_sendToAll || _selectedEmployeeId != null) ? null : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: (_sendToAll || _selectedEmployeeId != null)
-                            ? [
-                                BoxShadow(
-                                  color: _primaryColor.withOpacity(0.4),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : null,
+                        color: (_sendToAll || _selectedEmployeeId != null) ? _emerald : Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: (_sendToAll || _selectedEmployeeId != null)
+                              ? Colors.white.withOpacity(0.15)
+                              : Colors.white.withOpacity(0.1),
+                        ),
                       ),
                       child: ElevatedButton.icon(
                         onPressed: (_sendToAll || _selectedEmployeeId != null)
@@ -2613,13 +2613,15 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                                 });
                               }
                             : null,
-                        icon: const Icon(Icons.send, color: Colors.white),
-                        label: const Text('Отправить', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        icon: Icon(Icons.send, color: Colors.white),
+                        label: Text('Отправить', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          disabledBackgroundColor: Colors.transparent,
+                          disabledForegroundColor: Colors.white.withOpacity(0.3),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                         ),
                       ),
                     ),

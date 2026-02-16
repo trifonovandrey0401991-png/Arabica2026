@@ -15,6 +15,7 @@ import 'settings_tabs/coffee_machine_points_settings_page.dart';
 import 'settings_tabs/manager_points_settings_page.dart';
 import '../../referrals/pages/referrals_points_settings_page.dart';
 import '../../loyalty/pages/loyalty_gamification_settings_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring efficiency points settings
 class PointsSettingsPage extends StatefulWidget {
@@ -25,10 +26,10 @@ class PointsSettingsPage extends StatefulWidget {
 }
 
 class _PointsSettingsPageState extends State<PointsSettingsPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   final bool _isLoading = false;
 
@@ -39,112 +40,112 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       title: 'Тестирование',
       icon: Icons.quiz_outlined,
       description: 'Баллы за прохождение тестов',
-      gradientColors: [const Color(0xFF667eea), const Color(0xFF764ba2)],
+      gradientColors: [Color(0xFF667eea), Color(0xFF764ba2)],
     ),
     _PointsCategory(
       id: 'attendance',
       title: 'Я на работе',
       icon: Icons.access_time_outlined,
       description: 'Баллы за пунктуальность',
-      gradientColors: [const Color(0xFF11998e), const Color(0xFF38ef7d)],
+      gradientColors: [Color(0xFF11998e), Color(0xFF38ef7d)],
     ),
     _PointsCategory(
       id: 'shift',
       title: 'Пересменка',
       icon: Icons.swap_horiz_outlined,
       description: 'Баллы за оценку пересменки',
-      gradientColors: [const Color(0xFFf093fb), const Color(0xFFf5576c)],
+      gradientColors: [Color(0xFFf093fb), Color(0xFFf5576c)],
     ),
     _PointsCategory(
       id: 'recount',
       title: 'Пересчет',
       icon: Icons.inventory_2_outlined,
       description: 'Баллы за оценку пересчета',
-      gradientColors: [const Color(0xFF4facfe), const Color(0xFF00f2fe)],
+      gradientColors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
     ),
     _PointsCategory(
       id: 'rko',
       title: 'РКО',
       icon: Icons.receipt_long_outlined,
       description: 'Баллы за наличие РКО',
-      gradientColors: [const Color(0xFFfa709a), const Color(0xFFfee140)],
+      gradientColors: [Color(0xFFfa709a), Color(0xFFfee140)],
     ),
     _PointsCategory(
       id: 'shift_handover',
       title: 'Сдать смену',
       icon: Icons.assignment_turned_in_outlined,
       description: 'Баллы за оценку сдачи смены',
-      gradientColors: [const Color(0xFF30cfd0), const Color(0xFF330867)],
+      gradientColors: [Color(0xFF30cfd0), Color(0xFF330867)],
     ),
     _PointsCategory(
       id: 'reviews',
       title: 'Отзывы',
       icon: Icons.star_outline_rounded,
       description: 'Баллы за отзывы на магазин',
-      gradientColors: [const Color(0xFFf7971e), const Color(0xFFffd200)],
+      gradientColors: [Color(0xFFf7971e), Color(0xFFffd200)],
     ),
     _PointsCategory(
       id: 'product_search',
       title: 'Поиск товара',
       icon: Icons.manage_search_outlined,
       description: 'Баллы за ответ на запрос товара',
-      gradientColors: [const Color(0xFF43e97b), const Color(0xFF38f9d7)],
+      gradientColors: [Color(0xFF43e97b), Color(0xFF38f9d7)],
     ),
     _PointsCategory(
       id: 'orders',
       title: 'Заказы клиентов',
       icon: Icons.shopping_cart_outlined,
       description: 'Баллы за обработку заказов',
-      gradientColors: [const Color(0xFFff0844), const Color(0xFFffb199)],
+      gradientColors: [Color(0xFFff0844), Color(0xFFffb199)],
     ),
     _PointsCategory(
       id: 'tasks',
       title: 'Задачи',
       icon: Icons.task_alt_outlined,
       description: 'Баллы за выполнение задач',
-      gradientColors: [const Color(0xFF6a11cb), const Color(0xFF2575fc)],
+      gradientColors: [Color(0xFF6a11cb), Color(0xFF2575fc)],
     ),
     _PointsCategory(
       id: 'envelope',
       title: 'Конверт',
       icon: Icons.mark_email_read_outlined,
       description: 'Баллы за сдачу конверта',
-      gradientColors: [const Color(0xFFee0979), const Color(0xFFff6a00)],
+      gradientColors: [Color(0xFFee0979), Color(0xFFff6a00)],
     ),
     _PointsCategory(
       id: 'coffee_machine',
       title: 'Счётчик кофе',
       icon: Icons.coffee_outlined,
       description: 'Баллы за показания счётчика',
-      gradientColors: [const Color(0xFFD4AF37), const Color(0xFFF0C850)],
+      gradientColors: [Color(0xFFD4AF37), Color(0xFFF0C850)],
     ),
     _PointsCategory(
       id: 'referrals',
       title: 'Приглашения',
       icon: Icons.person_add_alt_outlined,
       description: 'Баллы за приглашенных клиентов',
-      gradientColors: [const Color(0xFF00897B), const Color(0xFF26A69A)],
+      gradientColors: [Color(0xFF00897B), Color(0xFF26A69A)],
     ),
     _PointsCategory(
       id: 'managers',
       title: 'Управляющие',
       icon: Icons.supervisor_account_outlined,
       description: 'Баллы за оценку работы подчинённых',
-      gradientColors: [const Color(0xFF9C27B0), const Color(0xFF673AB7)],
+      gradientColors: [Color(0xFF9C27B0), Color(0xFF673AB7)],
     ),
     _PointsCategory(
       id: 'loyalty_program',
       title: 'Программа лояльности',
       icon: Icons.loyalty_outlined,
       description: 'Уровни и колесо удачи для клиентов',
-      gradientColors: [const Color(0xFFFF6B6B), const Color(0xFFFFE66D)],
+      gradientColors: [Color(0xFFFF6B6B), Color(0xFFFFE66D)],
     ),
     _PointsCategory(
       id: 'fortune_wheel',
       title: 'Колесо Удачи',
       icon: Icons.casino_outlined,
       description: 'Настройка секторов колеса',
-      gradientColors: [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)],
+      gradientColors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
     ),
   ];
 
@@ -153,112 +154,112 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const TestPointsSettingsPage(),
+          builder: (context) => TestPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'attendance') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const AttendancePointsSettingsPage(),
+          builder: (context) => AttendancePointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'shift') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ShiftPointsSettingsPage(),
+          builder: (context) => ShiftPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'recount') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const RecountEfficiencyPointsSettingsPage(),
+          builder: (context) => RecountEfficiencyPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'rko') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const RkoPointsSettingsPage(),
+          builder: (context) => RkoPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'shift_handover') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ShiftHandoverPointsSettingsPage(),
+          builder: (context) => ShiftHandoverPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'reviews') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ReviewsPointsSettingsPage(),
+          builder: (context) => ReviewsPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'product_search') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ProductSearchPointsSettingsPage(),
+          builder: (context) => ProductSearchPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'orders') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const OrdersPointsSettingsPage(),
+          builder: (context) => OrdersPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'tasks') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const TaskPointsSettingsPage(),
+          builder: (context) => TaskPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'envelope') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const EnvelopePointsSettingsPage(),
+          builder: (context) => EnvelopePointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'coffee_machine') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const CoffeeMachinePointsSettingsPage(),
+          builder: (context) => CoffeeMachinePointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'referrals') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ReferralsPointsSettingsPage(),
+          builder: (context) => ReferralsPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'managers') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ManagerPointsSettingsPage(),
+          builder: (context) => ManagerPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'loyalty_program') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const LoyaltyGamificationSettingsPage(),
+          builder: (context) => LoyaltyGamificationSettingsPage(),
         ),
       );
     } else if (categoryId == 'fortune_wheel') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const WheelSettingsPage(),
+          builder: (context) => WheelSettingsPage(),
         ),
       );
     }
@@ -269,7 +270,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -282,23 +283,23 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 12, 20, 0),
+                padding: EdgeInsets.fromLTRB(8.w, 12.h, 20.w, 0.h),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.arrow_back_ios_new_rounded,
                         color: Colors.white,
                         size: 20,
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Установка баллов',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -312,19 +313,19 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: _emerald.withOpacity(0.3),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(28.r),
+                  bottomRight: Radius.circular(28.r),
                 ),
               ),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     decoration: BoxDecoration(
                       color: _emerald.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(
                         color: _gold.withOpacity(0.2),
                         width: 1,
@@ -337,28 +338,28 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                           height: 48,
                           decoration: BoxDecoration(
                             color: _gold.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(
                               color: _gold.withOpacity(0.3),
                               width: 1,
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.stars_rounded,
                             color: _gold,
                             size: 28,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Настройка баллов',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -366,7 +367,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                                 '${_categories.length} категорий',
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.6),
-                                  fontSize: 13,
+                                  fontSize: 13.sp,
                                 ),
                               ),
                             ],
@@ -381,9 +382,9 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
             // Category list
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: _gold))
+                  ? Center(child: CircularProgressIndicator(color: _gold))
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       itemCount: _categories.length,
                       itemBuilder: (context, index) {
                         final category = _categories[index];
@@ -399,10 +400,10 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
 
   Widget _buildCategoryCard(_PointsCategory category) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: _emeraldDark,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
           color: _emerald.withOpacity(0.5),
           width: 1,
@@ -410,12 +411,12 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         child: InkWell(
           onTap: () => _openCategorySettings(category.id),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Icon with gradient
@@ -428,7 +429,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                       end: Alignment.bottomRight,
                       colors: category.gradientColors,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                   ),
                   child: Icon(
                     category.icon,
@@ -436,7 +437,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                     size: 28,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 // Text
                 Expanded(
                   child: Column(
@@ -444,17 +445,17 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                     children: [
                       Text(
                         category.title,
-                        style: const TextStyle(
-                          fontSize: 17,
+                        style: TextStyle(
+                          fontSize: 17.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         category.description,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
@@ -467,7 +468,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                   height: 36,
                   decoration: BoxDecoration(
                     color: _emerald.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.chevron_right_rounded,

@@ -4,6 +4,7 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../orders/pages/cart_page.dart';
 import '../../recipes/models/recipe_model.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class MenuItem {
   final String id;
@@ -87,7 +88,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: Duration(milliseconds: 800),
     );
     _menuFuture = _loadMenu();
   }
@@ -149,12 +150,12 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF004D40).withOpacity(0.15),
-            const Color(0xFF00695C).withOpacity(0.1),
+            Color(0xFF004D40).withOpacity(0.15),
+            Color(0xFF00695C).withOpacity(0.1),
           ],
         ),
       ),
-      child: const Center(
+      child: Center(
         child: Icon(
           Icons.local_cafe_rounded,
           size: 48,
@@ -190,7 +191,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
 
   Widget _buildDialog(MenuItem item) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       contentPadding: EdgeInsets.zero,
       content: SizedBox(
         width: 300,
@@ -201,14 +202,14 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
                   child: _buildItemImage(item, height: 200, width: 300),
                 ),
               // Градиент для текста
               Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
+                bottom: 0.h,
+                left: 0.w,
+                right: 0.w,
                 child: Container(
                   height: 80,
                   decoration: BoxDecoration(
@@ -225,43 +226,43 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
               ),
               // Цена в углу
               Positioned(
-                top: 12,
-                right: 12,
+                top: 12.h,
+                right: 12.w,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Color(0xFF004D40), Color(0xFF00695C)],
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Text(
                     '${item.price} руб.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                     ),
                   ),
                 ),
               ),
               // Название внизу
               Positioned(
-                bottom: 12,
-                left: 16,
-                right: 16,
+                bottom: 12.h,
+                left: 16.w,
+                right: 16.w,
                 child: Text(
                   item.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
                     shadows: [
                       Shadow(
@@ -276,7 +277,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
           ),
           // Кнопка добавления
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -294,30 +295,30 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                     SnackBar(
                       content: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                          const SizedBox(width: 12),
+                          Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 12),
                           Expanded(child: Text('${item.name} добавлен в корзину')),
                         ],
                       ),
-                      backgroundColor: const Color(0xFF004D40),
+                      backgroundColor: Color(0xFF004D40),
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.all(16),
-                      duration: const Duration(seconds: 2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      margin: EdgeInsets.all(16.w),
+                      duration: Duration(seconds: 2),
                     ),
                   );
                 },
-                icon: const Icon(Icons.add_shopping_cart_rounded),
-                label: const Text(
+                icon: Icon(Icons.add_shopping_cart_rounded),
+                label: Text(
                   'Добавить в корзину',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16.sp),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
+                  backgroundColor: Color(0xFF004D40),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                   elevation: 3,
                 ),
@@ -335,13 +336,13 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     Logger.debug('Категория: ${widget.selectedCategory}');
 
     return Scaffold(
-      backgroundColor: const Color(0xFF004D40),
+      backgroundColor: Color(0xFF004D40),
       appBar: AppBar(
         title: Text(
           widget.selectedCategory ?? 'Меню напитков',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         elevation: 0,
       ),
       body: Container(
@@ -350,9 +351,9 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color(0xFF004D40),
-              const Color(0xFF00695C),
-              const Color(0xFF00796B),
+              Color(0xFF004D40),
+              Color(0xFF00695C),
+              Color(0xFF00796B),
             ],
           ),
         ),
@@ -365,22 +366,22 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: EdgeInsets.all(20.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const CircularProgressIndicator(
+                      child: CircularProgressIndicator(
                         color: Colors.white,
                         strokeWidth: 3,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Text(
                       'Загрузка меню...',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                     ),
                   ],
@@ -410,16 +411,16 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                   children: [
                     // Поиск
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.15),
                               blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),
@@ -431,10 +432,10 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                             filled: true,
                             fillColor: Colors.white,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16.r),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           ),
                           onChanged: (v) => setState(() => _searchQuery = v),
                         ),
@@ -443,21 +444,21 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
 
                     // Счётчик найденных
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20.r),
                               border: Border.all(color: Colors.white.withOpacity(0.3)),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.local_cafe_rounded, color: Colors.white.withOpacity(0.9), size: 18),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Text(
                                   'Найдено: ${filtered.length}',
                                   style: TextStyle(
@@ -477,9 +478,9 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                           ? _buildEmptyState()
                           : ListView.builder(
                               padding: EdgeInsets.only(
-                                left: 16,
-                                right: 16,
-                                top: 8,
+                                left: 16.w,
+                                right: 16.w,
+                                top: 8.h,
                                 bottom: hasItems ? 100 : 16,
                               ),
                               itemCount: categories.length,
@@ -526,7 +527,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(32.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               shape: BoxShape.circle,
@@ -537,20 +538,20 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
               color: Colors.white.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 24),
+          Text(
             'Напитки не найдены',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 22.sp,
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Попробуйте изменить поисковый запрос',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
@@ -563,10 +564,10 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         // Заголовок категории
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -574,54 +575,54 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                 Colors.white.withOpacity(0.1),
               ],
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.white.withOpacity(0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(6.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Icon(Icons.category_rounded, color: Colors.white, size: 18),
+                child: Icon(Icons.category_rounded, color: Colors.white, size: 18),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 category,
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Text(
                   '${items.length}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         GridView.builder(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          physics: NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
@@ -646,17 +647,17 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.15),
               blurRadius: 12,
-              offset: const Offset(0, 6),
+              offset: Offset(0, 6),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           child: Stack(
             children: [
               // Фото на всю карточку
@@ -665,9 +666,9 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
               ),
               // Градиент снизу
               Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
+                bottom: 0.h,
+                left: 0.w,
+                right: 0.w,
                 child: Container(
                   height: 80,
                   decoration: BoxDecoration(
@@ -684,51 +685,51 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
               ),
               // Цена в углу
               Positioned(
-                top: 10,
-                right: 10,
+                top: 10.h,
+                right: 10.w,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Color(0xFF004D40), Color(0xFF00695C)],
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
                         blurRadius: 6,
-                        offset: const Offset(0, 3),
+                        offset: Offset(0, 3),
                       ),
                     ],
                   ),
                   child: Text(
                     '${item.price} руб.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 13.sp,
                     ),
                   ),
                 ),
               ),
               // Кнопка добавления
               Positioned(
-                top: 10,
-                left: 10,
+                top: 10.h,
+                left: 10.w,
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.2),
                         blurRadius: 6,
-                        offset: const Offset(0, 3),
+                        offset: Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.add_rounded,
                     color: Color(0xFF004D40),
                     size: 20,
@@ -737,16 +738,16 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
               ),
               // Название внизу
               Positioned(
-                bottom: 12,
-                left: 12,
-                right: 12,
+                bottom: 12.h,
+                left: 12.w,
+                right: 12.w,
                 child: Text(
                   item.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                     shadows: [
                       Shadow(
@@ -766,7 +767,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
 
   Widget _buildCartButton(CartProvider cart) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -781,15 +782,15 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
       child: SafeArea(
         child: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               colors: [Color(0xFF004D40), Color(0xFF00695C)],
             ),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(18.r),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF004D40).withOpacity(0.4),
+                color: Color(0xFF004D40).withOpacity(0.4),
                 blurRadius: 16,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
@@ -800,50 +801,50 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const CartPage(),
+                    builder: (context) => CartPage(),
                   ),
                 );
               },
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18.r),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 24.w),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.shopping_cart_rounded,
                         color: Colors.white,
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    const Text(
+                    SizedBox(width: 14),
+                    Text(
                       'К заказу',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                       child: Text(
                         '${cart.itemCount}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Color(0xFF004D40),
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 16.sp,
                         ),
                       ),
                     ),

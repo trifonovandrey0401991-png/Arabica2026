@@ -9,6 +9,7 @@ import '../services/coffee_machine_template_service.dart';
 import '../models/coffee_machine_template_model.dart';
 import '../../shops/services/shop_service.dart';
 import 'coffee_machine_training_photos_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Управление счётчиком кофемашин: шаблоны, привязки, обучающие фото
 class CoffeeMachineQuestionsManagementPage extends StatefulWidget {
@@ -19,10 +20,10 @@ class CoffeeMachineQuestionsManagementPage extends StatefulWidget {
 }
 
 class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQuestionsManagementPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   final _imagePicker = ImagePicker();
 
@@ -78,7 +79,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -91,23 +92,23 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: Icon(Icons.arrow_back, color: Colors.white),
                     ),
-                    const Icon(Icons.coffee_outlined, color: _gold, size: 22),
-                    const SizedBox(width: 8),
-                    const Text(
+                    Icon(Icons.coffee_outlined, color: _gold, size: 22),
+                    SizedBox(width: 8),
+                    Text(
                       'Счётчик кофемашин',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
                     ),
-                    const Spacer(),
+                    Spacer(),
                     IconButton(
                       onPressed: _loadData,
-                      icon: const Icon(Icons.refresh, color: Colors.white70),
+                      icon: Icon(Icons.refresh, color: Colors.white70),
                     ),
                   ],
                 ),
@@ -115,56 +116,56 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
               // Content
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: _gold))
                     : SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Статистика
                             _buildStatsCard(configuredShops),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
                             // Шаблоны
                             Row(
                               children: [
                                 Text(
                                   'Шаблоны машин',
-                                  style: TextStyle(color: _gold, fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
                                 ),
-                                const Spacer(),
+                                Spacer(),
                                 GestureDetector(
                                   onTap: _addTemplate,
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                                     decoration: BoxDecoration(
                                       color: _gold.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(6.r),
                                       border: Border.all(color: _gold.withOpacity(0.3)),
                                     ),
-                                    child: const Row(
+                                    child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(Icons.add, color: _gold, size: 16),
                                         SizedBox(width: 4),
-                                        Text('Создать', style: TextStyle(color: _gold, fontSize: 12)),
+                                        Text('Создать', style: TextStyle(color: _gold, fontSize: 12.sp)),
                                       ],
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             if (_templates.isEmpty)
                               _buildEmptyCard('Нет шаблонов. Нажмите "Создать"')
                             else
                               ..._templates.map(_buildTemplateCard),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
                             // Привязки к магазинам
                             Text(
                               'Привязки к магазинам',
-                              style: TextStyle(color: _gold, fontSize: 16, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             if (_shopAddresses.isEmpty)
                               _buildEmptyCard('Нет магазинов')
                             else
@@ -183,10 +184,10 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
   Widget _buildStatsCard(int configuredShops) {
     final totalTraining = _trainingCounts.values.fold<int>(0, (s, v) => s + v);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: _gold.withOpacity(0.2)),
       ),
       child: Row(
@@ -205,8 +206,8 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
   Widget _buildStatItem(String value, String label) {
     return Column(
       children: [
-        Text(value, style: TextStyle(color: _gold, fontSize: 22, fontWeight: FontWeight.bold)),
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+        Text(value, style: TextStyle(color: _gold, fontSize: 22.sp, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp)),
       ],
     );
   }
@@ -214,12 +215,12 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
   Widget _buildEmptyCard(String message) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
-      child: Text(message, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13)),
+      child: Text(message, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13.sp)),
     );
   }
 
@@ -231,11 +232,11 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
     return GestureDetector(
       onTap: () => _openTrainingPhotos(template),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Row(
@@ -245,30 +246,30 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
               height: 42,
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Icon(Icons.coffee, color: _gold, size: 22),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     template.name,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14.sp),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Row(
                     children: [
                       Text(
                         CoffeeMachineTypes.getDisplayName(template.machineType),
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         OcrPresets.getDisplayName(template.ocrPreset),
-                        style: TextStyle(color: _gold.withOpacity(0.5), fontSize: 11),
+                        style: TextStyle(color: _gold.withOpacity(0.5), fontSize: 11.sp),
                       ),
                     ],
                   ),
@@ -278,33 +279,33 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
             // Бейдж с количеством обучающих фото
             if (trainingCount > 0)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                 decoration: BoxDecoration(
                   color: Colors.green.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.school, color: Colors.green, size: 12),
-                    const SizedBox(width: 3),
-                    Text('$trainingCount', style: const TextStyle(color: Colors.green, fontSize: 11)),
+                    Icon(Icons.school, color: Colors.green, size: 12),
+                    SizedBox(width: 3),
+                    Text('$trainingCount', style: TextStyle(color: Colors.green, fontSize: 11.sp)),
                   ],
                 ),
               ),
             if (trainingCount == 0)
-              Text('0 фото', style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 11)),
-            const SizedBox(width: 4),
+              Text('0 фото', style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 11.sp)),
+            SizedBox(width: 4),
             // Меню: редактировать/удалить
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert, color: Colors.white.withOpacity(0.4), size: 20),
-              color: const Color(0xFF1A2E2E),
+              color: Color(0xFF1A2E2E),
               onSelected: (action) {
                 if (action == 'edit') _editTemplate(template);
                 if (action == 'delete') _deleteTemplate(template);
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'edit',
                   child: Row(
                     children: [
@@ -314,7 +315,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
@@ -370,12 +371,12 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Удалить шаблон?', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text('Удалить шаблон?', style: TextStyle(color: Colors.white)),
         content: Text(
           'Удалить "${template.name}"?\nОбучающие фото для этого шаблона останутся.',
-          style: const TextStyle(color: Colors.white70, fontSize: 14),
+          style: TextStyle(color: Colors.white70, fontSize: 14.sp),
         ),
         actions: [
           TextButton(
@@ -385,7 +386,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить', style: TextStyle(color: Colors.white)),
+            child: Text('Удалить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -411,11 +412,11 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: const Color(0xFF1A2E2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: Color(0xFF1A2E2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
             title: Text(
               existing != null ? 'Редактировать шаблон' : 'Новый шаблон',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
             content: SingleChildScrollView(
               child: Column(
@@ -423,37 +424,37 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                 children: [
                   TextField(
                     controller: nameController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Название',
                       hintText: 'WMF 1500S',
                       labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                       hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                         borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: _gold),
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(color: _gold),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: selectedType,
-                    dropdownColor: const Color(0xFF1A2E2E),
-                    style: const TextStyle(color: Colors.white),
+                    dropdownColor: Color(0xFF1A2E2E),
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Тип машины',
                       labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                         borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: _gold),
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(color: _gold),
                       ),
                     ),
                     items: CoffeeMachineTypes.all.map((type) => DropdownMenuItem(
@@ -464,21 +465,21 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                       if (v != null) setDialogState(() => selectedType = v);
                     },
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: selectedPreset,
-                    dropdownColor: const Color(0xFF1A2E2E),
-                    style: const TextStyle(color: Colors.white),
+                    dropdownColor: Color(0xFF1A2E2E),
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Пресет OCR',
                       labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                         borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: _gold),
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(color: _gold),
                       ),
                     ),
                     items: OcrPresets.all.map((preset) => DropdownMenuItem(
@@ -490,13 +491,13 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                     },
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: EdgeInsets.only(top: 4.h),
                     child: Text(
                       OcrPresets.getDescription(selectedPreset),
-                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () async {
                       final picked = await _imagePicker.pickImage(
@@ -545,7 +546,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                   Navigator.pop(context, {'template': template, 'image': imageBytes});
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: _gold),
-                child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+                child: Text('Сохранить', style: TextStyle(color: Colors.white)),
               ),
             ],
           );
@@ -569,11 +570,11 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
     return GestureDetector(
       onTap: () => _editShopConfig(address, config),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
             color: assignedCount > 0 ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.08),
           ),
@@ -585,26 +586,26 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
               color: assignedCount > 0 ? _gold : Colors.white30,
               size: 20,
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     address,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.sp),
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (assignedCount > 0)
                     Text(
                       templateNames,
-                      style: TextStyle(color: _gold.withOpacity(0.7), fontSize: 11),
+                      style: TextStyle(color: _gold.withOpacity(0.7), fontSize: 11.sp),
                       overflow: TextOverflow.ellipsis,
                     )
                   else
                     Text(
                       'Не настроено',
-                      style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                      style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11.sp),
                     ),
                 ],
               ),
@@ -624,24 +625,24 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: const Color(0xFF1A2E2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: Color(0xFF1A2E2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
             title: Text(
               shopAddress,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: Colors.white, fontSize: 14.sp),
               overflow: TextOverflow.ellipsis,
             ),
             content: SizedBox(
               width: double.maxFinite,
               child: _templates.isEmpty
-                  ? const Text('Сначала создайте шаблоны', style: TextStyle(color: Colors.white70))
+                  ? Text('Сначала создайте шаблоны', style: TextStyle(color: Colors.white70))
                   : ListView(
                       shrinkWrap: true,
                       children: _templates.map((t) {
                         final isSelected = selected.contains(t.id);
                         return CheckboxListTile(
                           value: isSelected,
-                          title: Text(t.name, style: const TextStyle(color: Colors.white)),
+                          title: Text(t.name, style: TextStyle(color: Colors.white)),
                           subtitle: Text(
                             CoffeeMachineTypes.getDisplayName(t.machineType),
                             style: TextStyle(color: Colors.white.withOpacity(0.4)),
@@ -669,7 +670,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, selected),
                 style: ElevatedButton.styleFrom(backgroundColor: _gold),
-                child: const Text('Сохранить', style: TextStyle(color: Colors.white)),
+                child: Text('Сохранить', style: TextStyle(color: Colors.white)),
               ),
             ],
           );

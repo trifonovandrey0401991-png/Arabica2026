@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Полноэкранный виджет для выделения области счётчика на фото
 /// Сотрудник рисует красный прямоугольник вокруг числа на экране кофемашины
@@ -36,8 +37,8 @@ class CounterRegionSelector extends StatefulWidget {
 }
 
 class _CounterRegionSelectorState extends State<CounterRegionSelector> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _night = Color(0xFF051515);
 
   ui.Image? _image;
   Size? _imageSize;
@@ -83,7 +84,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -105,15 +106,15 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: Icon(Icons.close, color: Colors.white),
           ),
-          const SizedBox(width: 8),
-          const Expanded(
+          SizedBox(width: 8),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -121,13 +122,13 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
                   'Выделите счётчик',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   'Обведите число пальцем',
-                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                  style: TextStyle(color: Colors.white54, fontSize: 13.sp),
                 ),
               ],
             ),
@@ -135,9 +136,9 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
           if (_region != null)
             TextButton(
               onPressed: () => setState(() => _region = null),
-              child: const Text(
+              child: Text(
                 'Сбросить',
-                style: TextStyle(color: Colors.orange, fontSize: 14),
+                style: TextStyle(color: Colors.orange, fontSize: 14.sp),
               ),
             ),
         ],
@@ -147,7 +148,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
 
   Widget _buildImageArea() {
     if (_image == null) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
@@ -198,7 +199,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
 
   Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.3),
         border: Border(
@@ -209,23 +210,23 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
         width: double.infinity,
         child: ElevatedButton.icon(
           onPressed: _region != null ? _confirmRegion : null,
-          icon: const Icon(Icons.crop_free, color: Colors.white),
+          icon: Icon(Icons.crop_free, color: Colors.white),
           label: Text(
             _region != null
                 ? 'Повторить распознавание'
                 : 'Выделите область на фото',
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor:
-                _region != null ? const Color(0xFFD4AF37) : Colors.grey,
-            padding: const EdgeInsets.symmetric(vertical: 14),
+                _region != null ? Color(0xFFD4AF37) : Colors.grey,
+            padding: EdgeInsets.symmetric(vertical: 14.h),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
           ),
         ),

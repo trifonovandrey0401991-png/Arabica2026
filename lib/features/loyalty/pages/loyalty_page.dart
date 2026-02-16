@@ -13,6 +13,7 @@ import 'client_wheel_page.dart';
 import 'pending_prize_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class LoyaltyPage extends StatefulWidget {
   const LoyaltyPage({super.key});
@@ -35,9 +36,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА
   // ═══════════════════════════════════════════════════════════════
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   void initState() {
@@ -148,7 +149,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -173,34 +174,34 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                             onRefresh: _refresh,
                             color: _emerald,
                             child: SingleChildScrollView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                              physics: AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   _qrCard(info),
                                   // Уровень клиента
                                   if (_gamificationData != null) ...[
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: 16),
                                     _levelCard(),
                                   ],
                                   // Карточка приза или Колесо удачи
                                   if (_gamificationSettings != null &&
                                       _gamificationSettings!.wheel.enabled &&
                                       _gamificationData != null) ...[
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: 16),
                                     // Если есть pending приз - показываем карточку приза
                                     if (_pendingPrize != null)
                                       _pendingPrizeCard()
                                     else
                                       _wheelCard(),
                                   ],
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   _pointsCard(info),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   _freeDrinksCard(info),
                                   if (info.promoText.isNotEmpty) ...[
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: 16),
                                     _promoCard(info.promoText),
                                   ],
                                 ],
@@ -217,7 +218,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -228,13 +229,13 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Программа лояльности',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
@@ -246,7 +247,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const LoyaltyPromoManagementPage(),
+                    builder: (context) => LoyaltyPromoManagementPage(),
                   ),
                 ).then((_) {
                   _refresh();
@@ -260,7 +261,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               tooltip: 'Управление условиями акций',
             )
           else
-            const SizedBox(width: 48),
+            SizedBox(width: 48),
           IconButton(
             onPressed: () => _refresh(),
             icon: Icon(
@@ -278,7 +279,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   Widget _errorMessage() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -287,34 +288,34 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               size: 64,
               color: Colors.white.withOpacity(0.5),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _error ?? 'Данные не найдены',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               child: InkWell(
                 onTap: () => _refresh(),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 splashColor: Colors.white.withOpacity(0.1),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: Colors.white.withOpacity(0.3)),
                   ),
                   child: Text(
                     'Повторить попытку',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 15,
+                      fontSize: 15.sp,
                     ),
                   ),
                 ),
@@ -335,10 +336,10 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         : <LoyaltyLevel>[];
 
     final qrWidget = Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: QrImageView(
         data: info.qr,
@@ -348,9 +349,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     );
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(24.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: Column(
@@ -358,12 +359,12 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
           Text(
             'Ваш QR-код',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w500,
               color: Colors.white.withOpacity(0.9),
             ),
           ),
-          const SizedBox(height: 72),
+          SizedBox(height: 72),
           // QR с значками вокруг
           if (earnedLevels.isNotEmpty)
             QrBadgesWidget(
@@ -372,20 +373,20 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             )
           else
             qrWidget,
-          const SizedBox(height: 72),
+          SizedBox(height: 72),
           Text(
             info.name,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w500,
               color: Colors.white.withOpacity(0.9),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             info.phone,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
@@ -399,9 +400,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final drinksToGive = info.drinksToGive;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: Column(
@@ -413,22 +414,22 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               Text(
                 'Баллы',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.w500,
                   color: Colors.white.withOpacity(0.9),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
                 child: Text(
                   '$pointsRequired + $drinksToGive',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withOpacity(0.9),
                   ),
@@ -436,19 +437,19 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             'Собрано: ${info.points}/$pointsRequired',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Container(
             height: 6,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(3.r),
               color: Colors.white.withOpacity(0.1),
             ),
             child: FractionallySizedBox(
@@ -458,15 +459,15 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                   : 0.0,
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(3.r),
                   color: info.readyForRedeem
-                      ? const Color(0xFFFF9800)
+                      ? Color(0xFFFF9800)
                       : Colors.white.withOpacity(0.7),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (pointsRequired > 0)
             Wrap(
               spacing: 8,
@@ -497,30 +498,30 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             ),
           if (info.readyForRedeem)
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: EdgeInsets.only(top: 16.h),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: const Color(0xFFFF9800).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12.r),
+                  color: Color(0xFFFF9800).withOpacity(0.15),
                   border: Border.all(
-                    color: const Color(0xFFFF9800).withOpacity(0.3),
+                    color: Color(0xFFFF9800).withOpacity(0.3),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.card_giftcard_outlined,
                       color: Color(0xFFFF9800),
                       size: 22,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Баллов достаточно для $drinksToGive бесплатн${drinksToGive > 1 ? "ых напитков" : "ого напитка"}. Покажите код сотруднику.',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Color(0xFFFF9800),
-                          fontSize: 13,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ),
@@ -535,9 +536,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
 
   Widget _freeDrinksCard(LoyaltyInfo info) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: Row(
@@ -546,7 +547,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               color: Colors.white.withOpacity(0.1),
             ),
             child: Icon(
@@ -555,7 +556,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               size: 24,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -563,16 +564,16 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                 Text(
                   'Бесплатные напитки',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   'Выдано: ${info.freeDrinks}',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     color: Colors.white.withOpacity(0.6),
                   ),
                 ),
@@ -586,9 +587,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
 
   Widget _promoCard(String promoText) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: Column(
@@ -601,22 +602,22 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                 color: Colors.white.withOpacity(0.7),
                 size: 20,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 'Условия акции',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w500,
                   color: Colors.white.withOpacity(0.9),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             promoText,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.7),
               height: 1.4,
             ),
@@ -631,9 +632,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final level = data.currentLevel;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: level.color.withOpacity(0.4)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -651,7 +652,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             height: 48,
             decoration: BoxDecoration(
               color: level.color,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Center(
               child: level.badge.type == 'icon'
@@ -660,14 +661,14 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                       color: Colors.white,
                       size: 28,
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.emoji_events,
                       color: Colors.white,
                       size: 28,
                     ),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,17 +676,17 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                 Text(
                   'Уровень: ${level.name}',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white.withOpacity(0.95),
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 if (data.drinksToNextLevel != null && data.nextLevel != null)
                   Text(
                     'До "${data.nextLevel!.name}": ${data.drinksToNextLevel} напитков',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.7),
                     ),
                   )
@@ -693,7 +694,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                   Text(
                     'Максимальный уровень!',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.amber.withOpacity(0.9),
                       fontStyle: FontStyle.italic,
                     ),
@@ -716,16 +717,16 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     return GestureDetector(
       onTap: _openWheelPage,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF8E2DE2).withOpacity(0.4)),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: Color(0xFF8E2DE2).withOpacity(0.4)),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFF8E2DE2).withOpacity(0.15),
-              const Color(0xFF4A00E0).withOpacity(0.05),
+              Color(0xFF8E2DE2).withOpacity(0.15),
+              Color(0xFF4A00E0).withOpacity(0.05),
             ],
           ),
         ),
@@ -735,18 +736,18 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.casino,
                 color: Colors.white,
                 size: 28,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -754,20 +755,20 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                   Text(
                     'Колесо удачи',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white.withOpacity(0.95),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     data.wheelSpinsAvailable > 0
                         ? 'Доступно прокруток: ${data.wheelSpinsAvailable}'
                         : 'До прокрутки: ${data.drinksToNextSpin} напитков ($currentProgress/${settings.wheel.freeDrinksPerSpin})',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: data.wheelSpinsAvailable > 0
-                          ? const Color(0xFF4CAF50)
+                          ? Color(0xFF4CAF50)
                           : Colors.white.withOpacity(0.7),
                       fontWeight: data.wheelSpinsAvailable > 0
                           ? FontWeight.bold
@@ -809,9 +810,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     return GestureDetector(
       onTap: _openPrizePage,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: prize.prizeColor.withOpacity(0.5)),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -834,12 +835,12 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                     prize.prizeColor.withOpacity(0.7),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 boxShadow: [
                   BoxShadow(
                     color: prize.prizeColor.withOpacity(0.4),
                     blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
@@ -849,7 +850,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                 size: 28,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -857,16 +858,16 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                   Text(
                     'Ваш приз!',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white.withOpacity(0.95),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     prize.prize,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w500,
                       color: prize.prizeColor,
                     ),
@@ -874,7 +875,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                   Text(
                     'Нажмите, чтобы получить',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.white.withOpacity(0.6),
                     ),
                   ),

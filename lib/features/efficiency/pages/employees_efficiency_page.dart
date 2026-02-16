@@ -2,22 +2,23 @@ import 'package:flutter/material.dart';
 import 'efficiency_by_shop_page.dart';
 import 'efficiency_by_employee_page.dart';
 import 'efficiency_analytics_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора типа отчета эффективности
 class EmployeesEfficiencyPage extends StatelessWidget {
   const EmployeesEfficiencyPage({super.key});
 
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -30,20 +31,20 @@ class EmployeesEfficiencyPage extends StatelessWidget {
             children: [
               // Custom Row AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new,
+                      icon: Icon(Icons.arrow_back_ios_new,
                           color: Colors.white, size: 20),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Эффективность сотрудников',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -54,20 +55,20 @@ class EmployeesEfficiencyPage extends StatelessWidget {
               // Body content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(16.0.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       Text(
                         'Выберите тип отчета:',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.w500,
                           color: _gold,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       _buildOptionCard(
                         context,
                         icon: Icons.store,
@@ -78,12 +79,12 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const EfficiencyByShopPage(),
+                                  EfficiencyByShopPage(),
                             ),
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildOptionCard(
                         context,
                         icon: Icons.person,
@@ -94,12 +95,12 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const EfficiencyByEmployeePage(),
+                                  EfficiencyByEmployeePage(),
                             ),
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildOptionCard(
                         context,
                         icon: Icons.analytics_outlined,
@@ -110,17 +111,17 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const EfficiencyAnalyticsPage(),
+                                  EfficiencyAnalyticsPage(),
                             ),
                           );
                         },
                       ),
-                      const Spacer(),
+                      Spacer(),
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.1),
                           ),
@@ -132,12 +133,12 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                               color: _gold,
                               size: 24,
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 'Баллы рассчитываются автоматически на основе оценок отчетов за текущий месяц',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 13.sp,
                                   color: Colors.white.withOpacity(0.5),
                                 ),
                               ),
@@ -145,7 +146,7 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -167,16 +168,16 @@ class EmployeesEfficiencyPage extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
         ),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(20.0.w),
           child: Row(
             children: [
               Container(
@@ -184,7 +185,7 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                 height: 56,
                 decoration: BoxDecoration(
                   color: _emerald.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(
                   icon,
@@ -192,24 +193,24 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                   color: _gold,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: TextStyle(
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         color: Colors.white.withOpacity(0.5),
                       ),
                     ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
-import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../../shops/services/shop_products_service.dart';
@@ -10,6 +9,7 @@ import '../../efficiency/models/points_settings_model.dart';
 import '../models/pending_recount_report_model.dart';
 import '../services/pending_recount_service.dart';
 import 'recount_questions_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора магазина для пересчета
 class RecountShopSelectionPage extends StatefulWidget {
@@ -21,14 +21,22 @@ class RecountShopSelectionPage extends StatefulWidget {
 
 class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   bool _isLoading = true;
+  String? _errorMessage;
   String? _employeeName;
   String? _employeePhone;
+  List<Shop> _shops = [];
   Map<String, ShopSyncInfo> _shopsSyncInfo = {}; // Информация о синхронизации магазинов
   List<PendingRecountReport> _pendingRecounts = []; // Ожидающие пересчёты
   RecountPointsSettings? _recountSettings; // Настройки интервалов
 
+  // Единая палитра приложения (Dark Emerald)
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+
   /// Таймаут для определения устаревших данных (5 минут)
-  static const Duration _staleDataTimeout = Duration(minutes: 5);
+  static final Duration _staleDataTimeout = Duration(minutes: 5);
 
   @override
   void initState() {
@@ -41,15 +49,28 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
     // Запускаем все запросы параллельно
     await Future.wait([
       _loadEmployeeData(),
+      _loadShops(),
       _loadShopsWithProducts(),
       _loadPendingRecounts(),
       _loadRecountSettings(),
     ]);
 
-    // Только после завершения всех запросов убираем loading
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Загрузить магазины
+  Future<void> _loadShops() async {
+    try {
+      _shops = await ShopService.getShopsForCurrentUser();
+      Logger.debug('🏪 Магазины загружены: ${_shops.length}');
+    } catch (e) {
+      Logger.error('Ошибка загрузки магазинов', e);
+      _errorMessage = 'Не удалось загрузить магазины';
+    }
   }
 
   /// Загрузить pending пересчёты
@@ -143,22 +164,25 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Color(0xFF1A3A3A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  colors: [Colors.orange.withOpacity(0.3), Colors.orange.withOpacity(0.15)],
+                ),
+                borderRadius: BorderRadius.circular(10.r),
               ),
-              child: const Icon(Icons.schedule, color: Colors.orange, size: 24),
+              child: Icon(Icons.schedule, color: _gold, size: 24),
             ),
-            const SizedBox(width: 12),
-            const Expanded(
+            SizedBox(width: 12),
+            Expanded(
               child: Text(
                 'Нет активных пересчётов',
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: 17.sp, color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -167,25 +191,26 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Для этого магазина сейчас нет ожидающих пересчётов.',
-              style: TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.8)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: _gold.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                  const SizedBox(width: 8),
+                  Icon(Icons.info_outline, color: _gold, size: 20),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _getNextIntervalInfo(),
-                      style: const TextStyle(fontSize: 13, color: Colors.blue),
+                      style: TextStyle(fontSize: 13.sp, color: _gold),
                     ),
                   ),
                 ],
@@ -196,7 +221,8 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Понятно'),
+            style: TextButton.styleFrom(foregroundColor: _gold),
+            child: Text('Понятно'),
           ),
         ],
       ),
@@ -268,274 +294,350 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
     }
   }
 
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.8), size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Container(
+            padding: EdgeInsets.all(8.w),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_gold.withOpacity(0.3), _gold.withOpacity(0.1)],
+              ),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: Icon(Icons.inventory, color: _gold, size: 22),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              'Пересчёт товаров',
+              style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShopCard(Shop shop) {
+    final hasPending = _hasPendingRecount(shop.address);
+    final hasDbf = _hasDbfData(shop.id);
+    final isStale = hasDbf && _isDbfDataStale(shop.id);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14.r),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14.r),
+          onTap: () {
+            if (!hasPending) {
+              _showNoActiveRecountsDialog();
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RecountQuestionsPage(
+                  employeeName: _employeeName!,
+                  shopAddress: shop.address,
+                  employeePhone: _employeePhone,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(hasPending ? 0.08 : 0.04),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(
+                color: hasPending
+                    ? _gold.withOpacity(0.4)
+                    : Colors.white.withOpacity(0.08),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Иконка магазина
+                Container(
+                  width: 48.w,
+                  height: 48.w,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: hasPending
+                          ? [_gold.withOpacity(0.25), _gold.withOpacity(0.1)]
+                          : [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.04)],
+                    ),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(
+                    Icons.store,
+                    color: hasPending ? _gold : Colors.white.withOpacity(0.5),
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        shop.address,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6.h),
+                      Row(
+                        children: [
+                          // DBF бейдж
+                          if (hasDbf) ...[
+                            _buildBadge(
+                              icon: isStale ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                              text: isStale
+                                  ? 'DBF: ${_getTimeSinceSync(shop.id)}'
+                                  : 'DBF актуален',
+                              color: isStale ? Colors.redAccent : Colors.green,
+                            ),
+                            SizedBox(width: 6.w),
+                          ],
+                          // Pending бейдж
+                          if (hasPending)
+                            _buildBadge(
+                              icon: Icons.schedule,
+                              text: 'Ожидает',
+                              color: _gold,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: hasPending ? _gold.withOpacity(0.7) : Colors.white.withOpacity(0.3),
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadge({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 11),
+          SizedBox(width: 3.w),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    Color? iconColor,
+  }) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(32.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: (iconColor ?? _gold).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 48, color: (iconColor ?? _gold).withOpacity(0.7)),
+            ),
+            SizedBox(height: 20.h),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14.sp),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24.h),
+            TextButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.arrow_back, size: 18),
+              label: Text('Назад'),
+              style: TextButton.styleFrom(
+                foregroundColor: _gold,
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_employeeName == null || _employeeName!.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.person_off_outlined,
+        title: 'Требуется авторизация',
+        subtitle: 'Для начала пересчёта необходимо войти в систему.',
+        iconColor: Colors.orange,
+      );
+    }
+
+    if (_errorMessage != null && _shops.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.cloud_off_outlined,
+        title: 'Ошибка загрузки',
+        subtitle: _errorMessage!,
+        iconColor: Colors.redAccent,
+      );
+    }
+
+    if (_shops.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.store_outlined,
+        title: 'Магазины не найдены',
+        subtitle: 'Нет доступных магазинов для пересчёта.',
+      );
+    }
+
+    // Показываем только магазины с pending отчётами
+    final pendingShops = _shops.where((s) => _hasPendingRecount(s.address)).toList();
+
+    if (pendingShops.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.check_circle_outline,
+        title: 'Нет ожидающих пересчётов',
+        subtitle: _getNextIntervalInfo(),
+        iconColor: Colors.green,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Информационная панель
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: _gold.withOpacity(0.7), size: 18),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    'Ожидают пересчёт: ${pendingShops.length}',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Список магазинов
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
+            itemCount: pendingShops.length,
+            itemBuilder: (context, index) {
+              return _buildShopCard(pendingShops[index]);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Пересчет товаров'),
-        backgroundColor: const Color(0xFF004D40),
-      ),
+      backgroundColor: _night,
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : _employeeName == null || _employeeName!.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.person_off,
-                            size: 80,
-                            color: Colors.orange,
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Требуется авторизация',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Для начала пересчета необходимо войти в систему.',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 32),
-                          ElevatedButton.icon(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Назад'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF004D40),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : FutureBuilder<List<Shop>>(
-                    future: ShopService.getShopsForCurrentUser(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Что-то пошло не так, попробуйте позже',
-                                style: TextStyle(color: Colors.white, fontSize: 18),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Назад'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      final shops = snapshot.data ?? [];
-                      if (shops.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            'Магазины не найдены',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                        );
-                      }
-
-                      return Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 16),
-                              child: Text(
-                                'Выберите магазин:',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: ListView.builder(
-                                itemCount: shops.length,
-                                itemBuilder: (context, index) {
-                                  final shop = shops[index];
-
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Material(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(12),
-                                        onTap: () {
-                                          // Проверяем есть ли pending пересчёт для магазина
-                                          if (!_hasPendingRecount(shop.address)) {
-                                            _showNoActiveRecountsDialog();
-                                            return;
-                                          }
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => RecountQuestionsPage(
-                                                employeeName: _employeeName!,
-                                                shopAddress: shop.address,
-                                                employeePhone: _employeePhone,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: _hasDbfData(shop.id)
-                                                  ? (_isDbfDataStale(shop.id) ? Colors.red : Colors.green)
-                                                  : Colors.white.withOpacity(0.5),
-                                              width: _hasDbfData(shop.id) ? 3 : 2,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const ShopIcon(size: 56),
-                                              const SizedBox(width: 16),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      shop.address,
-                                                      style: const TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight: FontWeight.w600,
-                                                        color: Colors.white,
-                                                      ),
-                                                      maxLines: 2,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                    if (_hasDbfData(shop.id)) ...[
-                                                      const SizedBox(height: 4),
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                        decoration: BoxDecoration(
-                                                          color: _isDbfDataStale(shop.id) ? Colors.red : Colors.green,
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        child: Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            Icon(
-                                                              _isDbfDataStale(shop.id) ? Icons.warning : Icons.inventory_2,
-                                                              color: Colors.white,
-                                                              size: 12,
-                                                            ),
-                                                            const SizedBox(width: 4),
-                                                            Text(
-                                                              _isDbfDataStale(shop.id)
-                                                                  ? 'DBF: ${_getTimeSinceSync(shop.id)}'
-                                                                  : 'Остатки из DBF',
-                                                              style: const TextStyle(
-                                                                color: Colors.white,
-                                                                fontSize: 11,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ],
-                                                    // Индикатор активного пересчёта
-                                                    if (_hasPendingRecount(shop.address)) ...[
-                                                      const SizedBox(height: 4),
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.orange,
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        child: const Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            Icon(Icons.schedule, color: Colors.white, size: 12),
-                                                            SizedBox(width: 4),
-                                                            Text(
-                                                              'Ожидает пересчёт',
-                                                              style: TextStyle(
-                                                                color: Colors.white,
-                                                                fontSize: 11,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ],
-                                                ),
-                                              ),
-                                              const Icon(
-                                                Icons.chevron_right,
-                                                color: Colors.white70,
-                                                size: 28,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : _buildBody(),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

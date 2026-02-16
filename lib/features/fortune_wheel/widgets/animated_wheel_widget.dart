@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../models/fortune_wheel_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Премиум анимированное колесо удачи с 3D эффектами
 class AnimatedWheelWidget extends StatefulWidget {
@@ -31,7 +32,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
   double _currentRotation = 0;
 
   // Цвета
-  static const _goldColor = Color(0xFFFFD700);
+  static final _goldColor = Color(0xFFFFD700);
 
   @override
   void initState() {
@@ -39,7 +40,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
 
     // Контроллер вращения
     _spinController = AnimationController(
-      duration: const Duration(milliseconds: 5000),
+      duration: Duration(milliseconds: 5000),
       vsync: this,
     );
 
@@ -56,7 +57,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
 
     // Контроллер свечения
     _glowController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -119,7 +120,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
                     BoxShadow(
                       color: Colors.black.withOpacity(0.4),
                       blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      offset: Offset(0, 10),
                     ),
                   ],
                 ),
@@ -161,7 +162,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
         ],
       ),
       child: CustomPaint(
-        size: const Size(50, 55),
+        size: Size(50, 55),
         painter: PremiumPointerPainter(),
       ),
     );
@@ -173,7 +174,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
       height: 80,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
@@ -184,7 +185,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
           stops: [0.0, 0.5, 1.0],
         ),
         border: Border.all(
-          color: const Color(0xFFFFF8DC),
+          color: Color(0xFFFFF8DC),
           width: 3,
         ),
         boxShadow: [
@@ -193,7 +194,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
             blurRadius: 20,
             spreadRadius: 5,
           ),
-          const BoxShadow(
+          BoxShadow(
             color: Colors.black26,
             blurRadius: 10,
             offset: Offset(0, 5),
@@ -201,7 +202,7 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
         ],
       ),
       child: Container(
-        margin: const EdgeInsets.all(8),
+        margin: EdgeInsets.all(8.w),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
@@ -209,10 +210,10 @@ class AnimatedWheelWidgetState extends State<AnimatedWheelWidget>
               Colors.white.withOpacity(0.3),
               Colors.transparent,
             ],
-            stops: const [0.0, 1.0],
+            stops: [0.0, 1.0],
           ),
         ),
-        child: const Center(
+        child: Center(
           child: Icon(
             Icons.star,
             color: Colors.white,
@@ -266,10 +267,10 @@ class PremiumWheelPainter extends CustomPainter {
       ..shader = ui.Gradient.sweep(
         center,
         [
-          const Color(0xFFFFD700),
-          const Color(0xFFFFA500),
-          const Color(0xFFB8860B),
-          const Color(0xFFFFD700),
+          Color(0xFFFFD700),
+          Color(0xFFFFA500),
+          Color(0xFFB8860B),
+          Color(0xFFFFD700),
         ],
         [0.0, 0.33, 0.66, 1.0],
       )
@@ -295,15 +296,15 @@ class PremiumWheelPainter extends CustomPainter {
 
       final glowPaint = Paint()
         ..color = Colors.white.withOpacity(brightness * 0.8)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
 
       canvas.drawCircle(lightCenter, lightRadius + 2, glowPaint);
 
       // Основная лампочка
       final lightPaint = Paint()
         ..color = isActive
-            ? Color.lerp(const Color(0xFFFFD700), Colors.white, brightness)!
-            : const Color(0xFFB8860B).withOpacity(0.7)
+            ? Color.lerp(Color(0xFFFFD700), Colors.white, brightness)!
+            : Color(0xFFB8860B).withOpacity(0.7)
         ..style = PaintingStyle.fill;
 
       canvas.drawCircle(lightCenter, lightRadius, lightPaint);
@@ -406,7 +407,7 @@ class PremiumWheelPainter extends CustomPainter {
           fontSize: fontSize.clamp(11.0, 15.0),
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,
-          shadows: const [
+          shadows: [
             Shadow(
               color: Colors.black87,
               offset: Offset(1, 1),
@@ -449,8 +450,8 @@ class PremiumWheelPainter extends CustomPainter {
         center,
         innerRingRadius,
         [
-          const Color(0xFFFFD700),
-          const Color(0xFFB8860B),
+          Color(0xFFFFD700),
+          Color(0xFFB8860B),
         ],
       )
       ..style = PaintingStyle.stroke
@@ -469,7 +470,7 @@ class PremiumWheelPainter extends CustomPainter {
         center.dy + starRadius * sin(starAngle),
       );
 
-      _drawStar(canvas, starCenter, 4, const Color(0xFFFFD700));
+      _drawStar(canvas, starCenter, 4, Color(0xFFFFD700));
     }
   }
 
@@ -480,7 +481,7 @@ class PremiumWheelPainter extends CustomPainter {
 
     final glowPaint = Paint()
       ..color = color.withOpacity(0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2);
 
     canvas.drawCircle(center, radius + 1, glowPaint);
     canvas.drawCircle(center, radius, starPaint);
@@ -512,9 +513,9 @@ class PremiumPointerPainter extends CustomPainter {
 
     final shadowPaint = Paint()
       ..color = Colors.black.withOpacity(0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 5);
 
-    canvas.drawPath(shadowPath.shift(const Offset(2, 3)), shadowPaint);
+    canvas.drawPath(shadowPath.shift(Offset(2, 3)), shadowPaint);
 
     // Основной указатель с градиентом
     final pointerPath = Path()
@@ -526,11 +527,11 @@ class PremiumPointerPainter extends CustomPainter {
     final pointerPaint = Paint()
       ..shader = ui.Gradient.linear(
         Offset(0, size.height),
-        const Offset(0, 0),
+        Offset(0, 0),
         [
-          const Color(0xFFFFD700),
-          const Color(0xFFFFA500),
-          const Color(0xFFB8860B),
+          Color(0xFFFFD700),
+          Color(0xFFFFA500),
+          Color(0xFFB8860B),
         ],
         [0.0, 0.5, 1.0],
       )
@@ -553,7 +554,7 @@ class PremiumPointerPainter extends CustomPainter {
 
     // Обводка
     final borderPaint = Paint()
-      ..color = const Color(0xFFFFF8DC)
+      ..color = Color(0xFFFFF8DC)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
@@ -565,15 +566,15 @@ class PremiumPointerPainter extends CustomPainter {
         Offset(centerX, 12),
         8,
         [
-          const Color(0xFFFFD700),
-          const Color(0xFFB8860B),
+          Color(0xFFFFD700),
+          Color(0xFFB8860B),
         ],
       );
 
     canvas.drawCircle(Offset(centerX, 12), 6, attachPaint);
 
     final attachBorderPaint = Paint()
-      ..color = const Color(0xFFFFF8DC)
+      ..color = Color(0xFFFFF8DC)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 

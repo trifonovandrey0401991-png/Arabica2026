@@ -179,7 +179,7 @@ class RKOPDFService {
           'amount': amount,
           'rkoType': rkoType,
         }),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         // Проверяем, не вернул ли сервер JSON ошибку вместо PDF
@@ -228,7 +228,8 @@ class RKOPDFService {
     }
   }
 
-  /// Создать РКО PDF (старый метод через генерацию)
+  /// Создать РКО PDF (fallback — без сервера, через dart:pdf)
+  /// Визуально повторяет форму КО-2 из эталонного DOCX шаблона
   static Future<File> generateRKO({
     required String shopAddress,
     required ShopSettings shopSettings,
@@ -240,616 +241,282 @@ class RKOPDFService {
     final pdf = pw.Document();
     final now = DateTime.now();
     final amountWords = numberToWords(amount);
-    
-    // Получаем фамилию сотрудника (первое слово из ФИО)
     final employeeLastName = employeeData.fullName.split(' ').first;
+    final dateStr = '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
+    final dateWords = '${now.day} ${_getMonthName(now.month)} ${now.year} г.';
 
     // Форматируем имя директора
-    // Если directorName не начинается с "ИП", добавляем "ИП "
-    String directorDisplayName = shopSettings.directorName;
-    if (!directorDisplayName.toUpperCase().startsWith('ИП ')) {
-      // Извлекаем имя без "ИП" если оно есть
-      String nameWithoutIP = directorDisplayName.replaceFirst(RegExp(r'^ИП\s*', caseSensitive: false), '');
-      directorDisplayName = 'ИП $nameWithoutIP';
-    }
-    
-    // Сокращаем ФИО директора для подписей (убираем "ИП" если есть)
-    String directorNameForSignature = shopSettings.directorName.replaceFirst(RegExp(r'^ИП\s*', caseSensitive: false), '');
-    final directorShortName = shortenFullName(directorNameForSignature);
+    String directorFullName = shopSettings.directorName.replaceFirst(RegExp(r'^ИП\s*', caseSensitive: false), '').trim();
+    final directorShortName = shortenFullName(directorFullName);
 
-    // Загружаем шрифт LiberationSerif с поддержкой кириллицы
-    // Используем LiberationSerif, как в эталонном PDF
+    // Загружаем шрифт
     final fontData = await rootBundle.load('assets/fonts/LiberationSerif-Regular.ttf');
-    
-    // Создаем шрифт из ByteData
-    // pw.Font.ttf принимает ByteData напрямую
     final ttf = pw.Font.ttf(fontData);
 
-    Logger.debug('✅ Шрифт LiberationSerif успешно загружен, размер: ${fontData.lengthInBytes} байт');
-    
-    // Создаем стили текста с поддержкой кириллицы
-    // ВАЖНО: Все стили должны использовать font: ttf для поддержки кириллицы
-    // Размеры шрифтов из эталона: 6, 8, 9, 10
-    final textStyle = pw.TextStyle(
-      fontSize: 10,
-      font: ttf,
-    );
-    final textStyleBold = pw.TextStyle(
-      fontSize: 10,
-      fontWeight: pw.FontWeight.bold,
-      font: ttf,
-    );
-    final textStyleSmall = pw.TextStyle(
-      fontSize: 8,
-      font: ttf,
-    );
-    final textStyleTiny = pw.TextStyle(
-      fontSize: 6,
-      font: ttf,
-    );
-    final textStyleMedium = pw.TextStyle(
-      fontSize: 9,
-      font: ttf,
-    );
-    final textStyleLarge = pw.TextStyle(
-      fontSize: 10,
-      fontWeight: pw.FontWeight.bold,
-      font: ttf,
-    );
+    // Стили (фиксированные размеры в pt — НЕ зависят от экрана)
+    final s10 = pw.TextStyle(fontSize: 10, font: ttf);
+    final s10b = pw.TextStyle(fontSize: 10, font: ttf, fontWeight: pw.FontWeight.bold);
+    final s9 = pw.TextStyle(fontSize: 9, font: ttf);
+    final s8 = pw.TextStyle(fontSize: 8, font: ttf);
+    final s7 = pw.TextStyle(fontSize: 7, font: ttf);
+
+    // Вспомогательные виджеты
+    pw.Widget line() => pw.Container(height: 0.5, color: PdfColors.black);
+    pw.Widget gap(double h) => pw.SizedBox(height: h);
+    pw.Widget hint(String text) => pw.Center(child: pw.Text(text, style: s7));
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        // Минимальные отступы, так как используем абсолютное позиционирование
-        margin: const pw.EdgeInsets.all(0),
+        margin: const pw.EdgeInsets.fromLTRB(30, 25, 30, 25),
         build: (pw.Context context) {
-          // Используем Stack для абсолютного позиционирования всех элементов
-          // Координаты из эталона: Y от верха страницы (0 = верх), X от левого края
-          return pw.Stack(
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Заголовок формы (справа вверху) - Y=808.4, X=450.5
-              pw.Positioned(
-                left: 450.5,
-                top: 808.4,
-                child: pw.Text(
-                  'Унифицированная форма № КО-2',
-                  style: textStyleSmall,
+              // === Шапка: правый блок «Унифицированная форма» ===
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Унифицированная форма № КО-2', style: s8),
+                    pw.Text('Утверждена постановлением Госкомстата России от 18.08.98 № 88', style: s8),
+                  ],
                 ),
               ),
-              
-              // Утверждена (справа) - Y=799.2, X=338.0
-              pw.Positioned(
-                left: 338.0,
-                top: 799.2,
-                child: pw.Text(
-                  'Утверждена постановлением Госкомстата России от 18.08.98 № 88',
-                  style: textStyleSmall,
-                ),
-              ),
-              
-              // Организация и ИНН (слева) - Y=787.3, X=29.2
-              pw.Positioned(
-                left: 29.2,
-                top: 787.3,
-                child: pw.Text(
-                  '$directorDisplayName ИНН: ${shopSettings.inn}',
-                  style: textStyleBold,
-                ),
-              ),
-              
-              // Код (справа) - Y=787.5, X=517.0
-              pw.Positioned(
-                left: 517.0,
-                top: 787.5,
-                child: pw.Text(
-                  'Код',
-                  style: textStyleSmall,
-                ),
-              ),
-              
-              // Линия подчеркивания 1 - Y=775.1, X=29.2, width=355.5
-              pw.Positioned(
-                left: 29.2,
-                top: 775.1,
-                child: pw.Container(
-                  width: 355.5,
-                  height: 1,
-                  color: PdfColors.black,
-                ),
-              ),
-              
-              // Форма по ОКУД и 0310002 на одной строке - Y=776.8, X=428.8
-              pw.Positioned(
-                left: 428.8,
-                top: 776.8,
-                child: pw.Text(
-                  'Форма по ОКУД 0310002',
-                  style: textStyleSmall,
-                ),
-              ),
-              
-              // по ОКПО (справа) - Y=756.9, X=430.9
-              pw.Positioned(
-                left: 430.9,
-                top: 756.9,
-                child: pw.Text(
-                  'по ОКПО',
-                  style: textStyleSmall,
-                ),
-              ),
-              
-              // Линия подчеркивания 2 - Y=750.7, X=29.2, width=353.2
-              pw.Positioned(
-                left: 29.2,
-                top: 750.7,
-                child: pw.Container(
-                  width: 353.2,
-                  height: 1,
-                  color: PdfColors.black,
-                ),
-              ),
-              
-              // Подсказка "(организация)" - Y=737.0, X=192.5
-              pw.Positioned(
-                left: 192.5,
-                top: 737.0,
-                child: pw.Text(
-                  '(организация)',
-                  style: textStyleTiny,
-                ),
-              ),
-              
-              // Фактический адрес (слева) - Y=762.9, X=29.2
-              pw.Positioned(
-                left: 29.2,
-                top: 762.9,
-                child: pw.Text(
-                  'Фактический адрес: ${shopSettings.address}',
-                  style: textStyle,
-                ),
-              ),
-              
-              // Подсказка "(структурное подразделение)" - Y=714.3, X=208.7
-              pw.Positioned(
-                left: 208.7,
-                top: 714.3,
-                child: pw.Text(
-                  '(структурное подразделение)',
-                  style: textStyleTiny,
-                ),
-              ),
-              
-              // РАСХОДНЫЙ КАССОВЫЙ ОРДЕР (центрирован) - Y=695.3, X=196.1 (центр)
-              pw.Positioned(
-                left: 196.1,
-                top: 695.3,
-                child: pw.Text(
-                  'РАСХОДНЫЙ КАССОВЫЙ ОРДЕР',
-                  style: textStyleLarge,
-                ),
-              ),
-              
-              // Номер документа (справа) - Y=707.0, X=403.1
-              pw.Positioned(
-                left: 403.1,
-                top: 707.0,
-                child: pw.Text(
-                  'Номер документа',
-                  style: textStyleSmall,
-                ),
-              ),
-              
-              // Дата составления (справа под номером) - Y=707.0+8, X=403.1
-              pw.Positioned(
-                left: 403.1,
-                top: 715.0,
-                child: pw.Text(
-                  'Дата составления',
-                  style: textStyleSmall,
-                ),
-              ),
-              
-              // Номер документа и дата на одной строке - Y=695.0, X=396.6
-              pw.Positioned(
-                left: 396.6,
-                top: 695.0,
-                child: pw.Text(
-                  '$documentNumber${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}',
-                  style: textStyle,
-                ),
-              ),
-              
-              // Таблица с данными - позиция Y=572.9-674.2, X=28.5-440.2
-              // Рисуем рамку таблицы
-              pw.Positioned(
-                left: 28.5,
-                top: 572.9,
-                child: pw.Container(
-                  width: 411.7,
-                  height: 101.3,
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(),
+              gap(8),
+
+              // === Организация + Код (две колонки) ===
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    flex: 7,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('$directorFullName ИНН: ${shopSettings.inn}', style: s10b),
+                        line(),
+                        gap(2),
+                        pw.Text('Фактический адрес: ${shopSettings.address}', style: s10),
+                        line(),
+                        gap(1),
+                        hint('(организация)'),
+                      ],
+                    ),
                   ),
-                ),
+                  pw.SizedBox(width: 20),
+                  pw.Expanded(
+                    flex: 3,
+                    child: pw.Table(
+                      border: pw.TableBorder.all(),
+                      columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(1)},
+                      children: [
+                        pw.TableRow(children: [
+                          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text('Форма по\nОКУД', style: s8)),
+                          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text('Код\n0310002', style: s8)),
+                        ]),
+                        pw.TableRow(children: [
+                          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text('по ОКПО', style: s8)),
+                          pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text('', style: s8)),
+                        ]),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              
-              // Внутренние вертикальные линии таблицы (разделители колонок)
-              // Линия 1 (колонка 1-2): X≈130
-              pw.Positioned(
-                left: 130.0,
-                top: 572.9,
-                child: pw.Container(
-                  width: 1,
-                  height: 101.3,
-                  color: PdfColors.black,
-                ),
+              gap(2),
+              hint('(структурное подразделение)'),
+              gap(10),
+
+              // === Заголовок + номер/дата (две колонки) ===
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Expanded(
+                    flex: 6,
+                    child: pw.Center(
+                      child: pw.Text('РАСХОДНЫЙ КАССОВЫЙ ОРДЕР', style: s10b),
+                    ),
+                  ),
+                  pw.Expanded(
+                    flex: 4,
+                    child: pw.Table(
+                      border: pw.TableBorder.all(),
+                      children: [
+                        pw.TableRow(children: [
+                          pw.Padding(padding: const pw.EdgeInsets.all(3), child: pw.Text('Номер документа', style: s8)),
+                          pw.Padding(padding: const pw.EdgeInsets.all(3), child: pw.Text('Дата составления', style: s8)),
+                        ]),
+                        pw.TableRow(children: [
+                          pw.Padding(padding: const pw.EdgeInsets.all(3), child: pw.Center(child: pw.Text('$documentNumber', style: s10))),
+                          pw.Padding(padding: const pw.EdgeInsets.all(3), child: pw.Center(child: pw.Text(dateStr, style: s10))),
+                        ]),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              
-              // Линия 2 (колонка 2-3): X≈280
-              pw.Positioned(
-                left: 280.0,
-                top: 572.9,
-                child: pw.Container(
-                  width: 1,
-                  height: 101.3,
-                  color: PdfColors.black,
-                ),
+              gap(6),
+
+              // === Основная таблица Дебет / Сумма / Код целевого ===
+              pw.Table(
+                border: pw.TableBorder.all(),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(2),
+                  1: const pw.FlexColumnWidth(2),
+                  2: const pw.FlexColumnWidth(1.5),
+                  3: const pw.FlexColumnWidth(1.5),
+                },
+                children: [
+                  // Заголовки
+                  pw.TableRow(children: [
+                    pw.Padding(padding: const pw.EdgeInsets.all(2),
+                      child: pw.Center(child: pw.Text('Дебет', style: s8))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text('', style: s8)),
+                    pw.Padding(padding: const pw.EdgeInsets.all(2),
+                      child: pw.Center(child: pw.Text('Сумма,\nруб. коп.', style: s8, textAlign: pw.TextAlign.center))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(2),
+                      child: pw.Center(child: pw.Text('Код целевого\nназначения', style: s8, textAlign: pw.TextAlign.center))),
+                  ]),
+                  // Подзаголовки
+                  pw.TableRow(children: [
+                    pw.Padding(padding: const pw.EdgeInsets.all(2),
+                      child: pw.Center(child: pw.Text('код структурного\nподразделения', style: s8, textAlign: pw.TextAlign.center))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(2),
+                      child: pw.Center(child: pw.Text('код аналитического\nучета', style: s8, textAlign: pw.TextAlign.center))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text('', style: s8)),
+                    pw.Padding(padding: const pw.EdgeInsets.all(2), child: pw.Text('', style: s8)),
+                  ]),
+                  // Значения
+                  pw.TableRow(children: [
+                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('', style: s10)),
+                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('', style: s10)),
+                    pw.Padding(padding: const pw.EdgeInsets.all(4),
+                      child: pw.Center(child: pw.Text(amount.toStringAsFixed(0), style: s10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text('', style: s10)),
+                  ]),
+                ],
               ),
-              
-              // Линия 3 (колонка 3-4): X≈400
-              pw.Positioned(
-                left: 400.0,
-                top: 572.9,
-                child: pw.Container(
-                  width: 1,
-                  height: 101.3,
-                  color: PdfColors.black,
-                ),
+              gap(8),
+
+              // === Выдать ===
+              pw.Row(children: [
+                pw.Text('Выдать', style: s10),
+                pw.SizedBox(width: 40),
+                pw.Expanded(child: pw.Text(employeeData.fullName, style: s10)),
+              ]),
+              line(),
+              hint('(фамилия, имя, отчество)'),
+              gap(8),
+
+              // === Основание ===
+              pw.Row(children: [
+                pw.Text('Основание', style: s10),
+                pw.SizedBox(width: 25),
+                pw.Expanded(child: pw.Text('Заработная плата', style: s10)),
+              ]),
+              gap(12),
+
+              // === Сумма прописью ===
+              pw.Row(children: [
+                pw.Text('Сумма', style: s10),
+                pw.SizedBox(width: 40),
+                pw.Expanded(child: pw.Text(amountWords, style: s10)),
+              ]),
+              gap(2),
+              hint('(прописью).'),
+              gap(6),
+
+              // === Приложение ===
+              pw.Text('Приложение', style: s9),
+              gap(16),
+
+              // === Руководитель ===
+              pw.Row(children: [
+                pw.Text('Руководитель организации', style: s10),
+                pw.SizedBox(width: 20),
+                pw.Text('ИП', style: s10),
+                pw.Expanded(child: pw.Container()),
+                pw.Text(directorShortName, style: s10),
+              ]),
+              gap(2),
+              pw.Row(children: [
+                pw.SizedBox(width: 160),
+                pw.Text('(должность)', style: s7),
+                pw.Expanded(child: pw.Container()),
+                pw.Text('(подпись)', style: s7),
+                pw.SizedBox(width: 40),
+                pw.Text('(расшифровка подписи)', style: s7),
+              ]),
+              gap(10),
+
+              // === Получил ===
+              pw.Row(children: [
+                pw.Text('Получил :', style: s10),
+                pw.SizedBox(width: 30),
+                pw.Expanded(child: pw.Text(amountWords, style: s10)),
+              ]),
+              gap(2),
+              hint('(сумма прописью)'),
+              gap(8),
+
+              // === Дата + подпись ===
+              pw.Row(children: [
+                pw.Text(dateWords, style: s10),
+                pw.Expanded(child: pw.Container()),
+                pw.Text('Подпись _____________________', style: s10),
+              ]),
+              gap(10),
+
+              // === Паспорт ===
+              pw.Text(
+                'По: Серия ${employeeData.passportSeries} Номер ${employeeData.passportNumber} Паспорт Выдан ${employeeData.issuedBy}',
+                style: s10,
               ),
-              
-              // Внутренние горизонтальные линии таблицы (разделители строк)
-              // Линия 1 (заголовки-данные): Y≈665.0
-              pw.Positioned(
-                left: 28.5,
-                top: 665.0,
-                child: pw.Container(
-                  width: 411.7,
-                  height: 1,
-                  color: PdfColors.black,
-                ),
-              ),
-              
-              // Линия 2 (коды-пустая): Y≈640.0
-              pw.Positioned(
-                left: 28.5,
-                top: 640.0,
-                child: pw.Container(
-                  width: 411.7,
-                  height: 1,
-                  color: PdfColors.black,
-                ),
-              ),
-              
-              // Линия 3 (пустая-Выдать): Y≈600.0
-              pw.Positioned(
-                left: 28.5,
-                top: 600.0,
-                child: pw.Container(
-                  width: 411.7,
-                  height: 1,
-                  color: PdfColors.black,
-                ),
-              ),
-              
-              // Линия 4 (Выдать-Основание): Y≈580.0
-              pw.Positioned(
-                left: 28.5,
-                top: 580.0,
-                child: pw.Container(
-                  width: 411.7,
-                  height: 1,
-                  color: PdfColors.black,
-                ),
-              ),
-              
-              // Заголовки таблицы (строка 0)
-              // "Дебет" - Y=669.6, X=160.2 (колонка 0, центрирован)
-              pw.Positioned(
-                left: 160.2,
-                top: 669.6,
-                child: pw.Text('Дебет', style: textStyleSmall),
-              ),
-              
-              // "Сумма, руб. коп." - Y=674.2, X=337.8 (колонка 3)
-              pw.Positioned(
-                left: 337.8,
-                top: 674.2,
-                child: pw.Text('Сумма,', style: textStyleSmall),
-              ),
-              
-              // "руб. коп." продолжение - Y=665.0, X=335.6 (колонка 3)
-              pw.Positioned(
-                left: 335.6,
-                top: 665.0,
-                child: pw.Text('руб. коп.', style: textStyleSmall),
-              ),
-              
-              // "Код целевого назначения" - Y=674.2, X=400.0 (колонка 4)
-              pw.Positioned(
-                left: 400.0,
-                top: 674.2,
-                child: pw.Text('Код целевого', style: textStyleSmall),
-              ),
-              
-              // "назначения" продолжение - Y=665.0, X=400.0 (колонка 4)
-              pw.Positioned(
-                left: 400.0,
-                top: 665.0,
-                child: pw.Text('назначения', style: textStyleSmall),
-              ),
-              
-              // Строка 1: Коды
-              // "код структурного подразделения" - Y=651.3, X=67.7 (колонка 1)
-              pw.Positioned(
-                left: 67.7,
-                top: 651.3,
-                child: pw.Text('код структурного', style: textStyleSmall),
-              ),
-              
-              // "подразделения" продолжение - Y=642.1, X=71.5 (колонка 1)
-              pw.Positioned(
-                left: 71.5,
-                top: 642.1,
-                child: pw.Text('подразделения', style: textStyleSmall),
-              ),
-              
-              // "код аналитического учета" - Y=651.3, X=200.0 (колонка 2)
-              pw.Positioned(
-                left: 200.0,
-                top: 651.3,
-                child: pw.Text('код аналитического', style: textStyleSmall),
-              ),
-              
-              // "учета" продолжение - Y=642.1, X=200.0 (колонка 2)
-              pw.Positioned(
-                left: 200.0,
-                top: 642.1,
-                child: pw.Text('учета', style: textStyleSmall),
-              ),
-              
-              // Сумма "1000" - Y=627.6, X=324.8 (колонка 3)
-              pw.Positioned(
-                left: 324.8,
-                top: 627.6,
-                child: pw.Text(amount.toStringAsFixed(0), style: textStyle),
-              ),
-              
-              // Строка "Выдать"
-              // "Выдать" - Y=610.2, X=28.5 (колонка 0)
-              pw.Positioned(
-                left: 28.5,
-                top: 610.2,
-                child: pw.Text('Выдать', style: textStyle),
-              ),
-              
-              // ФИО сотрудника - Y=610.2, X=130.0 (колонка 1)
-              pw.Positioned(
-                left: 130.0,
-                top: 610.2,
-                child: pw.Text(employeeData.fullName, style: textStyle),
-              ),
-              
-              // "(фамилия, имя, отчество)" - Y=582.9, X=253.5 (колонка 2)
-              pw.Positioned(
-                left: 253.5,
-                top: 582.9,
-                child: pw.Text('(фамилия, имя, отчество)', style: textStyleTiny),
-              ),
-              
-              // Строка "Основание"
-              // "Основание" - Y=572.9, X=28.5 (колонка 0)
-              pw.Positioned(
-                left: 28.5,
-                top: 572.9,
-                child: pw.Text('Основание', style: textStyle),
-              ),
-              
-              // Тип РКО - Y=572.9, X=130.0 (колонка 1)
-              pw.Positioned(
-                left: 130.0,
-                top: 572.9,
-                child: pw.Text(rkoType, style: textStyle),
-              ),
-              
-              // "Сумма" и сумма прописью на одной строке - Y=527.3, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 527.3,
-                child: pw.Text(
-                  'Сумма $amountWords',
-                  style: textStyle,
-                ),
-              ),
-              
-              // "(прописью)." - Y=497.2, X=271.5
-              pw.Positioned(
-                left: 271.5,
-                top: 497.2,
-                child: pw.Text(
-                  '(прописью).',
-                  style: textStyleTiny,
-                ),
-              ),
-              
-              // "Приложение" - Y=486.8, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 486.8,
-                child: pw.Text(
-                  'Приложение',
-                  style: textStyleMedium,
-                ),
-              ),
-              
-              // "Руководитель организации" - Y=443.5, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 443.5,
-                child: pw.Text(
-                  'Руководитель организации',
-                  style: textStyle,
-                ),
-              ),
-              
-              // "ИП" и имя директора - Y=443.5, X=28.5+ширина "Руководитель организации"
-              pw.Positioned(
-                left: 250.0,
-                top: 443.5,
-                child: pw.Text(
-                  directorDisplayName,
-                  style: textStyle,
-                ),
-              ),
-              
-              // "(должность) (подпись) (расшифровка подписи)" - Y=416.2, X=199.5
-              pw.Positioned(
-                left: 199.5,
-                top: 416.2,
-                child: pw.Text(
-                  '(должность) (подпись) (расшифровка подписи)',
-                  style: textStyleTiny,
-                ),
-              ),
-              
-              // "Получил :" и сумма прописью на одной строке - Y=406.2, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 406.2,
-                child: pw.Text(
-                  'Получил : $amountWords',
-                  style: textStyle,
-                ),
-              ),
-              
-              // "(сумма прописью)" - Y=378.9, X=271.5
-              pw.Positioned(
-                left: 271.5,
-                top: 378.9,
-                child: pw.Text(
-                  '(сумма прописью)',
-                  style: textStyleTiny,
-                ),
-              ),
-              
-              // Дата и подпись на одной строке - Y=368.9, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 368.9,
-                child: pw.Text(
-                  '${now.day} ${_getMonthName(now.month)} ${now.year} г.                                                      Подпись _____________________',
-                  style: textStyle,
-                ),
-              ),
-              
-              // Паспортные данные - Y=340.4, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 340.4,
-                child: pw.Text(
-                  'По: Серия ${employeeData.passportSeries} Номер ${employeeData.passportNumber} Паспорт Выдан: ${employeeData.issuedBy}',
-                  style: textStyle,
-                ),
-              ),
-              
-              // Дата выдачи - Y=309.9, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 309.9,
-                child: pw.Text(
-                  'Дата выдачи : ${employeeData.issueDate}',
-                  style: textStyle,
-                ),
-              ),
-              
-              // Подсказка для паспорта - Y=292.7, X=174.3
-              pw.Positioned(
-                left: 174.3,
-                top: 292.7,
-                child: pw.Text(
-                  '(наименование, номер, дата и место выдачи документа, удостоверяющего личность получателя)',
-                  style: textStyleTiny,
-                ),
-              ),
-              
-              // "Выдал кассир" - Y=254.4, X=28.5
-              pw.Positioned(
-                left: 28.5,
-                top: 254.4,
-                child: pw.Text(
-                  'Выдал кассир',
-                  style: textStyleMedium,
-                ),
-              ),
-              
-              // Имя кассира - Y=269.4, X=28.5 (справа)
-              pw.Positioned(
-                left: 400.0,
-                top: 269.4,
-                child: pw.Text(
-                  directorShortName,
-                  style: textStyle,
-                ),
-              ),
-              
-              // "(подпись)(расшифровка подписи)" - Y=243.9, X=163.5
-              pw.Positioned(
-                left: 163.5,
-                top: 243.9,
-                child: pw.Text(
-                  '(подпись)',
-                  style: textStyleTiny,
-                ),
-              ),
-              
-              pw.Positioned(
-                left: 400.0,
-                top: 243.9,
-                child: pw.Text(
-                  '(расшифровка подписи)',
-                  style: textStyleTiny,
-                ),
-              ),
+              gap(4),
+              pw.Text('Дата Выдачи : ${employeeData.issueDate}', style: s10),
+              gap(2),
+              hint('(наименование, номер, дата и место выдачи документа, удостоверяющего личность получателя)'),
+              gap(16),
+
+              // === Кассир ===
+              pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(directorShortName, style: s10)),
+              pw.Row(children: [
+                pw.Text('Выдал кассир', style: s9),
+                pw.SizedBox(width: 10),
+                pw.Expanded(child: line()),
+                pw.SizedBox(width: 40),
+                pw.Expanded(child: line()),
+              ]),
+              gap(2),
+              pw.Row(children: [
+                pw.SizedBox(width: 100),
+                pw.Text('(подпись)', style: s7),
+                pw.Expanded(child: pw.Container()),
+                pw.Text('(расшифровка подписи)', style: s7),
+              ]),
             ],
           );
         },
       ),
     );
 
-    // Генерируем имя файла
-    final fileName = generateFileName(
-      date: now,
-      shopAddress: shopSettings.address,
-      employeeLastName: employeeLastName,
-    );
-
-    // Сохраняем PDF
+    // Генерируем имя файла и сохраняем
+    final fileName = generateFileName(date: now, shopAddress: shopSettings.address, employeeLastName: employeeLastName);
     final pdfBytes = await pdf.save();
 
     if (kIsWeb) {
-      // Для веб создаем файл в памяти
       return _MemoryFile(fileName, pdfBytes);
     } else {
-      // Для мобильных используем Downloads или Documents
       Directory directory;
       try {
         directory = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
-        // Пытаемся найти папку Downloads
         final downloadsPath = '${directory.path}/Download';
         final downloadsDir = Directory(downloadsPath);
         if (await downloadsDir.exists()) {
           directory = downloadsDir;
         } else {
-          // Если Downloads нет, создаем в Documents
           final documentsDir = Directory('${directory.path}/RKOs');
           if (!await documentsDir.exists()) {
             await documentsDir.create(recursive: true);
@@ -857,7 +524,6 @@ class RKOPDFService {
           directory = documentsDir;
         }
       } catch (e) {
-        // Если не удалось получить внешнее хранилище, используем Documents
         directory = await getApplicationDocumentsDirectory();
         final rkoDir = Directory('${directory.path}/RKOs');
         if (!await rkoDir.exists()) {
@@ -894,7 +560,7 @@ class RKOPDFService {
   }
 
   static String _getMonthName(int month) {
-    const months = [
+    final months = [
       'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
       'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
     ];

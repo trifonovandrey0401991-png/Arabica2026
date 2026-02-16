@@ -8,6 +8,7 @@ import '../services/z_report_template_service.dart';
 import '../models/z_report_sample_model.dart';
 import '../models/z_report_template_model.dart';
 import 'template_editor_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница обучения ИИ распознаванию Z-отчётов - Премиум версия
 class ZReportTrainingPage extends StatefulWidget {
@@ -24,7 +25,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
   bool _isInitialized = false;
 
   // Цвета для градиентов
-  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
 
   /// Количество вкладок зависит от роли: админ видит 3 вкладки, остальные - 2
   int get _tabCount => _isAdmin ? 3 : 2;
@@ -58,7 +59,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -71,7 +72,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
         ),
         child: SafeArea(
           child: !_isInitialized || _tabController == null
-              ? const Center(
+              ? Center(
                   child: CircularProgressIndicator(color: Colors.white),
                 )
               : Column(
@@ -87,9 +88,9 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
                       child: TabBarView(
                         controller: _tabController,
                         children: [
-                          const _TrainingSampleTab(),
-                          if (_isAdmin) const _TemplatesTab(),
-                          const _StatsTab(),
+                          _TrainingSampleTab(),
+                          if (_isAdmin) _TemplatesTab(),
+                          _StatsTab(),
                         ],
                       ),
                     ),
@@ -102,36 +103,36 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
 
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Обучение Z-отчётов',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -139,14 +140,14 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
 
   Widget _buildTabBar() {
     if (_tabController == null) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -155,25 +156,25 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
-          gradient: const LinearGradient(colors: _purpleGradient),
-          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(colors: _purpleGradient),
+          borderRadius: BorderRadius.circular(12.r),
           boxShadow: [
             BoxShadow(
               color: _purpleGradient[0].withOpacity(0.4),
               blurRadius: 8,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
-        indicatorPadding: const EdgeInsets.all(4),
+        indicatorPadding: EdgeInsets.all(4.w),
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white.withOpacity(0.5),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.sp),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
         dividerColor: Colors.transparent,
         tabs: [
-          const Tab(
+          Tab(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -184,7 +185,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
             ),
           ),
           if (_isAdmin)
-            const Tab(
+            Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -194,7 +195,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
                 ],
               ),
             ),
-          const Tab(
+          Tab(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -213,7 +214,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
 // ==================== Вкладка обучения ====================
 
 class _TrainingSampleTab extends StatefulWidget {
-  const _TrainingSampleTab();
+  _TrainingSampleTab();
 
   @override
   State<_TrainingSampleTab> createState() => _TrainingSampleTabState();
@@ -236,8 +237,8 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   final _resourceKeysController = TextEditingController();
 
   // Цвета
-  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
-  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
 
   @override
   void initState() {
@@ -438,14 +439,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
               color == Colors.red ? Icons.error_outline : Icons.check_circle,
               color: Colors.white,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        margin: EdgeInsets.all(16.w),
       ),
     );
   }
@@ -453,7 +454,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -466,7 +467,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                 'Это поможет ИИ лучше распознавать такие чеки.',
             gradient: _purpleGradient,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Выбор шаблона
           if (_isLoadingTemplates)
@@ -481,14 +482,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.white.withOpacity(0.9),
-                fontSize: 15,
+                fontSize: 15.sp,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.1),
                   width: 1,
@@ -496,27 +497,27 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
               ),
               child: DropdownButtonFormField<ZReportTemplate>(
                 value: _selectedTemplate,
-                dropdownColor: const Color(0xFF1A1A2E),
+                dropdownColor: Color(0xFF1A1A2E),
                 decoration: InputDecoration(
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   prefixIcon: Container(
-                    margin: const EdgeInsets.all(8),
-                    padding: const EdgeInsets.all(8),
+                    margin: EdgeInsets.all(8.w),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: _purpleGradient),
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(colors: _purpleGradient),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: const Icon(Icons.grid_view, color: Colors.white, size: 18),
+                    child: Icon(Icons.grid_view, color: Colors.white, size: 18),
                   ),
                 ),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: Colors.white),
                 items: _templates.map((template) {
                   return DropdownMenuItem(
                     value: template,
                     child: Text(
                       '${template.name} (${template.regions.length} обл.)',
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
                   );
@@ -529,10 +530,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ] else
             _buildWarningCard(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Кнопки
           Row(
@@ -547,12 +548,12 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                       : () => _pickImage(ImageSource.camera),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: _buildGradientButton(
                   icon: Icons.photo_library,
                   label: 'Галерея',
-                  gradient: const [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                  gradient: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
                   onTap: _isLoading || _isParsing
                       ? null
                       : () => _pickImage(ImageSource.gallery),
@@ -560,13 +561,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Превью
           if (_selectedImage != null) ...[
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.1),
                   width: 1,
@@ -594,8 +595,8 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                             CircularProgressIndicator(
                               color: _purpleGradient[0],
                             ),
-                            const SizedBox(height: 16),
-                            const Text(
+                            SizedBox(height: 16),
+                            Text(
                               'Распознавание...',
                               style: TextStyle(color: Colors.white),
                             ),
@@ -606,34 +607,34 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
 
           // Результат
           if (_parseResult != null) ...[
             _buildResultCard(_parseResult!),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
 
           // Форма
           Text(
             'Проверьте и исправьте данные',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.9),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           _buildDarkTextField(_totalSumController, 'Общая сумма *', Icons.currency_ruble, true),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildDarkTextField(_cashSumController, 'Сумма наличных', Icons.payments_outlined, true),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildDarkTextField(_ofdNotSentController, 'Не передано в ОФД', Icons.cloud_off, false),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildDarkTextField(_resourceKeysController, 'Ресурс ключей', Icons.key, false),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Кнопка сохранения
           _buildGradientButton(
@@ -658,10 +659,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     required List<Color> gradient,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: gradient[0].withOpacity(0.3),
           width: 1,
@@ -674,28 +675,28 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             height: 44,
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: gradient),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Icon(icon, color: Colors.white, size: 22),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.white.withOpacity(0.5),
                     height: 1.3,
                   ),
@@ -710,10 +711,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
 
   Widget _buildWarningCard() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: Colors.orange.withOpacity(0.3),
           width: 1,
@@ -722,19 +723,19 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: Colors.orange.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
-            child: const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+            child: Icon(Icons.warning_amber, color: Colors.orange, size: 20),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               'Нет шаблонов. Создайте шаблон во вкладке "Шаблоны".',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
@@ -756,13 +757,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       height: height,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: gradient),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: onTap != null
             ? [
                 BoxShadow(
                   color: gradient[0].withOpacity(0.4),
                   blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  offset: Offset(0, 4),
                 ),
               ]
             : null,
@@ -771,13 +772,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           child: Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (isLoading)
-                  const SizedBox(
+                  SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
@@ -787,13 +788,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                   )
                 else if (icon != null)
                   Icon(icon, color: Colors.white, size: 20),
-                if (icon != null || isLoading) const SizedBox(width: 8),
+                if (icon != null || isLoading) SizedBox(width: 8),
                 Text(
                   label,
                   style: TextStyle(
                     color: onTap != null ? Colors.white : Colors.white70,
                     fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                    fontSize: 15.sp,
                   ),
                 ),
               ],
@@ -809,7 +810,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -818,10 +819,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       child: TextField(
         controller: controller,
         keyboardType: isMoney
-            ? const TextInputType.numberWithOptions(decimal: true)
+            ? TextInputType.numberWithOptions(decimal: true)
             : TextInputType.number,
-        style: const TextStyle(
-          fontSize: 16,
+        style: TextStyle(
+          fontSize: 16.sp,
           fontWeight: FontWeight.w500,
           color: Colors.white,
         ),
@@ -829,13 +830,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           labelText: label,
           labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
           prefixIcon: Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(8),
+            margin: EdgeInsets.all(8.w),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isMoney ? _purpleGradient : [Colors.blueGrey, Colors.blueGrey.shade700],
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(icon, color: Colors.white, size: 18),
           ),
@@ -843,10 +844,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           suffixStyle: TextStyle(
             color: _purpleGradient[1],
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 16.sp,
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
       ),
     );
@@ -857,10 +858,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     final gradient = isSuccess ? _greenGradient : [Colors.red, Colors.red.shade300];
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: gradient[0].withOpacity(0.3),
           width: 1,
@@ -872,10 +873,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: gradient),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
                   isSuccess ? Icons.check_circle : Icons.error_outline,
@@ -883,16 +884,16 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       isSuccess ? 'Текст распознан' : 'Ошибка распознавания',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontSize: 15.sp,
                         color: Colors.white,
                       ),
                     ),
@@ -900,7 +901,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                       Text(
                         'Шаблон: ${_selectedTemplate!.name}',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
@@ -910,14 +911,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             ],
           ),
           if (result.error != null) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
               result.error!,
               style: TextStyle(color: Colors.red.shade300),
             ),
           ],
           if (result.data != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _buildConfidenceInfo(result.data!),
           ],
         ],
@@ -927,10 +928,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
 
   Widget _buildConfidenceInfo(ZReportData data) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -938,12 +939,12 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           Text(
             'Распознанные значения:',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildConfidenceRow('Общая сумма', data.totalSum, data.confidence['totalSum'], true),
           _buildConfidenceRow('Наличные', data.cashSum, data.confidence['cashSum'], true),
           _buildConfidenceRow(
@@ -961,14 +962,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     final color = isFound ? (isHigh ? _greenGradient[0] : Colors.orange) : Colors.grey;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: EdgeInsets.symmetric(vertical: 3.h),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.all(4.w),
             decoration: BoxDecoration(
               color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(4.r),
             ),
             child: Icon(
               isFound ? (isHigh ? Icons.check : Icons.help_outline) : Icons.close,
@@ -976,12 +977,12 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
               color: color,
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.white.withOpacity(0.6),
               ),
             ),
@@ -991,7 +992,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                 ? (isMoney ? '${value.toStringAsFixed(2)} руб' : value.toStringAsFixed(0))
                 : '—',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.bold,
               color: isFound ? color : Colors.white.withOpacity(0.4),
             ),
@@ -1005,7 +1006,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
 // ==================== Вкладка шаблонов ====================
 
 class _TemplatesTab extends StatefulWidget {
-  const _TemplatesTab();
+  _TemplatesTab();
 
   @override
   State<_TemplatesTab> createState() => _TemplatesTabState();
@@ -1015,7 +1016,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
   List<ZReportTemplate> _templates = [];
   bool _isLoading = true;
 
-  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
 
   @override
   void initState() {
@@ -1040,9 +1041,9 @@ class _TemplatesTabState extends State<_TemplatesTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Удалить шаблон?', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text('Удалить шаблон?', style: TextStyle(color: Colors.white)),
         content: Text(
           'Шаблон "${template.name}" будет удалён.',
           style: TextStyle(color: Colors.white.withOpacity(0.7)),
@@ -1054,7 +1055,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+            child: Text('Удалить', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -1078,16 +1079,16 @@ class _TemplatesTabState extends State<_TemplatesTab> {
       children: [
         // Кнопка создания
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: _purpleGradient),
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(colors: _purpleGradient),
+              borderRadius: BorderRadius.circular(12.r),
               boxShadow: [
                 BoxShadow(
                   color: _purpleGradient[0].withOpacity(0.4),
                   blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -1097,13 +1098,13 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                 onTap: () async {
                   final result = await Navigator.push<bool>(
                     context,
-                    MaterialPageRoute(builder: (context) => const TemplateEditorPage()),
+                    MaterialPageRoute(builder: (context) => TemplateEditorPage()),
                   );
                   if (result == true) _loadTemplates();
                 },
-                borderRadius: BorderRadius.circular(12),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
+                borderRadius: BorderRadius.circular(12.r),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -1114,7 +1115,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
-                          fontSize: 16,
+                          fontSize: 16.sp,
                         ),
                       ),
                     ],
@@ -1127,12 +1128,12 @@ class _TemplatesTabState extends State<_TemplatesTab> {
 
         // Инструкция
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
               color: Colors.amber.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
                 color: Colors.amber.withOpacity(0.3),
                 width: 1,
@@ -1141,19 +1142,19 @@ class _TemplatesTabState extends State<_TemplatesTab> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.amber.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: const Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
+                  child: Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Создайте шаблон для кассы, выделив области где находятся нужные данные.',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.white.withOpacity(0.7),
                     ),
                   ),
@@ -1183,12 +1184,12 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                           color: Colors.white.withOpacity(0.3),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         'Шаблонов пока нет',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.5),
-                          fontSize: 16,
+                          fontSize: 16.sp,
                         ),
                       ),
                     ],
@@ -1198,7 +1199,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                   onRefresh: _loadTemplates,
                   color: _purpleGradient[0],
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemCount: _templates.length,
                     itemBuilder: (context, index) {
                       final template = _templates[index];
@@ -1213,10 +1214,10 @@ class _TemplatesTabState extends State<_TemplatesTab> {
 
   Widget _buildTemplateCard(ZReportTemplate template) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -1234,52 +1235,52 @@ class _TemplatesTabState extends State<_TemplatesTab> {
             );
             if (result == true) _loadTemplates();
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 Container(
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: _purpleGradient),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(colors: _purpleGradient),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Center(
                     child: Text(
                       template.cashRegisterType?.substring(0, 1) ?? '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         template.name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       if (template.cashRegisterType != null)
                         Text(
                           'Касса: ${template.cashRegisterType}',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                         ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           _buildStatChip(
@@ -1287,13 +1288,13 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                             Icons.analytics,
                             Colors.blue,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           _buildStatChip(
                             '${(template.successRate * 100).toStringAsFixed(0)}%',
                             Icons.check_circle,
                             Colors.green,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           _buildStatChip(
                             '${template.regions.length}',
                             Icons.grid_view,
@@ -1321,20 +1322,20 @@ class _TemplatesTabState extends State<_TemplatesTab> {
 
   Widget _buildStatChip(String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             value,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w600,
               color: color,
             ),
@@ -1348,7 +1349,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
 // ==================== Вкладка статистики ====================
 
 class _StatsTab extends StatefulWidget {
-  const _StatsTab();
+  _StatsTab();
 
   @override
   State<_StatsTab> createState() => _StatsTabState();
@@ -1358,9 +1359,9 @@ class _StatsTabState extends State<_StatsTab> {
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
 
-  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
-  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
-  static const _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
+  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
 
   @override
   void initState() {
@@ -1398,8 +1399,8 @@ class _StatsTabState extends State<_StatsTab> {
       onRefresh: _loadStats,
       color: _purpleGradient[0],
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        physics: AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1414,7 +1415,7 @@ class _StatsTabState extends State<_StatsTab> {
                     _blueGradient,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: _buildStatCard(
                     'Шаблонов',
@@ -1425,36 +1426,36 @@ class _StatsTabState extends State<_StatsTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _buildStatCard(
               'Средняя точность',
               '${(avgSuccessRate * 100).toStringAsFixed(1)}%',
               Icons.analytics,
               _purpleGradient,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Исправления по полям
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
                     ),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: const Icon(Icons.edit_note, color: Colors.white, size: 20),
+                  child: Icon(Icons.edit_note, color: Colors.white, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Исправления по полям',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -1462,7 +1463,7 @@ class _StatsTabState extends State<_StatsTab> {
                     Text(
                       'Поля, требующие корректировки',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.white.withOpacity(0.5),
                       ),
                     ),
@@ -1470,24 +1471,24 @@ class _StatsTabState extends State<_StatsTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             _buildCorrectionBar('Общая сумма', corrections['totalSum'] ?? 0, totalSamples),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildCorrectionBar('Наличные', corrections['cashSum'] ?? 0, totalSamples),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildCorrectionBar('Не передано в ОФД', corrections['ofdNotSent'] ?? 0, totalSamples),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildCorrectionBar('Ресурс ключей', corrections['resourceKeys'] ?? 0, totalSamples),
 
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Подсказка
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 border: Border.all(
                   color: _greenGradient[0].withOpacity(0.3),
                   width: 1,
@@ -1499,17 +1500,17 @@ class _StatsTabState extends State<_StatsTab> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: _greenGradient),
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(colors: _greenGradient),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
-                    child: const Icon(Icons.lightbulb_outline, color: Colors.white, size: 22),
+                    child: Icon(Icons.lightbulb_outline, color: Colors.white, size: 22),
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       'Чем больше образцов с исправлениями — тем точнее будет распознавание.',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.white.withOpacity(0.6),
                         height: 1.3,
                       ),
@@ -1526,10 +1527,10 @@ class _StatsTabState extends State<_StatsTab> {
 
   Widget _buildStatCard(String label, String value, IconData icon, List<Color> gradient) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
           color: gradient[0].withOpacity(0.3),
           width: 1,
@@ -1538,34 +1539,34 @@ class _StatsTabState extends State<_StatsTab> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: gradient),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               boxShadow: [
                 BoxShadow(
                   color: gradient[0].withOpacity(0.4),
                   blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
             child: Icon(icon, size: 28, color: Colors.white),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             value,
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 28.sp,
               fontWeight: FontWeight.bold,
               color: gradient[1],
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.white.withOpacity(0.5),
               fontWeight: FontWeight.w500,
             ),
@@ -1582,10 +1583,10 @@ class _StatsTabState extends State<_StatsTab> {
         : (percent > 0.2 ? Colors.orange : _greenGradient[0]);
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.05),
           width: 1,
@@ -1604,7 +1605,7 @@ class _StatsTabState extends State<_StatsTab> {
                     height: 10,
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(5.r),
                       boxShadow: [
                         BoxShadow(
                           color: color.withOpacity(0.5),
@@ -1613,11 +1614,11 @@ class _StatsTabState extends State<_StatsTab> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Text(
                     label,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w500,
                       color: Colors.white,
                     ),
@@ -1625,15 +1626,15 @@ class _StatsTabState extends State<_StatsTab> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Text(
                   '$count',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -1641,9 +1642,9 @@ class _StatsTabState extends State<_StatsTab> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
             child: LinearProgressIndicator(
               value: percent,
               backgroundColor: Colors.white.withOpacity(0.1),

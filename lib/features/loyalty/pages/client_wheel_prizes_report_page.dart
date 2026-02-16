@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчёта по призам клиентов от Колеса Удачи (для админа)
 class ClientWheelPrizesReportPage extends StatefulWidget {
@@ -14,10 +15,10 @@ class ClientWheelPrizesReportPage extends StatefulWidget {
 
 class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPage>
     with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   List<ClientPrize> _allPrizes = [];
@@ -78,7 +79,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     final selected = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Выберите месяц'),
+        title: Text('Выберите месяц'),
         children: months.map((month) {
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(context, month),
@@ -113,7 +114,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -126,7 +127,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -136,19 +137,19 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Колесо (Клиенты)',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -156,20 +157,20 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                     GestureDetector(
                       onTap: _showMonthPicker,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: _gold.withOpacity(0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.calendar_today, color: _gold, size: 16),
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Text(
                               _formatMonth(_selectedMonth),
-                              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13.sp),
                             ),
                           ],
                         ),
@@ -181,10 +182,10 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
 
               // TabBar
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+                margin: EdgeInsets.symmetric(horizontal: 16.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
                 child: TabBar(
@@ -193,8 +194,8 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                   indicatorWeight: 3,
                   labelColor: _gold,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
+                  unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
                   indicatorSize: TabBarIndicatorSize.tab,
                   dividerHeight: 0,
                   tabs: [
@@ -203,19 +204,19 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('Ожидает'),
+                          Text('Ожидает'),
                           if (pendingCount > 0) ...[
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.orange,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(10.r),
                               ),
                               child: Text(
                                 '$pendingCount',
-                                style: const TextStyle(
-                                  fontSize: 11,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -229,7 +230,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // Body
               Expanded(
@@ -266,10 +267,10 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
               ),
               child: Icon(Icons.inbox_outlined, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Нет призов за этот период',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
             ),
           ],
         ),
@@ -281,7 +282,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: prizes.length,
         itemBuilder: (context, index) {
           final prize = prizes[index];
@@ -295,14 +296,14 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -319,7 +320,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                         prize.prizeColor.withOpacity(0.7),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     prize.prizeIcon,
@@ -327,7 +328,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +336,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                       Text(
                         prize.prize,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white.withOpacity(0.9),
                         ),
@@ -343,7 +344,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                       Text(
                         prize.clientName,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
@@ -354,9 +355,9 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
               ],
             ),
 
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Divider(color: Colors.white.withOpacity(0.1)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Детали
             _buildDetailRow(
@@ -364,14 +365,14 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
               'Телефон',
               _formatPhone(prize.clientPhone),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             _buildDetailRow(
               Icons.calendar_today_outlined,
               'Дата выигрыша',
               dateFormat.format(prize.spinDate),
             ),
             if (!prize.isPending && prize.issuedAt != null) ...[
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               _buildDetailRow(
                 Icons.check_circle_outline,
                 'Выдано',
@@ -388,12 +389,12 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     final isPending = prize.isPending;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: isPending
             ? Colors.orange.withOpacity(0.15)
             : Colors.green.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
           color: isPending ? Colors.orange : Colors.green,
         ),
@@ -401,7 +402,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
       child: Text(
         isPending ? 'Ожидает' : 'Выдано',
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 12.sp,
           fontWeight: FontWeight.w600,
           color: isPending ? Colors.orange : Colors.green,
         ),
@@ -413,11 +414,11 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     return Row(
       children: [
         Icon(icon, size: 18, color: Colors.white.withOpacity(0.3)),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(
           '$label: ',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 13.sp,
             color: Colors.white.withOpacity(0.4),
           ),
         ),
@@ -425,7 +426,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               fontWeight: FontWeight.w500,
               color: Colors.white.withOpacity(0.8),
             ),

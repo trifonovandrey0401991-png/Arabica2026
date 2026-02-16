@@ -16,6 +16,7 @@ import '../../features/data_cleanup/pages/data_cleanup_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
 import '../../features/execution_chain/pages/execution_chain_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -24,16 +25,16 @@ class DataManagementPage extends StatelessWidget {
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - как в главном меню
   // ═══════════════════════════════════════════════════════════════
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -47,14 +48,14 @@ class DataManagementPage extends StatelessWidget {
               _buildAppBar(context),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
                   children: [
                     _buildRow(
                       icon: Icons.storefront_outlined,
                       title: 'Магазины',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ShopsManagementPage()),
+                        MaterialPageRoute(builder: (_) => ShopsManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -62,7 +63,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Сотрудники',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const EmployeesPage()),
+                        MaterialPageRoute(builder: (_) => EmployeesPage()),
                       ),
                     ),
                     _buildRow(
@@ -70,7 +71,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'График работы',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const WorkSchedulePage()),
+                        MaterialPageRoute(builder: (_) => WorkSchedulePage()),
                       ),
                     ),
                     _buildRow(
@@ -78,7 +79,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Вопросы пересменки',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ShiftQuestionsManagementPage()),
+                        MaterialPageRoute(builder: (_) => ShiftQuestionsManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -86,7 +87,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Вопросы пересчёта',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const RecountManagementTabsPage()),
+                        MaterialPageRoute(builder: (_) => RecountManagementTabsPage()),
                       ),
                     ),
                     _buildRow(
@@ -94,7 +95,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Вопросы тестирования',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const TestQuestionsManagementPage()),
+                        MaterialPageRoute(builder: (_) => TestQuestionsManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -102,7 +103,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Вопросы (Сдать смену)',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ShiftHandoverQuestionsManagementPage()),
+                        MaterialPageRoute(builder: (_) => ShiftHandoverQuestionsManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -110,7 +111,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Счётчик кофемашин',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const CoffeeMachineQuestionsManagementPage()),
+                        MaterialPageRoute(builder: (_) => CoffeeMachineQuestionsManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -118,7 +119,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Статьи обучения',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const TrainingArticlesManagementPage()),
+                        MaterialPageRoute(builder: (_) => TrainingArticlesManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -126,7 +127,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Клиенты',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ClientsManagementPage()),
+                        MaterialPageRoute(builder: (_) => ClientsManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -134,7 +135,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Поставщики',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const SuppliersManagementPage()),
+                        MaterialPageRoute(builder: (_) => SuppliersManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -142,7 +143,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Установка баллов',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const PointsSettingsPage()),
+                        MaterialPageRoute(builder: (_) => PointsSettingsPage()),
                       ),
                     ),
                     _buildRow(
@@ -150,7 +151,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Установить задачи',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const TaskManagementPage(createdBy: 'admin')),
+                        MaterialPageRoute(builder: (_) => TaskManagementPage(createdBy: 'admin')),
                       ),
                     ),
                     _buildRow(
@@ -158,7 +159,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Премия / Штрафы',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const BonusPenaltyManagementPage()),
+                        MaterialPageRoute(builder: (_) => BonusPenaltyManagementPage()),
                       ),
                     ),
                     _buildRow(
@@ -166,7 +167,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Цепочка Выполнений',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ExecutionChainPage()),
+                        MaterialPageRoute(builder: (_) => ExecutionChainPage()),
                       ),
                     ),
                     _buildRow(
@@ -174,7 +175,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Обучение ИИ',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const AITrainingPage()),
+                        MaterialPageRoute(builder: (_) => AITrainingPage()),
                       ),
                     ),
                     _buildRow(
@@ -182,7 +183,7 @@ class DataManagementPage extends StatelessWidget {
                       title: 'Очистка историй',
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const DataCleanupPage()),
+                        MaterialPageRoute(builder: (_) => DataCleanupPage()),
                       ),
                     ),
                   ],
@@ -197,7 +198,7 @@ class DataManagementPage extends StatelessWidget {
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 24.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -208,19 +209,19 @@ class DataManagementPage extends StatelessWidget {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Управление',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -233,19 +234,19 @@ class DataManagementPage extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12.h),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           splashColor: Colors.white.withOpacity(0.1),
           highlightColor: Colors.white.withOpacity(0.05),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.15)),
             ),
             child: Row(
@@ -255,7 +256,7 @@ class DataManagementPage extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     color: Colors.white.withOpacity(0.1),
                   ),
                   child: Icon(
@@ -264,7 +265,7 @@ class DataManagementPage extends StatelessWidget {
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
 
                 // Название
                 Expanded(
@@ -272,7 +273,7 @@ class DataManagementPage extends StatelessWidget {
                     title,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w400,
                     ),
                   ),

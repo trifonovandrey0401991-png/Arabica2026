@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница просмотра отчета сдачи смены
 class ShiftHandoverReportViewPage extends StatefulWidget {
@@ -22,10 +23,10 @@ class ShiftHandoverReportViewPage extends StatefulWidget {
 }
 
 class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late ShiftHandoverReport _currentReport;
 
@@ -91,47 +92,47 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
             return Dialog(
               backgroundColor: _emeraldDark,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(24.w),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       'Оценка сдачи смены',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text(
                       'Выберите оценку от 1 до 10:',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: Colors.white.withOpacity(0.6),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     // Отображение выбранной оценки
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                       decoration: BoxDecoration(
                         color: _getRatingColor(selectedRating).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Text(
                         '$selectedRating',
                         style: TextStyle(
-                          fontSize: 48,
+                          fontSize: 48.sp,
                           fontWeight: FontWeight.bold,
                           color: _getRatingColor(selectedRating),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     // Кнопки выбора оценки
                     Wrap(
                       spacing: 8,
@@ -153,7 +154,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               color: isSelected
                                   ? _getRatingColor(rating)
                                   : Colors.white.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                               border: isSelected
                                   ? Border.all(color: _gold, width: 2)
                                   : Border.all(color: Colors.white.withOpacity(0.1)),
@@ -162,7 +163,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               child: Text(
                                 '$rating',
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
                                 ),
@@ -172,7 +173,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                         );
                       }),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -183,17 +184,17 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                             style: TextStyle(color: Colors.white.withOpacity(0.6)),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         ElevatedButton(
                           onPressed: () => Navigator.of(context).pop(selectedRating),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _gold,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
                           ),
-                          child: const Text('Подтвердить', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          child: Text('Подтвердить', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -242,15 +243,15 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
       cardSubtitle = 'ИИ обнаружил отсутствующие товары';
     } else {
       // Не должно произойти, но на всякий случай
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -259,14 +260,14 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: cardColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(cardIcon, color: cardColor, size: 24),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,7 +275,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                     Text(
                       cardTitle,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: cardColor,
                       ),
@@ -282,7 +283,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                     Text(
                       cardSubtitle,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.white.withOpacity(0.6),
                       ),
                     ),
@@ -294,41 +295,41 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
 
           // Показываем список недостач если есть
           if (aiShortages.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Divider(color: Colors.white.withOpacity(0.1)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Недостачи (${aiShortages.length}):',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             ...aiShortages.map((shortage) {
               final productName = shortage['productName'] ?? 'Неизвестный товар';
               final barcode = shortage['barcode'] ?? '';
               final stockQty = shortage['stockQuantity'] ?? 0;
               return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
+                margin: EdgeInsets.only(bottom: 8.h),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.cancel, color: Colors.red, size: 20),
-                    const SizedBox(width: 12),
+                    Icon(Icons.cancel, color: Colors.red, size: 20),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             productName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -336,7 +337,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                           Text(
                             'Код: $barcode • На остатках: $stockQty шт.',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: Colors.white.withOpacity(0.6),
                             ),
                           ),
@@ -357,7 +358,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -371,7 +372,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -381,22 +382,22 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back_ios_new,
                           color: Colors.white,
                           size: 18,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
+                    SizedBox(width: 16),
+                    Expanded(
                       child: Text(
                         'Отчет сдачи смены',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -407,15 +408,15 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 children: [
                   // Информация об отчете
                   Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
+                    margin: EdgeInsets.only(bottom: 12.h),
+                    padding: EdgeInsets.all(16.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: Column(
@@ -423,13 +424,13 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                       children: [
                         Text(
                           'Магазин: ${_currentReport.shopAddress}',
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           'Сотрудник: ${_currentReport.employeeName}',
                           style: TextStyle(color: Colors.white.withOpacity(0.6)),
@@ -441,43 +442,43 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                         ),
                         // Показываем информацию о подтверждении
                         if (_currentReport.isConfirmed && _currentReport.confirmedAt != null) ...[
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Divider(color: Colors.white.withOpacity(0.1)),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                              const SizedBox(width: 8),
+                              Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              SizedBox(width: 8),
                               Text(
                                 'Подтверждено: ${_currentReport.confirmedAt!.day.toString().padLeft(2, '0')}.${_currentReport.confirmedAt!.month.toString().padLeft(2, '0')}.${_currentReport.confirmedAt!.year} '
                                 '${_currentReport.confirmedAt!.hour.toString().padLeft(2, '0')}:${_currentReport.confirmedAt!.minute.toString().padLeft(2, '0')}',
-                                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
                           if (_currentReport.rating != null) ...[
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Row(
                               children: [
                                 Text(
                                   'Оценка: ',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                     color: Colors.white.withOpacity(0.6),
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
                                   decoration: BoxDecoration(
                                     color: _getRatingColor(_currentReport.rating!),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(
                                     '${_currentReport.rating}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                      fontSize: 16.sp,
                                     ),
                                   ),
                                 ),
@@ -485,11 +486,11 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                             ),
                           ],
                           if (_currentReport.confirmedByAdmin != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               'Проверил: ${_currentReport.confirmedByAdmin}',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: Colors.white.withOpacity(0.4),
                               ),
                             ),
@@ -503,22 +504,22 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                   if (_currentReport.aiVerificationPassed != null ||
                       _currentReport.aiVerificationSkipped == true ||
                       (_currentReport.aiShortages != null && _currentReport.aiShortages!.isNotEmpty)) ...[
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _buildAiVerificationCard(),
                   ],
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // Ответы на вопросы
                   ..._currentReport.answers.asMap().entries.map((entry) {
                     final index = entry.key;
                     final answer = entry.value;
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
+                      margin: EdgeInsets.only(bottom: 12.h),
+                      padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: Column(
@@ -526,13 +527,13 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                         children: [
                           Text(
                             'Вопрос ${index + 1}: ${answer.question}',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           if (answer.textAnswer != null)
                             Text(
                               'Ответ: ${answer.textAnswer}',
@@ -544,7 +545,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               style: TextStyle(color: Colors.white.withOpacity(0.6)),
                             ),
                           if (answer.photoPath != null || answer.photoUrl != null) ...[
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             // Если есть эталонное фото, показываем две фото рядом
                             Builder(
                               builder: (context) {
@@ -558,20 +559,20 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                             Text(
                                               'Эталон',
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 12.sp,
                                                 fontWeight: FontWeight.bold,
                                                 color: Colors.white.withOpacity(0.6),
                                               ),
                                             ),
-                                            const SizedBox(height: 4),
+                                            SizedBox(height: 4),
                                             Container(
                                               height: 200,
                                               decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius: BorderRadius.circular(12.r),
                                                 border: Border.all(color: Colors.white.withOpacity(0.15)),
                                               ),
                                               child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius: BorderRadius.circular(12.r),
                                                 child: AppCachedImage(
                                                   imageUrl: answer.referencePhotoUrl!,
                                                   fit: BoxFit.cover,
@@ -581,12 +582,12 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                                         mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
                                                           Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
-                                                          const SizedBox(height: 8),
+                                                          SizedBox(height: 8),
                                                           Text(
                                                             'Ошибка загрузки\nэталонного фото',
                                                             textAlign: TextAlign.center,
                                                             style: TextStyle(
-                                                              fontSize: 12,
+                                                              fontSize: 12.sp,
                                                               color: Colors.white.withOpacity(0.4),
                                                             ),
                                                           ),
@@ -600,7 +601,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: 8),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,20 +609,20 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                             Text(
                                               'Сделано сотрудником',
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 12.sp,
                                                 fontWeight: FontWeight.bold,
                                                 color: Colors.white.withOpacity(0.6),
                                               ),
                                             ),
-                                            const SizedBox(height: 4),
+                                            SizedBox(height: 4),
                                             Container(
                                               height: 200,
                                               decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius: BorderRadius.circular(12.r),
                                                 border: Border.all(color: Colors.white.withOpacity(0.15)),
                                               ),
                                               child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius: BorderRadius.circular(12.r),
                                                 child: answer.photoPath != null
                                                     ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
                                                         ? AppCachedImage(
@@ -647,11 +648,11 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                                                   mainAxisAlignment: MainAxisAlignment.center,
                                                                   children: [
                                                                     Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
-                                                                    const SizedBox(height: 8),
+                                                                    SizedBox(height: 8),
                                                                     Text(
                                                                       'Ошибка загрузки фото',
                                                                       style: TextStyle(
-                                                                        fontSize: 12,
+                                                                        fontSize: 12.sp,
                                                                         color: Colors.white.withOpacity(0.4),
                                                                       ),
                                                                     ),
@@ -671,7 +672,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                     ],
                                   );
                                 } else {
-                                  return const SizedBox.shrink();
+                                  return SizedBox.shrink();
                                 }
                               },
                             ),
@@ -680,11 +681,11 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               Container(
                                 height: 200,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   border: Border.all(color: Colors.white.withOpacity(0.15)),
                                 ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   child: answer.photoPath != null
                                       ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
                                           ? AppCachedImage(
@@ -710,11 +711,11 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                                     mainAxisAlignment: MainAxisAlignment.center,
                                                     children: [
                                                       Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
-                                                      const SizedBox(height: 8),
+                                                      SizedBox(height: 8),
                                                       Text(
                                                         'Ошибка загрузки фото',
                                                         style: TextStyle(
-                                                          fontSize: 12,
+                                                          fontSize: 12.sp,
                                                           color: Colors.white.withOpacity(0.4),
                                                         ),
                                                       ),
@@ -738,7 +739,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
             ),
             // Кнопка подтверждения внизу (не показываем для просроченных и read-only)
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: _night.withOpacity(0.8),
                 border: Border(
@@ -748,16 +749,16 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
               child: SafeArea(
                 child: _currentReport.isExpired
                     ? Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.red.withOpacity(0.3)),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Row(
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.cancel, color: Colors.red),
@@ -766,28 +767,28 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                   'Отчет просрочен',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
                             if (_currentReport.expiredAt != null) ...[
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Text(
                                 'Просрочен: ${_currentReport.expiredAt!.day}.${_currentReport.expiredAt!.month}.${_currentReport.expiredAt!.year}',
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.6),
-                                  fontSize: 14,
+                                  fontSize: 14.sp,
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               'Подтверждение невозможно',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.4),
-                                fontSize: 12,
+                                fontSize: 12.sp,
                               ),
                             ),
                           ],
@@ -795,16 +796,16 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                       )
                     : widget.isReadOnly
                     ? Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
                           color: Colors.orange.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.orange.withOpacity(0.3)),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Row(
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.access_time, color: Colors.orange),
@@ -813,26 +814,26 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                   'Отчет не подтвержден вовремя',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Text(
                               'Ожидает более 5 часов',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.6),
-                                fontSize: 14,
+                                fontSize: 14.sp,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               'Только для просмотра',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.4),
-                                fontSize: 12,
+                                fontSize: 12.sp,
                               ),
                             ),
                           ],
@@ -840,15 +841,15 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                       )
                     : _currentReport.isConfirmed
                     ? Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                         decoration: BoxDecoration(
                           color: Colors.green.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.green.withOpacity(0.3)),
                         ),
                         child: Column(
                           children: [
-                            const Row(
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.check_circle, color: Colors.green),
@@ -857,14 +858,14 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                   'Отчет подтвержден',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
                             if (_currentReport.rating != null) ...[
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -872,23 +873,23 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                     'Оценка: ',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.6),
-                                      fontSize: 14,
+                                      fontSize: 14.sp,
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 4.h,
                                     ),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12.r),
                                     ),
                                     child: Text(
                                       '${_currentReport.rating}',
                                       style: TextStyle(
                                         color: _getRatingColor(_currentReport.rating!),
-                                        fontSize: 18,
+                                        fontSize: 18.sp,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -897,12 +898,12 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               ),
                             ],
                             if (_currentReport.confirmedByAdmin != null) ...[
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 'Проверил: ${_currentReport.confirmedByAdmin}',
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.4),
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                             ],
@@ -913,17 +914,17 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _confirmReport,
-                          icon: const Icon(Icons.check_circle, size: 24),
-                          label: const Text(
+                          icon: Icon(Icons.check_circle, size: 24),
+                          label: Text(
                             'Подтвердить',
-                            style: TextStyle(fontSize: 18),
+                            style: TextStyle(fontSize: 18.sp),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _gold,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
                           ),
                         ),

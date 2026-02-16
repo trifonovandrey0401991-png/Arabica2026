@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app/pages/main_menu_page.dart';
 import 'features/clients/pages/registration_page.dart';
@@ -27,6 +29,10 @@ bool _shouldShowNotificationDialog = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Увеличиваем лимит TCP соединений к одному хосту (по умолчанию 6)
+  // 6 заняты семафором API + нужны слоты для Image.network и прочего
+  HttpOverrides.global = _AppHttpOverrides();
   
   // Инициализация Firebase (только для мобильных платформ)
   try {
@@ -106,33 +112,40 @@ class ArabicaApp extends StatelessWidget {
       900: Color(0xFF004D40),
     });
 
-    return CartProviderScope(
-      child: OrderProviderScope(
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'Arabica',
-          theme: ThemeData(
-            primarySwatch: primaryGreen,
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF004D40),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              centerTitle: true,
-            ),
-            scaffoldBackgroundColor: const Color(0xFF004D40), // Темно-бирюзовый фон
-          ),
-          routes: {
-            '/home': (context) => Builder(
-                  builder: (context) {
-                    NotificationService.setGlobalContext(context);
-                    FirebaseService.setGlobalContext(context);
-                    return const MainMenuPage();
-                  },
+    return ScreenUtilInit(
+      designSize: const Size(390, 844),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return CartProviderScope(
+          child: OrderProviderScope(
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: 'Arabica',
+              theme: ThemeData(
+                primarySwatch: primaryGreen,
+                appBarTheme: const AppBarTheme(
+                  backgroundColor: Color(0xFF004D40),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  centerTitle: true,
                 ),
-          },
-          home: const _CheckRegistrationPage(),
-        ),
-      ),
+                scaffoldBackgroundColor: const Color(0xFF004D40), // Темно-бирюзовый фон
+              ),
+              routes: {
+                '/home': (context) => Builder(
+                      builder: (context) {
+                        NotificationService.setGlobalContext(context);
+                        FirebaseService.setGlobalContext(context);
+                        return const MainMenuPage();
+                      },
+                    ),
+              },
+              home: const _CheckRegistrationPage(),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -422,5 +435,15 @@ class _SplashScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Увеличенный лимит TCP соединений к одному хосту
+class _AppHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    final client = super.createHttpClient(context);
+    client.maxConnectionsPerHost = 12;
+    return client;
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'recipe_form_page.dart';
 import 'recipe_list_edit_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class RecipeEditPage extends StatelessWidget {
   const RecipeEditPage({super.key});
@@ -9,12 +10,12 @@ class RecipeEditPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Редактировать рецепты'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Редактировать рецепты'),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -23,7 +24,7 @@ class RecipeEditPage extends StatelessWidget {
         ),
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(24.0.w),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -35,14 +36,14 @@ class RecipeEditPage extends StatelessWidget {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const RecipeFormPage(),
+                          builder: (context) => RecipeFormPage(),
                         ),
                       );
                       if (result != null) {
                         // Рецепт был создан, можно показать сообщение
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Text('Новый рецепт создан'),
                               backgroundColor: Colors.green,
                               duration: Duration(seconds: 2),
@@ -52,30 +53,30 @@ class RecipeEditPage extends StatelessWidget {
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(24.w),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF004D40).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: Color(0xFF004D40).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.add_circle_outline,
                               size: 48,
                               color: Color(0xFF004D40),
                             ),
                           ),
-                          const SizedBox(width: 24),
-                          const Expanded(
+                          SizedBox(width: 24),
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Добавить новый рецепт',
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 20.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -83,14 +84,14 @@ class RecipeEditPage extends StatelessWidget {
                                 Text(
                                   'Создать новый рецепт напитка',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                     color: Colors.grey,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.arrow_forward_ios,
                             color: Colors.grey,
                           ),
@@ -99,7 +100,7 @@ class RecipeEditPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 // Кнопка "Редактировать рецепты"
                 Card(
                   elevation: 4,
@@ -108,35 +109,35 @@ class RecipeEditPage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const RecipeListEditPage(),
+                          builder: (context) => RecipeListEditPage(),
                         ),
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(24.w),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF004D40).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: Color(0xFF004D40).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.edit,
                               size: 48,
                               color: Color(0xFF004D40),
                             ),
                           ),
-                          const SizedBox(width: 24),
-                          const Expanded(
+                          SizedBox(width: 24),
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Редактировать рецепты',
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 20.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -144,14 +145,14 @@ class RecipeEditPage extends StatelessWidget {
                                 Text(
                                   'Просмотр и редактирование существующих рецептов',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                     color: Colors.grey,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.arrow_forward_ios,
                             color: Colors.grey,
                           ),

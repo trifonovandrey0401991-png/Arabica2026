@@ -461,7 +461,7 @@ async function setupCigaretteVisionAPI(app) {
   // ВАЖНО: Сохраняет ВСЕ фото для товаров с isAiActive=true (для обучения)
   app.post('/api/cigarette-vision/count-with-training', async (req, res) => {
     try {
-      const { imageBase64, productId, productName, shopAddress, isAiActive, employeeAnswer } = req.body;
+      const { imageBase64, productId, productName, shopAddress, isAiActive, employeeAnswer, selectedRegion } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Изображение обязательно' });
@@ -500,6 +500,7 @@ async function setupCigaretteVisionAPI(app) {
               productName: productName || '',
               shopAddress: shopAddress || '',
               employeeAnswer: employeeAnswer || null,
+              selectedRegion: selectedRegion || null,
             });
             if (saveResult.success) {
               console.log(`[Cigarette Vision API] Counting sample сохранён для ${productName || productId}`);

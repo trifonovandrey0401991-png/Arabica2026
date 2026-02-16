@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
 import 'review_detail_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка отзывов клиента (из "Мои диалоги")
 class ClientReviewsListPage extends StatefulWidget {
@@ -67,11 +68,11 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Мои отзывы'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Мои отзывы'),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadReviews,
             tooltip: 'Обновить',
           ),
@@ -79,7 +80,7 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -87,16 +88,16 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
           ),
         ),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : _reviews.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'У вас пока нет отзывов',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
+                      style: TextStyle(color: Colors.white, fontSize: 18.sp),
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemCount: _reviews.length,
                     itemBuilder: (context, index) {
                       final review = _reviews[index];
@@ -106,7 +107,7 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
                       final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: EdgeInsets.only(bottom: 12.h),
                         child: ListTile(
                           leading: Stack(
                             children: [
@@ -128,23 +129,23 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
                               // Бейдж непрочитанных
                               if (unreadCount > 0)
                                 Positioned(
-                                  right: 0,
-                                  top: 0,
+                                  right: 0.w,
+                                  top: 0.h,
                                   child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
+                                    padding: EdgeInsets.all(4.w),
+                                    decoration: BoxDecoration(
                                       color: Colors.red,
                                       shape: BoxShape.circle,
                                     ),
-                                    constraints: const BoxConstraints(
+                                    constraints: BoxConstraints(
                                       minWidth: 16,
                                       minHeight: 16,
                                     ),
                                     child: Text(
                                       '$unreadCount',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 10,
+                                        fontSize: 10.sp,
                                         fontWeight: FontWeight.bold,
                                       ),
                                       textAlign: TextAlign.center,
@@ -178,19 +179,19 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 dateFormat.format(
-                                  (lastMessage?.createdAt ?? review.createdAt).add(const Duration(hours: 3)),
+                                  (lastMessage?.createdAt ?? review.createdAt).add(Duration(hours: 3)),
                                 ),
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                             ],
                           ),
-                          trailing: const Icon(Icons.chevron_right),
+                          trailing: Icon(Icons.chevron_right),
                           onTap: () async {
                             final result = await Navigator.push(
                               context,

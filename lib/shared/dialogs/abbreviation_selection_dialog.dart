@@ -3,6 +3,7 @@ import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/shops/models/shop_model.dart';
 import '../../features/shops/services/shop_service.dart';
 import '../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AbbreviationSelectionDialog extends StatefulWidget {
   final String employeeId;
@@ -151,15 +152,15 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
           children: [
             Text(
               'Дата: ${_formatDate(widget.date)}',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (_isLoading)
-              const Center(child: CircularProgressIndicator())
+              Center(child: CircularProgressIndicator())
             else if (_abbreviations.isEmpty)
-              const Center(
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(16.0.w),
                   child: Text(
                     'Аббревиатуры не найдены. Убедитесь, что они заполнены в настройках магазинов.',
                     textAlign: TextAlign.center,
@@ -195,7 +196,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
+          child: Text('Отмена'),
         ),
         if (widget.existingEntry != null)
           TextButton(
@@ -205,11 +206,11 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
                 'entry': widget.existingEntry,
               });
             },
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+            child: Text('Удалить', style: TextStyle(color: Colors.red)),
           ),
         ElevatedButton(
           onPressed: _selectedAbbreviation == null ? null : _save,
-          child: const Text('Сохранить'),
+          child: Text('Сохранить'),
         ),
       ],
     );
@@ -233,7 +234,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
     if (widget.employeeId.isEmpty) {
       Logger.error('Ошибка: employeeId пустой');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Ошибка: не указан сотрудник'),
           backgroundColor: Colors.red,
         ),
@@ -274,7 +275,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
     if (entry.employeeId.isEmpty) {
       Logger.error('КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой в созданной записи!');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Ошибка: не удалось создать запись'),
           backgroundColor: Colors.red,
         ),

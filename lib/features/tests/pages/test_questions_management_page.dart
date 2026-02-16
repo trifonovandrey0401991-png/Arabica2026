@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/test_model.dart';
 import '../services/test_question_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления вопросами тестирования
 class TestQuestionsManagementPage extends StatefulWidget {
@@ -20,10 +21,10 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   int _testDurationMinutes = 7;
 
   // Единая палитра приложения (как в test_page)
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -101,10 +102,10 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Время теста: $result мин.'),
-              backgroundColor: const Color(0xFF2E7D32),
+              backgroundColor: Color(0xFF2E7D32),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -112,11 +113,11 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ошибка сохранения настроек'),
+              content: Text('Ошибка сохранения настроек'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -129,7 +130,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const TestQuestionFormBottomSheet(),
+      builder: (context) => TestQuestionFormBottomSheet(),
     );
 
     if (result != null) {
@@ -137,11 +138,11 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Вопрос успешно добавлен'),
-            backgroundColor: const Color(0xFF2E7D32),
+            content: Text('Вопрос успешно добавлен'),
+            backgroundColor: Color(0xFF2E7D32),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -161,11 +162,11 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Вопрос успешно обновлен'),
-            backgroundColor: const Color(0xFF2E7D32),
+            content: Text('Вопрос успешно обновлен'),
+            backgroundColor: Color(0xFF2E7D32),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -185,11 +186,11 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Вопрос удален'),
-              backgroundColor: const Color(0xFF2E7D32),
+              content: Text('Вопрос удален'),
+              backgroundColor: Color(0xFF2E7D32),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -197,11 +198,11 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ошибка удаления вопроса'),
+              content: Text('Ошибка удаления вопроса'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -214,7 +215,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -241,7 +242,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
           style: TextStyle(color: _gold, fontWeight: FontWeight.w600),
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: _gold.withOpacity(0.4)),
         ),
         elevation: 0,
@@ -251,14 +252,14 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
 
   Widget _buildCustomAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0.h),
       child: Row(
         children: [
           // Кнопка назад
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -266,17 +267,17 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Заголовок
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Вопросы тестирования',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.w400,
                     letterSpacing: 0.5,
                   ),
@@ -285,7 +286,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                   '${_questions.length} вопросов',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ],
@@ -295,7 +296,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
           Container(
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: _gold.withOpacity(0.25)),
             ),
             child: IconButton(
@@ -304,12 +305,12 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
               tooltip: 'Настройки теста',
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Кнопка обновления
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -325,7 +326,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
 
   Widget _buildStatsBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 12.h),
       child: Row(
         children: [
           _buildStatChip(
@@ -333,13 +334,13 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
             '${_questions.length}',
             'вопросов',
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           _buildStatChip(
             Icons.timer_outlined,
             '$_testDurationMinutes',
             'минут',
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           _buildStatChip(
             Icons.help_outline_rounded,
             '20',
@@ -353,32 +354,32 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   Widget _buildStatChip(IconData icon, String value, String label) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: _gold.withOpacity(0.7), size: 16),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Flexible(
               child: Text(
                 label,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.4),
-                  fontSize: 11,
+                  fontSize: 11.sp,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -399,12 +400,12 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
               valueColor: AlwaysStoppedAnimation<Color>(_gold),
               strokeWidth: 3,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Загрузка вопросов...',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -416,16 +417,16 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
       children: [
         // Поиск
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 8.h),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: Colors.white, fontSize: 14.sp),
               decoration: InputDecoration(
                 hintText: 'Поиск по вопросам...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -443,7 +444,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               onChanged: (value) {
                 setState(() {
@@ -457,20 +458,20 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
         // Фильтр результат
         if (_searchQuery.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Text(
                     'Найдено: ${_filteredQuestions.length} из ${_questions.length}',
                     style: TextStyle(
                       color: _gold,
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -487,7 +488,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                   color: _gold,
                   backgroundColor: _emeraldDark,
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                    padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 100.h),
                     itemCount: _filteredQuestions.length,
                     itemBuilder: (context, index) {
                       final question = _filteredQuestions[index];
@@ -506,7 +507,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
               shape: BoxShape.circle,
@@ -518,22 +519,22 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
               color: Colors.white.withOpacity(0.3),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             _searchQuery.isNotEmpty ? 'Вопросы не найдены' : 'Нет вопросов',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             _searchQuery.isNotEmpty
                 ? 'Попробуйте изменить запрос'
                 : 'Нажмите "Добавить" чтобы создать первый вопрос',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.4),
             ),
             textAlign: TextAlign.center,
@@ -545,20 +546,20 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
 
   Widget _buildQuestionCard(TestQuestion question, int index) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: () => _showEditQuestionDialog(question),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -572,7 +573,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                       height: 34,
                       decoration: BoxDecoration(
                         color: _gold.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Center(
                         child: Text(
@@ -580,12 +581,12 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                           style: TextStyle(
                             color: _gold,
                             fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     // Текст вопроса
                     Expanded(
                       child: Column(
@@ -594,21 +595,21 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                           Text(
                             question.question,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w500,
                               color: Colors.white.withOpacity(0.9),
                               height: 1.4,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Row(
                             children: [
                               Icon(Icons.list_alt_rounded, size: 12, color: Colors.white.withOpacity(0.3)),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Text(
                                 '${question.options.length} вариантов ответа',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                   color: Colors.white.withOpacity(0.35),
                                 ),
                               ),
@@ -626,7 +627,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                           color: _gold,
                           onPressed: () => _showEditQuestionDialog(question),
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         _buildActionIconButton(
                           icon: Icons.delete_outline_rounded,
                           color: Colors.red[300]!,
@@ -636,22 +637,22 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 // Варианты ответов
                 ...question.options.asMap().entries.map((entry) {
                   final isCorrect = entry.value == question.correctAnswer;
                   return Padding(
-                    padding: const EdgeInsets.only(top: 5),
+                    padding: EdgeInsets.only(top: 5.h),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: isCorrect
-                            ? const Color(0xFF4CAF50).withOpacity(0.1)
+                            ? Color(0xFF4CAF50).withOpacity(0.1)
                             : Colors.white.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(
                           color: isCorrect
-                              ? const Color(0xFF4CAF50).withOpacity(0.3)
+                              ? Color(0xFF4CAF50).withOpacity(0.3)
                               : Colors.white.withOpacity(0.06),
                         ),
                       ),
@@ -663,39 +664,39 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                             height: 22,
                             decoration: BoxDecoration(
                               color: isCorrect
-                                  ? const Color(0xFF4CAF50).withOpacity(0.2)
+                                  ? Color(0xFF4CAF50).withOpacity(0.2)
                                   : Colors.white.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6.r),
                             ),
                             child: Center(
                               child: Text(
                                 String.fromCharCode(65 + entry.key),
                                 style: TextStyle(
                                   color: isCorrect
-                                      ? const Color(0xFF81C784)
+                                      ? Color(0xFF81C784)
                                       : Colors.white.withOpacity(0.4),
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           // Текст варианта
                           Expanded(
                             child: Text(
                               entry.value,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: isCorrect
-                                    ? const Color(0xFF81C784)
+                                    ? Color(0xFF81C784)
                                     : Colors.white.withOpacity(0.6),
                                 fontWeight: isCorrect ? FontWeight.w500 : FontWeight.normal,
                               ),
                             ),
                           ),
                           if (isCorrect)
-                            const Icon(
+                            Icon(
                               Icons.check_circle_rounded,
                               color: Color(0xFF4CAF50),
                               size: 16,
@@ -720,12 +721,12 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   }) {
     return InkWell(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(8.r),
       child: Container(
-        padding: const EdgeInsets.all(7),
+        padding: EdgeInsets.all(7.w),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
         ),
         child: Icon(icon, color: color, size: 16),
       ),
@@ -738,7 +739,7 @@ class _TestSettingsDialog extends StatefulWidget {
   final TextEditingController controller;
   final int currentMinutes;
 
-  const _TestSettingsDialog({
+  _TestSettingsDialog({
     required this.controller,
     required this.currentMinutes,
   });
@@ -748,9 +749,9 @@ class _TestSettingsDialog extends StatefulWidget {
 }
 
 class _TestSettingsDialogState extends State<_TestSettingsDialog> {
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _gold = Color(0xFFD4AF37);
-  static const _goldLight = Color(0xFFE8C860);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _gold = Color(0xFFD4AF37);
+  static final _goldLight = Color(0xFFE8C860);
 
   late int _selectedMinutes;
   final _focusNode = FocusNode();
@@ -771,15 +772,15 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: _emeraldDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(28.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Иконка
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.12),
                 shape: BoxShape.circle,
@@ -791,31 +792,31 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                 color: _gold,
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
+            SizedBox(height: 20),
+            Text(
               'Время тестирования',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Укажите сколько минут отводится\nна прохождение теста',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.white.withOpacity(0.5),
                 height: 1.4,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             // Поле ввода минут
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 border: Border.all(color: _gold.withOpacity(0.3)),
               ),
               child: Row(
@@ -850,10 +851,10 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                       ],
                       style: TextStyle(
                         color: _goldLight,
-                        fontSize: 32,
+                        fontSize: 32.sp,
                         fontWeight: FontWeight.w800,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -885,23 +886,23 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'минут',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white.withOpacity(0.4),
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             // Быстрые варианты
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [5, 7, 10, 15].map((m) {
                 final isSelected = _selectedMinutes == m;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
                   child: InkWell(
                     onTap: () {
                       setState(() {
@@ -909,14 +910,14 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                         widget.controller.text = '$m';
                       });
                     },
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? _gold.withOpacity(0.2)
                             : Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(
                           color: isSelected
                               ? _gold.withOpacity(0.5)
@@ -926,7 +927,7 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                       child: Text(
                         '$m',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
                           color: isSelected
                               ? _goldLight
@@ -938,7 +939,7 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 26),
+            SizedBox(height: 26),
             // Кнопки
             Row(
               children: [
@@ -948,15 +949,15 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white.withOpacity(0.7),
                       side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                     ),
-                    child: const Text('Отмена'),
+                    child: Text('Отмена'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
@@ -968,14 +969,14 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _gold.withOpacity(0.2),
                       foregroundColor: _gold,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                         side: BorderSide(color: _gold.withOpacity(0.4)),
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
+                    child: Text(
                       'Сохранить',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -994,22 +995,22 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
 class _ModernDeleteDialog extends StatelessWidget {
   final TestQuestion question;
 
-  const _ModernDeleteDialog({required this.question});
+  _ModernDeleteDialog({required this.question});
 
-  static const _emeraldDark = Color(0xFF0D2E2E);
+  static final _emeraldDark = Color(0xFF0D2E2E);
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: _emeraldDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.12),
                 shape: BoxShape.circle,
@@ -1021,28 +1022,28 @@ class _ModernDeleteDialog extends StatelessWidget {
                 size: 32,
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
+            SizedBox(height: 20),
+            Text(
               'Удалить вопрос?',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               question.question,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
+                fontSize: 14.sp,
                 height: 1.4,
               ),
               textAlign: TextAlign.center,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
@@ -1051,29 +1052,29 @@ class _ModernDeleteDialog extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white.withOpacity(0.7),
                       side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
-                    child: const Text('Отмена'),
+                    child: Text('Отмена'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.withOpacity(0.2),
                       foregroundColor: Colors.red[300],
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         side: BorderSide(color: Colors.red.withOpacity(0.3)),
                       ),
                       elevation: 0,
                     ),
-                    child: const Text('Удалить'),
+                    child: Text('Удалить'),
                   ),
                 ),
               ],
@@ -1107,9 +1108,9 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
   int? _selectedCorrectAnswer;
   bool _isSaving = false;
 
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -1142,11 +1143,11 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
     if (_selectedCorrectAnswer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Выберите правильный ответ'),
+          content: Text('Выберите правильный ответ'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          margin: EdgeInsets.all(16.w),
         ),
       );
       return;
@@ -1163,11 +1164,11 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
       if (options.length < 2) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Заполните хотя бы 2 варианта ответа'),
+            content: Text('Заполните хотя бы 2 варианта ответа'),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
         setState(() => _isSaving = false);
@@ -1177,11 +1178,11 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
       if (_selectedCorrectAnswer! >= options.length) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Правильный ответ должен быть заполнен'),
+            content: Text('Правильный ответ должен быть заполнен'),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
         setState(() => _isSaving = false);
@@ -1211,11 +1212,11 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка сохранения вопроса'),
+            content: Text('Ошибка сохранения вопроса'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -1226,8 +1227,8 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -1248,30 +1249,30 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
           end: Alignment.bottomCenter,
           colors: [_emeraldDark, _night],
         ),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: Column(
         children: [
           // Ручка
           Container(
-            margin: const EdgeInsets.only(top: 12),
+            margin: EdgeInsets.only(top: 12.h),
             width: 40,
             height: 4,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(2.r),
             ),
           ),
           // Заголовок
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 0.h),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     border: Border.all(color: _gold.withOpacity(0.25)),
                   ),
                   child: Icon(
@@ -1280,15 +1281,15 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         isEditing ? 'Редактировать вопрос' : 'Новый вопрос',
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -1297,7 +1298,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                         isEditing ? 'Измените данные и сохраните' : 'Заполните все поля',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
-                          fontSize: 13,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ],
@@ -1313,18 +1314,18 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
           // Форма
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildSectionTitle('Текст вопроса', Icons.quiz_outlined),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(color: _gold.withOpacity(0.15)),
                       ),
                       child: TextFormField(
@@ -1333,11 +1334,11 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                           hintText: 'Введите текст вопроса...',
                           hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.all(16),
+                          contentPadding: EdgeInsets.all(16.w),
                         ),
                         maxLines: 3,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           height: 1.4,
                           color: Colors.white.withOpacity(0.9),
                         ),
@@ -1349,22 +1350,22 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                         },
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildSectionTitle('Варианты ответов', Icons.list_alt_rounded),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Нажмите на кружок, чтобы выбрать правильный ответ',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.35),
-                        fontSize: 12,
+                        fontSize: 12.sp,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     _buildOptionField(0, 'A'),
                     _buildOptionField(1, 'B'),
                     _buildOptionField(2, 'C'),
                     _buildOptionField(3, 'D'),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -1372,7 +1373,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
           ),
           // Кнопки
           Container(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
+            padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 12.h + MediaQuery.of(context).padding.bottom),
             decoration: BoxDecoration(
               color: _night,
               border: Border(
@@ -1387,15 +1388,15 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white.withOpacity(0.7),
                       side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                     ),
-                    child: const Text('Отмена'),
+                    child: Text('Отмена'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
@@ -1405,15 +1406,15 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                       foregroundColor: _gold,
                       disabledBackgroundColor: Colors.white.withOpacity(0.05),
                       disabledForegroundColor: Colors.white.withOpacity(0.3),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                         side: BorderSide(color: _gold.withOpacity(0.4)),
                       ),
                       elevation: 0,
                     ),
                     child: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
@@ -1423,7 +1424,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                           )
                         : Text(
                             isEditing ? 'Сохранить изменения' : 'Добавить вопрос',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                   ),
                 ),
@@ -1439,12 +1440,12 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
     return Row(
       children: [
         Icon(icon, size: 18, color: _gold),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(
           title,
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 15,
+            fontSize: 15.sp,
             color: _gold,
           ),
         ),
@@ -1457,16 +1458,16 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
     final hasText = _optionControllers[index].text.trim().isNotEmpty;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10.h),
       child: Container(
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF4CAF50).withOpacity(0.08)
+              ? Color(0xFF4CAF50).withOpacity(0.08)
               : Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF4CAF50).withOpacity(0.4)
+                ? Color(0xFF4CAF50).withOpacity(0.4)
                 : Colors.white.withOpacity(0.08),
             width: isSelected ? 1.5 : 1,
           ),
@@ -1479,11 +1480,11 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
               height: 56,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF4CAF50).withOpacity(0.2)
+                    ? Color(0xFF4CAF50).withOpacity(0.2)
                     : Colors.white.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  bottomLeft: Radius.circular(12),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12.r),
+                  bottomLeft: Radius.circular(12.r),
                 ),
               ),
               child: Center(
@@ -1491,10 +1492,10 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                   letter,
                   style: TextStyle(
                     color: isSelected
-                        ? const Color(0xFF81C784)
+                        ? Color(0xFF81C784)
                         : Colors.white.withOpacity(0.4),
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                    fontSize: 18.sp,
                   ),
                 ),
               ),
@@ -1505,14 +1506,14 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                 controller: _optionControllers[index],
                 decoration: InputDecoration(
                   hintText: index < 2 ? 'Вариант (обязательно)' : 'Вариант (опционально)',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 14),
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 14.sp),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14.w),
                 ),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: isSelected
-                      ? const Color(0xFF81C784)
+                      ? Color(0xFF81C784)
                       : Colors.white.withOpacity(0.8),
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
                 ),
@@ -1527,7 +1528,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
             ),
             // Кнопка выбора
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(right: 8.w),
               child: InkWell(
                 onTap: () {
                   if (_optionControllers[index].text.trim().isNotEmpty) {
@@ -1538,33 +1539,33 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                         content: Text('Сначала заполните вариант $letter'),
                         backgroundColor: Colors.orange,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        margin: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        margin: EdgeInsets.all(16.w),
                       ),
                     );
                   }
                 },
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 child: Container(
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFF4CAF50).withOpacity(0.2)
+                        ? Color(0xFF4CAF50).withOpacity(0.2)
                         : hasText
                             ? Colors.white.withOpacity(0.08)
                             : Colors.white.withOpacity(0.04),
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isSelected
-                          ? const Color(0xFF4CAF50).withOpacity(0.5)
+                          ? Color(0xFF4CAF50).withOpacity(0.5)
                           : Colors.white.withOpacity(0.1),
                     ),
                   ),
                   child: Icon(
                     isSelected ? Icons.check_rounded : Icons.circle_outlined,
                     color: isSelected
-                        ? const Color(0xFF4CAF50)
+                        ? Color(0xFF4CAF50)
                         : Colors.white.withOpacity(0.3),
                     size: 18,
                   ),

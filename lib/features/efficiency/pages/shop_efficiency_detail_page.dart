@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/efficiency_data_model.dart';
 import '../widgets/efficiency_common_widgets.dart';
 import '../utils/efficiency_utils.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница детальной информации об эффективности магазина
 class ShopEfficiencyDetailPage extends StatelessWidget {
@@ -23,18 +24,18 @@ class ShopEfficiencyDetailPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.text_snippet),
-              title: const Text('Копировать как текст'),
-              subtitle: const Text('Форматированный отчёт'),
+              leading: Icon(Icons.text_snippet),
+              title: Text('Копировать как текст'),
+              subtitle: Text('Форматированный отчёт'),
               onTap: () {
                 Navigator.pop(context);
                 _exportAsText(context);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.table_chart),
-              title: const Text('Копировать как CSV'),
-              subtitle: const Text('Для Excel/Google Sheets'),
+              leading: Icon(Icons.table_chart),
+              title: Text('Копировать как CSV'),
+              subtitle: Text('Для Excel/Google Sheets'),
               onTap: () {
                 Navigator.pop(context);
                 _exportAsCsv(context);
@@ -54,7 +55,7 @@ class ShopEfficiencyDetailPage extends StatelessWidget {
     );
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Отчёт скопирован в буфер обмена'),
         duration: Duration(seconds: 2),
       ),
@@ -69,7 +70,7 @@ class ShopEfficiencyDetailPage extends StatelessWidget {
     );
     Clipboard.setData(ClipboardData(text: csv));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('CSV скопирован в буфер обмена'),
         duration: Duration(seconds: 2),
       ),
@@ -84,14 +85,14 @@ class ShopEfficiencyDetailPage extends StatelessWidget {
         backgroundColor: EfficiencyUtils.primaryColor,
         actions: [
           IconButton(
-            icon: const Icon(Icons.ios_share),
+            icon: Icon(Icons.ios_share),
             tooltip: 'Экспорт',
             onPressed: () => _showExportMenu(context),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -99,9 +100,9 @@ class ShopEfficiencyDetailPage extends StatelessWidget {
               summary: summary,
               monthName: monthName,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             EfficiencyDetailCategoriesCard(summary: summary),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             EfficiencyDetailRecentRecordsCard(
               summary: summary,
               showEmployeeName: true, // Для магазина показываем имена сотрудников

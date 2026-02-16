@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring reviews points settings (Отзывы)
 class ReviewsPointsSettingsPage extends StatefulWidget {
@@ -19,7 +20,7 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
   double _negativePoints = -5;
 
   // Gradient colors for this page (amber theme)
-  static const _gradientColors = [Color(0xFFf7971e), Color(0xFFffd200)];
+  static final _gradientColors = [Color(0xFFf7971e), Color(0xFFffd200)];
 
   @override
   void initState() {
@@ -58,7 +59,7 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -67,7 +68,7 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -87,9 +88,9 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за отзывы'),
+        title: Text('Баллы за отзывы'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -107,7 +108,7 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -124,7 +125,7 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
                           accentColor: Colors.green,
                           icon: Icons.thumb_up_outlined,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Negative points slider
                         SettingsSliderWidget(
@@ -139,14 +140,14 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
                           accentColor: Colors.red,
                           icon: Icons.thumb_down_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         BinaryPreviewWidget(
                           positiveLabel: 'Положительный',
                           negativeLabel: 'Отрицательный',
@@ -155,7 +156,7 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
                           gradientColors: _gradientColors,
                           valueColumnTitle: 'Тип отзыва',
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -163,7 +164,7 @@ class _ReviewsPointsSettingsPageState extends State<ReviewsPointsSettingsPage> {
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

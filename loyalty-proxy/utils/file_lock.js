@@ -5,6 +5,7 @@
  * Использует in-memory блокировки с очередью ожидания.
  *
  * Создано: 2026-02-06
+ * Обновлено: 2026-02-12 — защита от deadlock (operation timeout + stale lock recovery)
  */
 
 /**
@@ -22,17 +23,26 @@ const stats = {
   currentLocks: 0,
   maxConcurrentLocks: 0,
   totalWaitTime: 0,
-  lockTimeouts: 0
+  lockTimeouts: 0,
+  operationTimeouts: 0,
+  staleLockRecoveries: 0
 };
 
 /**
  * Настройки по умолчанию
  */
 const DEFAULT_OPTIONS = {
-  timeout: 30000,      // 30 секунд максимум ожидания
-  retryDelay: 10,      // 10мс между проверками
-  debugMode: false     // Логирование для отладки
+  timeout: 30000,          // 30 секунд максимум ожидания блокировки
+  operationTimeout: 15000, // 15 секунд максимум на операцию внутри лока
+  retryDelay: 10,          // 10мс между проверками
+  debugMode: false         // Логирование для отладки
 };
+
+/**
+ * Максимальное время удержания лока (аварийный порог).
+ * Если лок держится дольше — считаем его "зависшим" и разрешаем перехват.
+ */
+const STALE_LOCK_THRESHOLD_MS = 60000; // 60 секунд
 
 /**
  * Нормализация пути файла для использования как ключа
@@ -62,6 +72,38 @@ function getLockEntry(filePath) {
 }
 
 /**
+ * Проверить и восстановить зависший лок
+ * @param {string} filePath
+ * @param {Object} entry
+ * @returns {boolean} true если лок был восстановлен (освобождён)
+ */
+function recoverStaleLock(filePath, entry) {
+  if (!entry.locked || !entry.acquiredAt) return false;
+
+  const holdTime = Date.now() - entry.acquiredAt;
+  if (holdTime < STALE_LOCK_THRESHOLD_MS) return false;
+
+  // Лок зависший — принудительно освобождаем
+  console.warn(`[FileLock] STALE LOCK RECOVERED: ${filePath} held for ${holdTime}ms. Force-releasing.`);
+  stats.staleLockRecoveries++;
+  stats.currentLocks = Math.max(0, stats.currentLocks - 1);
+
+  // Освобождаем: передаём следующему в очереди или снимаем
+  if (entry.queue.length > 0) {
+    const next = entry.queue.shift();
+    entry.acquiredAt = Date.now();
+    entry.holder = 'recovered-next-in-queue';
+    next();
+  } else {
+    entry.locked = false;
+    entry.holder = null;
+    entry.acquiredAt = null;
+  }
+
+  return true;
+}
+
+/**
  * Захват блокировки на файл
  * @param {string} filePath - путь к файлу
  * @param {Object} options - опции
@@ -72,21 +114,34 @@ async function acquireLock(filePath, options = {}) {
   const entry = getLockEntry(filePath);
   const startTime = Date.now();
 
-  // Если уже заблокирован - ждём в очереди
+  // Если уже заблокирован — сначала проверяем не зависший ли лок
+  if (entry.locked) {
+    recoverStaleLock(filePath, entry);
+  }
+
+  // Если всё ещё заблокирован — ждём в очереди
   if (entry.locked) {
     await new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        // Удаляем из очереди при таймауте
-        const idx = entry.queue.indexOf(resolve);
-        if (idx > -1) entry.queue.splice(idx, 1);
-        stats.lockTimeouts++;
-        reject(new Error(`Lock timeout for ${filePath} after ${opts.timeout}ms`));
-      }, opts.timeout);
-
-      entry.queue.push(() => {
+      function wrappedResolve() {
         clearTimeout(timeoutId);
         resolve();
-      });
+      }
+
+      const timeoutId = setTimeout(() => {
+        // Удаляем из очереди при таймауте
+        const idx = entry.queue.indexOf(wrappedResolve);
+        if (idx > -1) entry.queue.splice(idx, 1);
+        stats.lockTimeouts++;
+
+        // Последний шанс: проверяем stale lock при таймауте
+        if (recoverStaleLock(filePath, entry)) {
+          resolve();
+        } else {
+          reject(new Error(`Lock timeout for ${filePath} after ${opts.timeout}ms (queue: ${entry.queue.length})`));
+        }
+      }, opts.timeout);
+
+      entry.queue.push(wrappedResolve);
     });
   }
 
@@ -104,11 +159,16 @@ async function acquireLock(filePath, options = {}) {
   }
 
   if (opts.debugMode) {
-    console.log(`[FileLock] Acquired: ${filePath}`);
+    console.log(`[FileLock] Acquired: ${filePath} (waited ${Date.now() - startTime}ms)`);
   }
 
-  // Возвращаем функцию освобождения
-  return () => releaseLock(filePath, opts);
+  // Возвращаем функцию освобождения (с защитой от двойного release)
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    releaseLock(filePath, opts);
+  };
 }
 
 /**
@@ -123,7 +183,7 @@ function releaseLock(filePath, options = {}) {
 
   if (!entry) return;
 
-  stats.currentLocks--;
+  stats.currentLocks = Math.max(0, stats.currentLocks - 1);
 
   if (opts.debugMode) {
     const holdTime = Date.now() - (entry.acquiredAt || 0);
@@ -133,6 +193,7 @@ function releaseLock(filePath, options = {}) {
   // Если есть очередь - передаём следующему
   if (entry.queue.length > 0) {
     const next = entry.queue.shift();
+    entry.acquiredAt = Date.now();
     next();
   } else {
     // Очередь пуста - снимаем блокировку
@@ -149,15 +210,38 @@ function releaseLock(filePath, options = {}) {
 
 /**
  * Выполнение операции с блокировкой
+ *
+ * ВАЖНО: operationTimeout предотвращает deadlock.
+ * Если операция зависнет дольше чем operationTimeout —
+ * лок автоматически освободится, а операция получит ошибку.
+ *
  * @param {string} filePath - путь к файлу
  * @param {Function} operation - async функция для выполнения
  * @param {Object} options - опции
  * @returns {Promise<*>} - результат операции
  */
 async function withLock(filePath, operation, options = {}) {
-  const release = await acquireLock(filePath, options);
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  const release = await acquireLock(filePath, opts);
+
+  // Оборачиваем операцию в таймаут — защита от deadlock
+  let operationTimer;
   try {
-    return await operation();
+    const result = await Promise.race([
+      operation(),
+      new Promise((_, reject) => {
+        operationTimer = setTimeout(() => {
+          stats.operationTimeouts++;
+          console.error(`[FileLock] OPERATION TIMEOUT: ${filePath} exceeded ${opts.operationTimeout}ms. Force-releasing lock.`);
+          reject(new Error(`Operation timeout for ${filePath} after ${opts.operationTimeout}ms`));
+        }, opts.operationTimeout);
+      })
+    ]);
+    clearTimeout(operationTimer);
+    return result;
+  } catch (err) {
+    clearTimeout(operationTimer);
+    throw err;
   } finally {
     release();
   }
@@ -240,6 +324,8 @@ function resetStats() {
   stats.maxConcurrentLocks = 0;
   stats.totalWaitTime = 0;
   stats.lockTimeouts = 0;
+  stats.operationTimeouts = 0;
+  stats.staleLockRecoveries = 0;
 }
 
 module.exports = {

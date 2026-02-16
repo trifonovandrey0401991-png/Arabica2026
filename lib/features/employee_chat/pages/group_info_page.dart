@@ -5,6 +5,7 @@ import '../models/employee_chat_model.dart';
 import '../services/employee_chat_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../../employees/services/employee_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница информации о группе — dark emerald стиль
 class GroupInfoPage extends StatefulWidget {
@@ -23,9 +24,9 @@ class GroupInfoPage extends StatefulWidget {
 
 class _GroupInfoPageState extends State<GroupInfoPage> {
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   late EmployeeChat _chat;
   final _nameController = TextEditingController();
@@ -68,10 +69,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Название обновлено'),
+            content: Text('Название обновлено'),
             backgroundColor: _emerald,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -112,10 +113,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         setState(() => _chat = updated);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Фото обновлено'),
+            content: Text('Фото обновлено'),
             backgroundColor: _emerald,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -160,7 +161,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             content: Text('Добавлено участников: ${result.length}'),
             backgroundColor: _emerald,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -180,7 +181,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _night.withOpacity(0.98),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Удалить участника?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
         content: Text(
           'Удалить ${_chat.getParticipantName(phone)} из группы?',
@@ -194,7 +195,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -217,10 +218,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Участник удалён'),
+            content: Text('Участник удалён'),
             backgroundColor: _emerald,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -240,7 +241,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _night.withOpacity(0.98),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Выйти из группы?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
         content: Text(
           'Вы уверены, что хотите покинуть эту группу?',
@@ -254,7 +255,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Выйти'),
+            child: Text('Выйти'),
           ),
         ],
       ),
@@ -288,7 +289,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _night.withOpacity(0.98),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Удалить группу?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
         content: Text(
           'Группа будет удалена для всех участников. Это действие нельзя отменить.',
@@ -302,7 +303,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -336,7 +337,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -349,7 +350,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             children: [
               // AppBar
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
                 child: Row(
                   children: [
                     IconButton(
@@ -363,21 +364,21 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           'О группе',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.95),
-                            fontSize: 20,
+                            fontSize: 20.sp,
                             fontWeight: FontWeight.w400,
                             letterSpacing: 1,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    SizedBox(width: 48),
                   ],
                 ),
               ),
               // Body
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    ? Center(child: CircularProgressIndicator(color: Colors.white))
                     : ListView(
                         children: [
                           _buildHeader(),
@@ -397,7 +398,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         children: [
           // Аватар
@@ -425,22 +426,22 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                 ),
                 if (_isCreator)
                   Positioned(
-                    bottom: 0,
-                    right: 0,
+                    bottom: 0.h,
+                    right: 0.w,
                     child: Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: EdgeInsets.all(6.w),
                       decoration: BoxDecoration(
                         color: _emerald,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
-                      child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                      child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
                     ),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Название
           if (_isEditing)
             Row(
@@ -449,7 +450,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: Colors.white.withOpacity(0.12)),
                     ),
                     child: TextField(
@@ -461,7 +462,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                         hintText: 'Название группы',
                         hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                       ),
                     ),
                   ),
@@ -486,7 +487,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                 Text(
                   _chat.name,
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 24.sp,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withOpacity(0.95),
                   ),
@@ -498,7 +499,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                   ),
               ],
             ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             '${_chat.participantsCount} участников',
             style: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -506,7 +507,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           if (_chat.creatorName != null)
             Text(
               'Создатель: ${_chat.creatorName}',
-              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
             ),
         ],
       ),
@@ -518,14 +519,14 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Участники (${_chat.participantsCount})',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white.withOpacity(0.9),
                 ),
@@ -534,19 +535,19 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                 GestureDetector(
                   onTap: _addMembers,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                     decoration: BoxDecoration(
                       color: _emerald.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: _emerald.withOpacity(0.5)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.person_add, size: 16, color: Colors.white.withOpacity(0.8)),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text('Добавить',
-                            style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.8))),
+                            style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.8))),
                       ],
                     ),
                   ),
@@ -582,7 +583,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             Text(name, style: TextStyle(color: Colors.white.withOpacity(0.9))),
             if (isMe)
               Text(' (Вы)',
-                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp)),
           ],
         ),
         subtitle: isCreator
@@ -590,7 +591,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             : null,
         trailing: _isCreator && !isCreator
             ? IconButton(
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                icon: Icon(Icons.remove_circle_outline, color: Colors.red),
                 onPressed: () => _removeMember(phone),
               )
             : null,
@@ -603,15 +604,15 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       children: [
         if (!_isCreator)
           ListTile(
-            leading: const Icon(Icons.exit_to_app, color: Colors.orange),
+            leading: Icon(Icons.exit_to_app, color: Colors.orange),
             title: Text('Выйти из группы',
                 style: TextStyle(color: Colors.white.withOpacity(0.9))),
             onTap: _leaveGroup,
           ),
         if (_isCreator)
           ListTile(
-            leading: const Icon(Icons.delete, color: Colors.red),
-            title: const Text('Удалить группу', style: TextStyle(color: Colors.red)),
+            leading: Icon(Icons.delete, color: Colors.red),
+            title: Text('Удалить группу', style: TextStyle(color: Colors.red)),
             onTap: _deleteGroup,
           ),
       ],
@@ -623,15 +624,15 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 class _AddMembersSheet extends StatefulWidget {
   final List<String> existingParticipants;
 
-  const _AddMembersSheet({required this.existingParticipants});
+  _AddMembersSheet({required this.existingParticipants});
 
   @override
   State<_AddMembersSheet> createState() => _AddMembersSheetState();
 }
 
 class _AddMembersSheetState extends State<_AddMembersSheet> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _night = Color(0xFF051515);
 
   final _searchController = TextEditingController();
   final List<String> _selected = [];
@@ -685,7 +686,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
       height: MediaQuery.of(context).size.height * 0.7,
       decoration: BoxDecoration(
         color: _night.withOpacity(0.98),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
       child: Column(
@@ -694,22 +695,22 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
           Container(
             width: 40,
             height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 12),
+            margin: EdgeInsets.symmetric(vertical: 12.h),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(2.r),
             ),
           ),
           // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Добавить участников',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white.withOpacity(0.9),
                   ),
@@ -717,16 +718,16 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                 GestureDetector(
                   onTap: _selected.isEmpty ? null : () => Navigator.pop(context, _selected),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                     decoration: BoxDecoration(
                       color: _selected.isEmpty ? Colors.grey[700] : _emerald,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Text(
                       'Добавить (${_selected.length})',
                       style: TextStyle(
                         color: Colors.white.withOpacity(_selected.isEmpty ? 0.4 : 0.9),
-                        fontSize: 13,
+                        fontSize: 13.sp,
                       ),
                     ),
                   ),
@@ -736,11 +737,11 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
           ),
           // Search
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: TextField(
@@ -753,16 +754,16 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                   prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.4)),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           // List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                ? Center(child: CircularProgressIndicator(color: Colors.white))
                 : _buildList(),
           ),
         ],
@@ -795,7 +796,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
         if (filteredEmployees.isNotEmpty) ...[
           Container(
             color: Colors.white.withOpacity(0.04),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: Text('Сотрудники',
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.7))),
           ),
@@ -829,7 +830,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
         if (filteredClients.isNotEmpty) ...[
           Container(
             color: Colors.white.withOpacity(0.04),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: Text('Клиенты',
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[400])),
           ),

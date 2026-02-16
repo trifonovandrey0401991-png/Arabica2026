@@ -4,6 +4,7 @@ import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
 import '../../features/shops/models/shop_settings_model.dart';
 import '../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог выбора параметров автозаполнения графика
 class AutoFillScheduleDialog extends StatefulWidget {
@@ -57,7 +58,7 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
 
     if (_selectedStartDay > _selectedEndDay) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Начальный день не может быть больше конечного'),
           backgroundColor: Colors.red,
         ),
@@ -86,31 +87,31 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Автозаполнение графика'),
+      title: Text('Автозаполнение графика'),
       content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.8,
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Выберите период:',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Row(
                       children: [
-                        const Text('С: '),
+                        Text('С: '),
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _selectedStartDay,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               border: OutlineInputBorder(),
                             ),
                             items: List.generate(_maxDay, (i) => i + 1).map((day) {
@@ -133,14 +134,14 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Row(
                       children: [
-                        const Text('По: '),
+                        Text('По: '),
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _selectedEndDay,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               border: OutlineInputBorder(),
                             ),
                             items: List.generate(
@@ -163,18 +164,18 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
+                    SizedBox(height: 24),
+                    Text(
                       'Режим заполнения:',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     RadioListTile<bool>(
-                      title: const Text('Заменить все существующие смены'),
-                      subtitle: const Text('Удалить все смены в периоде и заполнить заново'),
+                      title: Text('Заменить все существующие смены'),
+                      subtitle: Text('Удалить все смены в периоде и заполнить заново'),
                       value: true,
                       groupValue: _replaceExisting,
                       onChanged: (value) {
@@ -184,8 +185,8 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
                       },
                     ),
                     RadioListTile<bool>(
-                      title: const Text('Заполнить только пустые дни'),
-                      subtitle: const Text('Оставить существующие смены без изменений'),
+                      title: Text('Заполнить только пустые дни'),
+                      subtitle: Text('Оставить существующие смены без изменений'),
                       value: false,
                       groupValue: _replaceExisting,
                       onChanged: (value) {
@@ -201,15 +202,15 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
+          child: Text('Отмена'),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _performAutoFill,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF004D40),
+            backgroundColor: Color(0xFF004D40),
             foregroundColor: Colors.white,
           ),
-          child: const Text('Заполнить'),
+          child: Text('Заполнить'),
         ),
       ],
     );

@@ -4,6 +4,7 @@ import '../../shops/services/shop_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import 'shift_handover_role_selection_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора магазина для сдачи смены
 class ShiftHandoverShopSelectionPage extends StatefulWidget {
@@ -23,10 +24,10 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
   bool _isLoadingManager = true;
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -66,7 +67,7 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -90,13 +91,13 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -104,27 +105,27 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Выберите магазин',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 3),
+                  padding: EdgeInsets.only(top: 3.h),
                   child: Text(
                     'Сдача смены',
                     style: TextStyle(
                       color: _gold.withOpacity(0.7),
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -138,7 +139,7 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
             height: 42,
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: _gold.withOpacity(0.3)),
             ),
             child: Icon(
@@ -169,12 +170,12 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
                     color: _gold.withOpacity(0.7),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   'Загрузка магазинов...',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ],
@@ -185,7 +186,7 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
         if (snapshot.hasError) {
           return Center(
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(32.w),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -198,35 +199,35 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
                     ),
                     child: Icon(Icons.error_outline, size: 36, color: Colors.red.withOpacity(0.7)),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   Text(
                     'Что-то пошло не так',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'Попробуйте позже',
-                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
+                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14.sp),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: Colors.white.withOpacity(0.15)),
                       ),
                       child: Text(
                         'Назад',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -253,10 +254,10 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
                   ),
                   child: Icon(Icons.store_outlined, size: 36, color: Colors.white.withOpacity(0.3)),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   'Магазины не найдены',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
                 ),
               ],
             ),
@@ -264,7 +265,7 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 24.h),
           itemCount: shops.length,
           itemBuilder: (context, index) {
             final shop = shops[index];
@@ -277,11 +278,11 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
 
   Widget _buildShopCard(Shop shop, int index) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10.h),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () {
             Navigator.push(
               context,
@@ -295,10 +296,10 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
             );
           },
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
@@ -309,7 +310,7 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
                   height: 44,
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: _gold.withOpacity(0.3)),
                   ),
                   child: Center(
@@ -317,18 +318,18 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
                       '${index + 1}',
                       style: TextStyle(
                         color: _gold,
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     shop.address,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w500,
                       color: Colors.white.withOpacity(0.85),
                       height: 1.3,
@@ -337,7 +338,7 @@ class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelect
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(
                   Icons.chevron_right_rounded,
                   color: Colors.white.withOpacity(0.3),

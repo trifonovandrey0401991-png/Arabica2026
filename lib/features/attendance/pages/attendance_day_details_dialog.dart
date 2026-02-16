@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/attendance_model.dart';
 import '../models/shop_attendance_summary.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог деталей дня (Уровень 4)
 class AttendanceDayDetailsDialog extends StatelessWidget {
@@ -21,18 +22,18 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
 
     return Dialog(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 500),
+        constraints: BoxConstraints(maxWidth: 400, maxHeight: 500),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Заголовок
             Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
                 color: Color(0xFF004D40),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(4),
+                  topLeft: Radius.circular(4.r),
+                  topRight: Radius.circular(4.r),
                 ),
               ),
               child: Row(
@@ -43,24 +44,24 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
                       children: [
                         Text(
                           '${day.date.day}.${day.date.month.toString().padLeft(2, '0')}.${day.date.year}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 18.sp,
                           ),
                         ),
                         Text(
                           '${day.attendanceCount} ${_getEnding(day.attendanceCount)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white70,
-                            fontSize: 14,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, color: Colors.white),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -69,7 +70,7 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
 
             // Статус смен
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               color: Colors.grey.shade100,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -84,15 +85,15 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
             // Список отметок
             Flexible(
               child: sortedRecords.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Padding(
-                        padding: EdgeInsets.all(32),
+                        padding: EdgeInsets.all(32.w),
                         child: Text('Нет отметок'),
                       ),
                     )
                   : ListView.builder(
                       shrinkWrap: true,
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8.w),
                       itemCount: sortedRecords.length,
                       itemBuilder: (context, index) {
                         return _buildRecordCard(sortedRecords[index]);
@@ -115,11 +116,11 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
     return Column(
       children: [
         Icon(icon, color: color, size: 28),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: color,
             fontWeight: FontWeight.w500,
           ),
@@ -141,7 +142,7 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
     final shiftColor = _getShiftColor(record);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: shiftColor.withOpacity(0.2),
@@ -150,56 +151,56 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
             style: TextStyle(
               color: shiftColor,
               fontWeight: FontWeight.bold,
-              fontSize: 14,
+              fontSize: 14.sp,
             ),
           ),
         ),
         title: Text(
           record.employeeName,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: TextStyle(fontWeight: FontWeight.w500),
         ),
         subtitle: Row(
           children: [
-            const Icon(Icons.access_time, size: 14, color: Colors.grey),
-            const SizedBox(width: 4),
+            Icon(Icons.access_time, size: 14, color: Colors.grey),
+            SizedBox(width: 4),
             Text(
               time,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
                 color: shiftColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(4.r),
               ),
               child: Text(
                 shiftLabel,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   color: shiftColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
             if (record.isOnTime == false && record.lateMinutes != null) ...[
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(4.r),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red),
-                    const SizedBox(width: 2),
+                    Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red),
+                    SizedBox(width: 2),
                     Text(
                       '+${record.lateMinutes} мин',
-                      style: const TextStyle(
-                        fontSize: 10,
+                      style: TextStyle(
+                        fontSize: 10.sp,
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
                       ),
@@ -211,10 +212,10 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
           ],
         ),
         trailing: record.isOnTime == true
-            ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+            ? Icon(Icons.check_circle, color: Colors.green, size: 20)
             : record.isOnTime == false
-                ? const Icon(Icons.warning, color: Colors.orange, size: 20)
-                : const Icon(Icons.info, color: Colors.grey, size: 20),
+                ? Icon(Icons.warning, color: Colors.orange, size: 20)
+                : Icon(Icons.info, color: Colors.grey, size: 20),
       ),
     );
   }

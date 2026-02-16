@@ -4,6 +4,7 @@ import '../../shops/services/shop_service.dart';
 import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчетов по магазинам
 class RKOShopReportsPage extends StatefulWidget {
@@ -27,7 +28,7 @@ class RKODayGroup {
     required this.totalAmount,
   });
 
-  static const _monthsGenitive = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  static final _monthsGenitive = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
                                   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 
   String get displayTitle => '${date.day} ${_monthsGenitive[date.month]}';
@@ -52,7 +53,7 @@ class RKOMonthGroup {
     required this.totalCount,
   });
 
-  static const _monthNames = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  static final _monthNames = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
                               'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
   String get displayTitle => _monthNames[month];
@@ -74,7 +75,7 @@ class RKOYearGroup {
 }
 
 class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   List<Shop> _shops = [];
   Shop? _selectedShop;
@@ -287,15 +288,15 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     final isExpanded = _expandedDays.contains(group.dayKey);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -305,7 +306,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               onTap: () {
                 setState(() {
                   if (isExpanded) {
@@ -316,7 +317,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Row(
                   children: [
                     // Иконка даты
@@ -325,7 +326,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: _primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -333,7 +334,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                           Text(
                             '${group.date.day}',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
                               color: _primaryColor,
                             ),
@@ -341,7 +342,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Информация о дне
                     Expanded(
                       child: Column(
@@ -349,17 +350,17 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                         children: [
                           Text(
                             group.displayTitle,
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF2D2D2D),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             '${group.totalAmount.toStringAsFixed(0)} руб.',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               color: Colors.green[700],
                               fontWeight: FontWeight.w500,
                             ),
@@ -369,21 +370,21 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     ),
                     // Счётчик РКО
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: _primaryColor,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
                       child: Text(
                         '${group.count}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     // Стрелка
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -397,9 +398,9 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
 
           // Раскрывающийся список сотрудников
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Column(
                 children: group.items.map((rko) => _buildEmployeeRKOCard(rko)).toList(),
               ),
@@ -420,10 +421,10 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     final isPdf = !fileName.toLowerCase().endsWith('.docx');
 
     return Container(
-      margin: const EdgeInsets.only(top: 8),
+      margin: EdgeInsets.only(top: 8.h),
       decoration: BoxDecoration(
         color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Material(
@@ -437,9 +438,9 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: Row(
               children: [
                 // Иконка документа
@@ -448,7 +449,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                   height: 40,
                   decoration: BoxDecoration(
                     color: isPdf ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Icon(
                     isPdf ? Icons.picture_as_pdf_rounded : Icons.description_rounded,
@@ -456,7 +457,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Имя сотрудника
                 Expanded(
                   child: Column(
@@ -464,26 +465,26 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     children: [
                       Text(
                         employeeName,
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF2D2D2D),
                         ),
                       ),
                       if (rkoType.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: rkoType.contains('месяц')
                                 ? Colors.blue.withOpacity(0.1)
                                 : Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Text(
                             rkoType,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontWeight: FontWeight.w500,
                               color: rkoType.contains('месяц') ? Colors.blue : Colors.orange,
                             ),
@@ -496,21 +497,21 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                 // Сумма
                 if (amount.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Text(
                       '$amount р.',
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: TextStyle(
+                        fontSize: 13.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
                       ),
                     ),
                   ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Icon(
                   Icons.chevron_right,
                   color: Colors.grey[400],
@@ -529,15 +530,15 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     final isExpanded = _expandedMonths.contains(month.monthKey);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -547,7 +548,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               onTap: () {
                 setState(() {
                   if (isExpanded) {
@@ -558,7 +559,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Row(
                   children: [
                     // Иконка месяца
@@ -567,15 +568,15 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.calendar_month,
                         color: Colors.blue,
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Информация о месяце
                     Expanded(
                       child: Column(
@@ -583,17 +584,17 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                         children: [
                           Text(
                             month.displayTitle,
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF2D2D2D),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             '${month.totalAmount.toStringAsFixed(0)} руб.',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               color: Colors.green[700],
                               fontWeight: FontWeight.w500,
                             ),
@@ -603,21 +604,21 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     ),
                     // Счётчик РКО
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: Colors.blue,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
                       child: Text(
                         '${month.totalCount}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
                       color: Colors.blue,
@@ -630,9 +631,9 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
 
           // Раскрывающийся список дней
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Column(
                 children: month.days.map((day) => _buildNestedDayTile(day)).toList(),
               ),
@@ -648,15 +649,15 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     final isExpanded = _expandedYears.contains(year.year);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -666,7 +667,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               onTap: () {
                 setState(() {
                   if (isExpanded) {
@@ -677,7 +678,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Row(
                   children: [
                     // Иконка года
@@ -686,20 +687,20 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: Colors.purple.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Center(
                         child: Text(
                           '${year.year}',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          style: TextStyle(
+                            fontSize: 14.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.purple,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Информация о годе
                     Expanded(
                       child: Column(
@@ -707,17 +708,17 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                         children: [
                           Text(
                             '${year.year} год',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF2D2D2D),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             '${year.totalAmount.toStringAsFixed(0)} руб.',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               color: Colors.green[700],
                               fontWeight: FontWeight.w500,
                             ),
@@ -727,21 +728,21 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     ),
                     // Счётчик РКО
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: Colors.purple,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
                       child: Text(
                         '${year.totalCount}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
                       color: Colors.purple,
@@ -754,9 +755,9 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
 
           // Раскрывающийся список месяцев
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Column(
                 children: year.months.map((month) => _buildNestedMonthTile(month)).toList(),
               ),
@@ -772,10 +773,10 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     final isExpanded = _expandedMonths.contains(month.monthKey);
 
     return Container(
-      margin: const EdgeInsets.only(top: 8),
+      margin: EdgeInsets.only(top: 8.h),
       decoration: BoxDecoration(
         color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: Colors.blue.shade100),
       ),
       child: Column(
@@ -783,7 +784,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               onTap: () {
                 setState(() {
                   if (isExpanded) {
@@ -794,7 +795,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 child: Row(
                   children: [
                     Container(
@@ -802,20 +803,20 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       height: 36,
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.calendar_month,
                         color: Colors.blue,
                         size: 18,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         month.displayTitle,
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF2D2D2D),
                         ),
@@ -824,28 +825,28 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     Text(
                       '${month.totalAmount.toStringAsFixed(0)} р.',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.green[700],
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                       decoration: BoxDecoration(
                         color: Colors.blue,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Text(
                         '${month.totalCount}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
                       color: Colors.blue,
@@ -859,9 +860,9 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
 
           // Раскрывающийся список дней
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 12.h),
               child: Column(
                 children: month.days.map((day) => _buildNestedDayTile(day)).toList(),
               ),
@@ -877,10 +878,10 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     final isExpanded = _expandedDays.contains(day.dayKey);
 
     return Container(
-      margin: const EdgeInsets.only(top: 6),
+      margin: EdgeInsets.only(top: 6.h),
       decoration: BoxDecoration(
         color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
@@ -888,7 +889,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               onTap: () {
                 setState(() {
                   if (isExpanded) {
@@ -899,7 +900,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 child: Row(
                   children: [
                     Container(
@@ -907,25 +908,25 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       height: 32,
                       decoration: BoxDecoration(
                         color: _primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Center(
                         child: Text(
                           '${day.date.day}',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             fontWeight: FontWeight.bold,
                             color: _primaryColor,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         day.displayTitle,
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: TextStyle(
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -933,27 +934,27 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     Text(
                       '${day.totalAmount.toStringAsFixed(0)} р.',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.green[700],
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
                       decoration: BoxDecoration(
                         color: _primaryColor,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
                         '${day.count}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 11,
+                          fontSize: 11.sp,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
                       color: _primaryColor,
@@ -967,9 +968,9 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
 
           // Раскрывающийся список сотрудников
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+              padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 10.h),
               child: Column(
                 children: day.items.map((rko) => _buildEmployeeRKOCard(rko)).toList(),
               ),
@@ -1019,26 +1020,26 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     if (_selectedShop == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Отчет по магазину'),
+          title: Text('Отчет по магазину'),
           backgroundColor: _primaryColor,
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : ListView.builder(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 itemCount: _shops.length,
                 itemBuilder: (context, index) {
                   final shop = _shops[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    margin: EdgeInsets.symmetric(vertical: 4.h),
                     child: ListTile(
                       leading: shop.leadingIcon,
                       title: Text(
                         shop.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(shop.address),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Icon(Icons.chevron_right),
                       onTap: () {
                         setState(() {
                           _selectedShop = shop;
@@ -1056,11 +1057,11 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('История РКО'),
+        title: Text('История РКО'),
         backgroundColor: _primaryColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
             setState(() {
               _selectedShop = null;
@@ -1071,14 +1072,14 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: () => _loadShopRKOs(_selectedShop!.address),
             tooltip: 'Обновить',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Шапка с информацией о магазине
@@ -1086,12 +1087,12 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: _primaryColor,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(24.r),
+                      bottomRight: Radius.circular(24.r),
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 24.h),
                   child: Column(
                     children: [
                       // Иконка и название магазина
@@ -1102,35 +1103,35 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                             height: 56,
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16.r),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.store_rounded,
                               color: Colors.white,
                               size: 30,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   _selectedShop!.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 18,
+                                    fontSize: 18.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4),
                                 Text(
                                   'Документов: $_totalDocsCount',
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.8),
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                   ),
                                 ),
                               ],
@@ -1138,14 +1139,14 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Сумма за текущий месяц
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                         ),
                         child: Row(
                           children: [
@@ -1154,15 +1155,15 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                               height: 44,
                               decoration: BoxDecoration(
                                 color: Colors.orange.withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.calendar_month_rounded,
                                 color: Colors.white,
                                 size: 24,
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1171,15 +1172,15 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                                     'Сумма всего',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.8),
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: 2),
                                   Text(
                                     '${_totalAmount.toStringAsFixed(0)} руб.',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 22,
+                                      fontSize: 22.sp,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -1198,7 +1199,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                   child: !_hasData
                       ? Center(
                           child: Padding(
-                            padding: const EdgeInsets.all(32.0),
+                            padding: EdgeInsets.all(32.0.w),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -1207,11 +1208,11 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                                   size: 64,
                                   color: Colors.grey[400],
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   'РКО не найдены',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -1220,7 +1221,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                           ),
                         )
                       : ListView(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           children: [
                             // 1. Дни текущего месяца (показываются напрямую)
                             ..._currentMonthDays.map((day) => _buildDayGroupTile(day)),
@@ -1253,7 +1254,7 @@ class RKOShopDetailPage extends StatefulWidget {
 }
 
 class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   List<dynamic> _currentMonthRKOs = [];
   List<dynamic> _months = [];
@@ -1452,19 +1453,19 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('История РКО'),
+        title: Text('История РКО'),
         backgroundColor: _primaryColor,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadRKOs,
             tooltip: 'Обновить',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Шапка
@@ -1472,12 +1473,12 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: _primaryColor,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(24.r),
+                      bottomRight: Radius.circular(24.r),
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 24.h),
                   child: Column(
                     children: [
                       Row(
@@ -1487,38 +1488,38 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                             height: 56,
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16.r),
                             ),
-                            child: const Icon(Icons.store_rounded, color: Colors.white, size: 30),
+                            child: Icon(Icons.store_rounded, color: Colors.white, size: 30),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   widget.shopAddress,
-                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.bold),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4),
                                 Text(
                                   'Документов: $_totalDocsCount',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14.sp),
                                 ),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                         ),
                         child: Row(
                           children: [
@@ -1527,18 +1528,18 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                               height: 44,
                               decoration: BoxDecoration(
                                 color: Colors.green.withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
-                              child: const Icon(Icons.payments_rounded, color: Colors.white, size: 24),
+                              child: Icon(Icons.payments_rounded, color: Colors.white, size: 24),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Общая сумма выплат', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13)),
-                                  const SizedBox(height: 2),
-                                  Text('${_totalAmount.toStringAsFixed(0)} руб.', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                                  Text('Общая сумма выплат', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13.sp)),
+                                  SizedBox(height: 2),
+                                  Text('${_totalAmount.toStringAsFixed(0)} руб.', style: TextStyle(color: Colors.white, fontSize: 22.sp, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ),
@@ -1557,13 +1558,13 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]),
-                              const SizedBox(height: 16),
-                              Text('РКО не найдены', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                              SizedBox(height: 16),
+                              Text('РКО не найдены', style: TextStyle(fontSize: 16.sp, color: Colors.grey[600])),
                             ],
                           ),
                         )
                       : ListView(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           children: [
                             ..._currentMonthDays.map((day) => _buildDayTile(day)),
                             ..._previousMonths.map((month) => _buildMonthTile(month)),
@@ -1579,45 +1580,45 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
   Widget _buildDayTile(RKODayGroup group) {
     final isExpanded = _expandedDays.contains(group.dayKey);
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(
         children: [
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               onTap: () => setState(() => isExpanded ? _expandedDays.remove(group.dayKey) : _expandedDays.add(group.dayKey)),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Row(
                   children: [
                     Container(
                       width: 48, height: 48,
-                      decoration: BoxDecoration(color: _primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                      child: Center(child: Text('${group.date.day}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _primaryColor))),
+                      decoration: BoxDecoration(color: _primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12.r)),
+                      child: Center(child: Text('${group.date.day}', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: _primaryColor))),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(group.displayTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
-                          const SizedBox(height: 4),
-                          Text('${group.totalAmount.toStringAsFixed(0)} руб.', style: TextStyle(fontSize: 14, color: Colors.green[700], fontWeight: FontWeight.w500)),
+                          Text(group.displayTitle, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
+                          SizedBox(height: 4),
+                          Text('${group.totalAmount.toStringAsFixed(0)} руб.', style: TextStyle(fontSize: 14.sp, color: Colors.green[700], fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: _primaryColor, borderRadius: BorderRadius.circular(16)),
-                      child: Text('${group.count}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      decoration: BoxDecoration(color: _primaryColor, borderRadius: BorderRadius.circular(16.r)),
+                      child: Text('${group.count}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp)),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: _primaryColor),
                   ],
                 ),
@@ -1625,9 +1626,9 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
             ),
           ),
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Column(children: group.items.map((rko) => _buildRKOCard(rko)).toList()),
             ),
           ],
@@ -1639,45 +1640,45 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
   Widget _buildMonthTile(RKOMonthGroup month) {
     final isExpanded = _expandedMonths.contains(month.monthKey);
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(
         children: [
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               onTap: () => setState(() => isExpanded ? _expandedMonths.remove(month.monthKey) : _expandedMonths.add(month.monthKey)),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Row(
                   children: [
                     Container(
                       width: 48, height: 48,
-                      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.calendar_month, color: Colors.blue, size: 24),
+                      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(12.r)),
+                      child: Icon(Icons.calendar_month, color: Colors.blue, size: 24),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(month.displayTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
-                          const SizedBox(height: 4),
-                          Text('${month.totalAmount.toStringAsFixed(0)} руб.', style: TextStyle(fontSize: 14, color: Colors.green[700], fontWeight: FontWeight.w500)),
+                          Text(month.displayTitle, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
+                          SizedBox(height: 4),
+                          Text('${month.totalAmount.toStringAsFixed(0)} руб.', style: TextStyle(fontSize: 14.sp, color: Colors.green[700], fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16)),
-                      child: Text('${month.totalCount}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16.r)),
+                      child: Text('${month.totalCount}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp)),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.blue),
                   ],
                 ),
@@ -1685,9 +1686,9 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
             ),
           ),
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Column(children: month.days.map((day) => _buildNestedDayTile(day)).toList()),
             ),
           ],
@@ -1699,45 +1700,45 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
   Widget _buildYearTile(RKOYearGroup year) {
     final isExpanded = _expandedYears.contains(year.year);
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(
         children: [
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               onTap: () => setState(() => isExpanded ? _expandedYears.remove(year.year) : _expandedYears.add(year.year)),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Row(
                   children: [
                     Container(
                       width: 48, height: 48,
-                      decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                      child: Center(child: Text('${year.year}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.purple))),
+                      decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), borderRadius: BorderRadius.circular(12.r)),
+                      child: Center(child: Text('${year.year}', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.purple))),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${year.year} год', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
-                          const SizedBox(height: 4),
-                          Text('${year.totalAmount.toStringAsFixed(0)} руб.', style: TextStyle(fontSize: 14, color: Colors.green[700], fontWeight: FontWeight.w500)),
+                          Text('${year.year} год', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
+                          SizedBox(height: 4),
+                          Text('${year.totalAmount.toStringAsFixed(0)} руб.', style: TextStyle(fontSize: 14.sp, color: Colors.green[700], fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.purple, borderRadius: BorderRadius.circular(16)),
-                      child: Text('${year.totalCount}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      decoration: BoxDecoration(color: Colors.purple, borderRadius: BorderRadius.circular(16.r)),
+                      child: Text('${year.totalCount}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp)),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.purple),
                   ],
                 ),
@@ -1745,9 +1746,9 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
             ),
           ),
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Column(children: year.months.map((month) => _buildNestedMonthTile(month)).toList()),
             ),
           ],
@@ -1759,34 +1760,34 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
   Widget _buildNestedDayTile(RKODayGroup day) {
     final isExpanded = _expandedDays.contains(day.dayKey);
     return Container(
-      margin: const EdgeInsets.only(top: 6),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade200)),
+      margin: EdgeInsets.only(top: 6.h),
+      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8.r), border: Border.all(color: Colors.grey.shade200)),
       child: Column(
         children: [
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               onTap: () => setState(() => isExpanded ? _expandedDays.remove(day.dayKey) : _expandedDays.add(day.dayKey)),
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 child: Row(
                   children: [
                     Container(
                       width: 32, height: 32,
-                      decoration: BoxDecoration(color: _primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                      child: Center(child: Text('${day.date.day}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _primaryColor))),
+                      decoration: BoxDecoration(color: _primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6.r)),
+                      child: Center(child: Text('${day.date.day}', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: _primaryColor))),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(day.displayTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-                    Text('${day.totalAmount.toStringAsFixed(0)} р.', style: TextStyle(fontSize: 12, color: Colors.green[700])),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 8),
+                    Expanded(child: Text(day.displayTitle, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500))),
+                    Text('${day.totalAmount.toStringAsFixed(0)} р.', style: TextStyle(fontSize: 12.sp, color: Colors.green[700])),
+                    SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(color: _primaryColor, borderRadius: BorderRadius.circular(8)),
-                      child: Text('${day.count}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+                      decoration: BoxDecoration(color: _primaryColor, borderRadius: BorderRadius.circular(8.r)),
+                      child: Text('${day.count}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.sp)),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: _primaryColor, size: 18),
                   ],
                 ),
@@ -1794,8 +1795,8 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
             ),
           ),
           if (isExpanded) ...[
-            const Divider(height: 1),
-            Padding(padding: const EdgeInsets.fromLTRB(10, 6, 10, 10), child: Column(children: day.items.map((rko) => _buildRKOCard(rko)).toList())),
+            Divider(height: 1),
+            Padding(padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 10.h), child: Column(children: day.items.map((rko) => _buildRKOCard(rko)).toList())),
           ],
         ],
       ),
@@ -1805,34 +1806,34 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
   Widget _buildNestedMonthTile(RKOMonthGroup month) {
     final isExpanded = _expandedMonths.contains(month.monthKey);
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.blue.shade100)),
+      margin: EdgeInsets.only(top: 8.h),
+      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10.r), border: Border.all(color: Colors.blue.shade100)),
       child: Column(
         children: [
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               onTap: () => setState(() => isExpanded ? _expandedMonths.remove(month.monthKey) : _expandedMonths.add(month.monthKey)),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 child: Row(
                   children: [
                     Container(
                       width: 36, height: 36,
-                      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                      child: const Icon(Icons.calendar_month, color: Colors.blue, size: 18),
+                      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.2), borderRadius: BorderRadius.circular(8.r)),
+                      child: Icon(Icons.calendar_month, color: Colors.blue, size: 18),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text(month.displayTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D)))),
-                    Text('${month.totalAmount.toStringAsFixed(0)} р.', style: TextStyle(fontSize: 13, color: Colors.green[700], fontWeight: FontWeight.w500)),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 10),
+                    Expanded(child: Text(month.displayTitle, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D)))),
+                    Text('${month.totalAmount.toStringAsFixed(0)} р.', style: TextStyle(fontSize: 13.sp, color: Colors.green[700], fontWeight: FontWeight.w500)),
+                    SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(10)),
-                      child: Text('${month.totalCount}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(10.r)),
+                      child: Text('${month.totalCount}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.sp)),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.blue, size: 20),
                   ],
                 ),
@@ -1840,8 +1841,8 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
             ),
           ),
           if (isExpanded) ...[
-            const Divider(height: 1),
-            Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 12), child: Column(children: month.days.map((day) => _buildNestedDayTile(day)).toList())),
+            Divider(height: 1),
+            Padding(padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 12.h), child: Column(children: month.days.map((day) => _buildNestedDayTile(day)).toList())),
           ],
         ],
       ),
@@ -1856,34 +1857,34 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
     final isPdf = !fileName.toLowerCase().endsWith('.docx');
 
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade200)),
+      margin: EdgeInsets.only(top: 8.h),
+      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(10.r), border: Border.all(color: Colors.grey.shade200)),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RKOPDFViewerPage(fileName: fileName))),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: Row(
               children: [
                 Container(
                   width: 40, height: 40,
-                  decoration: BoxDecoration(color: isPdf ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: isPdf ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8.r)),
                   child: Icon(isPdf ? Icons.picture_as_pdf_rounded : Icons.description_rounded, color: isPdf ? Colors.red : Colors.blue, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(employeeName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
+                      Text(employeeName, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
                       if (rkoType.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: rkoType.contains('месяц') ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                          child: Text(rkoType, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: rkoType.contains('месяц') ? Colors.blue : Colors.orange)),
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          decoration: BoxDecoration(color: rkoType.contains('месяц') ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(4.r)),
+                          child: Text(rkoType, style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w500, color: rkoType.contains('месяц') ? Colors.blue : Colors.orange)),
                         ),
                       ],
                     ],
@@ -1891,11 +1892,11 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                 ),
                 if (amount.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                    child: Text('$amount р.', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green)),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8.r)),
+                    child: Text('$amount р.', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: Colors.green)),
                   ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Icon(Icons.chevron_right, color: Colors.grey[400], size: 20),
               ],
             ),

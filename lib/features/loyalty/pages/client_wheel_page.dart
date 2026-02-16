@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Премиум страница колеса удачи для клиента
 class ClientWheelPage extends StatefulWidget {
@@ -38,8 +39,8 @@ class _ClientWheelPageState extends State<ClientWheelPage>
   WheelSpinResult? _lastResult;
 
   // Премиум цвета
-  static const _goldColor = Color(0xFFFFD700);
-  static const _darkGold = Color(0xFFB8860B);
+  static final _goldColor = Color(0xFFFFD700);
+  static final _darkGold = Color(0xFFB8860B);
 
   @override
   void initState() {
@@ -48,7 +49,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
     // Контроллер вращения
     _spinController = AnimationController(
-      duration: const Duration(milliseconds: 5000),
+      duration: Duration(milliseconds: 5000),
       vsync: this,
     );
 
@@ -67,7 +68,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
     // Контроллер свечения
     _glowController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -77,7 +78,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
     // Пульсация для кнопки
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -110,7 +111,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white),
                 SizedBox(width: 12),
@@ -119,7 +120,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
             ),
             backgroundColor: Colors.red[700],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -160,14 +161,14 @@ class _ClientWheelPageState extends State<ClientWheelPage>
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 340),
+        constraints: BoxConstraints(maxWidth: 340),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(24.r),
           border: Border.all(
             width: 2,
             color: _goldColor.withOpacity(0.5),
@@ -185,7 +186,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
           children: [
             // Верхняя часть
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -195,22 +196,22 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                     Colors.transparent,
                   ],
                 ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(22.r),
                 ),
               ),
               child: Column(
                 children: [
-                  const _AnimatedStars(),
-                  const SizedBox(height: 16),
+                  _AnimatedStars(),
+                  SizedBox(height: 16),
                   ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
+                    shaderCallback: (bounds) => LinearGradient(
                       colors: [_goldColor, Color(0xFFFFF8DC), _goldColor],
                     ).createShader(bounds),
-                    child: const Text(
+                    child: Text(
                       'ПОЗДРАВЛЯЕМ!',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 28.sp,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                         letterSpacing: 2,
@@ -223,37 +224,37 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
             // Приз
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
               child: Column(
                 children: [
                   Text(
                     'Вам выпало:',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       color: Colors.white.withOpacity(0.7),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20.w),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          const Color(0xFF8E2DE2).withOpacity(0.3),
-                          const Color(0xFF4A00E0).withOpacity(0.1),
+                          Color(0xFF8E2DE2).withOpacity(0.3),
+                          Color(0xFF4A00E0).withOpacity(0.1),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(
-                        color: const Color(0xFF8E2DE2),
+                        color: Color(0xFF8E2DE2),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF8E2DE2).withOpacity(0.4),
+                          color: Color(0xFF8E2DE2).withOpacity(0.4),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),
@@ -266,14 +267,14 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                           height: 60,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: const LinearGradient(
+                            gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF8E2DE2).withOpacity(0.5),
+                                color: Color(0xFF8E2DE2).withOpacity(0.5),
                                 blurRadius: 15,
                               ),
                             ],
@@ -284,12 +285,12 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                             size: 30,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Text(
                           _lastResult!.prize,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 22,
+                          style: TextStyle(
+                            fontSize: 22.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -303,14 +304,14 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
             // Нижняя часть
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Row(
                       children: [
@@ -319,14 +320,14 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                           color: Colors.white.withOpacity(0.6),
                           size: 20,
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             _spinsLeft > 0
                                 ? 'Осталось прокруток: $_spinsLeft'
                                 : 'Все прокрутки использованы',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.white.withOpacity(0.6),
                               height: 1.4,
                             ),
@@ -335,7 +336,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   Row(
                     children: [
                       if (_spinsLeft > 0) ...[
@@ -346,23 +347,23 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                               _spin();
                             },
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: _goldColor),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(color: _goldColor),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
+                                borderRadius: BorderRadius.circular(25.r),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               'ЕЩЁ РАЗ',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 14.sp,
                                 fontWeight: FontWeight.bold,
                                 color: _goldColor,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                       ],
                       Expanded(
                         child: ElevatedButton(
@@ -373,17 +374,17 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _goldColor,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
+                              borderRadius: BorderRadius.circular(25.r),
                             ),
                             elevation: 8,
                             shadowColor: _goldColor.withOpacity(0.5),
                           ),
-                          child: const Text(
+                          child: Text(
                             'ГОТОВО',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -419,7 +420,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -441,32 +442,32 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Заголовок
                       _buildHeader(),
 
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
 
                       // Счетчик прокруток
                       _buildSpinsCounter(),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Колесо
                       _buildWheelSection(),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Кнопка прокрутки
                       _buildSpinButton(),
 
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
 
                       // Информационные карточки
                       _buildInfoCards(),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -480,35 +481,35 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
-          const Spacer(),
+          Spacer(),
           Text(
             widget.clientName,
             style: TextStyle(
               color: Colors.white.withOpacity(0.9),
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const Spacer(),
-          const SizedBox(width: 48),
+          Spacer(),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -522,7 +523,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
           height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [_goldColor, _darkGold],
@@ -535,32 +536,32 @@ class _ClientWheelPageState extends State<ClientWheelPage>
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.casino,
             color: Colors.white,
             size: 32,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
+          shaderCallback: (bounds) => LinearGradient(
             colors: [_goldColor, Color(0xFFFFF8DC), _goldColor],
           ).createShader(bounds),
-          child: const Text(
+          child: Text(
             'КОЛЕСО УДАЧИ',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 28.sp,
               fontWeight: FontWeight.w900,
               color: Colors.white,
               letterSpacing: 3,
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           'Испытай свою удачу!',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 16.sp,
             color: Colors.white.withOpacity(0.6),
             letterSpacing: 1,
           ),
@@ -574,8 +575,8 @@ class _ClientWheelPageState extends State<ClientWheelPage>
       animation: _glowAnimation,
       builder: (context, child) {
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          margin: EdgeInsets.symmetric(horizontal: 48.w),
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
@@ -592,7 +593,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                       Colors.grey.withOpacity(0.2),
                     ],
             ),
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(30.r),
             border: Border.all(
               color: _spinsLeft > 0
                   ? _goldColor.withOpacity(0.5)
@@ -609,13 +610,13 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                 color: _spinsLeft > 0 ? _goldColor : Colors.grey,
                 size: 24,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 _spinsLeft > 0
                     ? 'Доступно прокруток: $_spinsLeft'
                     : 'Прокрутки недоступны',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: _spinsLeft > 0 ? _goldColor : Colors.grey,
                 ),
@@ -632,7 +633,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
     final wheelSize = screenWidth * 0.85;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: 16.w),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -657,7 +658,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
             height: wheelSize + 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [_goldColor, _darkGold, _goldColor],
@@ -666,7 +667,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
           ),
           // Колесо
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(10.w),
             child: AnimatedBuilder(
               animation: Listenable.merge([_spinAnimation, _glowAnimation]),
               builder: (context, child) {
@@ -683,7 +684,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                             BoxShadow(
                               color: Colors.black.withOpacity(0.4),
                               blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              offset: Offset(0, 10),
                             ),
                           ],
                         ),
@@ -729,7 +730,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
         ],
       ),
       child: CustomPaint(
-        size: const Size(50, 55),
+        size: Size(50, 55),
         painter: _PremiumPointerPainter(),
       ),
     );
@@ -741,7 +742,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
       height: 80,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
@@ -752,7 +753,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
           stops: [0.0, 0.5, 1.0],
         ),
         border: Border.all(
-          color: const Color(0xFFFFF8DC),
+          color: Color(0xFFFFF8DC),
           width: 3,
         ),
         boxShadow: [
@@ -761,7 +762,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
             blurRadius: 20,
             spreadRadius: 5,
           ),
-          const BoxShadow(
+          BoxShadow(
             color: Colors.black26,
             blurRadius: 10,
             offset: Offset(0, 5),
@@ -769,7 +770,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
         ],
       ),
       child: Container(
-        margin: const EdgeInsets.all(8),
+        margin: EdgeInsets.all(8.w),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
@@ -777,10 +778,10 @@ class _ClientWheelPageState extends State<ClientWheelPage>
               Colors.white.withOpacity(0.3),
               Colors.transparent,
             ],
-            stops: const [0.0, 1.0],
+            stops: [0.0, 1.0],
           ),
         ),
-        child: const Center(
+        child: Center(
           child: Icon(
             Icons.star,
             color: Colors.white,
@@ -802,7 +803,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
     final bool canSpin = _spinsLeft > 0 && !_isSpinning;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 48),
+      padding: EdgeInsets.symmetric(horizontal: 48.w),
       child: AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
@@ -812,9 +813,9 @@ class _ClientWheelPageState extends State<ClientWheelPage>
               width: double.infinity,
               height: 60,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(30.r),
                 gradient: canSpin
-                    ? const LinearGradient(
+                    ? LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [_goldColor, _darkGold],
@@ -830,7 +831,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                           color: _goldColor.withOpacity(0.5),
                           blurRadius: 20,
                           spreadRadius: 2,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ]
                     : null,
@@ -839,7 +840,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: canSpin ? _spin : null,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(30.r),
                   child: Center(
                     child: _isSpinning
                         ? Row(
@@ -855,11 +856,11 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              const Text(
+                              SizedBox(width: 12),
+                              Text(
                                 'ВРАЩАЕМ...',
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   letterSpacing: 2,
@@ -875,11 +876,11 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                                 color: Colors.white,
                                 size: 26,
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               Text(
                                 canSpin ? 'КРУТИТЬ!' : 'НЕТ ПРОКРУТОК',
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white.withOpacity(canSpin ? 1.0 : 0.7),
                                   letterSpacing: 2,
@@ -899,7 +900,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
   Widget _buildInfoCards() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Column(
         children: [
           _buildInfoCard(
@@ -907,15 +908,15 @@ class _ClientWheelPageState extends State<ClientWheelPage>
             title: 'Как получить прокрутки?',
             description:
                 'Получайте бесплатные напитки по программе лояльности и зарабатывайте прокрутки колеса!',
-            gradient: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+            gradient: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildInfoCard(
             icon: Icons.card_giftcard,
             title: 'Призы',
             description:
                 'Выигрывайте бонусные баллы, скидки, бесплатные напитки и фирменный мерч!',
-            gradient: const [Color(0xFF10B981), Color(0xFF34D399)],
+            gradient: [Color(0xFF10B981), Color(0xFF34D399)],
           ),
         ],
       ),
@@ -929,10 +930,10 @@ class _ClientWheelPageState extends State<ClientWheelPage>
     required List<Color> gradient,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -949,35 +950,35 @@ class _ClientWheelPageState extends State<ClientWheelPage>
                 end: Alignment.bottomRight,
                 colors: gradient,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               boxShadow: [
                 BoxShadow(
                   color: gradient[0].withOpacity(0.4),
                   blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
             child: Icon(icon, color: Colors.white, size: 24),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     color: Colors.white.withOpacity(0.6),
                     height: 1.4,
                   ),
@@ -1025,10 +1026,10 @@ class _PremiumWheelPainter extends CustomPainter {
       ..shader = ui.Gradient.sweep(
         center,
         [
-          const Color(0xFFFFD700),
-          const Color(0xFFFFA500),
-          const Color(0xFFB8860B),
-          const Color(0xFFFFD700),
+          Color(0xFFFFD700),
+          Color(0xFFFFA500),
+          Color(0xFFB8860B),
+          Color(0xFFFFD700),
         ],
         [0.0, 0.33, 0.66, 1.0],
       )
@@ -1053,14 +1054,14 @@ class _PremiumWheelPainter extends CustomPainter {
 
       final glowPaint = Paint()
         ..color = Colors.white.withOpacity(brightness * 0.8)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
 
       canvas.drawCircle(lightCenter, lightRadius + 2, glowPaint);
 
       final lightPaint = Paint()
         ..color = isActive
-            ? Color.lerp(const Color(0xFFFFD700), Colors.white, brightness)!
-            : const Color(0xFFB8860B).withOpacity(0.7)
+            ? Color.lerp(Color(0xFFFFD700), Colors.white, brightness)!
+            : Color(0xFFB8860B).withOpacity(0.7)
         ..style = PaintingStyle.fill;
 
       canvas.drawCircle(lightCenter, lightRadius, lightPaint);
@@ -1150,7 +1151,7 @@ class _PremiumWheelPainter extends CustomPainter {
           fontSize: fontSize.clamp(11.0, 15.0),
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,
-          shadows: const [
+          shadows: [
             Shadow(color: Colors.black87, offset: Offset(1, 1), blurRadius: 4),
             Shadow(color: Colors.black54, offset: Offset(2, 2), blurRadius: 6),
           ],
@@ -1182,7 +1183,7 @@ class _PremiumWheelPainter extends CustomPainter {
       ..shader = ui.Gradient.radial(
         center,
         innerRingRadius,
-        [const Color(0xFFFFD700), const Color(0xFFB8860B)],
+        [Color(0xFFFFD700), Color(0xFFB8860B)],
       )
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
@@ -1199,7 +1200,7 @@ class _PremiumWheelPainter extends CustomPainter {
         center.dy + starRadius * sin(starAngle),
       );
 
-      _drawStar(canvas, starCenter, 4, const Color(0xFFFFD700));
+      _drawStar(canvas, starCenter, 4, Color(0xFFFFD700));
     }
   }
 
@@ -1210,7 +1211,7 @@ class _PremiumWheelPainter extends CustomPainter {
 
     final glowPaint = Paint()
       ..color = color.withOpacity(0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2);
 
     canvas.drawCircle(center, radius + 1, glowPaint);
     canvas.drawCircle(center, radius, starPaint);
@@ -1242,9 +1243,9 @@ class _PremiumPointerPainter extends CustomPainter {
 
     final shadowPaint = Paint()
       ..color = Colors.black.withOpacity(0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 5);
 
-    canvas.drawPath(shadowPath.shift(const Offset(2, 3)), shadowPaint);
+    canvas.drawPath(shadowPath.shift(Offset(2, 3)), shadowPaint);
 
     // Указатель
     final pointerPath = Path()
@@ -1256,11 +1257,11 @@ class _PremiumPointerPainter extends CustomPainter {
     final pointerPaint = Paint()
       ..shader = ui.Gradient.linear(
         Offset(0, size.height),
-        const Offset(0, 0),
+        Offset(0, 0),
         [
-          const Color(0xFFFFD700),
-          const Color(0xFFFFA500),
-          const Color(0xFFB8860B),
+          Color(0xFFFFD700),
+          Color(0xFFFFA500),
+          Color(0xFFB8860B),
         ],
         [0.0, 0.5, 1.0],
       )
@@ -1283,7 +1284,7 @@ class _PremiumPointerPainter extends CustomPainter {
 
     // Обводка
     final borderPaint = Paint()
-      ..color = const Color(0xFFFFF8DC)
+      ..color = Color(0xFFFFF8DC)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
@@ -1294,13 +1295,13 @@ class _PremiumPointerPainter extends CustomPainter {
       ..shader = ui.Gradient.radial(
         Offset(centerX, 12),
         8,
-        [const Color(0xFFFFD700), const Color(0xFFB8860B)],
+        [Color(0xFFFFD700), Color(0xFFB8860B)],
       );
 
     canvas.drawCircle(Offset(centerX, 12), 6, attachPaint);
 
     final attachBorderPaint = Paint()
-      ..color = const Color(0xFFFFF8DC)
+      ..color = Color(0xFFFFF8DC)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
@@ -1313,7 +1314,7 @@ class _PremiumPointerPainter extends CustomPainter {
 
 /// Анимированные звезды
 class _AnimatedStars extends StatefulWidget {
-  const _AnimatedStars();
+  _AnimatedStars();
 
   @override
   State<_AnimatedStars> createState() => _AnimatedStarsState();
@@ -1327,7 +1328,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
   }
@@ -1351,56 +1352,56 @@ class _AnimatedStarsState extends State<_AnimatedStars>
             children: [
               Transform.scale(
                 scale: 0.9 + (_controller.value * 0.2),
-                child: const Icon(
+                child: Icon(
                   Icons.star,
                   color: Color(0xFFFFD700),
                   size: 50,
                 ),
               ),
               Positioned(
-                left: 10,
-                top: 5,
+                left: 10.w,
+                top: 5.h,
                 child: Transform.scale(
                   scale: 0.8 + ((1 - _controller.value) * 0.3),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.7),
+                    color: Color(0xFFFFD700).withOpacity(0.7),
                     size: 20,
                   ),
                 ),
               ),
               Positioned(
-                right: 10,
-                top: 10,
+                right: 10.w,
+                top: 10.h,
                 child: Transform.scale(
                   scale: 0.7 + (_controller.value * 0.3),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.6),
+                    color: Color(0xFFFFD700).withOpacity(0.6),
                     size: 18,
                   ),
                 ),
               ),
               Positioned(
-                left: 20,
-                bottom: 0,
+                left: 20.w,
+                bottom: 0.h,
                 child: Transform.scale(
                   scale: 0.6 + ((1 - _controller.value) * 0.4),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.5),
+                    color: Color(0xFFFFD700).withOpacity(0.5),
                     size: 14,
                   ),
                 ),
               ),
               Positioned(
-                right: 15,
-                bottom: 5,
+                right: 15.w,
+                bottom: 5.h,
                 child: Transform.scale(
                   scale: 0.75 + (_controller.value * 0.25),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFFFD700).withOpacity(0.65),
+                    color: Color(0xFFFFD700).withOpacity(0.65),
                     size: 16,
                   ),
                 ),

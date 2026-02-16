@@ -19,7 +19,7 @@ List<int> _compressImageIsolate(List<int> bytes) {
     final image = img.decodeImage(Uint8List.fromList(bytes));
     if (image == null) return bytes;
 
-    const maxDimension = 1920;
+    const maxDimension = 1280;
     img.Image result;
 
     if (image.width > maxDimension || image.height > maxDimension) {
@@ -32,7 +32,7 @@ List<int> _compressImageIsolate(List<int> bytes) {
       result = image;
     }
 
-    return img.encodeJpg(result, quality: 85);
+    return img.encodeJpg(result, quality: 75);
   } catch (e) {
     return bytes;
   }
@@ -74,8 +74,8 @@ class PhotoUploadService {
       Logger.debug('📤 Начинаем загрузку фото на сервер: $fileName');
       Logger.debug('📦 Размер оригинала: ${originalSize} байт (${(originalSize / 1024).toStringAsFixed(2)} KB)');
 
-      // Сжатие фото если больше 1 MB (resize + JPEG quality 85%)
-      if (!kIsWeb && originalSize > 1024 * 1024) {
+      // Сжатие фото если больше 500 KB (resize 1280px + JPEG quality 75%)
+      if (!kIsWeb && originalSize > 512 * 1024) {
         try {
           bytes = await compute(_compressImageIsolate, bytes);
           final saved = originalSize - bytes.length;
@@ -226,6 +226,46 @@ class PhotoUploadService {
       Logger.debug('❌ Stack trace: $stackTrace');
       return null;
     }
+  }
+
+  /// Загрузить несколько фото пакетами (по [batchSize] одновременно).
+  /// Не перегружает сеть — хоть 100 фото загрузятся надёжно.
+  /// [photoTasks] — карта {индекс: [photoPath, fileName]}
+  static Future<Map<int, String?>> uploadInBatches(
+    Map<int, List<String>> photoTasks, {
+    int batchSize = 3,
+  }) async {
+    final results = <int, String?>{};
+    if (photoTasks.isEmpty) return results;
+
+    final entries = photoTasks.entries.toList();
+    final totalBatches = (entries.length + batchSize - 1) ~/ batchSize;
+
+    Logger.debug('📤 Загрузка ${entries.length} фото пакетами по $batchSize (всего $totalBatches пакетов)');
+
+    for (var batchNum = 0; batchNum < totalBatches; batchNum++) {
+      final start = batchNum * batchSize;
+      final end = start + batchSize > entries.length ? entries.length : start + batchSize;
+      final batch = entries.sublist(start, end);
+
+      Logger.debug('📦 Пакет ${batchNum + 1}/$totalBatches: загрузка ${batch.length} фото...');
+
+      final batchResults = await Future.wait(
+        batch.map((e) => uploadPhoto(e.value[0], e.value[1])
+            .catchError((error) { Logger.error('Ошибка загрузки фото ${e.key}', error); return null; })),
+      );
+
+      for (var j = 0; j < batch.length; j++) {
+        results[batch[j].key] = batchResults[j];
+      }
+
+      final uploaded = results.values.where((v) => v != null).length;
+      final failed = results.values.where((v) => v == null).length;
+      Logger.debug('📊 Прогресс: $uploaded загружено, $failed ошибок из ${results.length}/${entries.length}');
+    }
+
+    Logger.debug('✅ Все пакеты обработаны: ${results.values.where((v) => v != null).length}/${entries.length} успешно');
+    return results;
   }
 
   /// Получить URL фото (теперь это просто URL с сервера)

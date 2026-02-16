@@ -3,14 +3,15 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/work_schedule_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Сервис для генерации PDF графика работы
 class SchedulePdfService {
   // Цвета для смен (фоновые цвета как в приложении)
-  static const _morningColor = PdfColor.fromInt(0xFFB9F6CA); // Салатовый - утро
-  static const _dayColor = PdfColor.fromInt(0xFFFFF59D); // Светло-жёлтый - день
-  static const _eveningColor = PdfColor.fromInt(0xFFE0E0E0); // Светло-серый - вечер
-  static const _headerColor = PdfColor.fromInt(0xFF004D40); // Тёмно-зелёный
+  static final _morningColor = PdfColor.fromInt(0xFFB9F6CA); // Салатовый - утро
+  static final _dayColor = PdfColor.fromInt(0xFFFFF59D); // Светло-жёлтый - день
+  static final _eveningColor = PdfColor.fromInt(0xFFE0E0E0); // Светло-серый - вечер
+  static final _headerColor = PdfColor.fromInt(0xFF004D40); // Тёмно-зелёный
 
   /// Генерирует PDF с графиком работы (один горизонтальный лист)
   static Future<Uint8List> generateSchedulePdf({
@@ -40,7 +41,7 @@ class SchedulePdfService {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(12),
+        margin: pw.EdgeInsets.all(12.w),
         build: (context) => _buildPage(
           schedule: schedule,
           employeeNames: employeeNames,
@@ -105,10 +106,10 @@ class SchedulePdfService {
     final endDay = days.last.day;
 
     return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: pw.EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: pw.BoxDecoration(
         color: _headerColor,
-        borderRadius: pw.BorderRadius.circular(6),
+        borderRadius: pw.BorderRadius.circular(6.r),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -117,7 +118,7 @@ class SchedulePdfService {
             'ГРАФИК РАБОТЫ - ${monthNames[month.month - 1]} ${month.year}',
             style: pw.TextStyle(
               font: fontBold,
-              fontSize: 14,
+              fontSize: 14.sp,
               color: PdfColors.white,
             ),
           ),
@@ -125,7 +126,7 @@ class SchedulePdfService {
             'Период: $startDay - $endDay',
             style: pw.TextStyle(
               font: fontBold,
-              fontSize: 10,
+              fontSize: 10.sp,
               color: PdfColor.fromInt(0xB3FFFFFF),
             ),
           ),
@@ -146,25 +147,25 @@ class SchedulePdfService {
 
     // Строим заголовок таблицы
     final headerRow = pw.TableRow(
-      decoration: const pw.BoxDecoration(
+      decoration: pw.BoxDecoration(
         color: PdfColor.fromInt(0xFFE8F5E9),
       ),
       children: [
         // Колонка "Сотрудник"
         pw.Container(
-          padding: const pw.EdgeInsets.all(3),
+          padding: pw.EdgeInsets.all(3.w),
           child: pw.Text(
             'Сотрудник',
-            style: pw.TextStyle(font: fontBold, fontSize: 6),
+            style: pw.TextStyle(font: fontBold, fontSize: 6.sp),
           ),
         ),
         // Колонки дней
         ...days.map((day) {
           final isWeekend = day.weekday == 6 || day.weekday == 7;
           return pw.Container(
-            padding: const pw.EdgeInsets.all(1),
+            padding: pw.EdgeInsets.all(1.w),
             decoration: isWeekend
-                ? const pw.BoxDecoration(color: PdfColor.fromInt(0xFFFFF3E0))
+                ? pw.BoxDecoration(color: PdfColor.fromInt(0xFFFFF3E0))
                 : null,
             child: pw.Column(
               children: [
@@ -172,7 +173,7 @@ class SchedulePdfService {
                   '${day.day}',
                   style: pw.TextStyle(
                     font: fontBold,
-                    fontSize: 6,
+                    fontSize: 6.sp,
                     color: isWeekend ? _eveningColor : PdfColors.black,
                   ),
                 ),
@@ -180,7 +181,7 @@ class SchedulePdfService {
                   weekdayNames[day.weekday - 1],
                   style: pw.TextStyle(
                     font: font,
-                    fontSize: 5,
+                    fontSize: 5.sp,
                     color: isWeekend ? _eveningColor : PdfColors.grey600,
                   ),
                 ),
@@ -197,10 +198,10 @@ class SchedulePdfService {
         children: [
           // Имя сотрудника
           pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+            padding: pw.EdgeInsets.symmetric(horizontal: 3.w, vertical: 2.h),
             child: pw.Text(
               employeeName,
-              style: pw.TextStyle(font: font, fontSize: 5.5),
+              style: pw.TextStyle(font: font, fontSize: 5.5.sp),
               maxLines: 1,
             ),
           ),
@@ -226,10 +227,10 @@ class SchedulePdfService {
               // Нет смены
               return pw.Container(
                 alignment: pw.Alignment.center,
-                padding: const pw.EdgeInsets.all(1),
+                padding: pw.EdgeInsets.all(1.w),
                 child: pw.Text(
                   '-',
-                  style: pw.TextStyle(font: font, fontSize: 6, color: PdfColors.grey400),
+                  style: pw.TextStyle(font: font, fontSize: 6.sp, color: PdfColors.grey400),
                 ),
               );
             }
@@ -240,17 +241,17 @@ class SchedulePdfService {
 
             return pw.Container(
               alignment: pw.Alignment.center,
-              margin: const pw.EdgeInsets.all(1),
-              padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+              margin: pw.EdgeInsets.all(1.w),
+              padding: pw.EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
               decoration: pw.BoxDecoration(
                 color: color,
-                borderRadius: pw.BorderRadius.circular(2),
+                borderRadius: pw.BorderRadius.circular(2.r),
               ),
               child: pw.Text(
                 abbr,
                 style: pw.TextStyle(
                   font: fontBold,
-                  fontSize: 5.5,
+                  fontSize: 5.5.sp,
                   color: PdfColors.black, // чёрный текст
                 ),
               ),
@@ -263,9 +264,9 @@ class SchedulePdfService {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.3),
       columnWidths: {
-        0: const pw.FixedColumnWidth(65), // Колонка имён (компактнее)
+        0: pw.FixedColumnWidth(65), // Колонка имён (компактнее)
         for (var i = 0; i < days.length; i++)
-          i + 1: const pw.FlexColumnWidth(1), // Колонки дней
+          i + 1: pw.FlexColumnWidth(1), // Колонки дней
       },
       children: [headerRow, ...dataRows],
     );
@@ -310,17 +311,17 @@ class SchedulePdfService {
 
   static pw.Widget _buildLegend(pw.Font font) {
     return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: pw.EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey100,
-        borderRadius: pw.BorderRadius.circular(4),
+        borderRadius: pw.BorderRadius.circular(4.r),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.center,
         children: [
           pw.Text(
             'Легенда: ',
-            style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey700),
+            style: pw.TextStyle(font: font, fontSize: 7.sp, color: PdfColors.grey700),
           ),
           _buildLegendItem('У', 'Утро', _morningColor, font),
           pw.SizedBox(width: 12),
@@ -341,17 +342,17 @@ class SchedulePdfService {
           alignment: pw.Alignment.center,
           decoration: pw.BoxDecoration(
             color: color,
-            borderRadius: pw.BorderRadius.circular(2),
+            borderRadius: pw.BorderRadius.circular(2.r),
           ),
           child: pw.Text(
             abbr,
-            style: pw.TextStyle(font: font, fontSize: 6, color: PdfColors.black),
+            style: pw.TextStyle(font: font, fontSize: 6.sp, color: PdfColors.black),
           ),
         ),
         pw.SizedBox(width: 3),
         pw.Text(
           label,
-          style: pw.TextStyle(font: font, fontSize: 7),
+          style: pw.TextStyle(font: font, fontSize: 7.sp),
         ),
       ],
     );

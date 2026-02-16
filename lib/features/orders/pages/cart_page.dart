@@ -7,16 +7,17 @@ import '../../menu/pages/menu_page.dart';
 import 'orders_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница корзины (Dark Emerald тема)
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
 
   // Dark Emerald палитра
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   Widget _buildNoPhotoPlaceholder() {
     return Container(
@@ -24,7 +25,7 @@ class CartPage extends StatelessWidget {
       height: 60,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Icon(
         Icons.local_cafe_rounded,
@@ -62,7 +63,7 @@ class CartPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -75,7 +76,7 @@ class CartPage extends StatelessWidget {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -85,21 +86,21 @@ class CartPage extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Icon(Icons.shopping_cart_rounded, color: _gold, size: 24),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         'Корзина',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -108,12 +109,12 @@ class CartPage extends StatelessWidget {
                       listenable: CartProvider.of(context),
                       builder: (context, _) {
                         final count = CartProvider.of(context).items.length;
-                        if (count == 0) return const SizedBox.shrink();
+                        if (count == 0) return SizedBox.shrink();
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
                             color: _gold.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(10.r),
                             border: Border.all(color: _gold.withOpacity(0.4)),
                           ),
                           child: Text(
@@ -121,7 +122,7 @@ class CartPage extends StatelessWidget {
                             style: TextStyle(
                               color: _gold,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 14.sp,
                             ),
                           ),
                         );
@@ -146,7 +147,7 @@ class CartPage extends StatelessWidget {
                       children: [
                         Expanded(
                           child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
                             itemCount: cart.items.length,
                             itemBuilder: (context, index) {
                               final cartItem = cart.items[index];
@@ -173,7 +174,7 @@ class CartPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(32.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
@@ -184,43 +185,72 @@ class CartPage extends StatelessWidget {
               color: Colors.white.withOpacity(0.3),
             ),
           ),
-          const SizedBox(height: 28),
-          const Text(
+          SizedBox(height: 28),
+          Text(
             'Корзина пуста',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 22.sp,
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             'Добавьте напитки из меню',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 15.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.15)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.arrow_back_rounded, color: _gold, size: 18),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
                     'В меню',
                     style: TextStyle(
                       color: _gold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersPage()));
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                color: _gold.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: _gold.withOpacity(0.25)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.receipt_long_rounded, color: _gold, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Просмотр заказов',
+                    style: TextStyle(
+                      color: _gold,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -235,22 +265,22 @@ class CartPage extends StatelessWidget {
 
   Widget _buildCartItemCard(BuildContext context, CartProvider cart, CartItem cartItem) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               child: _buildCartItemImage(cartItem.menuItem),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,47 +289,30 @@ class CartPage extends StatelessWidget {
                     cartItem.menuItem.name,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Text(
-                        '${cartItem.menuItem.price} руб.',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 13,
-                        ),
-                      ),
-                      Text(
-                        '  =  ',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.3),
-                          fontSize: 13,
-                        ),
-                      ),
-                      Text(
-                        '${cartItem.totalPrice.toStringAsFixed(0)} руб.',
-                        style: TextStyle(
-                          color: _gold,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  SizedBox(height: 6),
+                  Text(
+                    '${cartItem.menuItem.price} × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} руб.',
+                    style: TextStyle(
+                      color: _gold,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Row(
@@ -314,8 +327,8 @@ class CartPage extends StatelessWidget {
                     child: Text(
                       '${cartItem.quantity}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -328,7 +341,7 @@ class CartPage extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             GestureDetector(
               onTap: () => cart.removeItem(cartItem),
               child: Container(
@@ -336,10 +349,10 @@ class CartPage extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
-                child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18),
+                child: Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18),
               ),
             ),
           ],
@@ -355,7 +368,7 @@ class CartPage extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
         ),
         child: Icon(icon, color: _gold, size: 20),
       ),
@@ -364,7 +377,7 @@ class CartPage extends StatelessWidget {
 
   Widget _buildBottomPanel(BuildContext context, CartProvider cart) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
       decoration: BoxDecoration(
         color: _emeraldDark.withOpacity(0.9),
         border: Border(
@@ -379,22 +392,22 @@ class CartPage extends StatelessWidget {
               Text(
                 'Итого:',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white.withOpacity(0.7),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: _gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: _gold.withOpacity(0.3)),
                 ),
                 child: Text(
                   '${cart.totalPrice.toStringAsFixed(0)} руб.',
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 22.sp,
                     fontWeight: FontWeight.bold,
                     color: _gold,
                   ),
@@ -402,32 +415,63 @@ class CartPage extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 10),
+          // Кнопка "Просмотр заказов"
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersPage()));
+            },
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 12.h),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.receipt_long_rounded, size: 18, color: _gold),
+                  SizedBox(width: 8),
+                  Text(
+                    'Просмотр заказов',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _gold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: GestureDetector(
                   onTap: () => _showPickupTimeDialog(context, cart, null),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [_gold.withOpacity(0.9), _gold],
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       boxShadow: [
                         BoxShadow(
                           color: _gold.withOpacity(0.3),
                           blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
                         'Заказать',
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 17.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1A1A1A),
                         ),
@@ -436,28 +480,31 @@ class CartPage extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: GestureDetector(
                   onTap: () => _showCommentDialogWithOrder(context, cart),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       border: Border.all(color: Colors.white.withOpacity(0.15)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.message_outlined, size: 18, color: _gold),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Комментарий',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white.withOpacity(0.8),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Комментарий',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -482,12 +529,12 @@ class CartPage extends StatelessWidget {
       builder: (dialogContext) => StatefulBuilder(
         builder: (builderContext, setState) => AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(15.r),
           ),
-          title: const Text(
+          title: Text(
             'Оформление заказа',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 20.sp,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -504,7 +551,7 @@ class CartPage extends StatelessWidget {
                       });
                     });
                   },
-                  icon: const Icon(Icons.comment_outlined),
+                  icon: Icon(Icons.comment_outlined),
                   label: Text(
                     comment == null || comment!.isEmpty
                         ? 'Указать комментарий'
@@ -513,34 +560,34 @@ class CartPage extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey[200],
                     foregroundColor: Colors.black87,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                   ),
                 ),
               ),
               if (comment != null && comment!.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Row(
                     children: [
                       Expanded(
                         child: Text(
                           comment!,
-                          style: const TextStyle(fontSize: 14),
+                          style: TextStyle(fontSize: 14.sp),
                         ),
                       ),
                     ],
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -582,7 +629,7 @@ class CartPage extends StatelessWidget {
                         Navigator.of(dialogContext).pop();
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
+                          SnackBar(
                             content: Text('Заказ успешно оформлен!'),
                             backgroundColor: Color(0xFF004D40),
                             duration: Duration(seconds: 2),
@@ -595,23 +642,23 @@ class CartPage extends StatelessWidget {
                           SnackBar(
                             content: Text('Ошибка создания заказа: $e'),
                             backgroundColor: Colors.red,
-                            duration: const Duration(seconds: 3),
+                            duration: Duration(seconds: 3),
                           ),
                         );
                       }
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Color(0xFF004D40),
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Заказать',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -629,13 +676,13 @@ class CartPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
         ),
         backgroundColor: _emeraldDark,
         title: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(14.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
                 shape: BoxShape.circle,
@@ -646,11 +693,11 @@ class CartPage extends StatelessWidget {
                 color: _gold,
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 12),
+            Text(
               'Когда заберёте?',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 22.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -664,25 +711,25 @@ class CartPage extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 5)),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 10)),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 15)),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 30)),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(
                 'Отмена',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
@@ -707,12 +754,12 @@ class CartPage extends StatelessWidget {
           Navigator.of(dialogContext).pop();
           await _createOrderWithPickupTime(context, cart, comment, minutes);
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(color: _gold.withOpacity(0.3)),
           ),
           child: Column(
@@ -720,7 +767,7 @@ class CartPage extends StatelessWidget {
               Text(
                 '$minutes',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 28.sp,
                   fontWeight: FontWeight.bold,
                   color: _gold,
                 ),
@@ -728,7 +775,7 @@ class CartPage extends StatelessWidget {
               Text(
                 'мин',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
@@ -767,13 +814,13 @@ class CartPage extends StatelessWidget {
       Navigator.of(context).pop();
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => const OrdersPage(),
+          builder: (context) => OrdersPage(),
         ),
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
               SizedBox(width: 10),
@@ -782,9 +829,9 @@ class CartPage extends StatelessWidget {
           ),
           backgroundColor: _emerald,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          margin: EdgeInsets.all(16.w),
+          duration: Duration(seconds: 2),
         ),
       );
     } catch (e) {
@@ -793,7 +840,7 @@ class CartPage extends StatelessWidget {
         SnackBar(
           content: Text('Ошибка создания заказа: $e'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
+          duration: Duration(seconds: 3),
         ),
       );
     }
@@ -806,16 +853,16 @@ class CartPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
         ),
         backgroundColor: _emeraldDark,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 Icons.edit_note_rounded,
@@ -823,11 +870,11 @@ class CartPage extends StatelessWidget {
                 color: _gold,
               ),
             ),
-            const SizedBox(width: 12),
-            const Text(
+            SizedBox(width: 12),
+            Text(
               'Комментарий',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -836,94 +883,96 @@ class CartPage extends StatelessWidget {
         ),
         content: SizedBox(
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                maxLines: 4,
-                style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                cursorColor: _gold,
-                decoration: InputDecoration(
-                  hintText: 'Напишите пожелания к заказу...',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.06),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  maxLines: 3,
+                  style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                  cursorColor: _gold,
+                  decoration: InputDecoration(
+                    hintText: 'Напишите пожелания к заказу...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.06),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: _gold, width: 2),
+                    ),
+                    contentPadding: EdgeInsets.all(14.w),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: _gold, width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.all(16),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.of(dialogContext).pop();
-                        final comment = controller.text.trim().isEmpty
-                            ? null
-                            : controller.text.trim();
-                        _showPickupTimeDialog(context, cart, comment);
-                      },
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [_gold.withOpacity(0.9), _gold],
+                SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          final comment = controller.text.trim().isEmpty
+                              ? null
+                              : controller.text.trim();
+                          _showPickupTimeDialog(context, cart, comment);
+                        },
+                        child: Container(
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_gold.withOpacity(0.9), _gold],
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Заказать',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A1A1A),
+                          child: Center(
+                            child: Text(
+                              'Заказать',
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1A1A1A),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(dialogContext).pop(),
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withOpacity(0.15)),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Назад',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white.withOpacity(0.7),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(dialogContext).pop(),
+                        child: Container(
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.white.withOpacity(0.15)),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Назад',
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -942,23 +991,23 @@ class CartPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(15.r),
         ),
-        title: const Text('Комментарий к заказу'),
+        title: Text('Комментарий к заказу'),
         content: TextField(
           controller: controller,
           maxLines: 5,
           decoration: InputDecoration(
             hintText: 'Введите комментарий к заказу...',
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -966,9 +1015,9 @@ class CartPage extends StatelessWidget {
               Navigator.of(dialogContext).pop();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: Color(0xFF004D40),
             ),
-            child: const Text('Готово'),
+            child: Text('Готово'),
           ),
         ],
       ),

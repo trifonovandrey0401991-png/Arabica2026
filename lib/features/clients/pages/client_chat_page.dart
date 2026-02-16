@@ -7,6 +7,7 @@ import '../services/client_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница переписки с клиентом
 class ClientChatPage extends StatefulWidget {
@@ -19,10 +20,10 @@ class ClientChatPage extends StatefulWidget {
 }
 
 class _ClientChatPageState extends State<ClientChatPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   List<ClientMessage> _messages = [];
   bool _isLoading = true;
@@ -50,7 +51,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
   }
 
   void _startAutoRefresh() {
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(Duration(seconds: 5), () {
       if (mounted) {
         _loadMessages();
         _startAutoRefresh();
@@ -71,7 +72,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
           }
@@ -96,20 +97,20 @@ class _ClientChatPageState extends State<ClientChatPage> {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       backgroundColor: _emeraldDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
               width: 40,
               height: 4,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2.r),
               ),
             ),
             _buildMediaTile(
@@ -132,7 +133,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
               title: 'Выбрать видео из галереи',
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
         ),
       ),
@@ -146,7 +147,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
     if (isVideo) {
       file = await _picker.pickVideo(
         source: result['source'] as ImageSource,
-        maxDuration: const Duration(minutes: 2),
+        maxDuration: Duration(minutes: 2),
       );
     } else {
       file = await _picker.pickImage(
@@ -196,7 +197,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
         height: 40,
         decoration: BoxDecoration(
           color: _gold.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: _gold.withOpacity(0.3)),
         ),
         child: Icon(icon, color: _gold, size: 20),
@@ -248,7 +249,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка отправки сообщения'),
               backgroundColor: Colors.red,
             ),
@@ -283,11 +284,11 @@ class _ClientChatPageState extends State<ClientChatPage> {
           children: [
             Text(
               widget.client.name.isNotEmpty ? widget.client.name : 'Клиент',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
             ),
             Text(
               widget.client.phone,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Colors.white.withOpacity(0.6)),
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.normal, color: Colors.white.withOpacity(0.6)),
             ),
           ],
         ),
@@ -296,10 +297,10 @@ class _ClientChatPageState extends State<ClientChatPage> {
         actions: [
           IconButton(
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Icon(Icons.refresh, size: 18, color: Colors.white.withOpacity(0.7)),
@@ -307,11 +308,11 @@ class _ClientChatPageState extends State<ClientChatPage> {
             onPressed: _loadMessages,
             tooltip: 'Обновить',
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -336,15 +337,15 @@ class _ClientChatPageState extends State<ClientChatPage> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: EdgeInsets.all(16.w),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.06),
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(16.r),
                                     border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   ),
                                   child: Icon(Icons.chat_bubble_outline, size: 40, color: _gold.withOpacity(0.5)),
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 Text(
                                   'Нет сообщений',
                                   style: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -354,7 +355,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                           )
                         : ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             itemCount: _messages.length,
                             itemBuilder: (context, index) {
                               final message = _messages[index];
@@ -365,16 +366,16 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                     ? Alignment.centerRight
                                     : Alignment.centerLeft,
                                 child: Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
+                                  margin: EdgeInsets.only(bottom: 8.h),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 10.h,
                                   ),
                                   decoration: BoxDecoration(
                                     color: isFromAdmin
                                         ? _emerald.withOpacity(0.8)
                                         : Colors.white.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                     border: Border.all(
                                       color: isFromAdmin
                                           ? _gold.withOpacity(0.2)
@@ -394,14 +395,14 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                         ),
                                       ),
                                       if (message.imageUrl != null) ...[
-                                        const SizedBox(height: 8),
+                                        SizedBox(height: 8),
                                         MediaMessageWidget(mediaUrl: message.imageUrl, maxHeight: 200),
                                       ],
-                                      const SizedBox(height: 4),
+                                      SizedBox(height: 4),
                                       Text(
                                         _formatTimestamp(message.timestamp),
                                         style: TextStyle(
-                                          fontSize: 10,
+                                          fontSize: 10.sp,
                                           color: isFromAdmin
                                               ? _gold.withOpacity(0.6)
                                               : Colors.white.withOpacity(0.35),
@@ -417,7 +418,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
               // Предпросмотр прикреплённого медиа
               if (_pendingMediaUrl != null)
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _emeraldDark,
                     border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
@@ -425,7 +426,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                   child: Row(
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         child: _pendingIsVideo
                             ? Container(
                                 width: 56,
@@ -442,15 +443,15 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                   width: 56,
                                   height: 56,
                                   color: _night,
-                                  child: const Icon(Icons.image, color: Colors.white38),
+                                  child: Icon(Icons.image, color: Colors.white38),
                                 ),
                               ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _pendingIsVideo ? 'Видео прикреплено' : 'Фото прикреплено',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
                         ),
                       ),
                       IconButton(
@@ -462,7 +463,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                 ),
               // Поле ввода
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
                   color: _emeraldDark,
                   border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
@@ -472,7 +473,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(color: Colors.white.withOpacity(0.08)),
                       ),
                       child: IconButton(
@@ -487,12 +488,12 @@ class _ClientChatPageState extends State<ClientChatPage> {
                         tooltip: 'Прикрепить фото/видео',
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(22.r),
                           border: Border.all(color: Colors.white.withOpacity(0.08)),
                         ),
                         child: TextField(
@@ -503,9 +504,9 @@ class _ClientChatPageState extends State<ClientChatPage> {
                             hintText: 'Введите сообщение...',
                             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                             border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 10.h,
                             ),
                           ),
                           maxLines: null,
@@ -514,11 +515,11 @@ class _ClientChatPageState extends State<ClientChatPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Container(
                       decoration: BoxDecoration(
                         color: _gold.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(color: _gold.withOpacity(0.3)),
                       ),
                       child: IconButton(
@@ -528,10 +529,10 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: const AlwaysStoppedAnimation<Color>(_gold),
+                                  valueColor: AlwaysStoppedAnimation<Color>(_gold),
                                 ),
                               )
-                            : const Icon(Icons.send, color: _gold, size: 22),
+                            : Icon(Icons.send, color: _gold, size: 22),
                         onPressed: _isSending ? null : _sendMessage,
                       ),
                     ),

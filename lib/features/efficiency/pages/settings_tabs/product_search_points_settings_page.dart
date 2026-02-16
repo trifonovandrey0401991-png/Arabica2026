@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring product search points settings (Поиск товара)
 class ProductSearchPointsSettingsPage extends StatefulWidget {
@@ -21,7 +22,7 @@ class _ProductSearchPointsSettingsPageState
   int _answerTimeoutMinutes = 30;
 
   // Gradient colors for this page (cyan theme)
-  static const _gradientColors = [Color(0xFF00d2ff), Color(0xFF3a7bd5)];
+  static final _gradientColors = [Color(0xFF00d2ff), Color(0xFF3a7bd5)];
 
   @override
   void initState() {
@@ -62,7 +63,7 @@ class _ProductSearchPointsSettingsPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -71,7 +72,7 @@ class _ProductSearchPointsSettingsPageState
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -91,9 +92,9 @@ class _ProductSearchPointsSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за поиск товара'),
+        title: Text('Баллы за поиск товара'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -111,7 +112,7 @@ class _ProductSearchPointsSettingsPageState
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -128,7 +129,7 @@ class _ProductSearchPointsSettingsPageState
                           accentColor: Colors.green,
                           icon: Icons.check_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Not answered points slider
                         SettingsSliderWidget(
@@ -143,7 +144,7 @@ class _ProductSearchPointsSettingsPageState
                           accentColor: Colors.red,
                           icon: Icons.cancel_outlined,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Timeout slider
                         SettingsSliderWidget(
@@ -158,14 +159,14 @@ class _ProductSearchPointsSettingsPageState
                           accentColor: Colors.blue,
                           icon: Icons.timer_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         BinaryPreviewWidget(
                           positiveLabel: 'Ответил',
                           negativeLabel: 'Не ответил',
@@ -174,7 +175,7 @@ class _ProductSearchPointsSettingsPageState
                           gradientColors: _gradientColors,
                           valueColumnTitle: 'Статус ответа',
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -182,7 +183,7 @@ class _ProductSearchPointsSettingsPageState
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

@@ -5,6 +5,7 @@ import '../models/client_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import 'admin_management_dialog_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка диалогов "Связь с руководством" для админа
 class ManagementDialogsListPage extends StatefulWidget {
@@ -101,27 +102,27 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.business, size: 24),
-            const SizedBox(width: 8),
-            const Flexible(
+            Icon(Icons.business, size: 24),
+            SizedBox(width: 8),
+            Flexible(
               child: Text(
                 'Связь с руководством',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (_totalUnread > 0) ...[
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
                   color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Text(
                   _totalUnread > 99 ? '99+' : '$_totalUnread',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -129,10 +130,10 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
             ],
           ],
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadDialogs,
             tooltip: 'Обновить',
           ),
@@ -140,7 +141,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -148,31 +149,31 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
           ),
         ),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : _dialogs.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'Нет сообщений',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
+                      style: TextStyle(color: Colors.white, fontSize: 18.sp),
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemCount: _dialogs.length,
                     itemBuilder: (context, index) {
                       final dialog = _dialogs[index];
                       final hasUnread = dialog.unreadCount > 0;
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: EdgeInsets.only(bottom: 12.h),
                         child: ListTile(
                           leading: Stack(
                             children: [
                               CircleAvatar(
-                                backgroundColor: const Color(0xFF004D40),
+                                backgroundColor: Color(0xFF004D40),
                                 child: Text(
                                   dialog.clientName[0].toUpperCase(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -180,19 +181,19 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
                               ),
                               if (hasUnread)
                                 Positioned(
-                                  right: 0,
-                                  top: 0,
+                                  right: 0.w,
+                                  top: 0.h,
                                   child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
+                                    padding: EdgeInsets.all(4.w),
+                                    decoration: BoxDecoration(
                                       color: Colors.red,
                                       shape: BoxShape.circle,
                                     ),
                                     child: Text(
                                       dialog.unreadCount > 9 ? '9+' : '${dialog.unreadCount}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 10,
+                                        fontSize: 10.sp,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -220,17 +221,17 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 '${dialog.messagesCount} сообщ. • ${_formatTimestamp(dialog.lastMessage.timestamp)}',
                                 style: TextStyle(
                                   color: Colors.grey[600],
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                             ],
                           ),
-                          trailing: const Icon(Icons.chevron_right),
+                          trailing: Icon(Icons.chevron_right),
                           onTap: () async {
                             Logger.debug('Tapped on dialog: ${dialog.clientName} (${Logger.maskPhone(dialog.phone)})');
                             // Создаем простой объект Client

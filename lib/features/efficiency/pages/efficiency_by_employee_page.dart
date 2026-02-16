@@ -9,6 +9,7 @@ import '../../referrals/models/referral_stats_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/services/employee_registration_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка эффективности по сотрудникам
 class EfficiencyByEmployeePage extends StatefulWidget {
@@ -20,10 +21,10 @@ class EfficiencyByEmployeePage extends StatefulWidget {
 
 class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   EfficiencyData? _data;
@@ -177,7 +178,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -191,19 +192,19 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'По сотрудникам',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -233,7 +234,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const EfficiencyLoadingState();
+      return EfficiencyLoadingState();
     }
 
     if (_error != null) {
@@ -254,7 +255,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
       backgroundColor: _emerald,
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _filteredEmployees.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -278,15 +279,15 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
 
     // Определяем цвет медали для топ-3
     Color? medalColor;
-    if (position == 1) medalColor = const Color(0xFFFFD700); // Золото
-    if (position == 2) medalColor = const Color(0xFFC0C0C0); // Серебро
-    if (position == 3) medalColor = const Color(0xFFCD7F32); // Бронза
+    if (position == 1) medalColor = Color(0xFFFFD700); // Золото
+    if (position == 2) medalColor = Color(0xFFC0C0C0); // Серебро
+    if (position == 3) medalColor = Color(0xFFCD7F32); // Бронза
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: _emeraldDark,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: _emerald.withOpacity(0.5)),
       ),
       child: Material(
@@ -303,9 +304,9 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -346,47 +347,47 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                           ),
                         ),
                       ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         summary.entityName,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: isPositive
                             ? Colors.green.withOpacity(0.15)
                             : Colors.red.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Text(
                         summary.formattedTotal,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: isPositive
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFEF5350),
+                              ? Color(0xFF4CAF50)
+                              : Color(0xFFEF5350),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Padding(
-                  padding: const EdgeInsets.only(left: 44),
+                  padding: EdgeInsets.only(left: 44.w),
                   child: Row(
                     children: [
                       Text(
                         '+${summary.earnedPoints.toStringAsFixed(1)}',
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: 14.sp,
                           color: Color(0xFF4CAF50),
                         ),
                       ),
@@ -396,20 +397,20 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                       ),
                       Text(
                         '-${summary.lostPoints.toStringAsFixed(1)}',
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: 14.sp,
                           color: Color(0xFFEF5350),
                         ),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       Text(
                         '${summary.recordsCount} записей',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.4),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Icon(
                         Icons.chevron_right,
                         color: Colors.white.withOpacity(0.3),
@@ -422,27 +423,27 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                     (_referralPointsByEmployee[summary.entityId]!.currentMonthPoints > 0 ||
                      _referralPointsByEmployee[summary.entityId]!.currentMonthReferrals > 0))
                   Padding(
-                    padding: const EdgeInsets.only(left: 44, top: 8),
+                    padding: EdgeInsets.only(left: 44.w, top: 8.h),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.person_add_alt_outlined,
                           size: 14,
                           color: _gold,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           'Приглашения: ${_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals} клиент${_getReferralsEnding(_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals)}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           '+${_referralPointsByEmployee[summary.entityId]!.currentMonthPoints}',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style: TextStyle(
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.bold,
                             color: _gold,
                           ),
@@ -450,9 +451,9 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                       ],
                     ),
                   ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Padding(
-                  padding: const EdgeInsets.only(left: 44),
+                  padding: EdgeInsets.only(left: 44.w),
                   child: EfficiencyProgressBar(summary: summary),
                 ),
               ],

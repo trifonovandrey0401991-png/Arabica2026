@@ -10,6 +10,7 @@ import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 import '../models/shop_model.dart';
 import '../services/shop_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка магазинов с возможностью построения маршрута
 class ShopsOnMapPage extends StatefulWidget {
@@ -41,17 +42,17 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
   bool _isSavingSettings = false;
   bool _isLoadingSettings = false;
 
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: Duration(milliseconds: 800),
     );
     _loadUserRole();
     _loadData();
@@ -144,7 +145,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 12),
@@ -153,7 +154,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               ),
               backgroundColor: Colors.green[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -167,14 +168,14 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
                 Expanded(child: Text('Ошибка сохранения: $e')),
               ],
             ),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -225,7 +226,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.location_off, color: Colors.white),
                   SizedBox(width: 12),
@@ -234,7 +235,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               ),
               backgroundColor: Colors.orange[700],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               action: SnackBarAction(
                 label: 'Открыть',
                 textColor: Colors.white,
@@ -262,7 +263,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.location_disabled, color: Colors.white),
                   SizedBox(width: 12),
@@ -271,8 +272,8 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               ),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              duration: const Duration(seconds: 5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              duration: Duration(seconds: 5),
               action: SnackBarAction(
                 label: 'Настройки',
                 textColor: Colors.white,
@@ -288,7 +289,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
       // Получаем текущую позицию с таймаутом 10 секунд
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        timeLimit: Duration(seconds: 10),
       );
 
       if (mounted) {
@@ -303,7 +304,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
         setState(() => _isLoadingLocation = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white),
                 SizedBox(width: 12),
@@ -312,7 +313,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             ),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -349,7 +350,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     if (shop.latitude == null || shop.longitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.white),
               SizedBox(width: 12),
@@ -358,7 +359,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
           ),
           backgroundColor: Colors.red[600],
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
       return;
@@ -392,14 +393,14 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Не удалось открыть карту: $e', style: const TextStyle(color: Colors.white))),
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Не удалось открыть карту: $e', style: TextStyle(color: Colors.white))),
               ],
             ),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -413,7 +414,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
       return Scaffold(
         backgroundColor: _night,
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -431,7 +432,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -446,10 +447,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               // TabBar для админа
               if (isAdmin && _tabController != null)
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  margin: EdgeInsets.symmetric(horizontal: 16.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: Colors.white.withOpacity(0.08)),
                   ),
                   child: TabBar(
@@ -459,9 +460,9 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                     indicatorSize: TabBarIndicatorSize.tab,
                     indicator: BoxDecoration(
                       color: _gold.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
-                    tabs: const [
+                    tabs: [
                       Tab(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -485,7 +486,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                     ],
                   ),
                 ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               // Контент
               Expanded(
                 child: isAdmin && _tabController != null
@@ -507,7 +508,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       child: Row(
         children: [
           GestureDetector(
@@ -517,19 +518,19 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               height: 40,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+              child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
               'Магазины на карте',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -540,10 +541,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               height: 40,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: const Center(
+              child: Center(
                 child: SizedBox(
                   width: 18,
                   height: 18,
@@ -564,7 +565,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   color: _currentPosition != null
                       ? Colors.green.withOpacity(0.15)
                       : Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
                     color: _currentPosition != null
                         ? Colors.green.withOpacity(0.3)
@@ -578,7 +579,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 ),
               ),
             ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           GestureDetector(
             onTap: _loadData,
             child: Container(
@@ -586,10 +587,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               height: 40,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+              child: Icon(Icons.refresh, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -604,19 +605,19 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: CircularProgressIndicator(color: _gold),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               'Загрузка магазинов...',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.6),
-                fontSize: 16,
+                fontSize: 16.sp,
               ),
             ),
           ],
@@ -627,41 +628,41 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     if (_error != null) {
       return Center(
         child: Container(
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(24),
+          margin: EdgeInsets.all(24.w),
+          padding: EdgeInsets.all(24.w),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16),
+                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16.sp),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: _loadData,
                 icon: Icon(Icons.refresh, color: _gold),
                 label: Text('Повторить', style: TextStyle(color: _gold)),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: _gold.withOpacity(0.4)),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                   backgroundColor: _gold.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
               ),
@@ -685,10 +686,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               ),
               child: Icon(Icons.store_mall_directory_outlined, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               'Нет магазинов с координатами',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
             ),
           ],
         ),
@@ -715,7 +716,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
         // Список магазинов
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
             itemCount: sortedShops.length,
             itemBuilder: (context, index) {
               final shop = sortedShops[index];
@@ -756,20 +757,20 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     final bannerColor = _currentPosition != null ? Colors.green : Colors.orange;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 8.h),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: bannerColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: bannerColor.withOpacity(0.25)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: bannerColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Icon(
               _currentPosition != null ? Icons.check_circle : Icons.info_outline,
@@ -777,7 +778,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               size: 20,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               _currentPosition != null
@@ -785,7 +786,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   : 'Разрешите геолокацию для построения маршрута.',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.7),
-                fontSize: 13,
+                fontSize: 13.sp,
                 height: 1.4,
               ),
             ),
@@ -794,10 +795,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             GestureDetector(
               onTap: _getCurrentLocation,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: _gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   border: Border.all(color: _gold.withOpacity(0.3)),
                 ),
                 child: Text(
@@ -805,7 +806,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   style: TextStyle(
                     color: _gold,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ),
@@ -820,33 +821,33 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     final distanceColor = isNearby ? Colors.green : Colors.blue;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openRoute(shop),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка магазина
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: const ShopIcon(size: 56),
+                    borderRadius: BorderRadius.circular(12.r),
+                    child: ShopIcon(size: 56),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
 
                 // Информация о магазине
                 Expanded(
@@ -856,21 +857,21 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                       Text(
                         shop.name,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           Icon(Icons.location_on, size: 14, color: Colors.white.withOpacity(0.3)),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               shop.address,
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 13.sp,
                                 color: Colors.white.withOpacity(0.4),
                               ),
                               maxLines: 2,
@@ -880,12 +881,12 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                         ],
                       ),
                       if (distance != null) ...[
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
                             color: distanceColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(10.r),
                             border: Border.all(color: distanceColor.withOpacity(0.25)),
                           ),
                           child: Row(
@@ -896,21 +897,21 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                                 size: 14,
                                 color: distanceColor,
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Text(
                                 _formatDistance(distance),
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
                                   color: distanceColor,
                                 ),
                               ),
                               if (isNearby) ...[
-                                const SizedBox(width: 4),
+                                SizedBox(width: 4),
                                 Text(
                                   '• Рядом',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 11.sp,
                                     color: distanceColor.withOpacity(0.7),
                                   ),
                                 ),
@@ -925,10 +926,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
 
                 // Кнопка маршрута
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: _gold.withOpacity(0.2)),
                   ),
                   child: Icon(
@@ -954,25 +955,25 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Заголовок
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _geofenceEnabled ? Colors.green.withOpacity(0.15) : Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     _geofenceEnabled ? Icons.notifications_active : Icons.notifications_off,
@@ -980,7 +981,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -989,18 +990,18 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                         'Push-уведомления',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         _geofenceEnabled
                             ? 'Клиенты получают уведомления рядом с магазином'
                             : 'Уведомления отключены',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
-                          fontSize: 13,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ],
@@ -1015,7 +1016,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Радиус
           _buildSettingsCard(
@@ -1025,7 +1026,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             child: TextField(
               controller: _radiusController,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
               cursorColor: _gold,
               decoration: InputDecoration(
                 hintText: '500',
@@ -1035,19 +1036,19 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.06),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: _gold.withOpacity(0.4)),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Заголовок уведомления
           _buildSettingsCard(
@@ -1056,7 +1057,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             subtitle: 'Отображается вверху push-уведомления',
             child: TextField(
               controller: _titleController,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
               cursorColor: _gold,
               decoration: InputDecoration(
                 hintText: 'Arabica рядом!',
@@ -1064,19 +1065,19 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.06),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: _gold.withOpacity(0.4)),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Текст уведомления
           _buildSettingsCard(
@@ -1086,7 +1087,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             child: TextField(
               controller: _bodyController,
               maxLines: 3,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
               cursorColor: _gold,
               decoration: InputDecoration(
                 hintText: 'Заходите за ароматным кофе!',
@@ -1094,19 +1095,19 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.06),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: _gold.withOpacity(0.4)),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Интервал между уведомлениями
           _buildSettingsCard(
@@ -1116,18 +1117,18 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: DropdownButtonFormField<int>(
                 value: _cooldownHours,
                 dropdownColor: _emeraldDark,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: const InputDecoration(
+                style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                decoration: InputDecoration(
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem(value: 6, child: Text('6 часов')),
                   DropdownMenuItem(value: 12, child: Text('12 часов')),
                   DropdownMenuItem(value: 24, child: Text('24 часа')),
@@ -1139,7 +1140,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             ),
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Кнопка сохранения
           SizedBox(
@@ -1155,39 +1156,39 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   : Icon(Icons.save, color: _gold),
               label: Text(
                 _isSavingSettings ? 'Сохранение...' : 'Сохранить настройки',
-                style: TextStyle(fontSize: 16, color: _gold, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16.sp, color: _gold, fontWeight: FontWeight.bold),
               ),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: _gold.withOpacity(0.4)),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: 16.h),
                 backgroundColor: _gold.withOpacity(0.1),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                 ),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Информация
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: _gold.withOpacity(0.15)),
             ),
             child: Row(
               children: [
                 Icon(Icons.info_outline, color: _gold.withOpacity(0.7), size: 20),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Уведомления отправляются автоматически, когда клиент находится в радиусе любого магазина.',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       height: 1.4,
                     ),
                   ),
@@ -1210,25 +1211,25 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(icon, color: _gold.withOpacity(0.8), size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1237,16 +1238,16 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                         title,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         subtitle,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],
@@ -1256,7 +1257,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
             child: child,
           ),
         ],

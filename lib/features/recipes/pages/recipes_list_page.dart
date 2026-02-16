@@ -6,6 +6,7 @@ import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class RecipesListPage extends StatefulWidget {
   const RecipesListPage({super.key});
@@ -15,7 +16,7 @@ class RecipesListPage extends StatefulWidget {
 }
 
 class _RecipesListPageState extends State<RecipesListPage> with TickerProviderStateMixin {
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   TabController? _tabController;
   late Future<List<Recipe>> _recipesFuture;
@@ -83,10 +84,10 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
     if (_isLoadingRole) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Рецепты'),
-          backgroundColor: const Color(0xFF004D40),
+          title: Text('Рецепты'),
+          backgroundColor: Color(0xFF004D40),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -94,15 +95,15 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Рецепты'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Рецепты'),
+        backgroundColor: Color(0xFF004D40),
         bottom: isAdmin && _tabController != null
             ? TabBar(
                 controller: _tabController!,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 indicatorColor: Colors.white,
-                tabs: const [
+                tabs: [
                   Tab(text: 'Рецепты'),
                   Tab(text: 'Редактировать'),
                 ],
@@ -111,7 +112,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -123,7 +124,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                 controller: _tabController!,
                 children: [
                   _buildRecipesList(),
-                  const RecipeListEditPage(),
+                  RecipeListEditPage(),
                 ],
               )
             : _buildRecipesList(),
@@ -136,12 +137,12 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
       children: [
         // Поиск и фильтр
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.15),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(24),
-              bottomRight: Radius.circular(24),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(24.r),
+              bottomRight: Radius.circular(24.r),
             ),
           ),
           child: Column(
@@ -150,12 +151,12 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
                       blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
@@ -167,10 +168,10 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -179,7 +180,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                   },
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               // Фильтр категорий
               FutureBuilder<List<String>>(
                 future: Recipe.getUniqueCategories(),
@@ -188,12 +189,12 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     return Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.1),
                             blurRadius: 8,
-                            offset: const Offset(0, 2),
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
@@ -206,14 +207,14 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(16.r),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                         ),
                         dropdownColor: Colors.white,
                         items: [
-                          const DropdownMenuItem<String>(
+                          DropdownMenuItem<String>(
                             value: null,
                             child: Text('Все категории'),
                           ),
@@ -230,7 +231,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                       ),
                     );
                   }
-                  return const SizedBox();
+                  return SizedBox();
                 },
               ),
             ],
@@ -249,10 +250,10 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                       CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
+                      SizedBox(height: 16),
+                      Text(
                         'Загрузка рецептов...',
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                        style: TextStyle(color: Colors.white70, fontSize: 16.sp),
                       ),
                     ],
                   ),
@@ -265,10 +266,10 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.menu_book_outlined, size: 64, color: Colors.white54),
-                      const SizedBox(height: 16),
-                      const Text(
+                      SizedBox(height: 16),
+                      Text(
                         'Рецепты не найдены',
-                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        style: TextStyle(color: Colors.white, fontSize: 18.sp),
                       ),
                     ],
                   ),
@@ -294,15 +295,15 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.search_off_rounded, size: 64, color: Colors.white54),
-                      const SizedBox(height: 16),
-                      const Text(
+                      SizedBox(height: 16),
+                      Text(
                         'Ничего не найдено',
-                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        style: TextStyle(color: Colors.white, fontSize: 18.sp),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Попробуйте изменить запрос',
-                        style: TextStyle(color: Colors.white60, fontSize: 14),
+                        style: TextStyle(color: Colors.white60, fontSize: 14.sp),
                       ),
                     ],
                   ),
@@ -314,7 +315,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
               categories.sort();
 
               return ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 itemCount: categories.length,
                 itemBuilder: (context, catIndex) {
                   final category = categories[catIndex];
@@ -326,8 +327,8 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     children: [
                       // Заголовок категории
                       Container(
-                        margin: EdgeInsets.only(bottom: 12, top: catIndex > 0 ? 20 : 0),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        margin: EdgeInsets.only(bottom: 12.h, top: catIndex > 0 ? 20 : 0),
+                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
@@ -335,7 +336,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                               Colors.white.withOpacity(0.1),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: Row(
                           children: [
@@ -344,25 +345,25 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                               color: Colors.white,
                               size: 24,
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: 10),
                             Text(
                               category,
-                              style: const TextStyle(
-                                fontSize: 18,
+                              style: TextStyle(
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
                             ),
-                            const Spacer(),
+                            Spacer(),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Text(
                                 '${categoryRecipes.length}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -387,15 +388,15 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
   /// Карточка рецепта
   Widget _buildRecipeCard(Recipe recipe) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -410,9 +411,9 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
               ),
             );
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: Row(
               children: [
                 // Фото рецепта
@@ -422,22 +423,22 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       boxShadow: [
                         BoxShadow(
                           color: _primaryColor.withOpacity(0.2),
                           blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          offset: Offset(0, 2),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       child: _buildRecipeImage(recipe),
                     ),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Информация о рецепте
                 Expanded(
                   child: Column(
@@ -445,28 +446,28 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     children: [
                       Text(
                         recipe.name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2D2D2D),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       if (recipe.price != null && recipe.price!.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
                             color: _primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             '${recipe.price} руб.',
                             style: TextStyle(
                               color: _primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ),
@@ -479,7 +480,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                   height: 36,
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,

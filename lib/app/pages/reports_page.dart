@@ -37,6 +37,7 @@ import '../../core/services/report_notification_service.dart';
 import '../../core/services/base_http_service.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
 import '../../core/constants/api_constants.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчетов (только для администраторов и верифицированных сотрудников)
 class ReportsPage extends StatefulWidget {
@@ -66,9 +67,9 @@ class _ReportsPageState extends State<ReportsPage> {
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - как в главном меню
   // ═══════════════════════════════════════════════════════════════
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   void initState() {
@@ -205,7 +206,18 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _loadUserRole() async {
     try {
-      final roleData = await UserRoleService.loadUserRole();
+      var roleData = await UserRoleService.loadUserRole();
+
+      // Если кэш устарел или пуст — загружаем с сервера
+      if (roleData == null) {
+        final prefs = await SharedPreferences.getInstance();
+        final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+        if (phone != null && phone.isNotEmpty) {
+          roleData = await UserRoleService.getUserRole(phone);
+          await UserRoleService.saveUserRole(roleData);
+        }
+      }
+
       setState(() => _userRole = roleData?.role);
 
       if (_userRole == UserRole.employee) {
@@ -231,7 +243,7 @@ class _ReportsPageState extends State<ReportsPage> {
         backgroundColor: _night,
         body: Container(
           decoration: _buildGradient(),
-          child: const Center(
+          child: Center(
             child: CircularProgressIndicator(color: Colors.white),
           ),
         ),
@@ -250,11 +262,11 @@ class _ReportsPageState extends State<ReportsPage> {
             child: Column(
               children: [
                 _buildAppBar(),
-                const Expanded(
+                Expanded(
                   child: Center(
                     child: Text(
                       'Доступ к отчетам ограничен',
-                      style: TextStyle(fontSize: 18, color: Colors.white54),
+                      style: TextStyle(fontSize: 18.sp, color: Colors.white54),
                     ),
                   ),
                 ),
@@ -275,7 +287,7 @@ class _ReportsPageState extends State<ReportsPage> {
               _buildAppBar(),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
                   children: _buildReportItems(isAdmin),
                 ),
               ),
@@ -287,7 +299,7 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   BoxDecoration _buildGradient() {
-    return const BoxDecoration(
+    return BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
@@ -299,7 +311,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 24.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -310,19 +322,19 @@ class _ReportsPageState extends State<ReportsPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Отчёты',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -338,7 +350,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт по РКО',
         badge: _reportCounts.rko,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOReportsPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => RKOReportsPage()));
           _loadReportCounts();
         },
       ));
@@ -351,7 +363,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт по пересменкам',
         badge: _reportCounts.shiftHandover,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ShiftReportsListPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftReportsListPage()));
           _loadReportCounts();
         },
       ));
@@ -364,7 +376,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт (Сдача смены)',
         badge: _reportCounts.shiftReport,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ShiftHandoverReportsListPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftHandoverReportsListPage()));
           _loadReportCounts();
         },
       ));
@@ -377,7 +389,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт по конвертам',
         badge: _envelopeUnconfirmedCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const EnvelopeReportsListPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => EnvelopeReportsListPage()));
           _loadEnvelopeCount();
         },
       ));
@@ -390,7 +402,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Счётчик кофемашин',
         badge: _coffeeMachineUnconfirmedCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const CoffeeMachineReportsListPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => CoffeeMachineReportsListPage()));
           _loadCoffeeMachineCount();
         },
       ));
@@ -403,7 +415,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт по пересчёту',
         badge: _reportCounts.recount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountReportsListPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => RecountReportsListPage()));
           _loadReportCounts();
         },
       ));
@@ -416,7 +428,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёты по приходам',
         badge: _reportCounts.attendance,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceReportsPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => AttendanceReportsPage()));
           _loadReportCounts();
         },
       ));
@@ -429,7 +441,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Заявки на смены',
         badge: _shiftTransferRequestsUnreadCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ShiftTransferRequestsPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftTransferRequestsPage()));
           _loadShiftTransferRequestsCount();
         },
       ));
@@ -441,7 +453,7 @@ class _ReportsPageState extends State<ReportsPage> {
         icon: Icons.insights_outlined,
         title: 'KPI',
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const KPITypeSelectionPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => KPITypeSelectionPage()));
         },
       ));
     }
@@ -453,7 +465,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отзывы покупателей',
         badge: _unreadReviewsCount + _managementUnreadCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewsListPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ReviewsListPage()));
           _loadUnreadReviewsCount();
           _loadManagementUnreadCount();
         },
@@ -467,7 +479,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт (Поиск товаров)',
         badge: _productQuestionsUnreadCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductQuestionsReportPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ProductQuestionsReportPage()));
           _loadProductQuestionsUnreadCount();
         },
       ));
@@ -480,7 +492,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт (Тестирование)',
         badge: _reportCounts.test,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const TestReportPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => TestReportPage()));
           _loadReportCounts();
         },
       ));
@@ -493,7 +505,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт (Главная касса)',
         badge: _unconfirmedWithdrawalsCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const MainCashPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => MainCashPage()));
           _loadUnconfirmedWithdrawalsCount();
         },
       ));
@@ -505,7 +517,7 @@ class _ReportsPageState extends State<ReportsPage> {
         icon: Icons.trending_up_rounded,
         title: 'Эффективность сотрудников',
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeesEfficiencyPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeesEfficiencyPage()));
         },
       ));
     }
@@ -518,7 +530,7 @@ class _ReportsPageState extends State<ReportsPage> {
         badge: _unviewedExpiredTasksCount,
         onTap: () async {
           await TaskService.markExpiredAsViewed();
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const TaskReportsPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => TaskReportsPage()));
           _loadUnviewedExpiredTasksCount();
         },
       ));
@@ -531,7 +543,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт (Устроиться на работу)',
         badge: _jobApplicationsUnviewedCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const JobApplicationsListPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => JobApplicationsListPage()));
           _loadJobApplicationsCount();
         },
       ));
@@ -545,7 +557,7 @@ class _ReportsPageState extends State<ReportsPage> {
         badge: _referralsUnviewedCount,
         onTap: () async {
           await ReferralService.markAsViewed();
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralsReportPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => ReferralsReportPage()));
           _loadReferralsUnviewedCount();
         },
       ));
@@ -557,7 +569,7 @@ class _ReportsPageState extends State<ReportsPage> {
         icon: Icons.casino_outlined,
         title: 'Колесо (Сотрудники)',
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const WheelReportsPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => WheelReportsPage()));
         },
       ));
     }
@@ -568,7 +580,7 @@ class _ReportsPageState extends State<ReportsPage> {
         icon: Icons.emoji_events_outlined,
         title: 'Колесо (Клиенты)',
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientWheelPrizesReportPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => ClientWheelPrizesReportPage()));
         },
       ));
     }
@@ -580,7 +592,7 @@ class _ReportsPageState extends State<ReportsPage> {
         title: 'Отчёт (Заказы клиентов)',
         badge: _ordersUnviewedCount,
         onTap: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersReportPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersReportPage()));
           _loadOrdersUnviewedCount();
         },
       ));
@@ -592,7 +604,7 @@ class _ReportsPageState extends State<ReportsPage> {
         icon: Icons.psychology_outlined,
         title: 'Обучение ИИ',
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AITrainingPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage()));
         },
       ));
     }
@@ -608,19 +620,19 @@ class _ReportsPageState extends State<ReportsPage> {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12.h),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           splashColor: Colors.white.withOpacity(0.1),
           highlightColor: Colors.white.withOpacity(0.05),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.15)),
             ),
             child: Row(
@@ -630,7 +642,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     color: Colors.white.withOpacity(0.1),
                   ),
                   child: Icon(
@@ -639,7 +651,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
 
                 // Название
                 Expanded(
@@ -647,7 +659,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     title,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -656,16 +668,16 @@ class _ReportsPageState extends State<ReportsPage> {
                 // Бейдж или стрелка
                 if (badge != null && badge > 0) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
                       badge > 99 ? '99+' : '$badge',
                       style: TextStyle(
                         color: _emerald,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

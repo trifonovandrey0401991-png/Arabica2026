@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import '../services/rko_reports_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // http оставлен для скачивания binary файлов (DOCX/PDF) с сервера
 
@@ -97,34 +98,34 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
               : widget.fileName,
             overflow: TextOverflow.ellipsis,
           ),
-          backgroundColor: const Color(0xFF004D40),
+          backgroundColor: Color(0xFF004D40),
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : _errorMessage != null
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        const Text(
+                        Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        SizedBox(height: 16),
+                        Text(
                           'Ошибка открытия файла',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          padding: EdgeInsets.symmetric(horizontal: 32.w),
                           child: Text(
                             _errorMessage!,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 14),
+                            style: TextStyle(fontSize: 14.sp),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         ElevatedButton(
                           onPressed: _openDocx,
-                          child: const Text('Попробовать снова'),
+                          child: Text('Попробовать снова'),
                         ),
                       ],
                     ),
@@ -133,30 +134,30 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.description, size: 80, color: Color(0xFF004D40)),
-                        const SizedBox(height: 24),
-                        const Text(
+                        Icon(Icons.description, size: 80, color: Color(0xFF004D40)),
+                        SizedBox(height: 24),
+                        Text(
                           'Файл Word (.docx)',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          padding: EdgeInsets.symmetric(horizontal: 32.w),
                           child: Text(
                             widget.fileName,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 14),
+                            style: TextStyle(fontSize: 14.sp),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        SizedBox(height: 32),
                         ElevatedButton.icon(
                           onPressed: _openDocx,
-                          icon: const Icon(Icons.open_in_new),
-                          label: const Text('Открыть в приложении'),
+                          icon: Icon(Icons.open_in_new),
+                          label: Text('Открыть в приложении'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF004D40),
+                            backgroundColor: Color(0xFF004D40),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                           ),
                         ),
                       ],
@@ -174,36 +175,36 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
             : widget.fileName,
           overflow: TextOverflow.ellipsis,
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: _errorMessage != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  const Text(
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text(
                     'Ошибка загрузки PDF',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: EdgeInsets.symmetric(horizontal: 32.w),
                     child: Text(
                       _errorMessage!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14),
+                      style: TextStyle(fontSize: 14.sp),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
                       setState(() {
                         _errorMessage = null;
                       });
                     },
-                    child: const Text('Попробовать снова'),
+                    child: Text('Попробовать снова'),
                   ),
                 ],
               ),

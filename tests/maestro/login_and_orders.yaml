@@ -1,0 +1,16 @@
+appId: ru.arabica.app
+---
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "1"
+- waitForAnimationToEnd
+- tapOn: "1"
+- waitForAnimationToEnd
+- tapOn: "1"
+- waitForAnimationToEnd
+- tapOn: "1"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+- takeScreenshot: after_login

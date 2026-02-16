@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет для ввода OTP-кода (одноразового кода подтверждения)
 ///
@@ -70,8 +71,8 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
   int _remainingSeconds = 0;
 
   // Брендовые цвета
-  static const Color _primaryColor = Color(0xFF1A4D4D);
-  static const Color _accentGold = Color(0xFFD4AF37);
+  static final Color _primaryColor = Color(0xFF1A4D4D);
+  static final Color _accentGold = Color(0xFFD4AF37);
 
   Color get _activeColor => widget.accentColor ?? (widget.lightTheme ? _accentGold : _primaryColor);
   Color get _textColor => widget.lightTheme ? Colors.white : Colors.black87;
@@ -113,7 +114,7 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
   void _startResendTimer() {
     _remainingSeconds = widget.resendTimeout;
     _resendTimer?.cancel();
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _resendTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       setState(() {
         if (_remainingSeconds > 0) {
           _remainingSeconds--;
@@ -210,13 +211,13 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
           Text(
             widget.title!,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 24.sp,
               fontWeight: FontWeight.bold,
               color: _textColor,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
 
         // Описание
@@ -224,37 +225,45 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
           Text(
             widget.subtitle!,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: _subtitleColor,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
         ],
 
-        // Поля ввода
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            widget.codeLength,
-            (index) => _buildCodeField(index),
-          ),
+        // Поля ввода — адаптивная ширина от экрана
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            final totalMargin = 8.0 * widget.codeLength; // 4.w * 2 per field
+            final fieldWidth = ((maxWidth - totalMargin) / widget.codeLength).clamp(36.0, 50.0);
+            final fieldHeight = fieldWidth * 1.22;
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.codeLength,
+                (index) => _buildCodeField(index, fieldWidth, fieldHeight),
+              ),
+            );
+          },
         ),
 
         // Ошибка
         if (widget.showError && widget.errorMessage != null) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text(
               widget.errorMessage!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.redAccent,
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
@@ -262,7 +271,7 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
           ),
         ],
 
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
 
         // Кнопка повторной отправки
         if (widget.onResend != null) ...[
@@ -271,7 +280,7 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
                   'Отправить повторно через $_remainingSeconds сек',
                   style: TextStyle(
                     color: _subtitleColor,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 )
               : TextButton(
@@ -279,7 +288,7 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
                   style: TextButton.styleFrom(
                     foregroundColor: _activeColor,
                   ),
-                  child: const Text(
+                  child: Text(
                     'Отправить код повторно',
                     style: TextStyle(fontWeight: FontWeight.w500),
                   ),
@@ -289,7 +298,7 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
     );
   }
 
-  Widget _buildCodeField(int index) {
+  Widget _buildCodeField(int index, double fieldWidth, double fieldHeight) {
     final borderColor = widget.showError
         ? Colors.red
         : (widget.lightTheme
@@ -299,9 +308,9 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
     final focusBorderColor = widget.showError ? Colors.red : _activeColor;
 
     return Container(
-      width: 45,
-      height: 55,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: fieldWidth,
+      height: fieldHeight,
+      margin: EdgeInsets.symmetric(horizontal: 4),
       child: KeyboardListener(
         focusNode: FocusNode(),
         onKeyEvent: (event) => _onKeyDown(event, index),
@@ -312,26 +321,26 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
           textAlign: TextAlign.center,
           maxLength: 1,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 24.sp,
             fontWeight: FontWeight.bold,
             color: widget.lightTheme ? Colors.black87 : Colors.black87,
           ),
           decoration: InputDecoration(
             counterText: '',
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            contentPadding: EdgeInsets.symmetric(vertical: 12.h),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               borderSide: BorderSide(color: borderColor),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               borderSide: BorderSide(
                 color: focusBorderColor,
                 width: 2,
               ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               borderSide: BorderSide(color: borderColor),
             ),
             filled: true,

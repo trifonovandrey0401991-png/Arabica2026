@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет прогресса до прокрутки колеса удачи
 class WheelProgressWidget extends StatelessWidget {
@@ -19,7 +20,7 @@ class WheelProgressWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!wheelEnabled) return const SizedBox.shrink();
+    if (!wheelEnabled) return SizedBox.shrink();
 
     final progress = drinksPerSpin > 0
         ? (currentDrinks % drinksPerSpin) / drinksPerSpin
@@ -27,19 +28,19 @@ class WheelProgressWidget extends StatelessWidget {
     final drinksToNextSpin = drinksPerSpin - (currentDrinks % drinksPerSpin);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF8E2DE2).withOpacity(0.1),
-            const Color(0xFF4A00E0).withOpacity(0.1),
+            Color(0xFF8E2DE2).withOpacity(0.1),
+            Color(0xFF4A00E0).withOpacity(0.1),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: const Color(0xFF8E2DE2).withOpacity(0.3),
+          color: Color(0xFF8E2DE2).withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -53,23 +54,23 @@ class WheelProgressWidget extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.casino,
                   color: Colors.white,
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: Text(
                   'Колесо удачи',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF2D3436),
                   ),
@@ -78,19 +79,19 @@ class WheelProgressWidget extends StatelessWidget {
               if (spinsAvailable > 0)
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Color(0xFF4CAF50),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.star, color: Colors.white, size: 16),
-                      const SizedBox(width: 4),
+                      Icon(Icons.star, color: Colors.white, size: 16),
+                      SizedBox(width: 4),
                       Text(
                         '$spinsAvailable',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -100,7 +101,7 @@ class WheelProgressWidget extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Прогресс бар
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,9 +114,9 @@ class WheelProgressWidget extends StatelessWidget {
                         ? 'Прокрутки доступны!'
                         : 'До прокрутки: $drinksToNextSpin напитков',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: spinsAvailable > 0
-                          ? const Color(0xFF4CAF50)
+                          ? Color(0xFF4CAF50)
                           : Colors.grey[600],
                       fontWeight: spinsAvailable > 0
                           ? FontWeight.bold
@@ -125,32 +126,32 @@ class WheelProgressWidget extends StatelessWidget {
                   Text(
                     '${currentDrinks % drinksPerSpin}/$drinksPerSpin',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.grey[600],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               // Визуальный прогресс с точками
               _buildProgressDots(progress),
             ],
           ),
           // Кнопка прокрутки
           if (spinsAvailable > 0) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: onSpinPressed,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8E2DE2),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: Color(0xFF8E2DE2),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.casino, color: Colors.white),
@@ -158,7 +159,7 @@ class WheelProgressWidget extends StatelessWidget {
                     Text(
                       'КРУТИТЬ КОЛЕСО',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -188,9 +189,9 @@ class WheelProgressWidget extends StatelessWidget {
               height: 8,
               decoration: BoxDecoration(
                 color: isFilled
-                    ? const Color(0xFF8E2DE2)
+                    ? Color(0xFF8E2DE2)
                     : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(4.r),
               ),
             );
           }),
@@ -220,10 +221,10 @@ class LevelInfoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: levelColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: levelColor.withOpacity(0.3),
           width: 1,
@@ -236,7 +237,7 @@ class LevelInfoWidget extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: levelColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Icon(
               levelIcon ?? Icons.workspace_premium,
@@ -244,7 +245,7 @@ class LevelInfoWidget extends StatelessWidget {
               size: 28,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,26 +253,26 @@ class LevelInfoWidget extends StatelessWidget {
                 Text(
                   'Уровень: $levelName',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                     color: levelColor,
                   ),
                 ),
                 if (drinksToNextLevel != null && nextLevelName != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'До "$nextLevelName": $drinksToNextLevel напитков',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.grey[600],
                     ),
                   ),
                 ] else ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Максимальный уровень достигнут!',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.grey[600],
                       fontStyle: FontStyle.italic,
                     ),

@@ -3,6 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница получения приза - показывает QR-код для сотрудника
 class PendingPrizePage extends StatefulWidget {
@@ -22,9 +23,9 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
   bool _regenerating = false;
 
   // Цвета
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   void initState() {
@@ -43,7 +44,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
         _regenerating = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('QR-код обновлён'),
           backgroundColor: Color(0xFF4CAF50),
         ),
@@ -51,7 +52,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
     } else if (mounted) {
       setState(() => _regenerating = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Не удалось обновить QR-код'),
           backgroundColor: Colors.red,
         ),
@@ -65,32 +66,32 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
       backgroundColor: _night,
       appBar: AppBar(
         backgroundColor: _emeraldDark,
-        title: const Text('Ваш приз'),
+        title: Text('Ваш приз'),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             children: [
               // Заголовок с анимированным текстом
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: 16.h),
                 child: Column(
                   children: [
                     Text(
                       'Поздравляем!',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 28.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white.withOpacity(0.95),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Вы выиграли приз',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: Colors.white.withOpacity(0.7),
                       ),
                     ),
@@ -98,11 +99,11 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Карточка приза
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(24.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -112,7 +113,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                       _prize.prizeColor.withOpacity(0.1),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                   border: Border.all(
                     color: _prize.prizeColor.withOpacity(0.5),
                     width: 2,
@@ -131,12 +132,12 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                             _prize.prizeColor.withOpacity(0.7),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20.r),
                         boxShadow: [
                           BoxShadow(
                             color: _prize.prizeColor.withOpacity(0.4),
                             blurRadius: 20,
-                            offset: const Offset(0, 8),
+                            offset: Offset(0, 8),
                           ),
                         ],
                       ),
@@ -146,22 +147,22 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                         size: 40,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     // Название приза
                     Text(
                       _prize.prize,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 24,
+                      style: TextStyle(
+                        fontSize: 24.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       _formatDate(_prize.spinDate),
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         color: Colors.white.withOpacity(0.6),
                       ),
                     ),
@@ -169,19 +170,19 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // QR-код
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                   boxShadow: [
                     BoxShadow(
                       color: _emerald.withOpacity(0.3),
                       blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      offset: Offset(0, 10),
                     ),
                   ],
                 ),
@@ -202,18 +203,18 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                       ),
                     ),
                     if (_prize.qrUsed) ...[
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 8.h,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.orange),
                         ),
-                        child: const Text(
+                        child: Text(
                           'QR был отсканирован',
                           style: TextStyle(
                             color: Colors.orange,
@@ -226,14 +227,14 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Инструкция
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: _emerald.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Row(
                   children: [
@@ -241,12 +242,12 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                       Icons.info_outline,
                       color: Colors.white.withOpacity(0.7),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Покажите этот QR-код сотруднику для получения приза',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.8),
                         ),
                       ),
@@ -255,7 +256,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Кнопка обновить QR
               if (_prize.qrUsed)
@@ -264,7 +265,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                   child: ElevatedButton.icon(
                     onPressed: _regenerating ? null : _regenerateQr,
                     icon: _regenerating
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
@@ -272,14 +273,14 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.refresh),
+                        : Icon(Icons.refresh),
                     label: Text(_regenerating ? 'Обновление...' : 'Обновить QR-код'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _emerald,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
                   ),

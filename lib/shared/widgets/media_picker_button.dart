@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/media_upload_service.dart';
 import 'app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Кнопка для выбора и загрузки медиа (фото/видео)
 class MediaPickerButton extends StatelessWidget {
@@ -22,26 +23,26 @@ class MediaPickerButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera, color: Color(0xFF004D40)),
-              title: const Text('Сделать фото'),
+              leading: Icon(Icons.photo_camera, color: Color(0xFF004D40)),
+              title: Text('Сделать фото'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать фото из галереи'),
+              leading: Icon(Icons.photo_library, color: Color(0xFF004D40)),
+              title: Text('Выбрать фото из галереи'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam, color: Color(0xFF004D40)),
-              title: const Text('Записать видео'),
+              leading: Icon(Icons.videocam, color: Color(0xFF004D40)),
+              title: Text('Записать видео'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
             ),
             ListTile(
-              leading: const Icon(Icons.video_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать видео из галереи'),
+              leading: Icon(Icons.video_library, color: Color(0xFF004D40)),
+              title: Text('Выбрать видео из галереи'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),
@@ -56,7 +57,7 @@ class MediaPickerButton extends StatelessWidget {
     if (isVideo) {
       file = await picker.pickVideo(
         source: result['source'] as ImageSource,
-        maxDuration: const Duration(minutes: 2),
+        maxDuration: Duration(minutes: 2),
       );
     } else {
       file = await picker.pickImage(
@@ -77,8 +78,8 @@ class MediaPickerButton extends StatelessWidget {
         builder: (context) => AlertDialog(
           content: Row(
             children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 16),
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
               Expanded(
                 child: Text(isVideo ? 'Загрузка видео...' : 'Загрузка фото...'),
               ),
@@ -118,12 +119,12 @@ class MediaPickerButton extends StatelessWidget {
     return IconButton(
       onPressed: isLoading ? null : () => _showMediaPicker(context),
       icon: isLoading
-          ? const SizedBox(
+          ? SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Icon(Icons.attach_file, color: Color(0xFF004D40)),
+          : Icon(Icons.attach_file, color: Color(0xFF004D40)),
       tooltip: 'Прикрепить фото/видео',
     );
   }
@@ -145,14 +146,14 @@ class MediaMessageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = videoUrl ?? imageUrl;
-    if (url == null) return const SizedBox.shrink();
+    if (url == null) return SizedBox.shrink();
 
     final isVideo = MediaUploadService.isVideo(url) || videoUrl != null;
 
     return GestureDetector(
       onTap: () => _showFullScreen(context, url, isVideo),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -161,7 +162,7 @@ class MediaMessageWidget extends StatelessWidget {
                 width: maxWidth,
                 height: 150,
                 color: Colors.black87,
-                child: const Center(
+                child: Center(
                   child: Icon(Icons.play_circle_outline, color: Colors.white, size: 48),
                 ),
               )
@@ -174,13 +175,13 @@ class MediaMessageWidget extends StatelessWidget {
                   width: maxWidth,
                   height: 100,
                   color: Colors.grey[300],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                  child: Icon(Icons.broken_image, color: Colors.grey),
                 ),
               ),
             if (isVideo)
-              const Positioned(
-                bottom: 8,
-                right: 8,
+              Positioned(
+                bottom: 8.h,
+                right: 8.w,
                 child: Icon(Icons.videocam, color: Colors.white, size: 20),
               ),
           ],
@@ -196,23 +197,23 @@ class MediaMessageWidget extends StatelessWidget {
           backgroundColor: Colors.black,
           appBar: AppBar(
             backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
+            iconTheme: IconThemeData(color: Colors.white),
           ),
           body: Center(
             child: isVideo
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.videocam, color: Colors.white, size: 64),
-                      const SizedBox(height: 16),
-                      const Text(
+                      Icon(Icons.videocam, color: Colors.white, size: 64),
+                      SizedBox(height: 16),
+                      Text(
                         'Воспроизведение видео',
                         style: TextStyle(color: Colors.white),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         url,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(color: Colors.grey, fontSize: 12.sp),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -222,7 +223,7 @@ class MediaMessageWidget extends StatelessWidget {
                       imageUrl: url,
                       fit: BoxFit.contain,
                       errorWidget: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image, color: Colors.white, size: 64),
+                          Icon(Icons.broken_image, color: Colors.white, size: 64),
                     ),
                   ),
           ),

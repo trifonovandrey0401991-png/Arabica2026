@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../services/turnover_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет календаря оборота магазина
 class TurnoverCalendarWidget extends StatefulWidget {
@@ -25,15 +26,15 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
   bool _isLoadingComparison = false;
 
   // Dark Emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _gold = Color(0xFFD4AF37);
 
-  static const List<String> _monthNames = [
+  static List<String> _monthNames = [
     'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
   ];
 
-  static const List<String> _weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  static List<String> _weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
   @override
   void initState() {
@@ -149,24 +150,24 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
       children: [
         // Заголовок с месяцем
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 12.h),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left, color: Colors.white),
+                icon: Icon(Icons.chevron_left, color: Colors.white),
                 onPressed: _previousMonth,
               ),
               Text(
                 '${_monthNames[_selectedMonth.month - 1]} ${_selectedMonth.year}',
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.chevron_right, color: Colors.white),
+                icon: Icon(Icons.chevron_right, color: Colors.white),
                 onPressed: _nextMonth,
               ),
             ],
@@ -177,7 +178,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         Expanded(
           flex: 2,
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: _gold))
+              ? Center(child: CircularProgressIndicator(color: _gold))
               : _buildCalendar(),
         ),
 
@@ -200,7 +201,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
       children: [
         // Дни недели
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: EdgeInsets.symmetric(horizontal: 8.w),
           child: Row(
             children: _weekDays.map((day) {
               final isWeekend = day == 'Сб' || day == 'Вс';
@@ -220,13 +221,13 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
             }).toList(),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // Дни месяца
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
               childAspectRatio: 0.8,
             ),
@@ -235,7 +236,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
               final day = index - firstWeekday + 2;
 
               if (day < 1 || day > lastDayOfMonth.day) {
-                return const SizedBox();
+                return SizedBox();
               }
 
               final turnover = _getTurnoverForDay(day);
@@ -255,12 +256,12 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                           DateTime(_selectedMonth.year, _selectedMonth.month, day),
                         ),
                 child: Container(
-                  margin: const EdgeInsets.all(2),
+                  margin: EdgeInsets.all(2.w),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? _emerald
                         : null,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                     border: isToday && !isSelected
                         ? Border.all(color: _gold, width: 2)
                         : null,
@@ -283,7 +284,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                         Text(
                           _formatAmount(turnover.totalRevenue),
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 10.sp,
                             color: isSelected ? Colors.white70 : Colors.green,
                             fontWeight: FontWeight.w500,
                           ),
@@ -292,7 +293,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                         Text(
                           '--',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 10.sp,
                             color: isSelected
                                 ? Colors.white54
                                 : Colors.white.withOpacity(0.3),
@@ -311,7 +312,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
 
   Widget _buildDayDetails() {
     if (_isLoadingComparison) {
-      return const Center(child: CircularProgressIndicator(color: _gold));
+      return Center(child: CircularProgressIndicator(color: _gold));
     }
 
     if (_comparison == null) {
@@ -326,10 +327,10 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
     final current = _comparison!.current;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: SingleChildScrollView(
@@ -340,11 +341,11 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
               'Выбрано: ${current.formattedDate}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 16.sp,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Оборот за день
             Row(
@@ -352,10 +353,10 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
               children: [
                 _buildAmountChip('ООО', current.oooRevenue, Colors.blue[300]!),
                 _buildAmountChip('ИП', current.ipRevenue, Colors.orange[300]!),
-                _buildAmountChip('Итого', current.totalRevenue, const Color(0xFF4DD0B0)),
+                _buildAmountChip('Итого', current.totalRevenue, Color(0xFF4DD0B0)),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Сравнение
             Text(
@@ -365,7 +366,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                 color: Colors.white.withOpacity(0.5),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             if (_comparison!.weekAgo != null)
               _buildComparisonRow(
@@ -392,16 +393,16 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: color,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           '${_formatFullAmount(amount)} руб',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -412,14 +413,14 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
 
   Widget _buildComparisonRow(String label, double amount, double? changePercent) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
@@ -428,24 +429,24 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
               Text(
                 '${_formatFullAmount(amount)} руб',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   color: Colors.white.withOpacity(0.9),
                 ),
               ),
               if (changePercent != null) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     color: changePercent >= 0
                         ? Colors.green.withOpacity(0.15)
                         : Colors.red.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(4.r),
                   ),
                   child: Text(
                     '${changePercent >= 0 ? '+' : ''}${changePercent.toStringAsFixed(0)}%',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.bold,
                       color: changePercent >= 0 ? Colors.green[300] : Colors.red[300],
                     ),

@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/shift_ai_verification_model.dart';
 import '../services/shift_ai_verification_service.dart';
 import '../../shifts/models/shift_shortage_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ИИ проверки товаров при пересменке
 class ShiftAiVerificationPage extends StatefulWidget {
@@ -23,6 +24,12 @@ class ShiftAiVerificationPage extends StatefulWidget {
 }
 
 class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
+  // Dark emerald palette
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = true;
   ShiftAiVerificationResult? _result;
   final List<ShiftShortage> _confirmedShortages = [];
@@ -31,6 +38,14 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
   void initState() {
     super.initState();
     _runVerification();
+  }
+
+  @override
+  void dispose() {
+    // Освобождаем ссылки на тяжёлые данные (фото в _result, список недостач)
+    _result = null;
+    _confirmedShortages.clear();
+    super.dispose();
   }
 
   Future<void> _runVerification() async {
@@ -102,7 +117,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       product.status = ConfirmationStatus.confirmedPresent;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Проверка ИИ пропущена'),
         backgroundColor: Colors.grey,
       ),
@@ -123,31 +138,33 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Подтверждение недостачи'),
+          backgroundColor: _emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Подтверждение недостачи', style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 product.productName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
+                  color: Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning, color: Colors.orange.shade700),
-                    const SizedBox(width: 12),
+                    Icon(Icons.warning, color: Colors.orange),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'На остатках: $stockQuantity шт.\nВы уверены, что товар отсутствует?',
-                        style: TextStyle(color: Colors.orange.shade900),
+                        style: TextStyle(color: Colors.orange),
                       ),
                     ),
                   ],
@@ -158,7 +175,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
@@ -166,7 +183,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Да, отсутствует'),
+              child: Text('Да, отсутствует'),
             ),
           ],
         ),
@@ -208,7 +225,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
 
     if (!allConfirmed) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Подтвердите все товары перед сохранением'),
           backgroundColor: Colors.orange,
         ),
@@ -232,111 +249,160 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
     Navigator.pop(context, null); // Пропустить ИИ проверку
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ИИ Проверка товаров'),
-        backgroundColor: const Color(0xFF004D40),
-        foregroundColor: Colors.white,
-        actions: [
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.8), size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'ИИ Проверка товаров',
+              style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
           TextButton(
             onPressed: _skipVerification,
-            child: const Text(
+            child: Text(
               'Пропустить',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: _gold.withOpacity(0.8), fontSize: 14.sp),
             ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Анализируем фотографии...'),
-                ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(color: _gold),
+                            SizedBox(height: 20),
+                            Text(
+                              'Анализируем фотографии...',
+                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16.sp),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _buildContent(),
               ),
-            )
-          : _buildContent(),
-      bottomNavigationBar: !_isLoading &&
-              _result != null &&
-              _result!.modelTrained &&
-              !_result!.noVerificationPerformed
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
-                onPressed: _finishVerification,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              if (!_isLoading &&
+                  _result != null &&
+                  _result!.modelTrained &&
+                  !_result!.noVerificationPerformed)
+                Container(
+                  padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+                  child: ElevatedButton(
+                    onPressed: _finishVerification,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _gold,
+                      foregroundColor: _night,
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                    ),
+                    child: Text(
+                      _confirmedShortages.isEmpty
+                          ? 'Завершить проверку'
+                          : 'Сохранить с недостачами (${_confirmedShortages.length})',
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-                child: Text(
-                  _confirmedShortages.isEmpty
-                      ? 'Завершить проверку'
-                      : 'Сохранить с недостачами (${_confirmedShortages.length})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ),
-            )
-          : null,
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildContent() {
     if (_result == null) {
-      return const Center(child: Text('Ошибка загрузки'));
+      return Center(
+        child: Text('Ошибка загрузки', style: TextStyle(color: Colors.white.withOpacity(0.7))),
+      );
     }
 
     if (!_result!.modelTrained) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.model_training,
-                size: 80,
-                color: Colors.grey[400],
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: _gold.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _gold.withOpacity(0.3), width: 2),
+                ),
+                child: Icon(Icons.model_training, size: 50, color: _gold),
               ),
-              const SizedBox(height: 24),
-              const Text(
+              SizedBox(height: 24),
+              Text(
                 'Модель ИИ ещё не обучена',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 20.sp,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 'Продолжите загрузку образцов для обучения модели. ИИ проверка станет доступна позже.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey[600],
+                  fontSize: 15.sp,
+                  color: Colors.white.withOpacity(0.6),
                 ),
               ),
-              const SizedBox(height: 32),
-              OutlinedButton(
+              SizedBox(height: 32),
+              ElevatedButton(
                 onPressed: _skipVerification,
-                child: const Text('Пропустить проверку'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _gold,
+                  foregroundColor: _night,
+                  padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+                child: Text('Пропустить проверку', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -348,55 +414,74 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
     if (_result!.noVerificationPerformed) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.hourglass_empty,
-                size: 80,
-                color: Colors.orange[400],
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.orange.withOpacity(0.3), width: 2),
+                ),
+                child: Icon(Icons.hourglass_empty, size: 50, color: Colors.orange),
               ),
-              const SizedBox(height: 24),
-              const Text(
+              SizedBox(height: 24),
+              Text(
                 'ИИ не готов для этого магазина',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 20.sp,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 'Необходимо добавить фото выкладки для ${_result!.skippedProducts.length} товаров',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey[600],
+                  fontSize: 15.sp,
+                  color: Colors.white.withOpacity(0.6),
                 ),
               ),
-              const SizedBox(height: 16),
-              // Список пропущенных товаров
+              SizedBox(height: 16),
               Container(
-                constraints: const BoxConstraints(maxHeight: 200),
+                constraints: BoxConstraints(maxHeight: 200),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
                 child: ListView.builder(
                   shrinkWrap: true,
+                  padding: EdgeInsets.symmetric(vertical: 4.h),
                   itemCount: _result!.skippedProducts.length,
                   itemBuilder: (context, index) {
                     final product = _result!.skippedProducts[index];
                     return ListTile(
                       dense: true,
-                      leading: Icon(Icons.warning, color: Colors.orange[700], size: 20),
-                      title: Text(product.productName, style: const TextStyle(fontSize: 13)),
-                      subtitle: Text(product.reason, style: const TextStyle(fontSize: 11)),
+                      leading: Icon(Icons.warning, color: Colors.orange, size: 20),
+                      title: Text(product.productName, style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9))),
+                      subtitle: Text(product.reason, style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
                     );
                   },
                 ),
               ),
-              const SizedBox(height: 24),
-              OutlinedButton(
+              SizedBox(height: 24),
+              ElevatedButton(
                 onPressed: _skipVerification,
-                child: const Text('Пропустить проверку'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _gold,
+                  foregroundColor: _night,
+                  padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+                child: Text('Пропустить проверку', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -407,7 +492,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
     if (_result!.allProductsFound) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -415,42 +500,36 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: Colors.green.shade100,
+                  color: Colors.green.withOpacity(0.15),
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
                 ),
-                child: Icon(
-                  Icons.check_circle,
-                  size: 60,
-                  color: Colors.green.shade700,
-                ),
+                child: Icon(Icons.check_circle, size: 60, color: Colors.green),
               ),
-              const SizedBox(height: 24),
-              const Text(
+              SizedBox(height: 24),
+              Text(
                 'Все товары найдены!',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 22.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.green,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 'ИИ обнаружил все ${_result!.detectedProducts.length} товаров на фотографиях',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey[600],
+                  fontSize: 15.sp,
+                  color: Colors.white.withOpacity(0.6),
                 ),
               ),
               if (_result!.hasSkippedProducts) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   'Пропущено ${_result!.skippedProducts.length} товаров (ИИ не готов)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.orange[700],
-                  ),
+                  style: TextStyle(fontSize: 13.sp, color: Colors.orange),
                 ),
               ],
             ],
@@ -460,7 +539,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       children: [
         // Найденные товары
         if (_result!.detectedProducts.isNotEmpty) ...[
@@ -470,9 +549,9 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             color: Colors.green,
             count: _result!.detectedProducts.length,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           ..._result!.detectedProducts.map(_buildDetectedProductCard),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
         ],
 
         // Отсутствующие товары
@@ -483,9 +562,9 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             color: Colors.orange,
             count: _result!.missingProducts.length,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           ..._result!.missingProducts.map(_buildMissingProductCard),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
         ],
 
         // Пропущенные товары (ИИ не готов)
@@ -496,7 +575,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             color: Colors.grey,
             count: _result!.skippedProducts.length,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           ..._result!.skippedProducts.map(_buildSkippedProductCard),
         ],
       ],
@@ -504,32 +583,44 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
   }
 
   Widget _buildSkippedProductCard(SkippedProductInfo product) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: Colors.grey.shade50,
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(Icons.hourglass_empty, color: Colors.grey.shade600),
-        ),
-        title: Text(product.productName),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(product.barcode, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-            const SizedBox(height: 4),
-            Text(
-              product.reason,
-              style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10.r),
             ),
-          ],
-        ),
-        isThreeLine: true,
+            child: Icon(Icons.hourglass_empty, color: Colors.grey, size: 20),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.productName,
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w500, fontSize: 14.sp),
+                ),
+                Text(product.barcode, style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.3))),
+                SizedBox(height: 4),
+                Text(
+                  product.reason,
+                  style: TextStyle(fontSize: 11.sp, color: Colors.orange),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -541,35 +632,37 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
     required int count,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             title,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
               color: color,
             ),
           ),
-          const Spacer(),
+          Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
             decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: color.withOpacity(0.4)),
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
+              style: TextStyle(
+                color: color,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -580,34 +673,58 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
   }
 
   Widget _buildDetectedProductCard(DetectedProductInfo product) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.green.shade100,
-            borderRadius: BorderRadius.circular(8),
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.green.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: Icon(Icons.check, color: Colors.green, size: 22),
           ),
-          child: Icon(Icons.check, color: Colors.green.shade700),
-        ),
-        title: Text(product.productName),
-        subtitle: Text(product.barcode),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.green.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '${product.confidencePercent}%',
-            style: TextStyle(
-              color: Colors.green.shade700,
-              fontWeight: FontWeight.bold,
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.productName,
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14.sp),
+                ),
+                Text(
+                  product.barcode,
+                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
+                ),
+              ],
             ),
           ),
-        ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: Colors.green.withOpacity(0.3)),
+            ),
+            child: Text(
+              '${product.confidencePercent}%',
+              style: TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+                fontSize: 12.sp,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -634,144 +751,147 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
         statusText = 'Не подтверждён';
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: statusColor.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Icon(statusIcon, color: statusColor),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.productName,
+                      style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                    Text(
+                      product.barcode,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.white.withOpacity(0.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: statusColor.withOpacity(0.3)),
+                ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (product.status == ConfirmationStatus.notConfirmed) ...[
+            SizedBox(height: 12),
+            // Показываем счётчик попыток если были неудачные попытки
+            if (product.verificationAttempts > 0) ...[
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                margin: EdgeInsets.only(bottom: 8.h),
+                decoration: BoxDecoration(
+                  color: (product.canRetry ? Colors.orange : Colors.red).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6.r),
+                  border: Border.all(
+                    color: (product.canRetry ? Colors.orange : Colors.red).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      product.canRetry ? Icons.refresh : Icons.warning,
+                      size: 14,
+                      color: product.canRetry ? Colors.orange : Colors.red,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      product.canRetry
+                          ? 'Попыток: ${product.verificationAttempts}/${MissingProductInfo.maxVerificationAttempts}'
+                          : 'Лимит попыток исчерпан',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: product.canRetry ? Colors.orange : Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(statusIcon, color: statusColor),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product.productName,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        product.barcode,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                  child: OutlinedButton.icon(
+                    onPressed: () => _confirmProductPresent(product),
+                    icon: Icon(Icons.photo_camera, size: 18),
+                    label: Text(product.verificationAttempts > 0 ? 'Повторить' : 'Присутствует'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green,
+                      side: BorderSide(color: Colors.green.withOpacity(0.5)),
+                    ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: statusColor.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _confirmProductMissing(product),
+                    icon: Icon(Icons.cancel, size: 18),
+                    label: Text('Отсутствует'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: BorderSide(color: Colors.red.withOpacity(0.5)),
                     ),
                   ),
                 ),
               ],
             ),
-            if (product.status == ConfirmationStatus.notConfirmed) ...[
-              const SizedBox(height: 12),
-              // Показываем счётчик попыток если были неудачные попытки
-              if (product.verificationAttempts > 0) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: product.canRetry ? Colors.orange.shade50 : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: product.canRetry ? Colors.orange.shade200 : Colors.red.shade200,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        product.canRetry ? Icons.refresh : Icons.warning,
-                        size: 14,
-                        color: product.canRetry ? Colors.orange.shade700 : Colors.red.shade700,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        product.canRetry
-                            ? 'Попыток: ${product.verificationAttempts}/${MissingProductInfo.maxVerificationAttempts}'
-                            : 'Лимит попыток исчерпан',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: product.canRetry ? Colors.orange.shade800 : Colors.red.shade800,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+            // Кнопка "Пропустить проверку ИИ" после 3 неудачных попыток
+            if (product.canSkip) ...[
+              SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _skipAiVerification(product),
+                  icon: Icon(Icons.skip_next, size: 18),
+                  label: Text('Пропустить проверку ИИ'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white.withOpacity(0.5),
+                    side: BorderSide(color: Colors.white.withOpacity(0.2)),
                   ),
                 ),
-              ],
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _confirmProductPresent(product),
-                      icon: const Icon(Icons.photo_camera, size: 18),
-                      label: Text(product.verificationAttempts > 0 ? 'Повторить' : 'Присутствует'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.green,
-                        side: const BorderSide(color: Colors.green),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _confirmProductMissing(product),
-                      icon: const Icon(Icons.cancel, size: 18),
-                      label: const Text('Отсутствует'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                      ),
-                    ),
-                  ),
-                ],
               ),
-              // Кнопка "Пропустить проверку ИИ" после 3 неудачных попыток
-              if (product.canSkip) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _skipAiVerification(product),
-                    icon: const Icon(Icons.skip_next, size: 18),
-                    label: const Text('Пропустить проверку ИИ'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey[700],
-                      side: BorderSide(color: Colors.grey.shade400),
-                    ),
-                  ),
-                ),
-              ],
             ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -785,7 +905,7 @@ class _BoundingBoxDialog extends StatefulWidget {
   final String employeeName;
   final int currentAttempts;
 
-  const _BoundingBoxDialog({
+  _BoundingBoxDialog({
     required this.photos,
     required this.product,
     required this.shopAddress,
@@ -839,54 +959,73 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
     });
   }
 
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+
   @override
   Widget build(BuildContext context) {
     final remaining = MissingProductInfo.maxVerificationAttempts - widget.currentAttempts;
 
     return Dialog(
+      backgroundColor: _night,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 750),
+        constraints: BoxConstraints(maxWidth: 500, maxHeight: 750),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Заголовок
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16.r),
+                  topRight: Radius.circular(16.r),
                 ),
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.crop_free, color: Colors.red.shade700),
-                  const SizedBox(width: 12),
+                  Icon(Icons.crop_free, color: _gold),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Выделите товар на фото',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 16.sp,
+                            color: Colors.white,
                           ),
                         ),
                         Text(
                           widget.product.productName,
                           style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
+                            fontSize: 13.sp,
+                            color: Colors.white.withOpacity(0.5),
                           ),
                         ),
                         if (widget.currentAttempts > 0)
                           Text(
                             'Попытка ${widget.currentAttempts + 1} из ${MissingProductInfo.maxVerificationAttempts}',
                             style: TextStyle(
-                              fontSize: 11,
-                              color: remaining > 0 ? Colors.orange.shade700 : Colors.red.shade700,
+                              fontSize: 11.sp,
+                              color: remaining > 0 ? Colors.orange : Colors.red,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -896,12 +1035,12 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                   // Кнопка камеры
                   IconButton(
                     onPressed: _takeNewPhoto,
-                    icon: Icon(Icons.camera_alt, color: Colors.red.shade700),
+                    icon: Icon(Icons.camera_alt, color: _gold),
                     tooltip: 'Сделать новое фото',
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context, null),
-                    icon: const Icon(Icons.close),
+                    icon: Icon(Icons.close, color: Colors.white.withOpacity(0.6)),
                   ),
                 ],
               ),
@@ -910,7 +1049,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
             // Выбор фото (включая новое)
             Container(
               height: 80,
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
@@ -921,30 +1060,30 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                       child: Container(
                         width: 64,
                         height: 64,
-                        margin: const EdgeInsets.only(right: 8),
+                        margin: EdgeInsets.only(right: 8.w),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: _isNewPhoto ? Colors.red : Colors.grey.shade300,
+                            color: _isNewPhoto ? _gold : Colors.white.withOpacity(0.2),
                             width: _isNewPhoto ? 3 : 1,
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6.r),
                               child: Image.memory(_newPhoto!, fit: BoxFit.cover, width: 64, height: 64),
                             ),
                             Positioned(
-                              bottom: 2,
-                              right: 2,
+                              bottom: 2.h,
+                              right: 2.w,
                               child: Container(
-                                padding: const EdgeInsets.all(2),
+                                padding: EdgeInsets.all(2.w),
                                 decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: _gold,
+                                  borderRadius: BorderRadius.circular(4.r),
                                 ),
-                                child: const Icon(Icons.camera_alt, size: 10, color: Colors.white),
+                                child: Icon(Icons.camera_alt, size: 10, color: _night),
                               ),
                             ),
                           ],
@@ -961,16 +1100,16 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                       child: Container(
                         width: 64,
                         height: 64,
-                        margin: const EdgeInsets.only(right: 8),
+                        margin: EdgeInsets.only(right: 8.w),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: isSelected ? Colors.red : Colors.grey.shade300,
+                            color: isSelected ? _gold : Colors.white.withOpacity(0.2),
                             width: isSelected ? 3 : 1,
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(6.r),
                           child: Image.memory(photo, fit: BoxFit.cover),
                         ),
                       ),
@@ -1035,7 +1174,10 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
 
             // Кнопки
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -1043,28 +1185,34 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                       onPressed: () {
                         setState(() => _boundingBox = null);
                       },
-                      child: const Text('Очистить'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white.withOpacity(0.7),
+                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Text('Очистить'),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: _boundingBox != null && !_isVerifying ? _verifyAndSave : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
+                        backgroundColor: _gold,
+                        foregroundColor: _night,
+                        disabledBackgroundColor: Colors.white.withOpacity(0.1),
+                        disabledForegroundColor: Colors.white.withOpacity(0.3),
                       ),
                       child: _isVerifying
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: _night,
                               ),
                             )
-                          : const Text('Проверить'),
+                          : Text('Проверить', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -1088,7 +1236,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
       final RenderBox box = imageContext.findRenderObject() as RenderBox;
       imageDisplaySize = box.size;
     } else {
-      imageDisplaySize = _imageSize ?? const Size(300, 300);
+      imageDisplaySize = _imageSize ?? Size(300, 300);
     }
 
     // Нормализуем координаты BBox (0-1)
@@ -1131,13 +1279,14 @@ class _BoundingBoxPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    const gold = Color(0xFFD4AF37);
     final paint = Paint()
-      ..color = Colors.red
+      ..color = gold
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
     final fillPaint = Paint()
-      ..color = Colors.red.withOpacity(0.2)
+      ..color = gold.withOpacity(0.2)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(boundingBox, fillPaint);

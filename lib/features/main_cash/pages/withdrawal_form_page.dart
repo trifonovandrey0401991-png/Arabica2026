@@ -6,6 +6,7 @@ import '../models/withdrawal_model.dart';
 import '../models/withdrawal_expense_model.dart';
 import '../widgets/withdrawal_confirmation_dialog.dart';
 import '../services/withdrawal_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Данные формы для одного расхода
 class ExpenseFormData {
@@ -65,10 +66,10 @@ class WithdrawalFormPage extends StatefulWidget {
 }
 
 class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   String _selectedType = 'ooo'; // 'ooo' или 'ip'
   List<Supplier> _allSuppliers = [];
@@ -227,7 +228,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Выемка успешно создана'),
             backgroundColor: Colors.green,
           ),
@@ -253,7 +254,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -266,7 +267,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -276,23 +277,23 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.1),
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Text(
+                    SizedBox(width: 16),
+                    Text(
                       'Форма выемки',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -302,19 +303,19 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
               // Content
               Expanded(
                 child: _isLoadingSuppliers
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: _gold))
                     : SingleChildScrollView(
-                        padding: const EdgeInsets.all(20),
+                        padding: EdgeInsets.all(20.w),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             // Карточка с информацией
                             Container(
-                              padding: const EdgeInsets.all(20),
+                              padding: EdgeInsets.all(20.w),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(
                                   color: Colors.white.withOpacity(0.1),
                                 ),
@@ -328,7 +329,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                   ),
                                   Padding(
                                     padding:
-                                        const EdgeInsets.symmetric(vertical: 12),
+                                        EdgeInsets.symmetric(vertical: 12.h),
                                     child: Divider(
                                       height: 1,
                                       color: Colors.white.withOpacity(0.1),
@@ -342,32 +343,32 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
 
                             // Выбор типа (современный дизайн)
                             Text(
                               'Выберите тип',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white.withOpacity(0.9),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
                                   child: _buildTypeCard(
                                       'ООО', 'ooo', Colors.blue),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12),
                                 Expanded(
                                   child: _buildTypeCard(
                                       'ИП', 'ip', Colors.orange),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 28),
+                            SizedBox(height: 28),
 
                             // Заголовок расходов
                             Row(
@@ -376,41 +377,41 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                 Text(
                                   'Расходы',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 18.sp,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white.withOpacity(0.9),
                                   ),
                                 ),
                                 if (_expenses.isNotEmpty)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 4.h,
                                     ),
                                     decoration: BoxDecoration(
                                       color: _emerald.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12.r),
                                     ),
                                     child: Text(
                                       '${_expenses.length}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: _gold,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                        fontSize: 14.sp,
                                       ),
                                     ),
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
 
                             // Список расходов или placeholder
                             if (_expenses.isEmpty)
                               Container(
-                                padding: const EdgeInsets.all(40),
+                                padding: EdgeInsets.all(40.w),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.06),
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14.r),
                                   border: Border.all(
                                     color: Colors.white.withOpacity(0.1),
                                     width: 2,
@@ -424,20 +425,20 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                       size: 64,
                                       color: Colors.white.withOpacity(0.3),
                                     ),
-                                    const SizedBox(height: 12),
+                                    SizedBox(height: 12),
                                     Text(
                                       'Нет расходов',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white.withOpacity(0.5),
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: 4),
                                     Text(
                                       'Нажмите кнопку ниже чтобы добавить',
                                       style: TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 13.sp,
                                         color: Colors.white.withOpacity(0.3),
                                       ),
                                     ),
@@ -451,7 +452,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                 return _buildExpenseCard(index, expense);
                               }),
 
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
 
                             // Кнопки добавления
                             Row(
@@ -464,7 +465,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                     onPressed: _addSupplierExpense,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12),
                                 Expanded(
                                   child: _buildActionButton(
                                     icon: Icons.edit_note,
@@ -475,17 +476,17 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 28),
+                            SizedBox(height: 28),
 
                             // Общая сумма
                             if (_expenses.isNotEmpty) ...[
                               Container(
-                                padding: const EdgeInsets.all(20),
+                                padding: EdgeInsets.all(20.w),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
+                                  gradient: LinearGradient(
                                     colors: [_emeraldDark, _emerald],
                                   ),
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(16.r),
                                 ),
                                 child: Row(
                                   mainAxisAlignment:
@@ -500,16 +501,16 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                           style: TextStyle(
                                             color:
                                                 Colors.white.withOpacity(0.5),
-                                            fontSize: 14,
+                                            fontSize: 14.sp,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
+                                        SizedBox(height: 4),
                                         Text(
                                           '${_calculateTotal().toStringAsFixed(0)} руб',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: 32,
+                                            fontSize: 32.sp,
                                             fontWeight: FontWeight.bold,
                                             letterSpacing: -0.5,
                                           ),
@@ -517,13 +518,13 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                       ],
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.all(12),
+                                      padding: EdgeInsets.all(12.w),
                                       decoration: BoxDecoration(
                                         color: Colors.white.withOpacity(0.2),
                                         borderRadius:
-                                            BorderRadius.circular(12),
+                                            BorderRadius.circular(12.r),
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.account_balance_wallet,
                                         color: Colors.white,
                                         size: 32,
@@ -532,7 +533,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 28),
+                              SizedBox(height: 28),
                             ],
 
                             // Кнопка сохранения
@@ -545,12 +546,12 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                   backgroundColor: Colors.green[600],
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(16.r),
                                   ),
                                   elevation: 0,
                                 ),
                                 child: _isSaving
-                                    ? const SizedBox(
+                                    ? SizedBox(
                                         height: 24,
                                         width: 24,
                                         child: CircularProgressIndicator(
@@ -558,7 +559,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                           color: Colors.white,
                                         ),
                                       )
-                                    : const Row(
+                                    : Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
@@ -568,7 +569,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                           Text(
                                             'Сохранить выемку',
                                             style: TextStyle(
-                                              fontSize: 17,
+                                              fontSize: 17.sp,
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 0.3,
                                             ),
@@ -577,7 +578,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                       ),
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
                           ],
                         ),
                       ),
@@ -593,14 +594,14 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
             color: _emerald.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, color: _gold, size: 20),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,16 +609,16 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.white.withOpacity(0.5),
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white.withOpacity(0.9),
                 ),
@@ -634,10 +635,10 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
     return GestureDetector(
       onTap: () => _onTypeChanged(value),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.symmetric(vertical: 16.h),
         decoration: BoxDecoration(
           color: isSelected ? color : Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: isSelected ? color : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
@@ -650,11 +651,11 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
               color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
               size: 28,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color:
                     isSelected ? Colors.white : Colors.white.withOpacity(0.5),
@@ -680,21 +681,21 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
           backgroundColor: color,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12.w),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 20),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 13,
+                style: TextStyle(
+                  fontSize: 13.sp,
                   fontWeight: FontWeight.w600,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -708,16 +709,16 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
 
   Widget _buildExpenseCard(int index, ExpenseFormData expense) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -725,32 +726,32 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 4.h,
                   ),
                   decoration: BoxDecoration(
                     color: _emerald.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Text(
                     'Расход ${index + 1}',
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: TextStyle(
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.bold,
                       color: _gold,
                     ),
                   ),
                 ),
-                const Spacer(),
+                Spacer(),
                 Material(
                   color: Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   child: InkWell(
                     onTap: () => _removeExpense(index),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                     child: Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8.w),
                       child: Icon(
                         Icons.delete_outline,
                         color: Colors.red[400],
@@ -761,16 +762,16 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Поставщик (dropdown или бейдж "Другой расход")
             if (expense.isOtherExpense)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14.w),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
                     color: Colors.orange.withOpacity(0.3),
                     width: 1.5,
@@ -783,11 +784,11 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                       color: Colors.orange[300],
                       size: 22,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Text(
                       'Другой расход',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
                         color: Colors.orange[300],
                       ),
@@ -799,7 +800,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.1),
                   ),
@@ -816,15 +817,15 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                       color: _gold,
                     ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 14.h,
                     ),
                   ),
                   dropdownColor: _emeraldDark,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                   items: _filteredSuppliers.map((supplier) {
                     return DropdownMenuItem(
@@ -832,7 +833,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                       child: Text(
                         supplier.name,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
@@ -848,13 +849,13 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                   },
                 ),
               ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
 
             // Сумма
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.1),
                 ),
@@ -871,14 +872,14 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     color: Colors.green[400],
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 14.h,
                   ),
                 ),
                 keyboardType: TextInputType.number,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white.withOpacity(0.9),
                 ),
@@ -888,13 +889,13 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
 
             // Комментарий
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.1),
                 ),
@@ -913,14 +914,14 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     color: Colors.blue[400],
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 14.h,
                   ),
                 ),
                 maxLines: 2,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: Colors.white.withOpacity(0.9),
                 ),
               ),

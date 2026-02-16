@@ -66,10 +66,14 @@ class ProductQuestionService {
   }
 
   /// Получить конкретный вопрос
-  static Future<ProductQuestion?> getQuestion(String questionId) async {
+  /// [since] — если передан, сервер вернёт только новые сообщения (инкрементально)
+  static Future<ProductQuestion?> getQuestion(String questionId, {String? since}) async {
     Logger.debug('📥 Загрузка вопроса: $questionId');
+    final endpoint = since != null
+        ? '$baseEndpoint/$questionId?since=${Uri.encodeComponent(since)}'
+        : '$baseEndpoint/$questionId';
     return await BaseHttpService.get<ProductQuestion>(
-      endpoint: '$baseEndpoint/$questionId',
+      endpoint: endpoint,
       fromJson: (json) => ProductQuestion.fromJson(json),
       itemKey: 'question',
     );
@@ -288,10 +292,14 @@ class ProductQuestionService {
   }
 
   /// Получить конкретный персональный диалог
-  static Future<PersonalProductDialog?> getPersonalDialog(String dialogId) async {
+  /// [since] — если передан, сервер вернёт только новые сообщения (инкрементально)
+  static Future<PersonalProductDialog?> getPersonalDialog(String dialogId, {String? since}) async {
     Logger.debug('📥 Загрузка персонального диалога: $dialogId');
+    final endpoint = since != null
+        ? '$_dialogsEndpoint/$dialogId?since=${Uri.encodeComponent(since)}'
+        : '$_dialogsEndpoint/$dialogId';
     return await BaseHttpService.get<PersonalProductDialog>(
-      endpoint: '$_dialogsEndpoint/$dialogId',
+      endpoint: endpoint,
       fromJson: (json) => PersonalProductDialog.fromJson(json),
       itemKey: 'dialog',
     );

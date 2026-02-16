@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/employee_chat_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../../employees/services/employee_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница создания группы — dark emerald стиль
 class CreateGroupPage extends StatefulWidget {
@@ -22,9 +23,9 @@ class CreateGroupPage extends StatefulWidget {
 
 class _CreateGroupPageState extends State<CreateGroupPage> {
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   final _nameController = TextEditingController();
   final _searchController = TextEditingController();
@@ -102,14 +103,14 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите название группы')),
+        SnackBar(content: Text('Введите название группы')),
       );
       return;
     }
 
     if (_selectedParticipants.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Выберите хотя бы одного участника')),
+        SnackBar(content: Text('Выберите хотя бы одного участника')),
       );
       return;
     }
@@ -134,7 +135,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         Navigator.pop(context, chat);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка создания группы')),
+          SnackBar(content: Text('Ошибка создания группы')),
         );
       }
     } catch (e) {
@@ -153,7 +154,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -166,7 +167,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
             children: [
               // AppBar
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
                 child: Row(
                   children: [
                     IconButton(
@@ -180,32 +181,32 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                           'Создать группу',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.95),
-                            fontSize: 20,
+                            fontSize: 20.sp,
                             fontWeight: FontWeight.w400,
                             letterSpacing: 1,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    SizedBox(width: 48),
                   ],
                 ),
               ),
               // Body
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    ? Center(child: CircularProgressIndicator(color: Colors.white))
                     : Column(
                         children: [
                           // Аватар
                           _buildGroupAvatar(),
                           // Название
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(horizontal: 16.w),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(color: Colors.white.withOpacity(0.12)),
                               ),
                               child: TextField(
@@ -219,19 +220,19 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                                   prefixIcon: Icon(Icons.group, color: Colors.white.withOpacity(0.4)),
                                   border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           // Поиск
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(horizontal: 16.w),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(color: Colors.white.withOpacity(0.12)),
                               ),
                               child: TextField(
@@ -244,14 +245,14 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                                   prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.4)),
                                   border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                                 ),
                               ),
                             ),
                           ),
                           // Чипсы
                           if (_selectedParticipants.isNotEmpty) _buildSelectedChips(),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           // Список
                           Expanded(child: _buildParticipantsList()),
                         ],
@@ -262,12 +263,12 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         ),
       ),
       floatingActionButton: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
         decoration: BoxDecoration(
           color: _selectedParticipants.isEmpty || _isCreating
               ? Colors.grey[700]
               : _emerald,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
         child: GestureDetector(
@@ -276,13 +277,13 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _isCreating
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : Icon(Icons.check, color: Colors.white.withOpacity(0.9)),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 _isCreating ? 'Создание...' : 'Создать (${_selectedParticipants.length})',
                 style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w500),
@@ -299,7 +300,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(16.w),
         width: 90,
         height: 90,
         decoration: BoxDecoration(
@@ -315,7 +316,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.camera_alt, size: 28, color: Colors.white.withOpacity(0.4)),
-                  Text('Фото', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11)),
+                  Text('Фото', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11.sp)),
                 ],
               )
             : null,
@@ -326,8 +327,8 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   Widget _buildSelectedChips() {
     return Container(
       height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      margin: const EdgeInsets.only(top: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      margin: EdgeInsets.only(top: 8.h),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _selectedParticipants.length,
@@ -335,19 +336,19 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           final phone = _selectedParticipants[index];
           final name = _getParticipantName(phone);
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: EdgeInsets.only(right: 8.w),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: _emerald.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 border: Border.all(color: _emerald.withOpacity(0.6)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(name, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9))),
-                  const SizedBox(width: 6),
+                  Text(name, style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.9))),
+                  SizedBox(width: 6),
                   GestureDetector(
                     onTap: () => setState(() => _selectedParticipants.remove(phone)),
                     child: Icon(Icons.close, size: 16, color: Colors.white.withOpacity(0.6)),
@@ -402,16 +403,16 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     }
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 80),
+      padding: EdgeInsets.only(bottom: 80.h),
       children: [
         if (filteredEmployees.isNotEmpty) ...[
           Container(
             color: Colors.white.withOpacity(0.04),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: Row(
               children: [
                 Icon(Icons.badge, size: 20, color: Colors.white.withOpacity(0.6)),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text('Сотрудники',
                     style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.7))),
               ],
@@ -427,11 +428,11 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         if (filteredClients.isNotEmpty) ...[
           Container(
             color: Colors.white.withOpacity(0.04),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: Row(
               children: [
                 Icon(Icons.person, size: 20, color: Colors.green[400]),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text('Клиенты',
                     style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[400])),
               ],

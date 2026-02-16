@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница сканирования QR-кода приза клиента (для сотрудников)
 class PrizeScannerPage extends StatefulWidget {
@@ -26,9 +27,9 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   String? _employeeName;
 
   // Цвета
-  static const _primaryColor = Color(0xFF1A4D4D);
-  static const _successGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
-  static const _errorColor = Color(0xFFE53935);
+  static final _primaryColor = Color(0xFF1A4D4D);
+  static final _successGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
+  static final _errorColor = Color(0xFFE53935);
 
   @override
   void initState() {
@@ -126,15 +127,15 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
               content: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: const Icon(Icons.check_circle, color: Colors.white),
+                    child: Icon(Icons.check_circle, color: Colors.white),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Text(
                       'Приз выдан!',
                       style: TextStyle(fontWeight: FontWeight.w600),
@@ -144,8 +145,8 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
               ),
               backgroundColor: _successGradient[0],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
           _resetScanner();
@@ -189,15 +190,15 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
               content: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: const Icon(Icons.schedule, color: Colors.white),
+                    child: Icon(Icons.schedule, color: Colors.white),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Text(
                       'Приз отложен. Клиент получит новый QR.',
                       style: TextStyle(fontWeight: FontWeight.w600),
@@ -207,8 +208,8 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
               ),
               backgroundColor: Colors.orange,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
           _resetScanner();
@@ -244,10 +245,10 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF051515),
+      backgroundColor: Color(0xFF051515),
       appBar: AppBar(
         backgroundColor: _primaryColor,
-        title: const Text('Выдать приз'),
+        title: Text('Выдать приз'),
         centerTitle: true,
       ),
       body: Stack(
@@ -260,9 +261,9 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
 
           // Затемнение сверху
           Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
+            top: 0.h,
+            left: 0.w,
+            right: 0.w,
             height: MediaQuery.of(context).size.height * 0.25,
             child: Container(
               decoration: BoxDecoration(
@@ -283,7 +284,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                         : 'Наведите на QR-код приза клиента',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -303,7 +304,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                     color: Colors.white.withOpacity(0.5),
                     width: 2,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                 ),
               ),
             ),
@@ -312,7 +313,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
           if (_isProcessing)
             Container(
               color: Colors.black54,
-              child: const Center(
+              child: Center(
                 child: CircularProgressIndicator(
                   color: Colors.white,
                 ),
@@ -326,27 +327,27 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
           // Ошибка
           if (_errorMessage != null)
             Positioned(
-              bottom: 100,
-              left: 16,
-              right: 16,
+              bottom: 100.h,
+              left: 16.w,
+              right: 16.w,
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: _errorColor.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.white),
-                    const SizedBox(width: 12),
+                    Icon(Icons.error_outline, color: Colors.white),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: Icon(Icons.close, color: Colors.white),
                       onPressed: () {
                         setState(() {
                           _errorMessage = null;
@@ -368,19 +369,19 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
     final prizeModel = ClientPrize.fromJson(prize);
 
     return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
+      bottom: 0.h,
+      left: 0.w,
+      right: 0.w,
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         decoration: BoxDecoration(
-          color: const Color(0xFF0D2E2E),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          color: Color(0xFF0D2E2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
               blurRadius: 20,
-              offset: const Offset(0, -5),
+              offset: Offset(0, -5),
             ),
           ],
         ),
@@ -400,12 +401,12 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                         prizeModel.prizeColor.withOpacity(0.7),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     boxShadow: [
                       BoxShadow(
                         color: prizeModel.prizeColor.withOpacity(0.4),
                         blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -415,22 +416,22 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                     size: 28,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Приз клиента',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white54,
                         ),
                       ),
                       Text(
                         prize['prize'] ?? '',
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -441,27 +442,27 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
               ],
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Информация о клиенте
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Column(
                 children: [
                   _infoRow('Клиент', prize['clientName'] ?? 'Клиент'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _infoRow('Телефон', _formatPhone(prize['clientPhone'] ?? '')),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _infoRow('Дата выигрыша', _formatDate(prize['spinDate'])),
                 ],
               ),
             ),
 
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Кнопки
             Row(
@@ -469,31 +470,31 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _isProcessing ? null : _postponePrize,
-                    icon: const Icon(Icons.schedule),
-                    label: const Text('Отложить'),
+                    icon: Icon(Icons.schedule),
+                    label: Text('Отложить'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.orange,
-                      side: const BorderSide(color: Colors.orange),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(color: Colors.orange),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   flex: 2,
                   child: ElevatedButton.icon(
                     onPressed: _isProcessing ? null : _issuePrize,
-                    icon: const Icon(Icons.check_circle),
-                    label: const Text('Выдать'),
+                    icon: Icon(Icons.check_circle),
+                    label: Text('Выдать'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
+                      backgroundColor: Color(0xFF4CAF50),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
                   ),
@@ -501,7 +502,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
               ],
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Кнопка отмены
             TextButton(
@@ -525,14 +526,14 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
           label,
           style: TextStyle(
             color: Colors.white.withOpacity(0.6),
-            fontSize: 14,
+            fontSize: 14.sp,
           ),
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w500,
           ),
         ),

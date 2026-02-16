@@ -6,6 +6,7 @@ import '../services/management_message_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница диалога "Связь с Руководством"
 class ManagementDialogPage extends StatefulWidget {
@@ -28,10 +29,10 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
 
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -61,13 +62,13 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
 
       final data = await ManagementMessageService.getManagementMessages(_userPhone!);
 
-      // Отмечаем сообщения как прочитанные клиентом
-      if (data.hasUnread) {
-        ManagementMessageService.markAsReadByClient(_userPhone!);
+      // Отмечаем только личные сообщения как прочитанные клиентом
+      if (data.personalUnreadCount > 0) {
+        ManagementMessageService.markAsReadByClient(_userPhone!, type: 'personal');
       }
 
       setState(() {
-        _messages = data.messages;
+        _messages = data.personalMessages;
         _isLoading = false;
       });
 
@@ -76,7 +77,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
         if (_scrollController.hasClients && _messages.isNotEmpty) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
         }
@@ -95,20 +96,20 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       backgroundColor: _emeraldDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
               width: 40,
               height: 4,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2.r),
               ),
             ),
             ListTile(
@@ -131,7 +132,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
               title: Text('Выбрать видео из галереи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),
@@ -145,7 +146,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
     if (isVideo) {
       file = await _picker.pickVideo(
         source: result['source'] as ImageSource,
-        maxDuration: const Duration(minutes: 2),
+        maxDuration: Duration(minutes: 2),
       );
     } else {
       file = await _picker.pickImage(
@@ -222,7 +223,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
         }
@@ -230,7 +231,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка отправки'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка отправки'), backgroundColor: Colors.red),
         );
       }
     }
@@ -263,14 +264,14 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
         margin: EdgeInsets.only(
           left: isFromManager ? 12 : 56,
           right: isFromManager ? 56 : 12,
-          bottom: 8,
+          bottom: 8.h,
         ),
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           color: isFromManager
               ? Colors.white.withOpacity(0.08)
               : _gold.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
             color: isFromManager
                 ? Colors.white.withOpacity(0.1)
@@ -282,16 +283,16 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
           children: [
             if (isFromManager)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(bottom: 4.h),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.business, size: 14, color: _gold.withOpacity(0.7)),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       'Руководство',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: _gold.withOpacity(0.8),
                         fontWeight: FontWeight.bold,
                       ),
@@ -307,17 +308,17 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                 ),
               ),
             if (message.imageUrl != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 child: MediaMessageWidget(mediaUrl: message.imageUrl, maxHeight: 200),
               ),
             ],
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               _formatTimestamp(message.timestamp),
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 10.sp,
                 color: Colors.white.withOpacity(0.35),
               ),
             ),
@@ -332,7 +333,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -345,7 +346,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
             children: [
               // AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -355,28 +356,28 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8.w),
                       decoration: BoxDecoration(
                         color: _gold.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Icon(Icons.business, size: 20, color: _gold),
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
+                    SizedBox(width: 10),
+                    Expanded(
                       child: Text(
                         'Связь с Руководством',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -388,10 +389,10 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -416,22 +417,22 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                                   ),
                                   child: Icon(Icons.chat_bubble_outline, size: 40, color: Colors.white.withOpacity(0.3)),
                                 ),
-                                const SizedBox(height: 20),
+                                SizedBox(height: 20),
                                 Text(
                                   'Нет сообщений',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Text(
                                   'Напишите сообщение руководству',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14.sp),
                                 ),
                               ],
                             ),
                           )
                         : ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
                             itemCount: _messages.length,
                             itemBuilder: (context, index) => _buildMessage(_messages[index]),
                           ),
@@ -440,7 +441,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
               // Предпросмотр прикреплённого медиа
               if (_pendingMediaUrl != null)
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _night.withOpacity(0.9),
                     border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
@@ -448,14 +449,14 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                   child: Row(
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         child: _pendingIsVideo
                             ? Container(
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.06),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(10.r),
                                 ),
                                 child: Icon(Icons.videocam, color: _gold),
                               )
@@ -469,26 +470,26 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                                   height: 56,
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.06),
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(10.r),
                                   ),
                                   child: Icon(Icons.image, color: Colors.white.withOpacity(0.3)),
                                 ),
                               ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _pendingIsVideo ? 'Видео прикреплено' : 'Фото прикреплено',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
                         ),
                       ),
                       GestureDetector(
                         onTap: _clearPendingMedia,
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: EdgeInsets.all(6.w),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(Icons.close, color: Colors.red.shade300, size: 18),
                         ),
@@ -499,7 +500,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
 
               // Input bar
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
                   color: _night.withOpacity(0.9),
                   border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
@@ -515,7 +516,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                           height: 40,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           child: _isUploading
                               ? Center(
@@ -528,28 +529,28 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                               : Icon(Icons.attach_file, color: _gold.withOpacity(0.7), size: 20),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: TextField(
                           controller: _messageController,
-                          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
+                          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15.sp),
                           cursorColor: _gold,
                           decoration: InputDecoration(
                             hintText: 'Написать руководству...',
                             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20.r),
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
                             fillColor: Colors.white.withOpacity(0.06),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                           ),
                           maxLines: 3,
                           minLines: 1,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       GestureDetector(
                         onTap: _isSending ? null : _sendMessage,
                         child: Container(
@@ -557,7 +558,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                           height: 40,
                           decoration: BoxDecoration(
                             color: _gold.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(color: _gold.withOpacity(0.25)),
                           ),
                           child: _isSending

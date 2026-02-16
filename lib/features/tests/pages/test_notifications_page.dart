@@ -19,6 +19,7 @@ import '../../recount/models/recount_answer_model.dart';
 import '../../shops/models/shop_model.dart';
 import '../../rko/services/rko_reports_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Тестовая страница для проверки всех функций приложения
 class TestNotificationsPage extends StatefulWidget {
@@ -146,7 +147,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('✅ Тестовый заказ создан! Уведомления отправлены.'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
@@ -171,7 +172,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     
     if (orderProvider.orders.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Сначала создайте тестовый заказ'),
           backgroundColor: Colors.orange,
         ),
@@ -181,7 +182,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
     if (_selectedEmployee == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Выберите сотрудника'),
           backgroundColor: Colors.orange,
         ),
@@ -203,7 +204,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     
     if (orderProvider.orders.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Сначала создайте тестовый заказ'),
           backgroundColor: Colors.orange,
         ),
@@ -213,7 +214,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
     if (_selectedEmployee == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Выберите сотрудника'),
           backgroundColor: Colors.orange,
         ),
@@ -271,7 +272,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   Future<bool> _createTestAttendance() async {
     if (_kpiSelectedEmployee == null || _kpiSelectedShop == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Выберите сотрудника и магазин'),
           backgroundColor: Colors.orange,
         ),
@@ -286,7 +287,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       final time = _parseTime(_timeController.text);
       if (time == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('⚠️ Неверный формат времени. Используйте HH:mm (например, 14:30)'),
             backgroundColor: Colors.orange,
           ),
@@ -377,7 +378,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   Future<bool> _createTestShiftReport() async {
     if (_kpiSelectedEmployee == null || _kpiSelectedShop == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Выберите сотрудника и магазин'),
           backgroundColor: Colors.orange,
         ),
@@ -424,7 +425,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       final time = _parseTime(_timeController.text);
       if (time == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('⚠️ Неверный формат времени. Используйте HH:mm (например, 14:30)'),
             backgroundColor: Colors.orange,
           ),
@@ -471,7 +472,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('❌ Ошибка сохранения пересменки на сервер'),
               backgroundColor: Colors.red,
             ),
@@ -498,7 +499,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   Future<bool> _createTestRecountReport() async {
     if (_kpiSelectedEmployee == null || _kpiSelectedShop == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Выберите сотрудника и магазин'),
           backgroundColor: Colors.orange,
         ),
@@ -521,7 +522,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       final time = _parseTime(_timeController.text);
       if (time == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('⚠️ Неверный формат времени. Используйте HH:mm (например, 14:30)'),
             backgroundColor: Colors.orange,
           ),
@@ -541,7 +542,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       );
 
       final startedAt = dateTime; // Время в UTC
-      final completedAt = dateTime.add(const Duration(minutes: 5)); // Тестовая длительность 5 минут
+      final completedAt = dateTime.add(Duration(minutes: 5)); // Тестовая длительность 5 минут
       final duration = completedAt.difference(startedAt);
 
       // Создаем ответы с дефолтными значениями
@@ -587,7 +588,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('❌ Ошибка создания пересчета'),
               backgroundColor: Colors.red,
             ),
@@ -614,7 +615,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   Future<void> _createTestRKO() async {
     if (_kpiSelectedEmployee == null || _kpiSelectedShop == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Выберите сотрудника и магазин'),
           backgroundColor: Colors.orange,
         ),
@@ -629,22 +630,22 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Создать тестовое РКО'),
+        title: Text('Создать тестовое РКО'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: amountController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Сумма',
                 hintText: 'Например: 10000',
               ),
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
               controller: rkoTypeController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Тип РКО',
                 hintText: 'income',
               ),
@@ -654,7 +655,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -662,7 +663,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                 Navigator.pop(context, true);
               }
             },
-            child: const Text('Создать'),
+            child: Text('Создать'),
           ),
         ],
       ),
@@ -675,7 +676,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     final amount = double.tryParse(amountController.text.replaceAll(',', '.'));
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Введите корректную сумму'),
           backgroundColor: Colors.orange,
         ),
@@ -721,7 +722,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('❌ Ошибка создания РКО'),
               backgroundColor: Colors.red,
             ),
@@ -763,33 +764,33 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
   Widget _buildOrdersTestSection() {
     return ExpansionTile(
-      title: const Text('📦 Тестирование заказов'),
+      title: Text('📦 Тестирование заказов'),
       initiallyExpanded: true,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Список сотрудников
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '👥 Сотрудники:',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       if (_loadingEmployees)
-                        const Center(child: CircularProgressIndicator())
+                        Center(child: CircularProgressIndicator())
                       else if (_employees.isEmpty)
-                        const Text('Сотрудники не найдены')
+                        Text('Сотрудники не найдены')
                       else
                         ..._employees.map((employee) => RadioListTile<String>(
                               title: Text(employee.name),
@@ -799,68 +800,68 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                                 setState(() => _selectedEmployee = value);
                               },
                             )),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       TextButton.icon(
                         onPressed: _loadEmployees,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Обновить список'),
+                        icon: Icon(Icons.refresh),
+                        label: Text('Обновить список'),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: _createTestOrder,
-                icon: const Icon(Icons.add_shopping_cart),
-                label: const Text('Создать тестовый заказ'),
+                icon: Icon(Icons.add_shopping_cart),
+                label: Text('Создать тестовый заказ'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Color(0xFF004D40),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: _testAcceptOrder,
-                icon: const Icon(Icons.check_circle),
-                label: const Text('Принять заказ (тест)'),
+                icon: Icon(Icons.check_circle),
+                label: Text('Принять заказ (тест)'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: _testRejectOrder,
-                icon: const Icon(Icons.cancel),
-                label: const Text('Отказаться от заказа (тест)'),
+                icon: Icon(Icons.cancel),
+                label: Text('Отказаться от заказа (тест)'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               // Список текущих заказов
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '📦 Текущие заказы:',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       ListenableBuilder(
                         listenable: OrderProvider.of(context),
                         builder: (context, _) {
                           final orderProvider = OrderProvider.of(context);
                           if (orderProvider.orders.isEmpty)
-                            return const Text('Заказов нет');
+                            return Text('Заказов нет');
                           return Column(
                             children: orderProvider.orders.take(5).map((order) => ListTile(
                               leading: CircleAvatar(
@@ -870,10 +871,10 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                                         ? Colors.red
                                         : Colors.orange,
                                 child: order.status == 'completed'
-                                    ? const Icon(Icons.check, color: Colors.white)
+                                    ? Icon(Icons.check, color: Colors.white)
                                     : order.status == 'rejected'
-                                        ? const Icon(Icons.close, color: Colors.white)
-                                        : const Icon(Icons.pending, color: Colors.white),
+                                        ? Icon(Icons.close, color: Colors.white)
+                                        : Icon(Icons.pending, color: Colors.white),
                               ),
                               title: Text('Заказ ${order.id.substring(order.id.length - 6)}'),
                               subtitle: Column(
@@ -885,12 +886,12 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                                   if (order.acceptedBy != null)
                                     Text(
                                       'Принял: ${order.acceptedBy}',
-                                      style: const TextStyle(fontSize: 11, color: Colors.green),
+                                      style: TextStyle(fontSize: 11.sp, color: Colors.green),
                                     ),
                                   if (order.rejectedBy != null)
                                     Text(
                                       'Отказал: ${order.rejectedBy}',
-                                      style: const TextStyle(fontSize: 11, color: Colors.red),
+                                      style: TextStyle(fontSize: 11.sp, color: Colors.red),
                                     ),
                                 ],
                               ),
@@ -911,21 +912,21 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
   Widget _buildKpiTestSection() {
     return ExpansionTile(
-      title: const Text('📊 Тестирование KPI'),
+      title: Text('📊 Тестирование KPI'),
       initiallyExpanded: true,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_loadingKpiData)
-                const Center(child: CircularProgressIndicator())
+                Center(child: CircularProgressIndicator())
               else ...[
                 // Выбор сотрудника
                 DropdownButtonFormField<String>(
                   value: _kpiSelectedEmployee,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Сотрудник',
                     border: OutlineInputBorder(),
                   ),
@@ -937,11 +938,11 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                     setState(() => _kpiSelectedEmployee = value);
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Выбор магазина
                 DropdownButtonFormField<String>(
                   value: _kpiSelectedShop,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Магазин',
                     border: OutlineInputBorder(),
                   ),
@@ -953,18 +954,18 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                     setState(() => _kpiSelectedShop = value);
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Выбор даты
                 OutlinedButton.icon(
                   onPressed: _selectKpiDate,
-                  icon: const Icon(Icons.calendar_today),
+                  icon: Icon(Icons.calendar_today),
                   label: Text(_formatDate(_kpiSelectedDate)),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Ввод времени вручную (24-часовой формат)
                 TextFormField(
                   controller: _timeController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Время (24-часовой формат)',
                     hintText: 'HH:mm (например, 14:30)',
                     border: OutlineInputBorder(),
@@ -987,63 +988,63 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                     }
                   },
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 // Кнопки создания тестовых данных
                 ElevatedButton.icon(
                   onPressed: _creatingAttendance ? null : _createTestAttendance,
                   icon: _creatingAttendance
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.access_time),
-                  label: const Text('Создать отметку прихода'),
+                      : Icon(Icons.access_time),
+                  label: Text('Создать отметку прихода'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Color(0xFF004D40),
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: _creatingShift ? null : _createTestShiftReport,
                   icon: _creatingShift
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.swap_horiz),
-                  label: const Text('Создать пересменку'),
+                      : Icon(Icons.swap_horiz),
+                  label: Text('Создать пересменку'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: _creatingRecount ? null : _createTestRecountReport,
                   icon: _creatingRecount
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.calculate),
-                  label: const Text('Создать пересчет'),
+                      : Icon(Icons.calculate),
+                  label: Text('Создать пересчет'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: _createTestRKO,
-                  icon: const Icon(Icons.receipt),
-                  label: const Text('Создать РКО'),
+                  icon: Icon(Icons.receipt),
+                  label: Text('Создать РКО'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.purple,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                   ),
                 ),
               ],
@@ -1056,16 +1057,16 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
   Widget _buildNotificationsTestSection() {
     return ExpansionTile(
-      title: const Text('🔔 Тестирование уведомлений'),
+      title: Text('🔔 Тестирование уведомлений'),
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Функционал тестирования уведомлений будет добавлен в будущих версиях.',
-                style: TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14.sp),
               ),
             ],
           ),
@@ -1076,16 +1077,16 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
   Widget _buildOtherFunctionsTestSection() {
     return ExpansionTile(
-      title: const Text('🔧 Тестирование других функций'),
+      title: Text('🔧 Тестирование других функций'),
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Функционал тестирования других функций будет добавлен в будущих версиях.',
-                style: TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14.sp),
               ),
             ],
           ),
@@ -1098,45 +1099,45 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Тестирование функций'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Тестирование функций'),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Card(
               color: Colors.blue[50],
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '📋 Тестовая страница',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       'Используйте эту страницу для тестирования различных функций приложения. '
                       'Раскройте нужную секцию для доступа к тестам.',
-                      style: TextStyle(fontSize: 14),
+                      style: TextStyle(fontSize: 14.sp),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildOrdersTestSection(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildKpiTestSection(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildNotificationsTestSection(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildOtherFunctionsTestSection(),
           ],
         ),

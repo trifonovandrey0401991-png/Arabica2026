@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/cigarette_training_model.dart';
 import '../widgets/bounding_box_painter.dart';
 import '../services/cigarette_vision_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница разметки фото для обучения ИИ
 class CigaretteAnnotationPage extends StatefulWidget {
@@ -39,7 +40,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
       appBar: AppBar(
         title: Text(
           widget.product.productName,
-          style: const TextStyle(fontSize: 14),
+          style: TextStyle(fontSize: 14.sp),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -47,7 +48,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
           if (_boxes.isNotEmpty)
             TextButton(
               onPressed: _clearAll,
-              child: const Text('Очистить', style: TextStyle(color: Colors.red)),
+              child: Text('Очистить', style: TextStyle(color: Colors.red)),
             ),
         ],
       ),
@@ -57,22 +58,22 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
           if (_showInstructions)
             Container(
               color: Colors.blue.shade50,
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                  const SizedBox(width: 8),
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Обведите пальцем все пачки "${widget.product.productName}" на фото.\nДвойной тап на рамку — удалить.',
-                      style: TextStyle(fontSize: 13, color: Colors.blue.shade800),
+                      style: TextStyle(fontSize: 13.sp, color: Colors.blue.shade800),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 18),
+                    icon: Icon(Icons.close, size: 18),
                     onPressed: () => setState(() => _showInstructions = false),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                    constraints: BoxConstraints(),
                   ),
                 ],
               ),
@@ -96,14 +97,14 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
 
           // Нижняя панель
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
                   blurRadius: 4,
-                  offset: const Offset(0, -2),
+                  offset: Offset(0, -2),
                 ),
               ],
             ),
@@ -119,18 +120,18 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
                         Icons.crop_free,
                         color: _boxes.isEmpty ? Colors.grey : Colors.green,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         'Выделено: ${_boxes.length}',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: _boxes.isEmpty ? Colors.grey : Colors.green,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
 
                   // Кнопки
                   Row(
@@ -138,10 +139,10 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: _isUploading ? null : () => Navigator.pop(context),
-                          child: const Text('Отмена'),
+                          child: Text('Отмена'),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
@@ -151,7 +152,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
                             foregroundColor: Colors.white,
                           ),
                           child: _isUploading
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
@@ -159,7 +160,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Сохранить'),
+                              : Text('Сохранить'),
                         ),
                       ),
                     ],
@@ -174,7 +175,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
       floatingActionButton: !_showInstructions
           ? FloatingActionButton.small(
               onPressed: _showHelpDialog,
-              child: const Icon(Icons.help_outline),
+              child: Icon(Icons.help_outline),
             )
           : null,
     );
@@ -184,19 +185,19 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Очистить все?'),
-        content: const Text('Все нарисованные рамки будут удалены.'),
+        title: Text('Очистить все?'),
+        content: Text('Все нарисованные рамки будут удалены.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _painterKey.currentState?.clearBoxes();
             },
-            child: const Text('Очистить', style: TextStyle(color: Colors.red)),
+            child: Text('Очистить', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -206,7 +207,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
   Future<void> _save() async {
     if (_boxes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Выделите хотя бы одну пачку')),
+        SnackBar(content: Text('Выделите хотя бы одну пачку')),
       );
       return;
     }
@@ -254,7 +255,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
         Navigator.pop(context, true); // true = успешно сохранено
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка сохранения'),
             backgroundColor: Colors.red,
           ),
@@ -279,8 +280,8 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Как размечать'),
-        content: const SingleChildScrollView(
+        title: Text('Как размечать'),
+        content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -317,7 +318,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Понятно'),
+            child: Text('Понятно'),
           ),
         ],
       ),

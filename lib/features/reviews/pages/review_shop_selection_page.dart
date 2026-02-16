@@ -3,6 +3,7 @@ import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import 'review_text_input_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора магазина для отзыва
 class ReviewShopSelectionPage extends StatelessWidget {
@@ -13,10 +14,10 @@ class ReviewShopSelectionPage extends StatelessWidget {
     required this.reviewType,
   });
 
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +27,7 @@ class ReviewShopSelectionPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -39,7 +40,7 @@ class ReviewShopSelectionPage extends StatelessWidget {
             children: [
               // AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -49,19 +50,19 @@ class ReviewShopSelectionPage extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Выберите магазин',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -95,28 +96,28 @@ class ReviewShopSelectionPage extends StatelessWidget {
                               ),
                               child: Icon(Icons.error_outline, size: 40, color: Colors.red.shade300),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
                             Text(
                               'Что-то пошло не так',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.8),
-                                fontSize: 18,
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Text(
                               'Попробуйте позже',
-                              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
+                              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14.sp),
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                             OutlinedButton.icon(
                               onPressed: () => Navigator.pop(context),
                               icon: Icon(Icons.arrow_back, color: Colors.white.withOpacity(0.7)),
                               label: Text('Назад', style: TextStyle(color: Colors.white.withOpacity(0.7))),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                               ),
                             ),
                           ],
@@ -139,10 +140,10 @@ class ReviewShopSelectionPage extends StatelessWidget {
                               ),
                               child: Icon(Icons.store_mall_directory_outlined, size: 40, color: Colors.white.withOpacity(0.3)),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
                             Text(
                               'Магазины не найдены',
-                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
                             ),
                           ],
                         ),
@@ -153,20 +154,20 @@ class ReviewShopSelectionPage extends StatelessWidget {
                       children: [
                         // Заголовок с типом отзыва
                         Container(
-                          margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                          padding: const EdgeInsets.all(14),
+                          margin: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 14.h),
+                          padding: EdgeInsets.all(14.w),
                           decoration: BoxDecoration(
                             color: accentColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(14.r),
                             border: Border.all(color: accentColor.withOpacity(0.25)),
                           ),
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: EdgeInsets.all(10.w),
                                 decoration: BoxDecoration(
                                   color: accentColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 child: Icon(
                                   isPositive ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
@@ -174,7 +175,7 @@ class ReviewShopSelectionPage extends StatelessWidget {
                                   size: 24,
                                 ),
                               ),
-                              const SizedBox(width: 14),
+                              SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,16 +184,16 @@ class ReviewShopSelectionPage extends StatelessWidget {
                                       isPositive ? 'Положительный отзыв' : 'Отрицательный отзыв',
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.9),
-                                        fontSize: 16,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
+                                    SizedBox(height: 2),
                                     Text(
                                       'Выберите магазин из списка',
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.4),
-                                        fontSize: 13,
+                                        fontSize: 13.sp,
                                       ),
                                     ),
                                   ],
@@ -204,7 +205,7 @@ class ReviewShopSelectionPage extends StatelessWidget {
                         // Список магазинов
                         Expanded(
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
                             itemCount: shops.length,
                             itemBuilder: (context, index) {
                               final shop = shops[index];
@@ -226,16 +227,16 @@ class ReviewShopSelectionPage extends StatelessWidget {
 
   Widget _buildShopCard(BuildContext context, Shop shop) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () {
             Navigator.push(
               context,
@@ -248,21 +249,21 @@ class ReviewShopSelectionPage extends StatelessWidget {
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка магазина
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: const ShopIcon(size: 52),
+                    borderRadius: BorderRadius.circular(12.r),
+                    child: ShopIcon(size: 52),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Адрес магазина
                 Expanded(
                   child: Column(
@@ -271,21 +272,21 @@ class ReviewShopSelectionPage extends StatelessWidget {
                       Text(
                         shop.address,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           Icon(Icons.storefront, size: 14, color: Colors.white.withOpacity(0.3)),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'Магазин',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.3)),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.3)),
                           ),
                         ],
                       ),
@@ -294,10 +295,10 @@ class ReviewShopSelectionPage extends StatelessWidget {
                 ),
                 // Стрелка
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios,

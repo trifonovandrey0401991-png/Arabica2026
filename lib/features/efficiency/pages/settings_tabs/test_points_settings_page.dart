@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring test points settings
 class TestPointsSettingsPage extends StatefulWidget {
@@ -20,7 +21,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
   double _maxPoints = 1;
 
   // Gradient colors for this page
-  static const _gradientColors = [Color(0xFF667eea), Color(0xFF764ba2)];
+  static final _gradientColors = [Color(0xFF667eea), Color(0xFF764ba2)];
 
   @override
   void initState() {
@@ -68,7 +69,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Настройки сохранены'),
               backgroundColor: Colors.green,
             ),
@@ -109,14 +110,14 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за тестирование'),
+        title: Text('Баллы за тестирование'),
         backgroundColor: _gradientColors[1],
         elevation: 0,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF667eea)))
+          ? Center(child: CircularProgressIndicator(color: Color(0xFF667eea)))
           : Column(
               children: [
                 // Заголовок
@@ -129,7 +130,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -148,7 +149,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           accentColor: Colors.red,
                           icon: Icons.remove_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Zero threshold slider
                         SettingsSliderWidget(
@@ -166,7 +167,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           accentColor: Colors.orange,
                           icon: Icons.adjust,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Max points slider
                         SettingsSliderWidget(
@@ -183,14 +184,14 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           accentColor: Colors.green,
                           icon: Icons.add_circle_outline,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр расчета баллов',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         RatingPreviewWidget(
                           previewRatings: _previewScores,
                           calculatePoints: _calculatePoints,
@@ -198,7 +199,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           ratingColumnTitle: 'Ответов',
                           ratingFormatter: (score) => '$score / 20',
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -206,7 +207,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

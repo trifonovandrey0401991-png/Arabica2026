@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/task_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Группа получателей
 enum RecipientGroup {
@@ -37,10 +38,10 @@ class TaskRecipientSelectionPage extends StatefulWidget {
 }
 
 class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   RecipientGroup _selectedGroup = RecipientGroup.all;
   List<Employee> _allEmployees = [];
@@ -135,7 +136,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -149,7 +150,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -159,25 +160,25 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.1),
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
                           color: Colors.white,
                           size: 20,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
+                    SizedBox(width: 16),
+                    Expanded(
                       child: Text(
                         'Получатели',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -200,7 +201,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
 
             // Группы
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               child: Row(
                 children: RecipientGroup.values.map((group) {
                   final isSelected = _selectedGroup == group;
@@ -212,8 +213,8 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                       child: ChoiceChip(
                         label: Text(
                           group.displayName,
-                          style: const TextStyle(
-                            fontSize: 13,
+                          style: TextStyle(
+                            fontSize: 13.sp,
                             color: Colors.white,
                           ),
                         ),
@@ -229,7 +230,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                             ? BorderSide.none
                             : BorderSide(color: Colors.white.withOpacity(0.1)),
                         labelStyle: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: isSelected ? _night : Colors.white,
                         ),
                       ),
@@ -269,12 +270,12 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                               onChanged: (_) => _toggleEmployee(employee),
                               title: Text(
                                 employee.name,
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(color: Colors.white),
                               ),
                               subtitle: Text(
                                 role == 'manager' ? 'Заведующий' : 'Сотрудник',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.white.withOpacity(0.5),
                                 ),
                               ),
@@ -300,7 +301,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
 
             // Кнопка подтверждения
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: _emeraldDark,
                 border: Border(
@@ -317,17 +318,17 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                       foregroundColor: _night,
                       disabledBackgroundColor: Colors.white.withOpacity(0.06),
                       disabledForegroundColor: Colors.white.withOpacity(0.3),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
                     child: Text(
                       totalSelected > 0
                           ? 'ВЫБРАТЬ ($totalSelected человек)'
                           : 'ВЫБЕРИТЕ ПОЛУЧАТЕЛЕЙ',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

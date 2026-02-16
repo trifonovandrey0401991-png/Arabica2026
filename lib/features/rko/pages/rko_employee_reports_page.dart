@@ -4,6 +4,7 @@ import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчетов по сотрудникам
 class RKOEmployeeReportsPage extends StatefulWidget {
@@ -52,11 +53,11 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Отчет по сотруднику'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Отчет по сотруднику'),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadEmployees,
             tooltip: 'Обновить',
           ),
@@ -65,15 +66,15 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Поиск сотрудника...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -86,11 +87,11 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
           ),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : _employees.isEmpty
-                    ? const Center(child: Text('Сотрудники не найдены'))
+                    ? Center(child: Text('Сотрудники не найдены'))
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w),
                         itemCount: _employees.length,
                         itemBuilder: (context, index) {
                           final employee = _employees[index];
@@ -99,25 +100,25 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
                           if (_searchQuery.isNotEmpty) {
                             final name = employee.name.toLowerCase();
                             if (!name.contains(_searchQuery)) {
-                              return const SizedBox.shrink();
+                              return SizedBox.shrink();
                             }
                           }
 
                           return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            margin: EdgeInsets.symmetric(vertical: 4.h),
                             child: ListTile(
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.person,
                                 color: Color(0xFF004D40),
                               ),
                               title: Text(
                                 employee.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               subtitle: Text(employee.position ?? ''),
-                              trailing: const Icon(Icons.chevron_right),
+                              trailing: Icon(Icons.chevron_right),
                               onTap: () {
                                 // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
                                 final normalizedName = employee.name.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -156,7 +157,7 @@ class RKOEmployeeDetailPage extends StatefulWidget {
 }
 
 class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   List<dynamic> _latest = [];
   List<dynamic> _months = [];
@@ -210,19 +211,19 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('История РКО'),
+        title: Text('История РКО'),
         backgroundColor: _primaryColor,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadRKOs,
             tooltip: 'Обновить',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Шапка с информацией о сотруднике
@@ -230,12 +231,12 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: _primaryColor,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(24.r),
+                      bottomRight: Radius.circular(24.r),
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 24.h),
                   child: Column(
                     children: [
                       // Аватар и имя
@@ -246,33 +247,33 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                             height: 56,
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16.r),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.person_rounded,
                               color: Colors.white,
                               size: 30,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   widget.employeeName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 18,
+                                    fontSize: 18.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4),
                                 Text(
                                   'Всего документов: ${_latest.length}',
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.8),
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                   ),
                                 ),
                               ],
@@ -280,14 +281,14 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Общая сумма
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                         ),
                         child: Row(
                           children: [
@@ -296,15 +297,15 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                               height: 44,
                               decoration: BoxDecoration(
                                 color: Colors.green.withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.payments_rounded,
                                 color: Colors.white,
                                 size: 24,
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,15 +314,15 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                                     'Общая сумма выплат',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.8),
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: 2),
                                   Text(
                                     '${_totalAmount.toStringAsFixed(0)} руб.',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 22,
+                                      fontSize: 22.sp,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -338,35 +339,35 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                 // Список РКО
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     children: [
                       // Последние РКО
                       if (_latest.isNotEmpty) ...[
                         Row(
                           children: [
                             Icon(Icons.history, color: _primaryColor, size: 20),
-                            const SizedBox(width: 8),
-                            const Text(
+                            SizedBox(width: 8),
+                            Text(
                               'Последние выплаты',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF2D2D2D),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         ..._latest.map((rko) => _buildRKOCard(rko)),
                       ],
 
                       // Папка "За все время"
                       if (_months.isNotEmpty) ...[
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                         _buildAllTimeFolder(),
 
                         if (_showAllTime) ...[
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           ..._months.map((monthData) => _buildMonthFolder(monthData)),
                         ],
                       ],
@@ -374,7 +375,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                       if (_latest.isEmpty && _months.isEmpty)
                         Center(
                           child: Padding(
-                            padding: const EdgeInsets.all(32.0),
+                            padding: EdgeInsets.all(32.0.w),
                             child: Column(
                               children: [
                                 Icon(
@@ -382,11 +383,11 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                                   size: 64,
                                   color: Colors.grey[400],
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   'РКО не найдены',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -413,15 +414,15 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
     final displayDate = date.length >= 10 ? date.substring(0, 10) : date;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.06),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -436,9 +437,9 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Иконка документа
@@ -447,7 +448,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                   height: 50,
                   decoration: BoxDecoration(
                     color: isPdf ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     isPdf ? Icons.picture_as_pdf_rounded : Icons.description_rounded,
@@ -455,7 +456,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Информация
                 Expanded(
                   child: Column(
@@ -466,8 +467,8 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                           Flexible(
                             child: Text(
                               displayDate,
-                              style: const TextStyle(
-                                fontSize: 15,
+                              style: TextStyle(
+                                fontSize: 15.sp,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF2D2D2D),
                               ),
@@ -475,20 +476,20 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                             ),
                           ),
                           if (rkoType.isNotEmpty) ...[
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Flexible(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                                 decoration: BoxDecoration(
                                   color: rkoType.contains('месяц')
                                       ? Colors.blue.withOpacity(0.1)
                                       : Colors.orange.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(6.r),
                                 ),
                                 child: Text(
                                   rkoType,
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 11.sp,
                                     fontWeight: FontWeight.w500,
                                     color: rkoType.contains('месяц') ? Colors.blue : Colors.orange,
                                   ),
@@ -500,11 +501,11 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                         ],
                       ),
                       if (shopAddress.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           shopAddress,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.grey[600],
                           ),
                           maxLines: 1,
@@ -517,21 +518,21 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                 // Сумма
                 if (amount.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Text(
                       '$amount руб.',
-                      style: const TextStyle(
-                        fontSize: 15,
+                      style: TextStyle(
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
                       ),
                     ),
                   ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(
                   Icons.chevron_right_rounded,
                   color: Colors.grey[400],
@@ -548,7 +549,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.blue.shade100),
       ),
       child: Material(
@@ -559,9 +560,9 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
               _showAllTime = !_showAllTime;
             });
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 Container(
@@ -569,23 +570,23 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.folder_rounded,
                     color: Colors.blue,
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 14),
-                const Expanded(
+                SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'За все время',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2D2D2D),
                         ),
@@ -594,7 +595,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                       Text(
                         'Архив документов по месяцам',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.blue,
                         ),
                       ),
@@ -618,24 +619,24 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
     final items = monthData['items'] ?? [];
 
     return Container(
-      margin: const EdgeInsets.only(top: 8, left: 16),
+      margin: EdgeInsets.only(top: 8.h, left: 16.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          tilePadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
           leading: Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
               color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.folder_outlined,
               color: Colors.orange,
               size: 22,
@@ -643,21 +644,21 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
           ),
           title: Text(
             _formatMonth(monthKey),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: 15,
+              fontSize: 15.sp,
             ),
           ),
           subtitle: Text(
             '${items.length} документов',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               color: Colors.grey[600],
             ),
           ),
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              padding: EdgeInsets.fromLTRB(8.w, 0.h, 8.w, 8.h),
               child: Column(
                 children: items.map<Widget>((rko) => _buildRKOCard(rko)).toList(),
               ),
@@ -674,7 +675,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
     if (parts.length == 2) {
       final year = parts[0];
       final month = int.tryParse(parts[1]) ?? 0;
-      const monthNames = [
+      final monthNames = [
         'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
         'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
       ];

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет для ввода PIN-кода в стиле Arabica
 ///
@@ -65,8 +66,8 @@ class _PinInputWidgetState extends State<PinInputWidget>
   late Animation<double> _shakeAnimation;
 
   // Брендовые цвета Arabica
-  static const Color _primaryColor = Color(0xFF1A4D4D);
-  static const Color _accentGold = Color(0xFFD4AF37);
+  static final Color _primaryColor = Color(0xFF1A4D4D);
+  static final Color _accentGold = Color(0xFFD4AF37);
 
   Color get _activeColor => widget.accentColor ?? (widget.lightTheme ? _accentGold : _primaryColor);
   Color get _textColor => widget.lightTheme ? Colors.white : Colors.black87;
@@ -76,7 +77,7 @@ class _PinInputWidgetState extends State<PinInputWidget>
   void initState() {
     super.initState();
     _shakeController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: Duration(milliseconds: 500),
       vsync: this,
     );
     _shakeAnimation = Tween<double>(begin: 0, end: 10).animate(
@@ -143,80 +144,95 @@ class _PinInputWidgetState extends State<PinInputWidget>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Заголовок
-        if (widget.title != null) ...[
-          Text(
-            widget.title!,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: _textColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-        ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxHeight = constraints.maxHeight;
+        final maxWidth = constraints.maxWidth;
 
-        // Описание
-        if (widget.subtitle != null) ...[
-          Text(
-            widget.subtitle!,
-            style: TextStyle(
-              fontSize: 14,
-              color: _subtitleColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-        ],
+        // Верхняя часть (заголовок + точки + ошибка) ≈ 110px
+        final headerEstimate = 110.0;
+        final keypadAvailableHeight = maxHeight - headerEstimate;
 
-        // Индикаторы PIN
-        AnimatedBuilder(
-          animation: _shakeAnimation,
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(_shakeAnimation.value, 0),
-              child: child,
-            );
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              widget.pinLength,
-              (index) => _buildPinDot(index < _pin.length),
-            ),
-          ),
-        ),
+        // 4 ряда кнопок с отступами между ними
+        final byHeight = (keypadAvailableHeight - 24) / 4;
+        final byWidth = (maxWidth - 24) / 3;
+        final buttonSize = (byHeight < byWidth ? byHeight : byWidth).clamp(48.0, 80.0);
 
-        // Ошибка
-        if (widget.showError && widget.errorMessage != null) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              widget.errorMessage!,
-              style: const TextStyle(
-                color: Colors.redAccent,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+        return Column(
+          children: [
+            // Заголовок
+            if (widget.title != null) ...[
+              Text(
+                widget.title!,
+                style: TextStyle(
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.bold,
+                  color: _textColor,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
+              SizedBox(height: 6),
+            ],
+
+            // Описание
+            if (widget.subtitle != null) ...[
+              Text(
+                widget.subtitle!,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: _subtitleColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 20),
+            ],
+
+            // Индикаторы PIN
+            AnimatedBuilder(
+              animation: _shakeAnimation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(_shakeAnimation.value, 0),
+                  child: child,
+                );
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  widget.pinLength,
+                  (index) => _buildPinDot(index < _pin.length),
+                ),
+              ),
             ),
-          ),
-        ],
 
-        const SizedBox(height: 40),
+            // Ошибка
+            if (widget.showError && widget.errorMessage != null) ...[
+              SizedBox(height: 10),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Text(
+                  widget.errorMessage!,
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
 
-        // Цифровая клавиатура
-        _buildKeypad(),
-      ],
+            Spacer(),
+
+            // Цифровая клавиатура — размер кнопок от экрана
+            _buildKeypad(buttonSize),
+          ],
+        );
+      },
     );
   }
 
@@ -224,10 +240,10 @@ class _PinInputWidgetState extends State<PinInputWidget>
     final dotColor = widget.showError ? Colors.redAccent : _activeColor;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 200),
       width: filled ? 18 : 16,
       height: filled ? 18 : 16,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
+      margin: EdgeInsets.symmetric(horizontal: 12.w),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: filled ? dotColor : Colors.transparent,
@@ -248,61 +264,61 @@ class _PinInputWidgetState extends State<PinInputWidget>
     );
   }
 
-  Widget _buildKeypad() {
+  Widget _buildKeypad(double buttonSize) {
+    final gap = 4.0;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // 1, 2, 3
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildKeypadButton('1'),
-            _buildKeypadButton('2'),
-            _buildKeypadButton('3'),
+            _buildKeypadButton('1', buttonSize, gap),
+            _buildKeypadButton('2', buttonSize, gap),
+            _buildKeypadButton('3', buttonSize, gap),
           ],
         ),
-        // 4, 5, 6
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildKeypadButton('4'),
-            _buildKeypadButton('5'),
-            _buildKeypadButton('6'),
+            _buildKeypadButton('4', buttonSize, gap),
+            _buildKeypadButton('5', buttonSize, gap),
+            _buildKeypadButton('6', buttonSize, gap),
           ],
         ),
-        // 7, 8, 9
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildKeypadButton('7'),
-            _buildKeypadButton('8'),
-            _buildKeypadButton('9'),
+            _buildKeypadButton('7', buttonSize, gap),
+            _buildKeypadButton('8', buttonSize, gap),
+            _buildKeypadButton('9', buttonSize, gap),
           ],
         ),
-        // Пустая, 0, Удалить
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildEmptyButton(),
-            _buildKeypadButton('0'),
-            _buildBackspaceButton(),
+            _buildEmptyButton(buttonSize, gap),
+            _buildKeypadButton('0', buttonSize, gap),
+            _buildBackspaceButton(buttonSize, gap),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildKeypadButton(String digit) {
+  Widget _buildKeypadButton(String digit, double size, double gap) {
+    final radius = size / 2;
+    final fontSize = size * 0.38;
     return Container(
-      width: 72,
-      height: 72,
-      margin: const EdgeInsets.all(6),
+      width: size,
+      height: size,
+      margin: EdgeInsets.all(gap),
       child: Material(
         color: widget.lightTheme
             ? Colors.white.withOpacity(0.15)
             : Colors.grey[100],
-        borderRadius: BorderRadius.circular(36),
+        borderRadius: BorderRadius.circular(radius),
         child: InkWell(
-          borderRadius: BorderRadius.circular(36),
+          borderRadius: BorderRadius.circular(radius),
           splashColor: _activeColor.withOpacity(0.3),
           highlightColor: _activeColor.withOpacity(0.1),
           onTap: () => _addDigit(digit),
@@ -310,7 +326,7 @@ class _PinInputWidgetState extends State<PinInputWidget>
             child: Text(
               digit,
               style: TextStyle(
-                fontSize: 28,
+                fontSize: fontSize,
                 fontWeight: FontWeight.w500,
                 color: _textColor,
               ),
@@ -321,22 +337,23 @@ class _PinInputWidgetState extends State<PinInputWidget>
     );
   }
 
-  Widget _buildBackspaceButton() {
+  Widget _buildBackspaceButton(double size, double gap) {
+    final radius = size / 2;
     return Container(
-      width: 72,
-      height: 72,
-      margin: const EdgeInsets.all(6),
+      width: size,
+      height: size,
+      margin: EdgeInsets.all(gap),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(36),
+        borderRadius: BorderRadius.circular(radius),
         child: InkWell(
-          borderRadius: BorderRadius.circular(36),
+          borderRadius: BorderRadius.circular(radius),
           splashColor: _activeColor.withOpacity(0.3),
           onTap: _removeDigit,
           child: Center(
             child: Icon(
               Icons.backspace_outlined,
-              size: 26,
+              size: size * 0.35,
               color: widget.lightTheme ? Colors.white70 : Colors.grey[600],
             ),
           ),
@@ -345,11 +362,11 @@ class _PinInputWidgetState extends State<PinInputWidget>
     );
   }
 
-  Widget _buildEmptyButton() {
+  Widget _buildEmptyButton(double size, double gap) {
     return Container(
-      width: 72,
-      height: 72,
-      margin: const EdgeInsets.all(6),
+      width: size,
+      height: size,
+      margin: EdgeInsets.all(gap),
     );
   }
 }

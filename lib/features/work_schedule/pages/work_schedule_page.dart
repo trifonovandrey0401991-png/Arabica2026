@@ -22,6 +22,7 @@ import '../services/auto_fill_schedule_service.dart';
 import '../../../shared/dialogs/shift_edit_dialog.dart';
 import '../../../shared/dialogs/schedule_errors_dialog.dart';
 import 'employee_bulk_schedule_dialog.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -56,6 +57,13 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   final ScrollController _namesVerticalController = ScrollController();
   final ScrollController _gridVerticalController = ScrollController();
   bool _isSyncingScroll = false;
+
+  // Dark Emerald palette
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+  static final Color _emeraldLight = Color(0xFF2A6363);
 
   @override
   void initState() {
@@ -96,7 +104,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   void _onTabChanged() {
-    // Вкладки: 0 - График, 1 - Сотрудники
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadAdminNotifications() async {
@@ -186,12 +194,17 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
         title: Row(
-          children: const [
+          children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red, size: 32),
             SizedBox(width: 12),
             Expanded(
-              child: Text('Подтвердите очистку'),
+              child: Text('Подтвердите очистку', style: TextStyle(color: Colors.white.withOpacity(0.95))),
             ),
           ],
         ),
@@ -201,44 +214,46 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           children: [
             Text(
               'Вы уверены, что хотите удалить ВСЕ смены из графика?',
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
+                color: Colors.white.withOpacity(0.9),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red[300]!),
+                color: Colors.red.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: Colors.red.withOpacity(0.4)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Месяц: $monthName ${_selectedMonth.year}',
-                    style: const TextStyle(fontSize: 15),
+                    style: TextStyle(fontSize: 15.sp, color: Colors.white.withOpacity(0.8)),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Будет удалено смен: $entryCount',
-                    style: const TextStyle(
-                      fontSize: 15,
+                    style: TextStyle(
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               '⚠️ Это действие НЕОБРАТИМО!',
               style: TextStyle(
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 15.sp,
               ),
             ),
           ],
@@ -246,7 +261,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -258,7 +273,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               backgroundColor: Colors.red[700],
               foregroundColor: Colors.white,
             ),
-            child: const Text('Да, очистить график'),
+            child: Text('Да, очистить график'),
           ),
         ],
       ),
@@ -283,16 +298,21 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
+        builder: (context) => Center(
           child: Card(
+            color: _emeraldDark,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+              side: BorderSide(color: Colors.white.withOpacity(0.15)),
+            ),
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(color: _gold),
                   SizedBox(height: 16),
-                  Text('Очистка графика...'),
+                  Text('Очистка графика...', style: TextStyle(color: Colors.white.withOpacity(0.8))),
                 ],
               ),
             ),
@@ -325,7 +345,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
-              children: const [
+              children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
                 Expanded(
@@ -334,7 +354,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               ],
             ),
             backgroundColor: Colors.green[700],
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
 
@@ -355,15 +375,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text('Ошибка при очистке графика: $e'),
                 ),
               ],
             ),
             backgroundColor: Colors.red[700],
-            duration: const Duration(seconds: 5),
+            duration: Duration(seconds: 5),
           ),
         );
       }
@@ -488,7 +508,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             Logger.error('КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой!', null);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('Ошибка: не указан сотрудник'),
                   backgroundColor: Colors.red,
                 ),
@@ -519,7 +539,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             Logger.success('Смена успешно сохранена на сервер');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Смена сохранена')),
+                SnackBar(content: Text('Смена сохранена')),
               );
             }
             await _loadData();
@@ -527,7 +547,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             Logger.error('Ошибка сохранения смены на сервер', null);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('Ошибка сохранения смены'),
                   backgroundColor: Colors.red,
                 ),
@@ -542,7 +562,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             Logger.success('Смена успешно удалена');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Смена удалена')),
+                SnackBar(content: Text('Смена удалена')),
               );
             }
             await _loadData();
@@ -550,7 +570,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             Logger.error('Ошибка удаления смены', null);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('Ошибка удаления смены'),
                   backgroundColor: Colors.red,
                 ),
@@ -611,7 +631,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
     if (!_hasErrors) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Ошибок в графике не найдено! ✓'),
           backgroundColor: Colors.green,
         ),
@@ -648,7 +668,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
     if (employee == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Не удалось найти сотрудника'),
           backgroundColor: Colors.red,
         ),
@@ -765,14 +785,14 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Смена сохранена')),
+            SnackBar(content: Text('Смена сохранена')),
           );
         }
         await _loadData();
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка сохранения смены'),
               backgroundColor: Colors.red,
             ),
@@ -785,7 +805,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         Logger.error('Попытка удалить смену с пустым ID', null);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка: ID смены не найден'),
               backgroundColor: Colors.red,
             ),
@@ -799,7 +819,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Смена удалена')),
+            SnackBar(content: Text('Смена удалена')),
           );
         }
         await _loadData();
@@ -807,7 +827,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         Logger.error('Не удалось удалить смену: ID=${entry.id}', null);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка удаления смены'),
               backgroundColor: Colors.red,
             ),
@@ -972,19 +992,74 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     return result ?? false;
   }
 
-  /// Создаёт стильную вкладку с иконкой и текстом
-  Widget _buildStyledTab(IconData icon, String label) {
-    return Tab(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18),
-            const SizedBox(width: 6),
-            Text(label),
-          ],
+  /// Создаёт кастомную вкладку в стиле Dark Emerald
+  Widget _buildCustomTab(int index, IconData icon, String label) {
+    final isSelected = _tabController.index == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _tabController.animateTo(index);
+          setState(() {});
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 10.h),
+          decoration: BoxDecoration(
+            color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: isSelected ? _gold : Colors.white.withOpacity(0.6)),
+              SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  /// Состояние ошибки
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(24.w),
+            decoration: BoxDecoration(
+              color: _emerald.withOpacity(0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.error_outline, size: 64, color: Colors.red.withOpacity(0.7)),
+          ),
+          SizedBox(height: 20),
+          Text(
+            'Ошибка: $_error',
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _loadData,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _emerald,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Повторить'),
+          ),
+        ],
       ),
     );
   }
@@ -992,108 +1067,115 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('График работы'),
-        backgroundColor: const Color(0xFF004D40),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white60,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w400,
-                fontSize: 14,
-              ),
-              indicator: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              splashBorderRadius: BorderRadius.circular(10),
-              padding: const EdgeInsets.all(4),
-              tabs: [
-                _buildStyledTab(Icons.calendar_month, 'График'),
-                _buildStyledTab(Icons.people_alt, 'Сотрудники'),
-              ],
-            ),
+      backgroundColor: _night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Обновить',
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Ошибка: $_error'),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadData,
-                        child: const Text('Повторить'),
-                      ),
-                    ],
-                  ),
-                )
-              : Column(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0),
+                child: Row(
                   children: [
-                    // Тулбар с кнопками управления
-                    _buildScheduleToolbar(),
-                    // Контент вкладок
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.8), size: 20),
+                      ),
+                    ),
                     Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          // Вкладка "График"
-                          _schedule == null
-                              ? const Center(child: Text('График не загружен'))
-                              : _buildCalendarGrid(),
-                          // Вкладка "По сотрудникам"
-                          _buildByEmployeesTab(),
-                        ],
+                      child: Center(
+                        child: Text(
+                          'График работы',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _loadData,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Icon(Icons.refresh, color: Colors.white.withOpacity(0.8), size: 20),
                       ),
                     ),
                   ],
                 ),
+              ),
+              SizedBox(height: 12.h),
+              // Custom Tabs
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: Row(
+                  children: [
+                    _buildCustomTab(0, Icons.calendar_month, 'График'),
+                    SizedBox(width: 8),
+                    _buildCustomTab(1, Icons.people_alt, 'Сотрудники'),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12.h),
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold, strokeWidth: 3))
+                    : _error != null
+                        ? _buildErrorState()
+                        : Column(
+                            children: [
+                              _buildScheduleToolbar(),
+                              Expanded(
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    _schedule == null
+                                        ? Center(child: Text('График не загружен', style: TextStyle(color: Colors.white.withOpacity(0.5))))
+                                        : _buildCalendarGrid(),
+                                    _buildByEmployeesTab(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+              ),
+            ],
+          ),
+        ),
+      ),
       floatingActionButton: _schedule != null
           ? FloatingActionButton(
               onPressed: _showErrorsDialog,
-              backgroundColor: _hasErrors ? Colors.red : Colors.grey,
+              backgroundColor: _hasErrors ? Colors.red : _emerald,
               foregroundColor: Colors.white,
               child: Badge(
                 label: Text('$_errorCount'),
                 isLabelVisible: _hasErrors,
-                child: const Icon(Icons.error_outline),
+                child: Icon(Icons.error_outline),
               ),
             )
           : null,
@@ -1103,22 +1185,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   /// Строит тулбар с кнопками управления графиком
   Widget _buildScheduleToolbar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.transparent,
         border: Border(
           bottom: BorderSide(
-            color: Colors.grey[300]!,
+            color: Colors.white.withOpacity(0.06),
             width: 1,
           ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         children: [
@@ -1132,7 +1207,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   onTap: _selectPeriod,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: _buildToolbarChip(
                   icon: Icons.calendar_today,
@@ -1140,7 +1215,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   onTap: _selectMonth,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: _buildToolbarChip(
                   icon: Icons.auto_fix_high,
@@ -1151,7 +1226,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           // Ряд 2: PDF | Очистка (по центру)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1165,7 +1240,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   enabled: _schedule != null,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               SizedBox(
                 width: 120,
                 child: _buildToolbarChip(
@@ -1190,15 +1265,14 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     bool enabled = true,
     Color? color,
   }) {
-    final effectiveColor = color ?? const Color(0xFF004D40);
     final isEnabled = enabled && onTap != null;
 
     return Container(
       decoration: BoxDecoration(
-        color: isEnabled ? effectiveColor.withOpacity(0.15) : Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
+        color: isEnabled ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8.r),
         border: Border.all(
-          color: isEnabled ? effectiveColor.withOpacity(0.3) : Colors.grey[300]!,
+          color: isEnabled ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.06),
           width: 1,
         ),
       ),
@@ -1206,9 +1280,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         color: Colors.transparent,
         child: InkWell(
           onTap: isEnabled ? onTap : null,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
@@ -1216,16 +1290,16 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                 Icon(
                   icon,
                   size: 18,
-                  color: isEnabled ? effectiveColor : Colors.grey[400],
+                  color: isEnabled ? Colors.white.withOpacity(0.8) : Colors.white.withOpacity(0.3),
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
-                      color: isEnabled ? effectiveColor : Colors.grey[400],
+                      color: isEnabled ? Colors.white.withOpacity(0.8) : Colors.white.withOpacity(0.3),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1254,49 +1328,46 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       children: [
         // Компактный заголовок с месяцем и периодом
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                const Color(0xFF004D40),
-                const Color(0xFF00695C),
-              ],
+              colors: [_emerald, _emeraldDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.calendar_month,
-                color: Colors.white,
+                color: _gold,
                 size: 20,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.white.withOpacity(0.95),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Text(
                 'Период: $_startDay - $_endDay',
                 style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 12.sp,
+                  color: Colors.white.withOpacity(0.6),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               // Компактная статистика
               Flexible(
                 child: Text(
                   '${_employees.length} сотр. | $totalShifts смен | ${_shops.length} маг.',
                   style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 11.sp,
+                    color: Colors.white.withOpacity(0.5),
                   ),
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
@@ -1318,18 +1389,19 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                     Container(
                       height: 48,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: _emeraldDark,
                         border: Border(
-                          bottom: BorderSide(color: Colors.grey[400]!, width: 2),
-                          right: BorderSide(color: Colors.grey[400]!, width: 2),
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
+                          right: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           'Сотрудник',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            fontSize: 13.sp,
+                            color: Colors.white.withOpacity(0.9),
                           ),
                         ),
                       ),
@@ -1348,17 +1420,20 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                               child: Container(
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: isEven ? Colors.white : Colors.grey[50],
+                                  color: isEven ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.08),
                                   border: Border(
-                                    bottom: BorderSide(color: Colors.grey[300]!),
-                                    right: BorderSide(color: Colors.grey[400]!, width: 2),
+                                    bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+                                    right: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
                                   ),
                                 ),
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: EdgeInsets.symmetric(horizontal: 8.w),
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   employee.name,
-                                  style: const TextStyle(fontSize: 12),
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1383,20 +1458,25 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                         Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: _emeraldDark,
                             border: Border(
-                              bottom: BorderSide(color: Colors.grey[400]!, width: 2),
+                              bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
                             ),
                           ),
                           child: Row(
                             children: days.map((day) {
                               final isValid = _isDayValid(day);
+                              final isWeekend = day.weekday == 6 || day.weekday == 7;
                               return Container(
                                 width: 70,
                                 decoration: BoxDecoration(
-                                  color: isValid ? Colors.green[100] : Colors.grey[300],
+                                  color: isValid
+                                      ? _emerald.withOpacity(0.6)
+                                      : isWeekend
+                                          ? _emeraldDark.withOpacity(0.8)
+                                          : _emeraldDark,
                                   border: Border(
-                                    right: BorderSide(color: Colors.grey[300]!),
+                                    right: BorderSide(color: Colors.white.withOpacity(0.06)),
                                   ),
                                 ),
                                 child: Column(
@@ -1404,16 +1484,17 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                                   children: [
                                     Text(
                                       '${day.day}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                        fontSize: 14.sp,
+                                        color: isWeekend ? Colors.red.withOpacity(0.7) : Colors.white.withOpacity(0.9),
                                       ),
                                     ),
                                     Text(
                                       _getWeekdayName(day.weekday),
                                       style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey[700],
+                                        fontSize: 10.sp,
+                                        color: isWeekend ? Colors.red.withOpacity(0.5) : Colors.white.withOpacity(0.5),
                                       ),
                                     ),
                                   ],
@@ -1469,23 +1550,23 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       if (cellError.isCritical) {
         // Критичная ошибка: красная рамка
         borderColor = Colors.red;
-        errorIcon = const Icon(Icons.error, color: Colors.red, size: 12);
+        errorIcon = Icon(Icons.error, color: Colors.red, size: 12);
       } else {
         // Предупреждение: оранжевая рамка
         borderColor = Colors.orange;
-        errorIcon = const Icon(Icons.warning, color: Colors.orange, size: 12);
+        errorIcon = Icon(Icons.warning, color: Colors.orange, size: 12);
       }
     }
 
-    // Цвета фона для смен: салатовый для утра, желтый для дня, серый для вечера
+    // Цвета фона для смен (тёмные тонированные)
     Color getCellBackgroundColor(ShiftType type) {
       switch (type) {
         case ShiftType.morning:
-          return const Color(0xFFB9F6CA); // салатовый/светло-зелёный
+          return Color(0xFF81C784).withOpacity(0.3); // зелёный
         case ShiftType.day:
-          return const Color(0xFFFFF59D); // светло-жёлтый
+          return Color(0xFFFFF176).withOpacity(0.25); // жёлтый
         case ShiftType.evening:
-          return const Color(0xFFE0E0E0); // светло-серый
+          return Color(0xFFBDBDBD).withOpacity(0.2); // серый
       }
     }
 
@@ -1499,28 +1580,28 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         height: 40,
         decoration: BoxDecoration(
           color: isEmpty
-              ? (isEven ? Colors.white : Colors.grey[50])
+              ? (isEven ? Colors.white.withOpacity(0.02) : Colors.white.withOpacity(0.05))
               : getCellBackgroundColor(entry.shiftType),
           border: Border.all(
             color: hasError
                 ? borderColor!
-                : (isEmpty ? Colors.grey[300]! : entry.shiftType.color.withOpacity(0.5)),
+                : (isEmpty ? Colors.white.withOpacity(0.08) : entry.shiftType.color.withOpacity(0.3)),
             width: hasError ? 2.0 : (isEmpty ? 0.5 : 1.0),
           ),
         ),
         child: isEmpty
-            ? const SizedBox()
+            ? SizedBox()
             : Stack(
                 children: [
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                      padding: EdgeInsets.symmetric(horizontal: 2.0.w),
                       child: Text(
                         abbreviation ?? entry.shiftType.label,
-                        style: const TextStyle(
-                          fontSize: 11,
+                        style: TextStyle(
+                          fontSize: 11.sp,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black, // чёрный текст
+                          color: Colors.white.withOpacity(0.95),
                         ),
                         textAlign: TextAlign.center,
                         maxLines: 2,
@@ -1531,12 +1612,12 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   // Иконка ошибки/предупреждения
                   if (errorIcon != null)
                     Positioned(
-                      top: 1,
-                      right: 1,
+                      top: 1.h,
+                      right: 1.w,
                       child: Container(
-                        padding: const EdgeInsets.all(1),
+                        padding: EdgeInsets.all(1.w),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: _night.withOpacity(0.7),
                           shape: BoxShape.circle,
                         ),
                         child: errorIcon,
@@ -1549,7 +1630,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   String _getMonthName(int month) {
-    const months = [
+    final months = [
       'Январь',
       'Февраль',
       'Март',
@@ -1567,7 +1648,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   String _getWeekdayName(int weekday) {
-    const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
   }
 
@@ -1581,7 +1662,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     if (_schedule == null || _employees.isEmpty || _shops.isEmpty) {
       Logger.warning('⚠️ Недостаточно данных для автозаполнения');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Необходимо загрузить график, сотрудников и магазины'),
           backgroundColor: Colors.orange,
         ),
@@ -1618,7 +1699,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   Future<void> _exportToPdf() async {
     if (_schedule == null || _schedule!.entries.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Нет данных для экспорта'),
           backgroundColor: Colors.orange,
         ),
@@ -1630,16 +1711,21 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
+          color: _emeraldDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+            side: BorderSide(color: Colors.white.withOpacity(0.15)),
+          ),
           child: Padding(
-            padding: EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
+                CircularProgressIndicator(color: _gold),
                 SizedBox(height: 16),
-                Text('Создание PDF...'),
+                Text('Создание PDF...', style: TextStyle(color: Colors.white.withOpacity(0.8))),
               ],
             ),
           ),
@@ -1725,16 +1811,21 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
+          color: _emeraldDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+            side: BorderSide(color: Colors.white.withOpacity(0.15)),
+          ),
           child: Padding(
-            padding: EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
+                CircularProgressIndicator(color: _gold),
                 SizedBox(height: 16),
-                Text('Выполняется автозаполнение...'),
+                Text('Выполняется автозаполнение...', style: TextStyle(color: Colors.white.withOpacity(0.8))),
               ],
             ),
           ),
@@ -1765,7 +1856,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
       // Сохраняем новые смены батчами по 50 записей
       if (newEntries.isNotEmpty) {
-        const batchSize = 50;
+        final batchSize = 50;
         int savedCount = 0;
 
         for (int i = 0; i < newEntries.length; i += batchSize) {
@@ -1792,7 +1883,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           }
 
           // Небольшая задержка между батчами
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future.delayed(Duration(milliseconds: 100));
         }
 
         Logger.success('Сохранено смен: $savedCount из ${newEntries.length}');
@@ -1854,12 +1945,17 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Автозаполнение завершено'),
-        content: Text('Создано смен: $entriesCount'),
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Text('Автозаполнение завершено', style: TextStyle(color: Colors.white.withOpacity(0.95))),
+        content: Text('Создано смен: $entriesCount', style: TextStyle(color: Colors.white.withOpacity(0.7))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('ОК'),
+            child: Text('ОК', style: TextStyle(color: _gold)),
           ),
         ],
       ),
@@ -1870,17 +1966,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   Widget _buildAdminNotificationCard(ShiftTransferRequest request) {
     final isUnread = !request.isReadByAdmin;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: isUnread ? 3 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isUnread
-            ? const BorderSide(color: Colors.orange, width: 2)
-            : BorderSide.none,
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: isUnread ? Colors.orange.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+          width: isUnread ? 2 : 1,
+        ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         onTap: () async {
           if (isUnread) {
             // SECURITY: Получаем phone для верификации на сервере
@@ -1891,7 +1988,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1902,8 +1999,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                     Container(
                       width: 10,
                       height: 10,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: const BoxDecoration(
+                      margin: EdgeInsets.only(right: 8.w),
+                      decoration: BoxDecoration(
                         color: Colors.orange,
                         shape: BoxShape.circle,
                       ),
@@ -1913,31 +2010,31 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                       'Заявка на передачу смены',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: isUnread ? Colors.orange[800] : Colors.black87,
+                        fontSize: 16.sp,
+                        color: isUnread ? Colors.orange : Colors.white.withOpacity(0.9),
                       ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
-                      color: Colors.orange[100],
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.orange.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
                       'Ожидает одобрения',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.orange[800],
+                        fontSize: 11.sp,
+                        color: Colors.orange,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
+              Divider(height: 1, color: Colors.white.withOpacity(0.1)),
+              SizedBox(height: 12),
 
               // Информация о передаче
               Row(
@@ -1948,14 +2045,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                       children: [
                         Text(
                           'Передаёт:',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           request.fromEmployeeName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontSize: 14.sp,
+                            color: Colors.white.withOpacity(0.9),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -1963,21 +2061,22 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                       ],
                     ),
                   ),
-                  const Icon(Icons.arrow_forward, color: Colors.grey),
+                  Icon(Icons.arrow_forward, color: Colors.white.withOpacity(0.3)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
                           'Принимает:',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           request.acceptedByEmployeeName ?? 'Неизвестно',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontSize: 14.sp,
+                            color: Colors.white.withOpacity(0.9),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -1988,14 +2087,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               // Детали смены
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                 ),
                 child: Column(
                   children: [
@@ -2004,13 +2104,13 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                       'Дата:',
                       '${request.shiftDate.day}.${request.shiftDate.month.toString().padLeft(2, '0')}.${request.shiftDate.year}',
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _buildDetailRow(
                       Icons.access_time,
                       'Смена:',
                       request.shiftType.label,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _buildDetailRow(
                       Icons.store,
                       'Магазин:',
@@ -2022,24 +2122,25 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
               // Комментарий
               if (request.comment != null && request.comment!.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.comment, size: 18, color: Colors.blue[700]),
-                      const SizedBox(width: 8),
+                      Icon(Icons.comment, size: 18, color: Colors.blue[300]),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           request.comment!,
                           style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blue[900],
+                            fontSize: 13.sp,
+                            color: Colors.blue[200],
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -2049,7 +2150,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                 ),
               ],
 
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Кнопки действий
               Row(
@@ -2057,25 +2158,25 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _declineRequest(request),
-                      icon: const Icon(Icons.close, size: 18),
-                      label: const Text('Отклонить'),
+                      icon: Icon(Icons.close, size: 18),
+                      label: Text('Отклонить'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () => _approveRequest(request),
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Одобрить'),
+                      icon: Icon(Icons.check, size: 18),
+                      label: Text('Одобрить'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                       ),
                     ),
                   ),
@@ -2091,17 +2192,17 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 8),
+        Icon(icon, size: 16, color: Colors.white.withOpacity(0.5)),
+        SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
             textAlign: TextAlign.right,
           ),
         ),
@@ -2114,23 +2215,29 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Одобрить заявку?'),
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Text('Одобрить заявку?', style: TextStyle(color: Colors.white.withOpacity(0.95))),
         content: SingleChildScrollView(
           child: Text(
             'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
             'будет передана от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName}.\n\n'
             'График будет обновлен автоматически.',
+            style: TextStyle(color: Colors.white.withOpacity(0.7)),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Одобрить', style: TextStyle(color: Colors.white)),
+            child: Text('Одобрить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -2141,7 +2248,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Заявка одобрена, график обновлен'),
               backgroundColor: Colors.green,
             ),
@@ -2152,7 +2259,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка одобрения заявки'),
               backgroundColor: Colors.red,
             ),
@@ -2167,22 +2274,28 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Отклонить заявку?'),
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Text('Отклонить заявку?', style: TextStyle(color: Colors.white.withOpacity(0.95))),
         content: SingleChildScrollView(
           child: Text(
             'Заявка на передачу смены ${request.shiftDate.day}.${request.shiftDate.month} '
             'от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName} будет отклонена.',
+            style: TextStyle(color: Colors.white.withOpacity(0.7)),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Отклонить', style: TextStyle(color: Colors.white)),
+            child: Text('Отклонить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -2193,7 +2306,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Заявка отклонена'),
               backgroundColor: Colors.orange,
             ),
@@ -2203,7 +2316,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка отклонения заявки'),
               backgroundColor: Colors.red,
             ),
@@ -2223,18 +2336,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Icon(icon, color: color, size: 28),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text(
           value,
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 28.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -2242,8 +2355,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[600],
+            fontSize: 13.sp,
+            color: Colors.white.withOpacity(0.5),
           ),
         ),
       ],
@@ -2267,18 +2380,23 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
         title: Row(
           children: [
             Expanded(
               child: Text(
                 'График: ${employee.name}',
-                style: const TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: 18.sp, color: Colors.white.withOpacity(0.95)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.close),
+              icon: Icon(Icons.close, color: Colors.white.withOpacity(0.7)),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -2291,11 +2409,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
+                      Icon(Icons.event_busy, size: 64, color: Colors.white.withOpacity(0.3)),
+                      SizedBox(height: 16),
                       Text(
                         'Нет смен в выбранном периоде',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5)),
                       ),
                     ],
                   ),
@@ -2316,17 +2434,22 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                     );
                     final weekday = _getWeekdayName(entry.date.weekday);
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 8.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
                       child: ListTile(
                         leading: Container(
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: entry.shiftType.color.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
+                            color: entry.shiftType.color.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: Border.all(
-                              color: entry.shiftType.color,
+                              color: entry.shiftType.color.withOpacity(0.5),
                               width: 1,
                             ),
                           ),
@@ -2336,25 +2459,26 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: entry.shiftType.color,
-                                fontSize: 18,
+                                fontSize: 18.sp,
                               ),
                             ),
                           ),
                         ),
                         title: Text(
                           '$weekday, ${entry.date.day}.${entry.date.month.toString().padLeft(2, '0')}',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)),
                         ),
                         subtitle: Text(
                           shop.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
                         ),
                         trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                           decoration: BoxDecoration(
                             color: entry.shiftType.color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(16.r),
                             border: Border.all(
                               color: entry.shiftType.color.withOpacity(0.3),
                             ),
@@ -2364,7 +2488,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             style: TextStyle(
                               color: entry.shiftType.color,
                               fontWeight: FontWeight.w600,
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                           ),
                         ),
@@ -2376,7 +2500,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
+            child: Text('Закрыть', style: TextStyle(color: Colors.white.withOpacity(0.7))),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -2398,11 +2522,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: _emerald,
               foregroundColor: Colors.white,
             ),
-            icon: const Icon(Icons.edit),
-            label: const Text('Редактировать'),
+            icon: Icon(Icons.edit),
+            label: Text('Редактировать'),
           ),
         ],
       ),
@@ -2417,26 +2541,26 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: _emerald.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+              child: Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.4)),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               'Нет сотрудников',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.9),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Добавьте сотрудников для управления графиком',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.5)),
             ),
           ],
         ),
@@ -2456,13 +2580,10 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       children: [
         // Заголовок с информацией
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                const Color(0xFF004D40),
-                const Color(0xFF00695C),
-              ],
+              colors: [_emerald, _emeraldDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -2470,32 +2591,32 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(Icons.people, color: Colors.white, size: 28),
+                child: Icon(Icons.people, color: _gold, size: 28),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Сотрудники',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.white.withOpacity(0.95),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       '${_employees.length} человек • ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14.sp,
+                        color: Colors.white.withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -2507,33 +2628,27 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         // Список сотрудников
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             itemCount: _employees.length,
             itemBuilder: (context, index) {
               final employee = _employees[index];
               final shiftCount = employeeShiftCount[employee.id] ?? 0;
 
               return Container(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: EdgeInsets.only(bottom: 12.h),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
                 child: Material(
                   color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     onTap: () => _showEmployeeScheduleDialog(employee),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       child: Row(
                         children: [
                           // Аватар с градиентом
@@ -2542,36 +2657,26 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             height: 56,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFF004D40),
-                                  const Color(0xFF00897B),
-                                ],
+                                colors: [_emerald, _emeraldLight],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF004D40).withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
+                              borderRadius: BorderRadius.circular(16.r),
                             ),
                             child: Center(
                               child: Text(
                                 employee.name.isNotEmpty
                                     ? employee.name[0].toUpperCase()
                                     : '?',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 22,
+                                  fontSize: 22.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           // Информация о сотруднике
                           Expanded(
                             child: Column(
@@ -2579,27 +2684,28 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                               children: [
                                 Text(
                                   employee.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
+                                    color: Colors.white.withOpacity(0.95),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 6),
+                                SizedBox(height: 6),
                                 Row(
                                   children: [
                                     // Количество смен
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10.w,
+                                        vertical: 4.h,
                                       ),
                                       decoration: BoxDecoration(
                                         color: shiftCount > 0
-                                            ? const Color(0xFF004D40).withOpacity(0.1)
-                                            : Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(8),
+                                            ? _emerald.withOpacity(0.3)
+                                            : Colors.white.withOpacity(0.04),
+                                        borderRadius: BorderRadius.circular(8.r),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -2608,37 +2714,37 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                                             Icons.calendar_today,
                                             size: 14,
                                             color: shiftCount > 0
-                                                ? const Color(0xFF004D40)
-                                                : Colors.grey[500],
+                                                ? _gold
+                                                : Colors.white.withOpacity(0.3),
                                           ),
-                                          const SizedBox(width: 4),
+                                          SizedBox(width: 4),
                                           Text(
                                             '$shiftCount смен',
                                             style: TextStyle(
-                                              fontSize: 12,
+                                              fontSize: 12.sp,
                                               fontWeight: FontWeight.w500,
                                               color: shiftCount > 0
-                                                  ? const Color(0xFF004D40)
-                                                  : Colors.grey[500],
+                                                  ? Colors.white.withOpacity(0.8)
+                                                  : Colors.white.withOpacity(0.3),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
                                     if (employee.phone != null) ...[
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: 8),
                                       Icon(
                                         Icons.phone_outlined,
                                         size: 14,
-                                        color: Colors.grey[500],
+                                        color: Colors.white.withOpacity(0.4),
                                       ),
-                                      const SizedBox(width: 4),
+                                      SizedBox(width: 4),
                                       Expanded(
                                         child: Text(
                                           employee.phone!,
                                           style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[500],
+                                            fontSize: 12.sp,
+                                            color: Colors.white.withOpacity(0.4),
                                           ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -2651,15 +2757,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                           ),
                           // Стрелка
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: EdgeInsets.all(8.w),
                             decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.white.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(10.r),
                             ),
                             child: Icon(
                               Icons.arrow_forward_ios,
                               size: 14,
-                              color: Colors.grey[600],
+                              color: Colors.white.withOpacity(0.4),
                             ),
                           ),
                         ],
@@ -2682,7 +2788,7 @@ class _PeriodSelectionDialog extends StatefulWidget {
   final int endDay;
   final int maxDay;
 
-  const _PeriodSelectionDialog({
+  _PeriodSelectionDialog({
     required this.startDay,
     required this.endDay,
     required this.maxDay,
@@ -2704,65 +2810,103 @@ class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
     _endDay = widget.endDay.clamp(_startDay, widget.maxDay);
   }
 
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _gold = Color(0xFFD4AF37);
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Выберите период'),
+      backgroundColor: _emeraldDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.white.withOpacity(0.15)),
+      ),
+      title: Text('Выберите период', style: TextStyle(color: Colors.white.withOpacity(0.95))),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              const Text('С: '),
+              Text('С: ', style: TextStyle(color: Colors.white.withOpacity(0.7))),
               Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: _startDay,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    canvasColor: _emeraldDark,
                   ),
-                  items: List.generate(widget.maxDay, (i) => i + 1).map((day) {
-                    return DropdownMenuItem<int>(
-                      value: day,
-                      child: Text('$day'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _startDay = value;
-                        if (_endDay < _startDay) {
-                          _endDay = _startDay;
-                        }
-                      });
-                    }
-                  },
+                  child: DropdownButtonFormField<int>(
+                    value: _startDay,
+                    dropdownColor: _emeraldDark,
+                    style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: _gold),
+                      ),
+                    ),
+                    items: List.generate(widget.maxDay, (i) => i + 1).map((day) {
+                      return DropdownMenuItem<int>(
+                        value: day,
+                        child: Text('$day'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _startDay = value;
+                          if (_endDay < _startDay) {
+                            _endDay = _startDay;
+                          }
+                        });
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Row(
             children: [
-              const Text('По: '),
+              Text('По: ', style: TextStyle(color: Colors.white.withOpacity(0.7))),
               Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: _endDay,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    canvasColor: _emeraldDark,
                   ),
-                  items: List.generate(widget.maxDay - _startDay + 1, (i) => _startDay + i).map((day) {
-                    return DropdownMenuItem<int>(
-                      value: day,
-                      child: Text('$day'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _endDay = value;
-                      });
-                    }
-                  },
+                  child: DropdownButtonFormField<int>(
+                    value: _endDay,
+                    dropdownColor: _emeraldDark,
+                    style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: _gold),
+                      ),
+                    ),
+                    items: List.generate(widget.maxDay - _startDay + 1, (i) => _startDay + i).map((day) {
+                      return DropdownMenuItem<int>(
+                        value: day,
+                        child: Text('$day'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _endDay = value;
+                        });
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
@@ -2772,7 +2916,7 @@ class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
+          child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
         ),
         ElevatedButton(
           onPressed: () {
@@ -2781,7 +2925,11 @@ class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
               'endDay': _endDay,
             });
           },
-          child: const Text('Применить'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _gold,
+            foregroundColor: Colors.white,
+          ),
+          child: Text('Применить'),
         ),
       ],
     );
@@ -2794,7 +2942,7 @@ class _PdfPreviewPage extends StatefulWidget {
   final String fileName;
   final String title;
 
-  const _PdfPreviewPage({
+  _PdfPreviewPage({
     required this.pdfBytes,
     required this.fileName,
     required this.title,
@@ -2854,9 +3002,9 @@ class _PdfPreviewPageState extends State<_PdfPreviewPage> {
             ),
             // Кнопки управления сверху
             Positioned(
-              top: 8,
-              left: 8,
-              right: 8,
+              top: 8.h,
+              left: 8.w,
+              right: 8.w,
               child: Row(
                 children: [
                   // Кнопка назад
@@ -2865,27 +3013,27 @@ class _PdfPreviewPageState extends State<_PdfPreviewPage> {
                     onTap: () => Navigator.pop(context),
                     tooltip: 'Назад',
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   // Заголовок
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: Colors.black54,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
                         widget.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.bold,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   // Кнопка поделиться
                   _buildControlButton(
                     icon: Icons.share,
@@ -2897,7 +3045,7 @@ class _PdfPreviewPageState extends State<_PdfPreviewPage> {
                     },
                     tooltip: 'Поделиться',
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   // Кнопка печати
                   _buildControlButton(
                     icon: Icons.print,
@@ -2928,12 +3076,12 @@ class _PdfPreviewPageState extends State<_PdfPreviewPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
             color: Colors.black54,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
           ),
           child: Icon(
             icon,

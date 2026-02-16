@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
 import 'review_detail_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка отзывов конкретного магазина (для админа)
 class ReviewsShopDetailPage extends StatefulWidget {
@@ -65,13 +66,13 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
       appBar: AppBar(
         title: Text(
           widget.shopAddress,
-          style: const TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 16.sp),
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -79,16 +80,16 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
           ),
         ),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : sortedReviews.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'Нет отзывов',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
+                      style: TextStyle(color: Colors.white, fontSize: 18.sp),
                     ),
                   )
                 : ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 itemCount: sortedReviews.length,
                 itemBuilder: (context, index) {
                   final review = sortedReviews[index];
@@ -96,7 +97,7 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
                   final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: EdgeInsets.only(bottom: 12.h),
                     child: ListTile(
                       leading: Container(
                         width: 40,
@@ -117,7 +118,7 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
                         review.clientName.isNotEmpty
                             ? review.clientName
                             : 'Клиент',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,57 +127,57 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
                             review.reviewText.length > 50
                                 ? '${review.reviewText.substring(0, 50)}...'
                                 : review.reviewText,
-                            style: const TextStyle(color: Colors.grey),
+                            style: TextStyle(color: Colors.grey),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Row(
                             children: [
                               Text(
-                                dateFormat.format(review.createdAt.add(const Duration(hours: 3))),
+                                dateFormat.format(review.createdAt.add(Duration(hours: 3))),
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                               if (review.messages.isNotEmpty) ...[
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6.w,
+                                    vertical: 2.h,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.blue.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(
                                     '${review.messages.length} сообщ.',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.blue,
-                                      fontSize: 11,
+                                      fontSize: 11.sp,
                                     ),
                                   ),
                                 ),
                               ],
                               // Показать badge с непрочитанными от клиента
                               if (review.hasUnreadFromClient) ...[
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6.w,
+                                    vertical: 2.h,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.red,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'непрочитано',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 11,
+                                      fontSize: 11.sp,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -186,7 +187,7 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
                           ),
                         ],
                       ),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Icon(Icons.chevron_right),
                       onTap: () async {
                         await Navigator.push(
                           context,

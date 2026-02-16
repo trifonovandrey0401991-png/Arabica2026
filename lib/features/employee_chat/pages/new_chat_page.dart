@@ -7,6 +7,7 @@ import '../../employees/pages/employees_page.dart' show Employee;
 import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
 import 'create_group_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница создания нового чата — dark emerald стиль
 class NewChatPage extends StatefulWidget {
@@ -27,9 +28,9 @@ class NewChatPage extends StatefulWidget {
 
 class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStateMixin {
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   late TabController _tabController;
   List<Employee> _employees = [];
@@ -73,7 +74,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white),
                 SizedBox(width: 12),
@@ -82,8 +83,8 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
             ),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -125,7 +126,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.error_outline, color: Colors.white),
                   SizedBox(width: 12),
@@ -134,7 +135,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
               ),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -147,7 +148,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -168,7 +169,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.error_outline, color: Colors.white),
                   SizedBox(width: 12),
@@ -177,7 +178,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
               ),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -190,7 +191,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -209,7 +210,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
+              begin: Offset(1.0, 0.0),
               end: Offset.zero,
             ).animate(CurvedAnimation(
               parent: animation,
@@ -248,7 +249,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -270,11 +271,11 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const CircularProgressIndicator(color: Colors.white),
-                            const SizedBox(height: 20),
+                            CircularProgressIndicator(color: Colors.white),
+                            SizedBox(height: 20),
                             Text(
                               'Загрузка...',
-                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
                             ),
                           ],
                         ),
@@ -307,7 +308,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0.h),
       child: Row(
         children: [
           IconButton(
@@ -324,14 +325,14 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                 'Новый чат',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.95),
-                  fontSize: 20,
+                  fontSize: 20.sp,
                   fontWeight: FontWeight.w400,
                   letterSpacing: 1,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -339,10 +340,10 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
 
   Widget _buildTabBar() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      margin: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: TabBar(
@@ -350,20 +351,20 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
           color: _emerald,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
         dividerHeight: 0,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white.withOpacity(0.4),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 11),
+        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 11.sp),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400, fontSize: 11.sp),
         tabs: [
-          const Tab(icon: Icon(Icons.public_rounded, size: 20), text: 'Общий'),
-          const Tab(icon: Icon(Icons.person_rounded, size: 20), text: 'Личный'),
-          const Tab(icon: Icon(Icons.store_rounded, size: 20), text: 'Магазин'),
+          Tab(icon: Icon(Icons.public_rounded, size: 20), text: 'Общий'),
+          Tab(icon: Icon(Icons.person_rounded, size: 20), text: 'Личный'),
+          Tab(icon: Icon(Icons.store_rounded, size: 20), text: 'Магазин'),
           if (widget.isAdmin)
-            const Tab(icon: Icon(Icons.group_add_rounded, size: 20), text: 'Группа'),
+            Tab(icon: Icon(Icons.group_add_rounded, size: 20), text: 'Группа'),
         ],
       ),
     );
@@ -371,20 +372,20 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
 
   Widget _buildSearchField() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: TextField(
           focusNode: _searchFocusNode,
-          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
+          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15.sp),
           cursorColor: Colors.white,
           decoration: InputDecoration(
             hintText: 'Поиск сотрудника или магазина...',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 15),
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 15.sp),
             prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.4), size: 22),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
@@ -393,7 +394,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
           ),
           onChanged: (value) => setState(() => _searchQuery = value),
         ),
@@ -404,13 +405,13 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   Widget _buildGeneralTab() {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
+              duration: Duration(milliseconds: 600),
               curve: Curves.easeOutBack,
               builder: (context, value, child) => Transform.scale(scale: value, child: child),
               child: Container(
@@ -424,50 +425,50 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                 child: Icon(Icons.public_rounded, size: 48, color: Colors.blue[300]),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               'Общий чат',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 24.sp,
                 fontWeight: FontWeight.w500,
                 color: Colors.white.withOpacity(0.95),
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
               decoration: BoxDecoration(
                 color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 border: Border.all(color: Colors.blue.withOpacity(0.2)),
               ),
               child: Text(
                 'Чат для всех сотрудников компании',
-                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6)),
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.6)),
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             GestureDetector(
               onTap: _openGeneralChat,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                padding: EdgeInsets.symmetric(horizontal: 36.w, vertical: 16.h),
                 decoration: BoxDecoration(
                   color: _emerald,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(color: Colors.white.withOpacity(0.15)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.chat_rounded, color: Colors.white.withOpacity(0.9), size: 22),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                       'Открыть чат',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -494,7 +495,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
               height: 64,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(18.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Icon(
@@ -503,15 +504,15 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                 color: Colors.white.withOpacity(0.4),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               _searchQuery.isEmpty ? 'Нет сотрудников' : 'Ничего не найдено',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.8)),
+              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.8)),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               _searchQuery.isEmpty ? 'Список сотрудников пуст' : 'Попробуйте изменить запрос',
-              style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.4)),
+              style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.4)),
             ),
           ],
         ),
@@ -519,7 +520,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
       itemCount: employees.length,
       itemBuilder: (context, index) {
         final employee = employees[index];
@@ -533,11 +534,11 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
           child: GestureDetector(
             onTap: () => _openPrivateChat(employee),
             child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
+              margin: EdgeInsets.only(bottom: 8.h),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Row(
@@ -553,14 +554,14 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                       child: Text(
                         employee.name.isNotEmpty ? employee.name[0].toUpperCase() : '?',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.green[300],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,19 +569,19 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                         Text(
                           employee.name,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withOpacity(0.95),
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Row(
                           children: [
                             Icon(Icons.phone_outlined, size: 13, color: Colors.white.withOpacity(0.35)),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               employee.phone ?? 'Нет телефона',
-                              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                              style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
                             ),
                           ],
                         ),
@@ -588,10 +589,10 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
                       color: _emerald.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(
                       Icons.chat_bubble_outline_rounded,
@@ -621,7 +622,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
               height: 64,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(18.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Icon(
@@ -630,15 +631,15 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                 color: Colors.white.withOpacity(0.4),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               _searchQuery.isEmpty ? 'Нет магазинов' : 'Ничего не найдено',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.8)),
+              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.8)),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               _searchQuery.isEmpty ? 'Список магазинов пуст' : 'Попробуйте изменить запрос',
-              style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.4)),
+              style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.4)),
             ),
           ],
         ),
@@ -646,7 +647,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
       itemCount: shops.length,
       itemBuilder: (context, index) {
         final shop = shops[index];
@@ -660,11 +661,11 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
           child: GestureDetector(
             onTap: () => _openShopChat(shop),
             child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
+              margin: EdgeInsets.only(bottom: 8.h),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Row(
@@ -674,11 +675,11 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                     height: 48,
                     decoration: BoxDecoration(
                       color: Colors.orange.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                     child: Icon(Icons.store_rounded, size: 24, color: Colors.orange[300]),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,21 +687,21 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                         Text(
                           shop.address,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withOpacity(0.95),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Row(
                           children: [
                             Icon(Icons.people_outline_rounded, size: 13, color: Colors.white.withOpacity(0.35)),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               'Чат магазина',
-                              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                              style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
                             ),
                           ],
                         ),
@@ -708,10 +709,10 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
                       color: Colors.orange.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(
                       Icons.chat_bubble_outline_rounded,
@@ -731,13 +732,13 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   Widget _buildGroupTab() {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
+              duration: Duration(milliseconds: 600),
               curve: Curves.easeOutBack,
               builder: (context, value, child) => Transform.scale(scale: value, child: child),
               child: Container(
@@ -751,37 +752,37 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                 child: Icon(Icons.groups_rounded, size: 48, color: Colors.purple[300]),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               'Создать группу',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 24.sp,
                 fontWeight: FontWeight.w500,
                 color: Colors.white.withOpacity(0.95),
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
               decoration: BoxDecoration(
                 color: Colors.purple.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 border: Border.all(color: Colors.purple.withOpacity(0.2)),
               ),
               child: Text(
                 'Группа с любыми участниками:\nсотрудниками и клиентами',
-                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6), height: 1.4),
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.6), height: 1.4),
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             // Преимущества
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Column(
@@ -794,26 +795,26 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: 28),
             GestureDetector(
               onTap: _openCreateGroup,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                padding: EdgeInsets.symmetric(horizontal: 36.w, vertical: 16.h),
                 decoration: BoxDecoration(
                   color: Colors.purple.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(color: Colors.purple.withOpacity(0.4)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.add_rounded, color: Colors.white.withOpacity(0.9), size: 22),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                       'Создать группу',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -831,18 +832,18 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
             color: Colors.purple.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, color: Colors.purple[300], size: 20),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7)),
+            style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.7)),
           ),
         ),
         Icon(Icons.check_circle_rounded, color: Colors.green[400], size: 20),

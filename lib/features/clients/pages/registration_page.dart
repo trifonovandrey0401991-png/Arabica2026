@@ -10,6 +10,7 @@ import '../../referrals/services/referral_service.dart';
 import '../../auth/services/auth_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/firebase_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница регистрации
 class RegistrationPage extends StatefulWidget {
@@ -243,7 +244,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
               SnackBar(
                 content: Text('Добро пожаловать обратно, ${existingUser.name}!'),
                 backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
+                duration: Duration(seconds: 2),
               ),
             );
 
@@ -394,7 +395,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка регистрации. Попробуйте еще раз.'),
               backgroundColor: Colors.red,
             ),
@@ -422,7 +423,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           SnackBar(
             content: Text(errorMessage),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -434,10 +435,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   // Брендовые цвета Arabica
-  static const Color _primaryColor = Color(0xFF1A4D4D); // Основной темно-бирюзовый
-  static const Color _primaryLight = Color(0xFF2D6B6B); // Светлее
-  static const Color _primaryDark = Color(0xFF0D3333); // Темнее
-  static const Color _accentGold = Color(0xFFD4AF37); // Золотистый акцент
+  static final Color _primaryColor = Color(0xFF1A4D4D); // Основной темно-бирюзовый
+  static final Color _primaryLight = Color(0xFF2D6B6B); // Светлее
+  static final Color _primaryDark = Color(0xFF0D3333); // Темнее
+  static final Color _accentGold = Color(0xFFD4AF37); // Золотистый акцент
 
   InputDecoration _buildInputDecoration({
     required String labelText,
@@ -452,8 +453,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
       labelText: labelText,
       hintText: hintText,
       prefixText: prefixText,
-      prefixStyle: const TextStyle(
-        fontSize: 16,
+      prefixStyle: TextStyle(
+        fontSize: 16.sp,
         fontWeight: FontWeight.w600,
         color: _primaryColor,
       ),
@@ -465,47 +466,50 @@ class _RegistrationPageState extends State<RegistrationPage> {
         color: Colors.grey[400],
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         borderSide: BorderSide(color: _primaryColor.withOpacity(0.3)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         borderSide: BorderSide(color: _primaryColor.withOpacity(0.3), width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: _primaryColor, width: 2),
+        borderRadius: BorderRadius.circular(16.r),
+        borderSide: BorderSide(color: _primaryColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        borderRadius: BorderRadius.circular(16.r),
+        borderSide: BorderSide(color: Colors.redAccent, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        borderRadius: BorderRadius.circular(16.r),
+        borderSide: BorderSide(color: Colors.redAccent, width: 2),
       ),
       filled: true,
       fillColor: Colors.white.withOpacity(0.95),
       prefixIcon: Container(
-        margin: const EdgeInsets.only(left: 12, right: 8),
+        margin: EdgeInsets.only(left: 12.w, right: 8.w),
         child: Icon(icon, color: _primaryColor, size: 22),
       ),
-      prefixIconConstraints: const BoxConstraints(minWidth: 48),
+      prefixIconConstraints: BoxConstraints(minWidth: 48),
       suffixIcon: suffixIcon,
       helperText: helperText,
       helperStyle: TextStyle(
-        color: isValid ? const Color(0xFF2E7D32) : Colors.orange[700],
+        color: isValid ? Color(0xFF2E7D32) : Colors.orange[700],
         fontWeight: FontWeight.w500,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF0A2626),
       body: Container(
-        decoration: const BoxDecoration(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -518,74 +522,57 @@ class _RegistrationPageState extends State<RegistrationPage> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              // Верхняя часть с логотипом (заполняет всё доступное пространство)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Логотип Arabica (большой)
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          color: Colors.white.withOpacity(0.1),
-                          border: Border.all(
-                            color: _accentGold.withOpacity(0.4),
-                            width: 2,
-                          ),
-                        ),
-                        child: Image.asset(
-                          'assets/images/arabica_logo.png',
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Приветственный текст
-                      const Text(
-                        'Добро пожаловать!',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Кофейни Arabica',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+            child: Column(
+              children: [
+                // Логотип Arabica в золотой рамке
+                Container(
+                  padding: EdgeInsets.all(20.w),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24.r),
+                    color: Colors.white.withOpacity(0.1),
+                    border: Border.all(
+                      color: _accentGold.withOpacity(0.4),
+                      width: 2,
+                    ),
+                  ),
+                  child: Image.asset(
+                    'assets/images/arabica_logo.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
                   ),
                 ),
-              ),
+                SizedBox(height: 16),
 
-              // Карточка формы (внизу)
-              SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 400),
+                // Приветственный текст
+                Text(
+                  'Добро пожаловать!',
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Карточка формы
+                Container(
+                  constraints: BoxConstraints(maxWidth: 400),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     color: Colors.white.withOpacity(0.95),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.15),
                         blurRadius: 20,
-                        offset: const Offset(0, 8),
+                        offset: Offset(0, 8),
                       ),
                     ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -596,8 +583,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             TextFormField(
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: 14.sp,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                               ),
@@ -621,15 +608,15 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
 
                             // Поле имени
                             TextFormField(
                               controller: _nameController,
                               keyboardType: TextInputType.name,
                               textCapitalization: TextCapitalization.words,
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: 14.sp,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                               ),
@@ -648,15 +635,15 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
 
                             // Поле PIN-кода
                             TextFormField(
                               controller: _pinController,
                               keyboardType: TextInputType.number,
                               obscureText: _obscurePin,
-                              style: const TextStyle(
-                                fontSize: 16,
+                              style: TextStyle(
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                                 letterSpacing: 4,
@@ -687,15 +674,15 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
 
                             // Подтверждение PIN-кода
                             TextFormField(
                               controller: _pinConfirmController,
                               keyboardType: TextInputType.number,
                               obscureText: _obscurePinConfirm,
-                              style: const TextStyle(
-                                fontSize: 16,
+                              style: TextStyle(
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                                 letterSpacing: 4,
@@ -726,14 +713,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
 
                             // Поле кода приглашения (необязательное)
                             TextFormField(
                               controller: _referralCodeController,
                               keyboardType: TextInputType.number,
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: 14.sp,
                                 fontWeight: FontWeight.w500,
                                 color: _primaryDark,
                               ),
@@ -747,13 +734,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 icon: Icons.card_giftcard_rounded,
                                 suffixIcon: _referralCodeController.text.isNotEmpty
                                     ? Container(
-                                        margin: const EdgeInsets.only(right: 12),
+                                        margin: EdgeInsets.only(right: 12.w),
                                         child: Icon(
                                           _isReferralValid
                                               ? Icons.check_circle_rounded
                                               : Icons.info_outline_rounded,
                                           color: _isReferralValid
-                                              ? const Color(0xFF2E7D32)
+                                              ? Color(0xFF2E7D32)
                                               : Colors.orange[700],
                                           size: 24,
                                         ),
@@ -766,13 +753,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 _validateReferralCode(value);
                               },
                             ),
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
 
                             // Кнопка регистрации с градиентом
                             Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: const LinearGradient(
+                                borderRadius: BorderRadius.circular(16.r),
+                                gradient: LinearGradient(
                                   colors: [_primaryLight, _primaryColor, _primaryDark],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -781,7 +768,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                   BoxShadow(
                                     color: _primaryColor.withOpacity(0.4),
                                     blurRadius: 12,
-                                    offset: const Offset(0, 6),
+                                    offset: Offset(0, 6),
                                   ),
                                 ],
                               ),
@@ -791,14 +778,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: EdgeInsets.symmetric(vertical: 14.h),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(16.r),
                                   ),
                                   disabledBackgroundColor: Colors.transparent,
                                 ),
                                 child: _isLoading
-                                    ? const SizedBox(
+                                    ? SizedBox(
                                         height: 22,
                                         width: 22,
                                         child: CircularProgressIndicator(
@@ -806,7 +793,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                         ),
                                       )
-                                    : const Row(
+                                    : Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Icon(Icons.login_rounded, size: 22),
@@ -814,7 +801,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                           Text(
                                             'Зарегистрироваться',
                                             style: TextStyle(
-                                              fontSize: 17,
+                                              fontSize: 17.sp,
                                               fontWeight: FontWeight.w600,
                                               letterSpacing: 0.5,
                                             ),
@@ -828,8 +815,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -8,6 +8,7 @@ import 'kpi_shop_day_detail_dialog.dart';
 import 'kpi_shops_list_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/widgets/shop_icon.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 bool isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -23,10 +24,10 @@ class KPIShopCalendarPage extends StatefulWidget {
 
 class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
 
@@ -91,7 +92,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
       builder: (context) => Scaffold(
         backgroundColor: Colors.transparent,
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -104,7 +105,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
               children: [
                 // Custom AppBar for dialog
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Row(
                     children: [
                       GestureDetector(
@@ -114,18 +115,18 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                           height: 40,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
-                          child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                          child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      const Text(
+                      SizedBox(width: 16),
+                      Text(
                         'Выберите магазин',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -134,22 +135,22 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                 ),
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemCount: _shops.length,
                     itemBuilder: (context, index) {
                       final shop = _shops[index];
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.only(bottom: 12.h),
                         child: Material(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             onTap: () => Navigator.pop(context, shop),
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(12.w),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                                 border: Border.all(
                                   color: Colors.white.withOpacity(0.1),
                                   width: 2,
@@ -157,13 +158,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                               ),
                               child: Row(
                                 children: [
-                                  const ShopIcon(size: 56),
-                                  const SizedBox(width: 16),
+                                  ShopIcon(size: 56),
+                                  SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
                                       shop.address,
-                                      style: const TextStyle(
-                                        fontSize: 16,
+                                      style: TextStyle(
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white,
                                       ),
@@ -171,7 +172,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  const Icon(
+                                  Icon(
                                     Icons.chevron_right,
                                     color: Colors.white70,
                                     size: 28,
@@ -237,7 +238,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
       // Кэш очищается только при явном обновлении (кнопка refresh)
 
       // Загружаем данные последовательно (по 2 за раз) с задержкой для избежания HTTP 429
-      const batchSize = 2;
+      final batchSize = 2;
       for (int i = 0; i < datesToLoad.length; i += batchSize) {
         final batch = datesToLoad.skip(i).take(batchSize).toList();
         final results = await Future.wait<KPIShopDayData?>(
@@ -274,7 +275,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
 
         // Задержка между пакетами для избежания HTTP 429
         if (i + batchSize < datesToLoad.length) {
-          await Future.delayed(const Duration(milliseconds: 200));
+          await Future.delayed(Duration(milliseconds: 200));
         }
       }
 
@@ -348,7 +349,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
       // Показываем пустой диалог при ошибке
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка загрузки данных')),
+          SnackBar(content: Text('Ошибка загрузки данных')),
         );
       }
     }
@@ -405,13 +406,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
 
     // Создаем контейнер разделённый на 2 части
     return Container(
-      margin: const EdgeInsets.all(4.0),
+      margin: EdgeInsets.all(4.0.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         border: border,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(6.r),
         child: hasData
             ? Column(
                 children: [
@@ -422,13 +423,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                       color: morningColor,
                       alignment: Alignment.bottomCenter,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 1),
+                        padding: EdgeInsets.only(bottom: 1.h),
                         child: Text(
                           '${date.day}',
                           style: TextStyle(
                             color: morningStatus >= 0 ? Colors.black87 : Colors.grey[600],
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ),
@@ -453,7 +454,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                     style: TextStyle(
                       color: textColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                     ),
                   ),
                 ),
@@ -466,22 +467,22 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     if (_selectedShop == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.all(32.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.store, size: 64, color: Colors.white54),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Выберите магазин для просмотра календаря',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+                style: TextStyle(color: Colors.white70, fontSize: 16.sp),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _showShopSelection,
-                icon: const Icon(Icons.store),
-                label: const Text('Выбрать магазин'),
+                icon: Icon(Icons.store),
+                label: Text('Выбрать магазин'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _emerald,
                   foregroundColor: Colors.white,
@@ -497,34 +498,34 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
       children: [
         // Строка с выбранным магазином
         Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: EdgeInsets.all(8.0.w),
           child: InkWell(
             onTap: _showShopSelection,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white24),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.store, color: Colors.white),
-                  const SizedBox(width: 12),
+                  Icon(Icons.store, color: Colors.white),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       _selectedShop!.address,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                  Icon(Icons.arrow_drop_down, color: Colors.white70),
                 ],
               ),
             ),
@@ -533,12 +534,12 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
         // Календарь
         Expanded(
           child: _isLoading && _dayDataCache.isEmpty
-              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              ? Center(child: CircularProgressIndicator(color: Colors.white))
               : SingleChildScrollView(
                   child: Column(
                     children: [
                       Card(
-                        margin: const EdgeInsets.all(8),
+                        margin: EdgeInsets.all(8.w),
                         child: TableCalendar<KPIShopDayData>(
                           firstDay: DateTime.utc(2020, 1, 1),
                           lastDay: DateTime.utc(2030, 12, 31),
@@ -605,15 +606,15 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                               );
                             },
                             markerBuilder: (context, date, events) {
-                              return const SizedBox.shrink();
+                              return SizedBox.shrink();
                             },
                           ),
                           calendarStyle: CalendarStyle(
                             outsideDaysVisible: false,
-                            cellPadding: const EdgeInsets.all(8),
-                            cellMargin: const EdgeInsets.all(2),
+                            cellPadding: EdgeInsets.all(8.w),
+                            cellMargin: EdgeInsets.all(2.w),
                           ),
-                          headerStyle: const HeaderStyle(
+                          headerStyle: HeaderStyle(
                             formatButtonVisible: true,
                             titleCentered: true,
                           ),
@@ -627,10 +628,10 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                           },
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Пример ячейки
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: EdgeInsets.symmetric(horizontal: 16.0.w),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -638,20 +639,20 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                               width: 40,
                               height: 44,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
                                 border: Border.all(color: Colors.white54),
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(6.r),
                                 child: Column(
                                   children: [
                                     Expanded(
                                       child: Container(
                                         color: Colors.green,
                                         alignment: Alignment.bottomCenter,
-                                        child: const Padding(
-                                          padding: EdgeInsets.only(bottom: 1),
-                                          child: Text('1', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                        child: Padding(
+                                          padding: EdgeInsets.only(bottom: 1.h),
+                                          child: Text('1', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
                                         ),
                                       ),
                                     ),
@@ -660,20 +661,20 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            const Flexible(
+                            SizedBox(width: 12),
+                            Flexible(
                               child: Text(
                                 'Верх - утро, низ - вечер',
-                                style: TextStyle(fontSize: 12, color: Colors.white),
+                                style: TextStyle(fontSize: 12.sp, color: Colors.white),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       // Легенда цветов
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: EdgeInsets.symmetric(horizontal: 16.0.w),
                         child: Wrap(
                           spacing: 16,
                           runSpacing: 8,
@@ -686,11 +687,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                                   height: 16,
                                   decoration: BoxDecoration(
                                     color: Colors.green,
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(4.r),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Text('Всё выполнено', style: TextStyle(fontSize: 11, color: Colors.white)),
+                                SizedBox(width: 6),
+                                Text('Всё выполнено', style: TextStyle(fontSize: 11.sp, color: Colors.white)),
                               ],
                             ),
                             Row(
@@ -701,11 +702,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                                   height: 16,
                                   decoration: BoxDecoration(
                                     color: Colors.yellow,
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(4.r),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Text('Частично', style: TextStyle(fontSize: 11, color: Colors.white)),
+                                SizedBox(width: 6),
+                                Text('Частично', style: TextStyle(fontSize: 11.sp, color: Colors.white)),
                               ],
                             ),
                             Row(
@@ -716,17 +717,17 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                                   height: 16,
                                   decoration: BoxDecoration(
                                     color: Colors.red,
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(4.r),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Text('Не выполнено', style: TextStyle(fontSize: 11, color: Colors.white)),
+                                SizedBox(width: 6),
+                                Text('Не выполнено', style: TextStyle(fontSize: 11.sp, color: Colors.white)),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -740,7 +741,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -753,7 +754,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -763,19 +764,19 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
+                    SizedBox(width: 16),
+                    Expanded(
                       child: Text(
                         'KPI - Магазины',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -801,10 +802,10 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -812,10 +813,10 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
               ),
               // TabBar
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+                margin: EdgeInsets.symmetric(horizontal: 16.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: TabBar(
                   controller: _tabController,
@@ -824,20 +825,20 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
                   dividerColor: Colors.transparent,
-                  tabs: const [
+                  tabs: [
                     Tab(text: 'Все магазины'),
                     Tab(text: 'Магазин'),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               // Content
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
                     // Вкладка 1: Список всех магазинов
-                    const KPIShopsListPage(),
+                    KPIShopsListPage(),
                     // Вкладка 2: Календарь
                     _buildCalendarView(),
                   ],

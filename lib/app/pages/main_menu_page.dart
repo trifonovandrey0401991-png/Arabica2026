@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../../features/menu/pages/menu_groups_page.dart';
 import '../../features/orders/pages/cart_page.dart';
-import '../../features/orders/pages/orders_page.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/loyalty/pages/loyalty_page.dart';
 import '../../features/shops/models/shop_model.dart';
@@ -66,6 +65,7 @@ import '../../features/network_management/pages/network_management_page.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/execution_chain/services/execution_chain_service.dart';
 import '../../features/execution_chain/models/execution_chain_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -104,27 +104,36 @@ class _MainMenuPageState extends State<MainMenuPage> {
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - только изумруд и белый
   // ═══════════════════════════════════════════════════════════════
-  static const Color _emerald = Color(0xFF1A4D4D);       // Из логотипа
-  static const Color _emeraldLight = Color(0xFF2A6363); // Светлее
-  static const Color _emeraldDark = Color(0xFF0D2E2E);  // Темнее
-  static const Color _night = Color(0xFF051515);        // Почти чёрный
-  static const Color _gold = Color(0xFFD4AF37);         // Золотой акцент
+  static final Color _emerald = Color(0xFF1A4D4D);       // Из логотипа
+  static final Color _emeraldLight = Color(0xFF2A6363); // Светлее
+  static final Color _emeraldDark = Color(0xFF0D2E2E);  // Темнее
+  static final Color _night = Color(0xFF051515);        // Почти чёрный
+  static final Color _gold = Color(0xFFD4AF37);         // Золотой акцент
 
   @override
   void initState() {
     super.initState();
-    _loadCachedRole();
-    _loadUserData();
-    _syncReports();
-    _loadEmployeeId();
+    _loadCachedRole(); // Мгновенно: из SharedPreferences
+    _loadPhased();     // Фазовая загрузка данных
+  }
+
+  /// Фазовая загрузка: критичные данные сначала, фон потом.
+  /// Предотвращает взрыв 40+ параллельных запросов к серверу.
+  Future<void> _loadPhased() async {
+    // ФАЗА 1: Критичные данные (роль и ID определяют интерфейс)
+    await _loadUserData();
+    await _loadEmployeeId();
+
+    // ФАЗА 2: Бейджи (видны на кнопках меню)
     _loadTotalReportsCount();
     _loadMyDialogsCount();
-    _loadEmployeeRating();
-    // Загрузка счётчиков для сотрудников
     _loadEmployeeCounters();
-    // Проверка обновлений
+
+    // ФАЗА 3: Фоновые данные (не видны сразу)
+    await Future.delayed(Duration(milliseconds: 300));
+    _syncReports();
     _checkForUpdates();
-    // Загрузка эффективности
+    _loadEmployeeRating();
     _loadEfficiencyPoints();
   }
 
@@ -178,14 +187,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  /// Загрузка всех счётчиков для сотрудника
+  /// Загрузка всех счётчиков для сотрудника.
+  /// Получаем employeeId один раз и передаём во все методы,
+  /// вместо 5 параллельных вызовов getCurrentEmployeeId().
   Future<void> _loadEmployeeCounters() async {
+    final employeeId = await EmployeesPage.getCurrentEmployeeId();
     _loadPendingOrdersCount();
     _loadUnreadProductQuestionsCount();
-    _loadActiveTasksCount();
-    _loadAvailableSpins();
-    _loadShiftTransferUnreadCount();
-    _loadReferralCode();
+    _loadActiveTasksCount(employeeId);
+    _loadAvailableSpins(employeeId);
+    _loadShiftTransferUnreadCount(employeeId);
+    _loadReferralCode(employeeId);
   }
 
   Future<void> _loadPendingOrdersCount() async {
@@ -209,57 +221,49 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  Future<void> _loadActiveTasksCount() async {
+  Future<void> _loadActiveTasksCount(String? employeeId) async {
+    if (employeeId == null) return;
     try {
-      final employeeId = await EmployeesPage.getCurrentEmployeeId();
-      if (employeeId != null) {
-        final assignments = await TaskService.getMyAssignments(employeeId);
-        final activeCount = assignments.where((a) =>
-          a.status == TaskStatus.pending || a.status == TaskStatus.submitted
-        ).length;
-        if (mounted) setState(() => _activeTasksCount = activeCount);
-      }
+      final assignments = await TaskService.getMyAssignments(employeeId);
+      final activeCount = assignments.where((a) =>
+        a.status == TaskStatus.pending || a.status == TaskStatus.submitted
+      ).length;
+      if (mounted) setState(() => _activeTasksCount = activeCount);
     } catch (e) {
       Logger.error('Ошибка загрузки счётчика задач', e);
     }
   }
 
-  Future<void> _loadAvailableSpins() async {
+  Future<void> _loadAvailableSpins(String? employeeId) async {
+    if (employeeId == null) return;
     try {
-      final employeeId = await EmployeesPage.getCurrentEmployeeId();
-      if (employeeId != null) {
-        final spins = await FortuneWheelService.getAvailableSpins(employeeId);
-        if (mounted) setState(() => _availableSpins = spins.availableSpins);
-      }
+      final spins = await FortuneWheelService.getAvailableSpins(employeeId);
+      if (mounted) setState(() => _availableSpins = spins.availableSpins);
     } catch (e) {
       Logger.error('Ошибка загрузки прокруток', e);
     }
   }
 
-  Future<void> _loadShiftTransferUnreadCount() async {
+  Future<void> _loadShiftTransferUnreadCount(String? employeeId) async {
+    if (employeeId == null) return;
     try {
-      final employeeId = await EmployeesPage.getCurrentEmployeeId();
-      if (employeeId != null) {
-        final count = await ShiftTransferService.getUnreadCount(employeeId);
-        if (mounted) setState(() => _shiftTransferUnreadCount = count);
-      }
+      final count = await ShiftTransferService.getUnreadCount(employeeId);
+      if (mounted) setState(() => _shiftTransferUnreadCount = count);
     } catch (e) {
       Logger.error('Ошибка загрузки счётчика пересменок', e);
     }
   }
 
-  Future<void> _loadReferralCode() async {
+  Future<void> _loadReferralCode(String? employeeId) async {
+    if (employeeId == null) return;
     try {
-      final employeeId = await EmployeesPage.getCurrentEmployeeId();
-      if (employeeId != null) {
-        final employees = await EmployeeService.getEmployees();
-        final employee = employees.firstWhere(
-          (e) => e.id == employeeId,
-          orElse: () => throw StateError('Employee not found'),
-        );
-        if (mounted && employee.referralCode != null) {
-          setState(() => _referralCode = employee.referralCode);
-        }
+      final employees = await EmployeeService.getEmployees();
+      final employee = employees.firstWhere(
+        (e) => e.id == employeeId,
+        orElse: () => throw StateError('Employee not found'),
+      );
+      if (mounted && employee.referralCode != null) {
+        setState(() => _referralCode = employee.referralCode);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки referralCode', e);
@@ -269,7 +273,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   Future<void> _loadEmployeeRating() async {
     if (_employeeId == null) {
       // Подождём загрузки employeeId
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: 500));
       if (_employeeId == null) return;
     }
     try {
@@ -341,10 +345,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
       if (phone != null && phone.isNotEmpty) {
         try {
-          roleData = await UserRoleService.getUserRole(phone);
-          await UserRoleService.saveUserRole(roleData);
-          if (roleData.displayName.isNotEmpty) {
-            await prefs.setString('user_name', roleData.displayName);
+          final freshRole = await UserRoleService.getUserRole(phone);
+
+          // Защита: не понижаем developer/admin до client при сбое API
+          final cachedRoleName = cachedRole?.role.name;
+          if (freshRole.role == UserRole.client &&
+              (cachedRoleName == 'developer' || cachedRoleName == 'admin')) {
+            Logger.warning('⚠️ API вернул client, но кэш: $cachedRoleName — не понижаем');
+          } else {
+            roleData = freshRole;
+            await UserRoleService.saveUserRole(roleData!);
+            if (roleData!.displayName.isNotEmpty) {
+              await prefs.setString('user_name', roleData!.displayName);
+            }
           }
         } catch (e) {
           roleData = cachedRole ?? UserRoleData(
@@ -372,19 +385,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.2)),
         ),
-        title: const Text('Выход', style: TextStyle(color: Colors.white)),
-        content: const Text('Выйти из аккаунта?', style: TextStyle(color: Colors.white70)),
+        title: Text('Выход', style: TextStyle(color: Colors.white)),
+        content: Text('Выйти из аккаунта?', style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена', style: TextStyle(color: Colors.white54)),
+            child: Text('Отмена', style: TextStyle(color: Colors.white54)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Выйти', style: TextStyle(color: Colors.white)),
+            child: Text('Выйти', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -402,7 +415,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const RegistrationPage()),
+          MaterialPageRoute(builder: (_) => RegistrationPage()),
           (_) => false,
         );
       }
@@ -418,7 +431,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -459,12 +472,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
   /// Компактное меню для клиентов - помещается на экран без прокрутки
   Widget _buildClientMenu() {
     final items = _getClientMenuItems();
-    // 9 пунктов + 1 пустая ячейка = 10, сетка 2x5
-    const rows = 5;
-    const cols = 2;
+    // 8 пунктов, сетка 2x4 — плитки на весь экран
+    final rows = 4;
+    final cols = 2;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 16.h),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
@@ -480,12 +493,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
             crossAxisSpacing: spacing,
             mainAxisSpacing: spacing,
             childAspectRatio: aspectRatio,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              ...items,
-              // Пустая ячейка в конце
-              const SizedBox(),
-            ],
+            physics: NeverScrollableScrollPhysics(),
+            children: items,
           );
         },
       ),
@@ -495,14 +504,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
   /// Меню для админов - 4 широкие строки на весь экран
   Widget _buildAdminMenu() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
 
           // 3 кнопки + 2 отступа между ними
-          const buttonCount = 3;
-          const spacing = 16.0;
+          final buttonCount = 3;
+          final spacing = 16.0;
           final totalSpacing = spacing * (buttonCount - 1);
           final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
 
@@ -514,26 +523,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 'Аналитика и статистика',
                 buttonHeight,
                 () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsPage()));
                   _loadTotalReportsCount();
                 },
                 badge: _totalReportsCount,
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.grid_view_rounded,
                 'Панель сотрудника',
                 'Функции сотрудника',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeePanelPage())),
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.person_outline,
                 'Клиент',
                 'Клиентские функции',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFunctionsPage())),
               ),
             ],
           );
@@ -545,14 +554,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
   /// Меню для разработчиков - админ меню + "Управление сетью"
   Widget _buildDeveloperMenu() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
 
           // 5 кнопок + 4 отступа между ними
-          const buttonCount = 5;
-          const spacing = 12.0;
+          final buttonCount = 5;
+          final spacing = 12.0;
           final totalSpacing = spacing * (buttonCount - 1);
           final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
 
@@ -564,43 +573,43 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 'Управление сетью',
                 'Разработчики, управляющие, магазины',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NetworkManagementPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => NetworkManagementPage())),
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.tune_rounded,
                 'Управление',
                 'Настройки системы и данные',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => DataManagementPage())),
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.analytics_outlined,
                 'Отчёты',
                 'Аналитика и статистика',
                 buttonHeight,
                 () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsPage()));
                   _loadTotalReportsCount();
                 },
                 badge: _totalReportsCount,
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.grid_view_rounded,
                 'Панель сотрудника',
                 'Функции сотрудника',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeePanelPage())),
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.person_outline,
                 'Клиент',
                 'Клиентские функции',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFunctionsPage())),
               ),
             ],
           );
@@ -621,16 +630,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
       height: height,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           splashColor: Colors.white.withOpacity(0.1),
           highlightColor: Colors.white.withOpacity(0.05),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
               border: Border.all(color: Colors.white.withOpacity(0.15)),
               gradient: LinearGradient(
                 colors: [
@@ -647,7 +656,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     color: Colors.white.withOpacity(0.1),
                   ),
                   child: Icon(
@@ -656,7 +665,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     size: 28,
                   ),
                 ),
-                const SizedBox(width: 20),
+                SizedBox(width: 20),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -666,17 +675,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
                         title,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.95),
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.5),
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -685,16 +694,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 ),
                 if (badge != null && badge > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                     child: Text(
                       badge > 99 ? '99+' : '$badge',
                       style: TextStyle(
                         color: _emerald,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -716,16 +725,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
   /// Компактное меню для сотрудников - 3xN без прокрутки + футуристичная кнопка ИИ
   Widget _buildEmployeeMenu() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 0.h),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
           final availableWidth = constraints.maxWidth;
 
           // Фиксированные размеры
-          const headerHeight = 20.0;
-          const aiButtonHeight = 52.0;
-          const aiButtonTopMargin = 10.0;
+          final headerHeight = 20.0;
+          final aiButtonHeight = 52.0;
+          final aiButtonTopMargin = 10.0;
 
           final sections = _getEmployeeSections();
 
@@ -763,9 +772,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   Widget _buildEmployeeSection(String title, double height, double width, List<Widget> items, double headerHeight) {
-    const cols = 3;
-    const rows = 2;
-    const spacing = 6.0;
+    final cols = 3;
+    final rows = 2;
+    final spacing = 6.0;
 
     final tileWidth = (width - spacing * (cols - 1)) / cols;
     final gridHeight = height - headerHeight;
@@ -785,7 +794,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 title,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
                 ),
@@ -798,7 +807,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
               crossAxisSpacing: spacing,
               mainAxisSpacing: spacing,
               childAspectRatio: aspectRatio,
-              physics: const NeverScrollableScrollPhysics(),
+              physics: NeverScrollableScrollPhysics(),
               children: items,
             ),
           ),
@@ -820,24 +829,24 @@ class _MainMenuPageState extends State<MainMenuPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: const Color(0xFF4ECDC4).withOpacity(0.6), // Бирюзовый акцент
+          color: Color(0xFF4ECDC4).withOpacity(0.6), // Бирюзовый акцент
           width: 1.5,
         ),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const AITrainingPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage()));
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           splashColor: Colors.white.withOpacity(0.2),
           highlightColor: Colors.white.withOpacity(0.1),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -846,32 +855,32 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   color: Colors.white.withOpacity(0.9),
                   size: 24,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Text(
                   'Обучение ИИ',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.95),
-                    fontSize: 15,
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4ECDC4).withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(6),
+                    color: Color(0xFF4ECDC4).withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(6.r),
                     border: Border.all(
-                      color: const Color(0xFF4ECDC4).withOpacity(0.5),
+                      color: Color(0xFF4ECDC4).withOpacity(0.5),
                       width: 1,
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'AI',
                     style: TextStyle(
                       color: Color(0xFF4ECDC4),
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
                     ),
@@ -902,51 +911,51 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(
-                color: const Color(0xFF4ECDC4).withOpacity(0.6),
+                color: Color(0xFF4ECDC4).withOpacity(0.6),
                 width: 1.5,
               ),
             ),
             child: Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               child: InkWell(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AITrainingPage()));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage()));
                 },
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 splashColor: Colors.white.withOpacity(0.2),
                 highlightColor: Colors.white.withOpacity(0.1),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.smart_toy_outlined, color: Colors.white.withOpacity(0.9), size: 20),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text(
                       'ИИ',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.95),
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4ECDC4).withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(6),
+                        color: Color(0xFF4ECDC4).withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(6.r),
                         border: Border.all(
-                          color: const Color(0xFF4ECDC4).withOpacity(0.5),
+                          color: Color(0xFF4ECDC4).withOpacity(0.5),
                           width: 1,
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'AI',
                         style: TextStyle(
                           color: Color(0xFF4ECDC4),
-                          fontSize: 10,
+                          fontSize: 10.sp,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -957,7 +966,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         // Главная касса — 50%, золотой
         Expanded(
           child: Container(
@@ -966,12 +975,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
               gradient: LinearGradient(
                 colors: [
                   _gold.withOpacity(0.9),
-                  const Color(0xFFB8960C),
+                  Color(0xFFB8960C),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(
                 color: _gold.withOpacity(0.7),
                 width: 1.5,
@@ -979,24 +988,24 @@ class _MainMenuPageState extends State<MainMenuPage> {
             ),
             child: Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               child: InkWell(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MainCashPage()));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => MainCashPage()));
                 },
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 splashColor: Colors.white.withOpacity(0.2),
                 highlightColor: Colors.white.withOpacity(0.1),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.account_balance_outlined, color: Colors.white, size: 20),
-                    const SizedBox(width: 6),
-                    const Text(
+                    Icon(Icons.account_balance_outlined, color: Colors.white, size: 20),
+                    SizedBox(width: 6),
+                    Text(
                       'Касса',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1027,36 +1036,37 @@ class _MainMenuPageState extends State<MainMenuPage> {
           // Рейтинг, Логотип и выход - Row layout для правильного центрирования
           SizedBox(
             height: isEmployee ? 36 : 44,
-            child: Row(
+            child: Stack(
               children: [
-                // Левая часть - бейджи (фиксированная ширина)
-                SizedBox(
-                  width: 140,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      if (showRating) _buildRatingBadge(),
-                      if (showRating && showEfficiency) const SizedBox(width: 4),
-                      if (showEfficiency) _buildEfficiencyBadge(),
-                    ],
+                // Центр - логотип (истинный центр, не зависит от кнопок по бокам)
+                Center(
+                  child: Image.asset(
+                    'assets/images/arabica_logo.png',
+                    height: isEmployee ? 36 : 44,
+                    fit: BoxFit.contain,
                   ),
                 ),
 
-                // Центр - логотип
-                Expanded(
-                  child: Center(
-                    child: Image.asset(
-                      'assets/images/arabica_logo.png',
-                      height: isEmployee ? 36 : 44,
-                      fit: BoxFit.contain,
+                // Левая часть - бейджи
+                if (showRating || showEfficiency)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showRating) _buildRatingBadge(),
+                        if (showRating && showEfficiency) SizedBox(width: 4),
+                        if (showEfficiency) _buildEfficiencyBadge(),
+                      ],
                     ),
                   ),
-                ),
 
-                // Правая часть - кнопки (фиксированная ширина)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                // Правая часть - кнопки
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       // Кнопка обновления (для сотрудников, админов и разработчиков)
                       if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
                         GestureDetector(
@@ -1072,7 +1082,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                                   await AppUpdateService.performUpdate(context);
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text('Установлена актуальная версия'),
                                       duration: Duration(seconds: 2),
                                     ),
@@ -1093,20 +1103,20 @@ class _MainMenuPageState extends State<MainMenuPage> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _isUpdateAvailable
-                                      ? const Color(0xFF4CAF50) // Зелёный если есть обновление
+                                      ? Color(0xFF4CAF50) // Зелёный если есть обновление
                                       : Colors.white.withOpacity(0.1),
                                   border: Border.all(
                                     color: _isUpdateAvailable
-                                        ? const Color(0xFF81C784)
+                                        ? Color(0xFF81C784)
                                         : Colors.white.withOpacity(0.3),
                                     width: 2,
                                   ),
                                   boxShadow: _isUpdateAvailable
                                       ? [
                                           BoxShadow(
-                                            color: const Color(0xFF4CAF50).withOpacity(0.4),
+                                            color: Color(0xFF4CAF50).withOpacity(0.4),
                                             blurRadius: 8,
-                                            offset: const Offset(0, 2),
+                                            offset: Offset(0, 2),
                                           ),
                                         ]
                                       : null,
@@ -1120,8 +1130,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
                               // Badge с индикатором
                               if (_isUpdateAvailable)
                                 Positioned(
-                                  right: 0,
-                                  top: 0,
+                                  right: 0.w,
+                                  top: 0.h,
                                   child: Container(
                                     width: isEmployee ? 12 : 14,
                                     height: isEmployee ? 12 : 14,
@@ -1147,25 +1157,25 @@ class _MainMenuPageState extends State<MainMenuPage> {
                           ),
                         ),
                       if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                       // Жёлтая кнопка поиска товара (скрыта для клиентов)
                       if (_userRole?.role != UserRole.client)
                         GestureDetector(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchPage()));
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => ProductSearchPage()));
                           },
                           child: Container(
                             width: isEmployee ? 32 : 40,
                             height: isEmployee ? 32 : 40,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFFFFC107), // Жёлтый цвет
-                              border: Border.all(color: const Color(0xFFFFD54F), width: 2),
+                              color: Color(0xFFFFC107), // Жёлтый цвет
+                              border: Border.all(color: Color(0xFFFFD54F), width: 2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFFFC107).withOpacity(0.4),
+                                  color: Color(0xFFFFC107).withOpacity(0.4),
                                   blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  offset: Offset(0, 2),
                                 ),
                               ],
                             ),
@@ -1176,7 +1186,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                             ),
                           ),
                         ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       // Кнопка выхода
                       GestureDetector(
                         onTap: _logout,
@@ -1196,6 +1206,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       ),
                     ],
                   ),
+                ),
               ],
             ),
           ),
@@ -1229,14 +1240,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   /// Минималистичный бейдж рейтинга для левого верхнего угла
   Widget _buildRatingBadge() {
-    if (_employeeRating == null) return const SizedBox.shrink();
+    if (_employeeRating == null) return SizedBox.shrink();
 
     final rating = _employeeRating!;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.3)),
       ),
       child: Row(
@@ -1247,12 +1258,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
             color: Colors.white.withOpacity(0.8),
             size: 14,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             '${rating.position}/${rating.totalEmployees}',
             style: TextStyle(
               color: Colors.white.withOpacity(0.9),
-              fontSize: 11,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1263,7 +1274,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   /// Бейдж эффективности для левого верхнего угла
   Widget _buildEfficiencyBadge() {
-    if (_efficiencyPoints == null) return const SizedBox.shrink();
+    if (_efficiencyPoints == null) return SizedBox.shrink();
 
     final points = _efficiencyPoints!;
     final isPositive = points >= 0;
@@ -1272,16 +1283,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         : points.toStringAsFixed(1);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: isPositive
-              ? const Color(0xFF4CAF50).withOpacity(0.5)
+              ? Color(0xFF4CAF50).withOpacity(0.5)
               : Colors.orange.withOpacity(0.5),
         ),
         color: isPositive
-            ? const Color(0xFF4CAF50).withOpacity(0.15)
+            ? Color(0xFF4CAF50).withOpacity(0.15)
             : Colors.orange.withOpacity(0.15),
       ),
       child: Row(
@@ -1290,18 +1301,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
           Icon(
             isPositive ? Icons.trending_up_outlined : Icons.trending_down_outlined,
             color: isPositive
-                ? const Color(0xFF81C784)
+                ? Color(0xFF81C784)
                 : Colors.orange.shade300,
             size: 14,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             formattedPoints,
             style: TextStyle(
               color: isPositive
-                  ? const Color(0xFF81C784)
+                  ? Color(0xFF81C784)
                   : Colors.orange.shade300,
-              fontSize: 11,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1323,44 +1334,41 @@ class _MainMenuPageState extends State<MainMenuPage> {
         ));
       }),
       _buildCompactTile(Icons.shopping_bag_outlined, 'Корзина', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
-      }),
-      _buildCompactTile(Icons.receipt_long_outlined, 'Заказы', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => CartPage()));
       }),
       _buildCompactTile(Icons.place_outlined, 'Кофейни', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopsOnMapPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ShopsOnMapPage()));
       }),
       _buildCompactTile(Icons.card_membership_outlined, 'Лояльность', () async {
         final enabled = await FirebaseService.areNotificationsEnabled();
         if (!enabled && context.mounted) {
           final result = await NotificationRequiredDialog.show(context);
           if (result == true) {
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.delayed(Duration(milliseconds: 500));
             final ok = await FirebaseService.areNotificationsEnabled();
             if (ok && context.mounted) {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
             }
           }
           return;
         }
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
       }),
       _buildCompactTile(Icons.star_outline_rounded, 'Отзывы', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewTypeSelectionPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ReviewTypeSelectionPage()));
       }),
       _buildCompactTile(
         Icons.chat_bubble_outline_rounded, 'Диалоги', () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const MyDialogsPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => MyDialogsPage()));
           _loadMyDialogsCount();
         },
         badge: _myDialogsUnreadCount,
       ),
       _buildCompactTile(Icons.search_outlined, 'Поиск', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchShopSelectionPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ProductSearchShopSelectionPage()));
       }),
       _buildCompactTile(Icons.work_outline_rounded, 'Работа', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const JobApplicationWelcomePage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => JobApplicationWelcomePage()));
       }),
     ];
   }
@@ -1390,7 +1398,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             if (!context.mounted) return;
             if (hasAttendance) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: const Text('Вы уже отметились сегодня'), backgroundColor: Colors.orange.shade700),
+                SnackBar(content: Text('Вы уже отметились сегодня'), backgroundColor: Colors.orange.shade700),
               );
               return;
             }
@@ -1422,7 +1430,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       // 4. Пересчёт
       _buildCompactTile(Icons.inventory_2_outlined, 'Пересчёт', () async {
         await _executeWithChainCheck('recount', () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountShopSelectionPage()));
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => RecountShopSelectionPage()));
         });
       }),
       // 5. РКО
@@ -1434,7 +1442,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             if (phone == null || phone.isEmpty) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: const Text('Не удалось определить телефон сотрудника'), backgroundColor: Colors.red.shade700),
+                  SnackBar(content: Text('Не удалось определить телефон сотрудника'), backgroundColor: Colors.red.shade700),
                 );
               }
               return;
@@ -1444,13 +1452,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
             if (registration == null || !registration.isVerified) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: const Text('Только верифицированные сотрудники могут создавать РКО'), backgroundColor: Colors.orange.shade700),
+                  SnackBar(content: Text('Только верифицированные сотрудники могут создавать РКО'), backgroundColor: Colors.orange.shade700),
                 );
               }
               return;
             }
             if (!context.mounted) return;
-            await Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOTypeSelectionPage()));
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => RKOTypeSelectionPage()));
           } catch (e) {
             Logger.error('Ошибка проверки верификации', e);
           }
@@ -1465,7 +1473,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => MyTasksPage(employeeId: employeeId ?? employeeName, employeeName: employeeName),
         ));
-        _loadActiveTasksCount();
+        _loadActiveTasksCount(_employeeId);
       }, badge: _activeTasksCount),
     ];
   }
@@ -1475,18 +1483,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return [
       // 1. Рецепты
       _buildCompactTile(Icons.restaurant_menu_outlined, 'Рецепты', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const RecipesListPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => RecipesListPage()));
       }),
       // 2. Обучение
       _buildCompactTile(Icons.menu_book_outlined, 'Обучение', () => _showTrainingDialog(context)),
       // 3. Мой график
       _buildCompactTile(Icons.calendar_month_outlined, 'Мой график', () async {
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const MySchedulePage()));
-        _loadShiftTransferUnreadCount();
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => MySchedulePage()));
+        _loadShiftTransferUnreadCount(_employeeId);
       }, badge: _shiftTransferUnreadCount),
       // 4. Эффективность
       _buildCompactTile(Icons.trending_up_outlined, 'Эффектив.', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const MyEfficiencyPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => MyEfficiencyPage()));
       }),
       // 5. Колесо
       _buildCompactTile(Icons.album_outlined, 'Колесо', () async {
@@ -1497,11 +1505,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => FortuneWheelPage(employeeId: employeeId, employeeName: employeeName),
         ));
-        _loadAvailableSpins();
+        _loadAvailableSpins(employeeId);
       }, badge: _availableSpins),
       // 6. Чат
       _buildCompactTile(Icons.chat_outlined, 'Чат', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeeChatsListPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeChatsListPage()));
       }),
     ];
   }
@@ -1511,11 +1519,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return [
       // 1. Бонусы
       _buildCompactTile(Icons.card_giftcard_outlined, 'Бонусы', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyScannerPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyScannerPage()));
       }),
       // 2. Приз (выдать приз клиенту от колеса удачи)
       _buildCompactTile(Icons.emoji_events_outlined, 'Приз', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const PrizeScannerPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => PrizeScannerPage()));
       }),
       // 3. Код
       _buildCompactTile(Icons.person_add_outlined, 'Код', () {
@@ -1523,26 +1531,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _showReferralCodeDialog(_referralCode!);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: const Text('Код приглашения не назначен'), backgroundColor: Colors.orange.shade700),
+            SnackBar(content: Text('Код приглашения не назначен'), backgroundColor: Colors.orange.shade700),
           );
         }
       }),
       // 3. Ответы
       _buildCompactTile(Icons.search_outlined, 'Ответы', () async {
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductQuestionsManagementPage()));
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => ProductQuestionsManagementPage()));
         _loadUnreadProductQuestionsCount();
       }, badge: _unreadProductQuestionsCount),
       // 4. Заказы
       _buildCompactTile(Icons.shopping_cart_outlined, 'Заказы', () async {
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeeOrdersPage()));
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeOrdersPage()));
         _loadPendingOrdersCount();
       }, badge: _pendingOrdersCount),
       // 5. Клиент
       _buildCompactTile(Icons.person_outline, 'Клиент', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFunctionsPage()));
       }),
       // 6. Пустое место (Обучение ИИ перенесено вниз)
-      const SizedBox(),
+      SizedBox(),
     ];
   }
 
@@ -1554,10 +1562,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
-        title: const Text('Обучение', style: TextStyle(color: Colors.white)),
+        title: Text('Обучение', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1568,7 +1576,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 Navigator.pop(ctx);
                 _executeWithChainCheck('testing', () async {
                   if (!context.mounted) return;
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const TestPage()));
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => TestPage()));
                 });
               },
             ),
@@ -1577,7 +1585,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
               title: Text('Статьи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () {
                 Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const TrainingPage()));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => TrainingPage()));
               },
             ),
           ],
@@ -1650,16 +1658,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: _gold.withOpacity(0.3)),
         ),
         title: Row(
           children: [
             Icon(Icons.link_rounded, color: _gold, size: 24),
-            const SizedBox(width: 10),
-            const Expanded(
+            SizedBox(width: 10),
+            Expanded(
               child: Text('Цепочка действий',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: Colors.white, fontSize: 18.sp),
               ),
             ),
           ],
@@ -1670,27 +1678,27 @@ class _MainMenuPageState extends State<MainMenuPage> {
           children: [
             Text(
               'Сначала выполните:',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 color: _gold.withOpacity(0.1),
                 border: Border.all(color: _gold.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
                   Icon(_getStepIcon(blockingStep.id), color: _gold, size: 22),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       blockingStep.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1713,9 +1721,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _gold,
               foregroundColor: _night,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
-            child: const Text('Перейти'),
+            child: Text('Перейти'),
           ),
         ],
       ),
@@ -1749,7 +1757,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         _invalidateChainCache();
         break;
       case 'testing':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const TestPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => TestPage()));
         _invalidateChainCache();
         break;
       case 'shift':
@@ -1762,7 +1770,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         _invalidateChainCache();
         break;
       case 'recount':
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountShopSelectionPage()));
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => RecountShopSelectionPage()));
         _invalidateChainCache();
         break;
       case 'shift_handover':
@@ -1795,7 +1803,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         _invalidateChainCache();
         break;
       case 'rko':
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOTypeSelectionPage()));
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => RKOTypeSelectionPage()));
         _invalidateChainCache();
         break;
     }
@@ -1808,26 +1816,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
-        title: const Text('Код приглашения', style: TextStyle(color: Colors.white)),
+        title: Text('Код приглашения', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '$code',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 36,
+                fontSize: 36.sp,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 4,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               'Поделитесь этим кодом с клиентом',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1835,7 +1843,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Закрыть', style: TextStyle(color: Colors.white)),
+            child: Text('Закрыть', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1850,13 +1858,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         content: Row(
           children: [
             CircularProgressIndicator(color: Colors.white.withOpacity(0.8)),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Text(
               'Определяем местоположение...',
               style: TextStyle(color: Colors.white.withOpacity(0.9)),
@@ -1990,13 +1998,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         title: Row(
           children: [
             Icon(Icons.error_outline_rounded, color: Colors.red.shade300),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               'Ошибка',
               style: TextStyle(color: Colors.white.withOpacity(0.9)),
@@ -2010,7 +2018,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: Text('OK'),
           ),
         ],
       ),
@@ -2023,13 +2031,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange.shade300),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Смена не найдена',
@@ -2057,7 +2065,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade700,
             ),
-            child: const Text('Отметиться'),
+            child: Text('Отметиться'),
           ),
         ],
       ),
@@ -2076,13 +2084,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         title: Row(
           children: [
             Icon(Icons.swap_horiz_rounded, color: Colors.orange.shade300),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Другой магазин',
@@ -2111,7 +2119,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade700,
             ),
-            child: const Text('Отметиться'),
+            child: Text('Отметиться'),
           ),
         ],
       ),
@@ -2154,13 +2162,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         title: Row(
           children: [
             Icon(icon, color: iconColor),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 title,
@@ -2176,7 +2184,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: Text('OK'),
           ),
         ],
       ),
@@ -2193,7 +2201,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       children: [
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(
               color: Colors.white.withOpacity(0.15),
               width: 1,
@@ -2201,40 +2209,56 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             child: InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               splashColor: Colors.white.withOpacity(0.1),
               highlightColor: Colors.white.withOpacity(0.05),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: Icon(
-                          icon,
-                          size: 32,
-                          color: Colors.white.withOpacity(0.85),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final h = constraints.maxHeight;
+                  final iconSize = (h * 0.42).clamp(20.0, 44.0);
+                  final fontSize = (h * 0.14).clamp(9.0, 14.0);
+                  final gap = (h * 0.05).clamp(2.0, 6.0);
+                  final vPad = (h * 0.08).clamp(4.0, 10.0);
+
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: vPad),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Icon(
+                                icon,
+                                size: iconSize,
+                                color: Colors.white.withOpacity(0.85),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        SizedBox(height: gap),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.75),
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.75),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -2242,19 +2266,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
         // Бейдж
         if (badge != null && badge > 0)
           Positioned(
-            top: 4,
-            right: 4,
+            top: 4.h,
+            right: 4.w,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
                 badge > 99 ? '99+' : badge.toString(),
                 style: TextStyle(
                   color: _emerald,
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2268,7 +2292,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return Navigator.push<Shop>(
       context,
       MaterialPageRoute(
-        builder: (_) => const _ShopSelectionPage(),
+        builder: (_) => _ShopSelectionPage(),
       ),
     );
   }
@@ -2286,16 +2310,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
 /// Полноэкранная страница выбора магазина
 class _ShopSelectionPage extends StatefulWidget {
-  const _ShopSelectionPage();
+  _ShopSelectionPage();
 
   @override
   State<_ShopSelectionPage> createState() => _ShopSelectionPageState();
 }
 
 class _ShopSelectionPageState extends State<_ShopSelectionPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   List<Shop>? _shops;
   bool _isLoading = true;
@@ -2332,7 +2356,7 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -2356,7 +2380,7 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 24.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -2367,19 +2391,19 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Выберите кофейню',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -2387,7 +2411,7 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
@@ -2395,7 +2419,7 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
     if (_error != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2404,16 +2428,16 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
                 color: Colors.white.withOpacity(0.6),
                 size: 48,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
-                  fontSize: 16,
+                  fontSize: 16.sp,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: () {
                   setState(() {
@@ -2422,8 +2446,8 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
                   });
                   _loadShops();
                 },
-                icon: const Icon(Icons.refresh, color: Colors.white),
-                label: const Text('Повторить', style: TextStyle(color: Colors.white)),
+                icon: Icon(Icons.refresh, color: Colors.white),
+                label: Text('Повторить', style: TextStyle(color: Colors.white)),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.white.withOpacity(0.3)),
                 ),
@@ -2440,16 +2464,16 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
           'Магазины не найдены',
           style: TextStyle(
             color: Colors.white.withOpacity(0.6),
-            fontSize: 16,
+            fontSize: 16.sp,
           ),
         ),
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
       itemCount: _shops!.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => SizedBox(height: 12),
       itemBuilder: (_, i) {
         final shop = _shops![i];
         return _buildShopRow(shop);
@@ -2460,16 +2484,16 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
   Widget _buildShopRow(Shop shop) {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(16.r),
       child: InkWell(
         onTap: () => Navigator.pop(context, shop),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         splashColor: Colors.white.withOpacity(0.1),
         highlightColor: Colors.white.withOpacity(0.05),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(color: Colors.white.withOpacity(0.15)),
           ),
           child: Row(
@@ -2478,7 +2502,7 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   color: Colors.white.withOpacity(0.1),
                 ),
                 child: Icon(
@@ -2487,13 +2511,13 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Text(
                   shop.address,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
-                    fontSize: 15,
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w400,
                   ),
                   maxLines: 2,

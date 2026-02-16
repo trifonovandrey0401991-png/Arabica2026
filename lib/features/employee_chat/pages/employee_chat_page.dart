@@ -10,6 +10,7 @@ import '../services/chat_websocket_service.dart';
 import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
 import 'group_info_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница чата — dark emerald стиль
 class EmployeeChatPage extends StatefulWidget {
@@ -33,9 +34,9 @@ class EmployeeChatPage extends StatefulWidget {
 class _EmployeeChatPageState extends State<EmployeeChatPage>
     with TickerProviderStateMixin {
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -70,7 +71,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     super.initState();
     _typingAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: Duration(milliseconds: 1200),
     )..repeat();
     _loadMessages();
     _startAutoRefresh();
@@ -95,7 +96,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _refreshTimer = Timer.periodic(Duration(seconds: 15), (_) {
       if (mounted) _loadMessages(silent: true);
     });
   }
@@ -193,7 +194,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     _typingDebounceTimer?.cancel();
     if (text.isNotEmpty) {
       ChatWebSocketService.instance.sendTypingStart(widget.chat.id);
-      _typingDebounceTimer = Timer(const Duration(seconds: 3), () {
+      _typingDebounceTimer = Timer(Duration(seconds: 3), () {
         ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
       });
     } else {
@@ -241,7 +242,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               content: Text('Ошибка загрузки: $e'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
           );
         }
@@ -251,11 +252,11 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      Future.delayed(const Duration(milliseconds: 100), () {
+      Future.delayed(Duration(milliseconds: 100), () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
           );
         }
@@ -291,10 +292,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
           setState(() => _isSending = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ошибка отправки сообщения'),
+              content: Text('Ошибка отправки сообщения'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
           );
         }
@@ -307,7 +308,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -318,7 +319,9 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 80,
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
       if (image == null) return;
       await _uploadAndSendImage(File(image.path));
@@ -331,7 +334,9 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 85,
+        imageQuality: 80,
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
       if (image == null) return;
       await _uploadAndSendImage(File(image.path));
@@ -357,13 +362,13 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                   backgroundColor: Colors.white.withOpacity(0.3),
                 ),
               ),
-              const SizedBox(width: 16),
-              const Text('Загрузка фото...'),
+              SizedBox(width: 16),
+              Text('Загрузка фото...'),
             ],
           ),
-          duration: const Duration(seconds: 30),
+          duration: Duration(seconds: 30),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           backgroundColor: _emerald,
         ),
       );
@@ -382,10 +387,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
         setState(() => _isSending = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка загрузки фото'),
+            content: Text('Ошибка загрузки фото'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -401,7 +406,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
           content: Text('Ошибка: $e'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
         ),
       );
     }
@@ -414,7 +419,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       builder: (context) => Container(
         decoration: BoxDecoration(
           color: _night.withOpacity(0.98),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
           border: Border(
             top: BorderSide(color: Colors.white.withOpacity(0.1)),
           ),
@@ -426,18 +431,18 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
+                margin: EdgeInsets.symmetric(vertical: 12.h),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Text(
                   'Отправить фото',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white.withOpacity(0.9),
                   ),
@@ -445,10 +450,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               ),
               ListTile(
                 leading: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _emerald.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(Icons.camera_alt, color: Colors.white.withOpacity(0.8)),
                 ),
@@ -467,10 +472,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               ),
               ListTile(
                 leading: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: Colors.purple.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(Icons.photo_library, color: Colors.purple[300]),
                 ),
@@ -487,7 +492,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                   _pickAndSendImage();
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
           ),
         ),
@@ -500,18 +505,18 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _night.withOpacity(0.98),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              child: const Icon(Icons.delete_sweep, color: Colors.red),
+              child: Icon(Icons.delete_sweep, color: Colors.red),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               'Очистить чат',
               style: TextStyle(color: Colors.white.withOpacity(0.9)),
@@ -547,9 +552,9 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
-            child: const Text('Все'),
+            child: Text('Все'),
           ),
         ],
       ),
@@ -561,7 +566,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _night.withOpacity(0.98),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(
           'Подтверждение',
           style: TextStyle(color: Colors.white.withOpacity(0.9)),
@@ -585,9 +590,9 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -618,10 +623,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   void _showForwardDialog(EmployeeChatMessage message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Функция пересылки будет доступна в следующем обновлении'),
+        content: Text('Функция пересылки будет доступна в следующем обновлении'),
         backgroundColor: _emerald,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
       ),
     );
   }
@@ -669,7 +674,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       final estimatedOffset = index * 80.0;
       _scrollController.animateTo(
         estimatedOffset.clamp(0, _scrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 300),
+        duration: Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
       );
     }
@@ -689,17 +694,17 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             content: Text('Удалено $deletedCount сообщений'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
         _loadMessages();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Нет сообщений для удаления'),
+            content: Text('Нет сообщений для удаления'),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -711,7 +716,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -734,7 +739,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                       bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
                     ),
                   ),
-                  constraints: const BoxConstraints(maxHeight: 200),
+                  constraints: BoxConstraints(maxHeight: 200),
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: _searchResults.length,
@@ -743,10 +748,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                       return ListTile(
                         dense: true,
                         leading: Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: EdgeInsets.all(8.w),
                           decoration: BoxDecoration(
                             color: _emerald.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(
                             Icons.message,
@@ -762,7 +767,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                         ),
                         subtitle: Text(
                           '${msg.senderName} • ${msg.formattedTime}',
-                          style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4)),
+                          style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.4)),
                         ),
                         onTap: () => _scrollToMessage(msg.id),
                       );
@@ -776,14 +781,14 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                 ),
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       )
                     : _messages.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                             itemCount: _messages.length,
                             itemBuilder: (context, index) {
                               final message = _messages[index];
@@ -845,7 +850,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      padding: EdgeInsets.fromLTRB(4.w, 8.h, 4.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -882,11 +887,11 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                               : null,
                         ),
                         child: widget.chat.imageUrl == null
-                            ? const Icon(Icons.group, size: 22, color: Colors.white)
+                            ? Icon(Icons.group, size: 22, color: Colors.white)
                             : null,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                   ],
                   Expanded(
                     child: Column(
@@ -894,9 +899,9 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                       children: [
                         Text(
                           widget.chat.displayName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 17,
+                            fontSize: 17.sp,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -905,7 +910,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                           Text(
                             widget.chat.shopAddress ?? '',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: Colors.white.withOpacity(0.5),
                             ),
                           ),
@@ -913,7 +918,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                           Text(
                             '${widget.chat.participantsCount} участников',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: Colors.white.withOpacity(0.5),
                             ),
                           ),
@@ -941,7 +946,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert_rounded, color: Colors.white.withOpacity(0.7), size: 22),
             color: _night.withOpacity(0.98),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             onSelected: (value) {
               if (value == 'refresh') _loadMessages();
             },
@@ -951,7 +956,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                 child: Row(
                   children: [
                     Icon(Icons.refresh, color: Colors.white.withOpacity(0.7)),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text('Обновить', style: TextStyle(color: Colors.white.withOpacity(0.9))),
                   ],
                 ),
@@ -965,7 +970,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
   Widget _buildSearchHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      padding: EdgeInsets.fromLTRB(4.w, 8.h, 4.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -983,19 +988,19 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               height: 42,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.12)),
               ),
               child: TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15.sp),
                 cursorColor: Colors.white,
                 decoration: InputDecoration(
                   hintText: 'Поиск сообщений...',
                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                 ),
                 onChanged: _searchMessages,
               ),
@@ -1042,7 +1047,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             height: 64,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
@@ -1051,20 +1056,20 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             'Нет сообщений',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w500,
               color: Colors.white.withOpacity(0.8),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Начните общение прямо сейчас!',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.white.withOpacity(0.4),
             ),
           ),
@@ -1075,7 +1080,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
   Widget _buildTypingIndicator() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
       child: Row(
         children: [
           AnimatedBuilder(
@@ -1087,7 +1092,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                   final value = ((_typingAnimationController.value + delay) % 1.0);
                   final scale = 0.5 + (0.5 * (1 - (value - 0.5).abs() * 2));
                   return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    margin: EdgeInsets.symmetric(horizontal: 2.w),
                     child: Transform.scale(
                       scale: scale,
                       child: Container(
@@ -1104,11 +1109,11 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               );
             },
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             'печатает...',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               fontStyle: FontStyle.italic,
               color: Colors.white.withOpacity(0.4),
             ),
@@ -1126,14 +1131,14 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     String dateText;
     if (messageDate == today) {
       dateText = 'Сегодня';
-    } else if (messageDate == today.subtract(const Duration(days: 1))) {
+    } else if (messageDate == today.subtract(Duration(days: 1))) {
       dateText = 'Вчера';
     } else {
       dateText = '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}';
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: EdgeInsets.symmetric(vertical: 20.h),
       child: Row(
         children: [
           Expanded(
@@ -1150,18 +1155,18 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             ),
           ),
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            margin: EdgeInsets.symmetric(horizontal: 16.w),
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Text(
               dateText,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w500,
               ),
             ),

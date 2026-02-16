@@ -12,6 +12,7 @@ import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class EmployeeRegistrationViewPage extends StatefulWidget {
   final String employeePhone;
@@ -41,7 +42,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: Duration(milliseconds: 800),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -166,7 +167,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
       if (!mounted) return;
       if (_employee == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Не удалось загрузить данные сотрудника. Убедитесь, что сотрудник создан из этой регистрации.'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 4),
@@ -209,7 +210,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     if (phone.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Не удалось определить телефон администратора'),
             backgroundColor: Colors.red,
           ),
@@ -246,7 +247,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка изменения статуса верификации'),
             backgroundColor: Colors.red,
           ),
@@ -276,7 +277,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
   Widget _buildPhotoSection(String? photoUrl, String label, int index) {
     if (photoUrl == null || photoUrl.isEmpty) {
       Logger.debug('Фото не найдено для: $label');
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     Logger.debug('Загрузка фото для $label: $photoUrl');
@@ -296,14 +297,14 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: EdgeInsets.only(bottom: 16.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
-              offset: const Offset(0, 4),
+              offset: Offset(0, 4),
             ),
           ],
         ),
@@ -312,39 +313,39 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
           children: [
             // Заголовок секции фото
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF004D40).withOpacity(0.9),
-                    const Color(0xFF00695C).withOpacity(0.9),
+                    Color(0xFF004D40).withOpacity(0.9),
+                    Color(0xFF00695C).withOpacity(0.9),
                   ],
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16.r),
+                  topRight: Radius.circular(16.r),
                 ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.photo_camera,
                       color: Colors.white,
                       size: 20,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       label,
-                      style: const TextStyle(
-                        fontSize: 15,
+                      style: TextStyle(
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -357,17 +358,17 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             Container(
               width: double.infinity,
               height: 220,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16.r),
+                  bottomRight: Radius.circular(16.r),
                 ),
               ),
               child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16.r),
+                  bottomRight: Radius.circular(16.r),
                 ),
                 child: AppCachedImage(
                   imageUrl: photoUrl,
@@ -381,22 +382,22 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16.w),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.broken_image_outlined,
                                 color: Colors.red,
                                 size: 32,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             Text(
                               'Не удалось загрузить',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 14.sp,
                                 color: Colors.red[700],
                                 fontWeight: FontWeight.w500,
                               ),
@@ -430,21 +431,21 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: EdgeInsets.only(bottom: 20.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isVerified
-                ? [const Color(0xFF2E7D32), const Color(0xFF43A047)]
-                : [const Color(0xFFE65100), const Color(0xFFFF9800)],
+                ? [Color(0xFF2E7D32), Color(0xFF43A047)]
+                : [Color(0xFFE65100), Color(0xFFFF9800)],
           ),
           boxShadow: [
             BoxShadow(
               color: (isVerified ? Colors.green : Colors.orange).withOpacity(0.3),
               blurRadius: 15,
-              offset: const Offset(0, 8),
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -477,15 +478,15 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             ),
             // Контент
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               child: Row(
                 children: [
                   // Иконка статуса
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                     ),
                     child: Icon(
                       isVerified ? Icons.verified_user : Icons.hourglass_empty,
@@ -493,7 +494,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                       size: 32,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   // Текст статуса
                   Expanded(
                     child: Column(
@@ -501,24 +502,24 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                       children: [
                         Text(
                           isVerified ? 'Верифицирован' : 'Ожидает верификации',
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                         if (_registration!.verifiedAt != null) ...[
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20.r),
                             ),
                             child: Text(
                               '${_registration!.verifiedAt!.day}.${_registration!.verifiedAt!.month}.${_registration!.verifiedAt!.year}${_registration!.verifiedBy != null ? ' • ${_registration!.verifiedBy}' : ''}',
-                              style: const TextStyle(
-                                fontSize: 12,
+                              style: TextStyle(
+                                fontSize: 12.sp,
                                 color: Colors.white,
                               ),
                             ),
@@ -566,15 +567,15 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: EdgeInsets.only(bottom: 20.h),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
               blurRadius: 15,
-              offset: const Offset(0, 5),
+              offset: Offset(0, 5),
             ),
           ],
         ),
@@ -582,40 +583,40 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
           children: [
             // Заголовок
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF004D40).withOpacity(0.1),
-                    const Color(0xFF00695C).withOpacity(0.05),
+                    Color(0xFF004D40).withOpacity(0.1),
+                    Color(0xFF00695C).withOpacity(0.05),
                   ],
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20.r),
+                  topRight: Radius.circular(20.r),
                 ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [Color(0xFF004D40), Color(0xFF00695C)],
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.badge_outlined,
                       color: Colors.white,
                       size: 22,
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  const Text(
+                  SizedBox(width: 14),
+                  Text(
                     'Паспортные данные',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF004D40),
                     ),
@@ -625,25 +626,25 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             ),
             // Информация
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               child: Column(
                 children: [
                   _buildInfoRowStyled('ФИО', _registration!.fullName, Icons.person_outline),
-                  const Divider(height: 24),
+                  Divider(height: 24),
                   Row(
                     children: [
                       Expanded(
                         child: _buildInfoRowStyled('Серия', _registration!.passportSeries, Icons.credit_card),
                       ),
-                      const SizedBox(width: 20),
+                      SizedBox(width: 20),
                       Expanded(
                         child: _buildInfoRowStyled('Номер', _registration!.passportNumber, Icons.numbers),
                       ),
                     ],
                   ),
-                  const Divider(height: 24),
+                  Divider(height: 24),
                   _buildInfoRowStyled('Кем выдан', _registration!.issuedBy, Icons.account_balance),
-                  const Divider(height: 24),
+                  Divider(height: 24),
                   _buildInfoRowStyled('Дата выдачи', _registration!.issueDate, Icons.calendar_today),
                 ],
               ),
@@ -659,18 +660,18 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
-            color: const Color(0xFF004D40).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: Color(0xFF004D40).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8.r),
           ),
           child: Icon(
             icon,
             size: 18,
-            color: const Color(0xFF004D40),
+            color: Color(0xFF004D40),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -678,16 +679,16 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.grey[600],
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 15,
+                style: TextStyle(
+                  fontSize: 15.sp,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
                 ),
@@ -713,15 +714,15 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: EdgeInsets.only(bottom: 20.h),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
               blurRadius: 15,
-              offset: const Offset(0, 5),
+              offset: Offset(0, 5),
             ),
           ],
         ),
@@ -729,17 +730,17 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
           children: [
             // Заголовок
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF004D40).withOpacity(0.1),
-                    const Color(0xFF00695C).withOpacity(0.05),
+                    Color(0xFF004D40).withOpacity(0.1),
+                    Color(0xFF00695C).withOpacity(0.05),
                   ],
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20.r),
+                  topRight: Radius.circular(20.r),
                 ),
               ),
               child: Row(
@@ -748,24 +749,24 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: EdgeInsets.all(10.w),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             colors: [Color(0xFF004D40), Color(0xFF00695C)],
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.tune,
                           color: Colors.white,
                           size: 22,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      const Text(
+                      SizedBox(width: 14),
+                      Text(
                         'Предпочтения работы',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF004D40),
                         ),
@@ -777,14 +778,14 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: _editPreferences,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: EdgeInsets.all(8.w),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF004D40).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
+                            color: Color(0xFF004D40).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10.r),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.edit,
                             size: 20,
                             color: Color(0xFF004D40),
@@ -796,14 +797,14 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                     TextButton.icon(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
+                          SnackBar(
                             content: Text('Сначала нужно создать сотрудника из этой регистрации'),
                             backgroundColor: Colors.orange,
                           ),
                         );
                       },
-                      icon: const Icon(Icons.info_outline, size: 18),
-                      label: const Text('Создать', style: TextStyle(fontSize: 13)),
+                      icon: Icon(Icons.info_outline, size: 18),
+                      label: Text('Создать', style: TextStyle(fontSize: 13.sp)),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.orange[700],
                       ),
@@ -813,7 +814,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             ),
             // Контент предпочтений
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               child: _employee != null
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -837,22 +838,22 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                       'sunday': 'Вс',
                                     };
                                     return Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            const Color(0xFF004D40).withOpacity(0.15),
-                                            const Color(0xFF00695C).withOpacity(0.1),
+                                            Color(0xFF004D40).withOpacity(0.15),
+                                            Color(0xFF00695C).withOpacity(0.1),
                                           ],
                                         ),
-                                        borderRadius: BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(20.r),
                                         border: Border.all(
-                                          color: const Color(0xFF004D40).withOpacity(0.3),
+                                          color: Color(0xFF004D40).withOpacity(0.3),
                                         ),
                                       ),
                                       child: Text(
                                         dayNames[day] ?? day,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           color: Color(0xFF004D40),
                                         ),
@@ -862,7 +863,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                 )
                               : _buildEmptyPreference('Не указаны'),
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                         // Желаемые магазины
                         _buildPreferenceSection(
                           'Желаемые магазины',
@@ -872,7 +873,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                   future: ShopService.getShops(),
                                   builder: (context, snapshot) {
                                     if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return const SizedBox(
+                                      return SizedBox(
                                         height: 40,
                                         child: Center(
                                           child: SizedBox(
@@ -897,52 +898,52 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                       return Column(
                                         children: selectedShops.map((shop) {
                                           return Container(
-                                            margin: const EdgeInsets.only(bottom: 10),
-                                            padding: const EdgeInsets.all(14),
+                                            margin: EdgeInsets.only(bottom: 10.h),
+                                            padding: EdgeInsets.all(14.w),
                                             decoration: BoxDecoration(
                                               gradient: LinearGradient(
                                                 colors: [
-                                                  const Color(0xFF004D40).withOpacity(0.08),
-                                                  const Color(0xFF00695C).withOpacity(0.04),
+                                                  Color(0xFF004D40).withOpacity(0.08),
+                                                  Color(0xFF00695C).withOpacity(0.04),
                                                 ],
                                               ),
-                                              borderRadius: BorderRadius.circular(14),
+                                              borderRadius: BorderRadius.circular(14.r),
                                               border: Border.all(
-                                                color: const Color(0xFF004D40).withOpacity(0.15),
+                                                color: Color(0xFF004D40).withOpacity(0.15),
                                               ),
                                             ),
                                             child: Row(
                                               children: [
                                                 Container(
-                                                  padding: const EdgeInsets.all(8),
+                                                  padding: EdgeInsets.all(8.w),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(0xFF004D40).withOpacity(0.15),
-                                                    borderRadius: BorderRadius.circular(8),
+                                                    color: Color(0xFF004D40).withOpacity(0.15),
+                                                    borderRadius: BorderRadius.circular(8.r),
                                                   ),
-                                                  child: const Icon(
+                                                  child: Icon(
                                                     Icons.storefront,
                                                     size: 18,
                                                     color: Color(0xFF004D40),
                                                   ),
                                                 ),
-                                                const SizedBox(width: 12),
+                                                SizedBox(width: 12),
                                                 Expanded(
                                                   child: Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
                                                       Text(
                                                         shop.name,
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontWeight: FontWeight.w600,
-                                                          fontSize: 14,
+                                                          fontSize: 14.sp,
                                                         ),
                                                       ),
                                                       if (shop.address.isNotEmpty) ...[
-                                                        const SizedBox(height: 2),
+                                                        SizedBox(height: 2),
                                                         Text(
                                                           shop.address,
                                                           style: TextStyle(
-                                                            fontSize: 12,
+                                                            fontSize: 12.sp,
                                                             color: Colors.grey[600],
                                                           ),
                                                         ),
@@ -956,7 +957,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                         }).toList(),
                                       );
                                     }
-                                    return const Text(
+                                    return Text(
                                       'Ошибка загрузки',
                                       style: TextStyle(color: Colors.red),
                                     );
@@ -964,7 +965,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                 )
                               : _buildEmptyPreference('Не указаны'),
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                         // Предпочтения смен
                         _buildPreferenceSection(
                           'Предпочтения смен',
@@ -979,17 +980,17 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                     }[shiftKey]!;
                                     final grade = _employee!.shiftPreferences[shiftKey] ?? 2;
                                     final gradeData = {
-                                      1: {'text': 'Хочет работать', 'color': Colors.green, 'bgColor': const Color(0xFFE8F5E9)},
-                                      2: {'text': 'Может работать', 'color': Colors.orange, 'bgColor': const Color(0xFFFFF3E0)},
-                                      3: {'text': 'Не будет', 'color': Colors.red, 'bgColor': const Color(0xFFFFEBEE)},
+                                      1: {'text': 'Хочет работать', 'color': Colors.green, 'bgColor': Color(0xFFE8F5E9)},
+                                      2: {'text': 'Может работать', 'color': Colors.orange, 'bgColor': Color(0xFFFFF3E0)},
+                                      3: {'text': 'Не будет', 'color': Colors.red, 'bgColor': Color(0xFFFFEBEE)},
                                     }[grade]!;
 
                                     return Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      margin: EdgeInsets.only(bottom: 10.h),
+                                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
                                       decoration: BoxDecoration(
                                         color: gradeData['bgColor'] as Color,
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12.r),
                                         border: Border.all(
                                           color: (gradeData['color'] as Color).withOpacity(0.3),
                                         ),
@@ -1001,26 +1002,26 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                             size: 22,
                                             color: gradeData['color'] as Color,
                                           ),
-                                          const SizedBox(width: 12),
+                                          SizedBox(width: 12),
                                           Expanded(
                                             child: Text(
                                               shiftData['name'] as String,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontWeight: FontWeight.w600,
-                                                fontSize: 15,
+                                                fontSize: 15.sp,
                                               ),
                                             ),
                                           ),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                                             decoration: BoxDecoration(
                                               color: (gradeData['color'] as Color).withOpacity(0.15),
-                                              borderRadius: BorderRadius.circular(20),
+                                              borderRadius: BorderRadius.circular(20.r),
                                             ),
                                             child: Text(
                                               gradeData['text'] as String,
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 12.sp,
                                                 fontWeight: FontWeight.w600,
                                                 color: gradeData['color'] as Color,
                                               ),
@@ -1036,11 +1037,11 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                       ],
                     )
                   : Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(24.w),
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             decoration: BoxDecoration(
                               color: Colors.grey[100],
                               shape: BoxShape.circle,
@@ -1051,21 +1052,21 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                               color: Colors.grey[400],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
                             'Сотрудник не найден',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
                               color: Colors.grey[600],
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             'Создайте сотрудника из этой регистрации,\nчтобы настроить предпочтения',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.grey[500],
                             ),
                           ),
@@ -1090,18 +1091,18 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               size: 18,
               color: Colors.grey[600],
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               title,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey[700],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         content,
       ],
     );
@@ -1109,20 +1110,20 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Widget _buildEmptyPreference(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.remove_circle_outline, size: 16, color: Colors.grey[400]),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             text,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.grey[500],
               fontStyle: FontStyle.italic,
             ),
@@ -1143,10 +1144,10 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1156,12 +1157,12 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.schedule, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     'Создано: ${_registration!.createdAt.day}.${_registration!.createdAt.month}.${_registration!.createdAt.year} ${_registration!.createdAt.hour}:${_registration!.createdAt.minute.toString().padLeft(2, '0')}',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.grey[600],
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -1170,11 +1171,11 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               ],
             ),
             if (_registration!.updatedAt != _registration!.createdAt) ...[
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 'Обновлено: ${_registration!.updatedAt.day}.${_registration!.updatedAt.month}.${_registration!.updatedAt.year}',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.sp,
                   color: Colors.grey[600],
                 ),
               ),
@@ -1189,7 +1190,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -1207,46 +1208,46 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
                 child: Row(
                   children: [
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () => Navigator.of(context).pop(),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         child: Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(10.w),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.arrow_back,
                             color: Colors.white,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             widget.employeeName,
-                            style: const TextStyle(
-                              fontSize: 18,
+                            style: TextStyle(
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             'Регистрация сотрудника',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.white.withOpacity(0.8),
                             ),
                           ),
@@ -1258,14 +1259,14 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: _editRegistration,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           child: Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: EdgeInsets.all(10.w),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.edit,
                               color: Colors.white,
                             ),
@@ -1292,12 +1293,12 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               'Загрузка данных...',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.9),
-                                fontSize: 15,
+                                fontSize: 15.sp,
                               ),
                             ),
                           ],
@@ -1306,16 +1307,16 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                     : _registration == null
                         ? Center(
                             child: Container(
-                              margin: const EdgeInsets.all(32),
-                              padding: const EdgeInsets.all(32),
+                              margin: EdgeInsets.all(32.w),
+                              padding: EdgeInsets.all(32.w),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(24.r),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.1),
                                     blurRadius: 20,
-                                    offset: const Offset(0, 10),
+                                    offset: Offset(0, 10),
                                   ),
                                 ],
                               ),
@@ -1323,7 +1324,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(20),
+                                    padding: EdgeInsets.all(20.w),
                                     decoration: BoxDecoration(
                                       color: Colors.grey[100],
                                       shape: BoxShape.circle,
@@ -1334,26 +1335,26 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                       color: Colors.grey[400],
                                     ),
                                   ),
-                                  const SizedBox(height: 20),
-                                  const Text(
+                                  SizedBox(height: 20),
+                                  Text(
                                     'Регистрация не найдена',
                                     style: TextStyle(
-                                      fontSize: 18,
+                                      fontSize: 18.sp,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF1A1A1A),
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   Text(
                                     'Данные регистрации отсутствуют\nдля этого сотрудника',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 14.sp,
                                       color: Colors.grey[600],
                                     ),
                                   ),
                                   if (_isAdmin) ...[
-                                    const SizedBox(height: 24),
+                                    SizedBox(height: 24),
                                     ElevatedButton.icon(
                                       onPressed: () async {
                                         final result = await Navigator.push(
@@ -1368,14 +1369,14 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                           await _loadRegistration();
                                         }
                                       },
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Создать регистрацию'),
+                                      icon: Icon(Icons.add),
+                                      label: Text('Создать регистрацию'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF004D40),
+                                        backgroundColor: Color(0xFF004D40),
                                         foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(14.r),
                                         ),
                                       ),
                                     ),
@@ -1385,7 +1386,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                             ),
                           )
                         : ListView(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                            padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 24.h),
                             children: [
                               _buildVerificationCard(),
                               _buildPassportInfoCard(),
@@ -1407,7 +1408,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                   'Дополнительное фото',
                                   5,
                                 ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               _buildTimestamps(),
                             ],
                           ),

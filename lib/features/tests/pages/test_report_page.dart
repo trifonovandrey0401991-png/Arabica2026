@@ -4,6 +4,7 @@ import '../../../core/services/report_notification_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../models/test_result_model.dart';
 import '../services/test_result_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчёта по тестированию
 class TestReportPage extends StatefulWidget {
@@ -20,11 +21,11 @@ class _TestReportPageState extends State<TestReportPage>
   bool _isLoading = true;
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-  static const Color _goldLight = Color(0xFFE8C860);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+  static final Color _goldLight = Color(0xFFE8C860);
 
   @override
   void initState() {
@@ -67,7 +68,7 @@ class _TestReportPageState extends State<TestReportPage>
             content: Text('Ошибка загрузки: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -88,7 +89,7 @@ class _TestReportPageState extends State<TestReportPage>
     final now = DateTime.now();
     final thisMonth = DateTime(now.year, now.month, 1);
     final lastMonthStart = DateTime(now.year, now.month - 1, 1);
-    final lastMonthEnd = thisMonth.subtract(const Duration(days: 1));
+    final lastMonthEnd = thisMonth.subtract(Duration(days: 1));
 
     for (final entry in byEmployee.entries) {
       final employeeName = entry.key;
@@ -153,7 +154,7 @@ class _TestReportPageState extends State<TestReportPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -171,7 +172,7 @@ class _TestReportPageState extends State<TestReportPage>
               // Контент
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: _gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -189,7 +190,7 @@ class _TestReportPageState extends State<TestReportPage>
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           IconButton(
@@ -200,13 +201,13 @@ class _TestReportPageState extends State<TestReportPage>
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Отчёт тестирования',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 0.5,
               ),
@@ -215,7 +216,7 @@ class _TestReportPageState extends State<TestReportPage>
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -231,10 +232,10 @@ class _TestReportPageState extends State<TestReportPage>
 
   Widget _buildTabs() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      margin: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: TabBar(
@@ -242,22 +243,22 @@ class _TestReportPageState extends State<TestReportPage>
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
           color: _gold.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: _gold.withOpacity(0.4)),
         ),
-        indicatorPadding: const EdgeInsets.all(3),
+        indicatorPadding: EdgeInsets.all(3.w),
         labelColor: _goldLight,
         unselectedLabelColor: Colors.white.withOpacity(0.4),
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontWeight: FontWeight.w600,
-          fontSize: 13,
+          fontSize: 13.sp,
         ),
-        unselectedLabelStyle: const TextStyle(
+        unselectedLabelStyle: TextStyle(
           fontWeight: FontWeight.w400,
-          fontSize: 13,
+          fontSize: 13.sp,
         ),
         dividerColor: Colors.transparent,
-        tabs: const [
+        tabs: [
           Tab(text: 'По сотрудникам'),
           Tab(text: 'Все результаты'),
         ],
@@ -278,7 +279,7 @@ class _TestReportPageState extends State<TestReportPage>
       ..sort((a, b) => b.avgThisMonth.compareTo(a.avgThisMonth));
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 20.h),
       itemCount: sortedStats.length,
       itemBuilder: (context, index) {
         final stat = sortedStats[index];
@@ -293,11 +294,11 @@ class _TestReportPageState extends State<TestReportPage>
     return GestureDetector(
       onTap: () => _showEmployeeDetails(stat),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(bottom: 10.h),
+        padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
@@ -308,21 +309,21 @@ class _TestReportPageState extends State<TestReportPage>
               height: 52,
               decoration: BoxDecoration(
                 color: scoreColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: scoreColor.withOpacity(0.3)),
               ),
               child: Center(
                 child: Text(
                   stat.avgThisMonth > 0 ? stat.avgThisMonth.toStringAsFixed(0) : '-',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.w800,
                     color: scoreColor,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             // Информация
             Expanded(
               child: Column(
@@ -330,25 +331,25 @@ class _TestReportPageState extends State<TestReportPage>
                 children: [
                   Text(
                     stat.employeeName,
-                    style: const TextStyle(
-                      fontSize: 15,
+                    style: TextStyle(
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       _buildMiniStat('Месяц', stat.avgThisMonth, _gold),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       _buildMiniStat('Всего', stat.avgTotal, Colors.white.withOpacity(0.5)),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: 3),
                   Text(
                     'Тестов: ${stat.totalTests}',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.white.withOpacity(0.35),
                     ),
                   ),
@@ -373,14 +374,14 @@ class _TestReportPageState extends State<TestReportPage>
         Text(
           '$label: ',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: Colors.white.withOpacity(0.4),
           ),
         ),
         Text(
           value > 0 ? value.toStringAsFixed(1) : '-',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             fontWeight: FontWeight.w600,
             color: color,
           ),
@@ -403,14 +404,14 @@ class _TestReportPageState extends State<TestReportPage>
           expand: false,
           builder: (context, scrollController) {
             return Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: _emeraldDark,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
               ),
               child: SingleChildScrollView(
                 controller: scrollController,
                 child: Padding(
-                  padding: const EdgeInsets.all(22),
+                  padding: EdgeInsets.all(22.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -421,11 +422,11 @@ class _TestReportPageState extends State<TestReportPage>
                           height: 4,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: BorderRadius.circular(2.r),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 22),
+                      SizedBox(height: 22),
 
                       // Имя сотрудника
                       Row(
@@ -435,29 +436,29 @@ class _TestReportPageState extends State<TestReportPage>
                             height: 56,
                             decoration: BoxDecoration(
                               color: _gold.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16.r),
                               border: Border.all(color: _gold.withOpacity(0.3)),
                             ),
                             child: Icon(Icons.person_rounded, size: 28, color: _gold),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   stat.employeeName,
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                  style: TextStyle(
+                                    fontSize: 18.sp,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
+                                SizedBox(height: 3),
                                 Text(
                                   'Всего тестов: ${stat.totalTests}',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 13.sp,
                                     color: Colors.white.withOpacity(0.5),
                                   ),
                                 ),
@@ -467,19 +468,19 @@ class _TestReportPageState extends State<TestReportPage>
                         ],
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Заголовок статистики
                       Text(
                         'Статистика',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
                           color: _gold.withOpacity(0.8),
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
 
                       // Три карточки статистики
                       _buildStatCard(
@@ -488,34 +489,34 @@ class _TestReportPageState extends State<TestReportPage>
                         _gold,
                         Icons.calendar_month_rounded,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       _buildStatCard(
                         'Прошлый месяц',
                         stat.avgLastMonth,
                         Colors.orange,
                         Icons.history_rounded,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       _buildStatCard(
                         'Общий средний балл',
                         stat.avgTotal,
-                        const Color(0xFF4CAF50),
+                        Color(0xFF4CAF50),
                         Icons.bar_chart_rounded,
                       ),
 
                       // Последний тест
                       if (stat.lastTest != null) ...[
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         Text(
                           'Последний тест',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
                             color: _gold.withOpacity(0.8),
                             letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _buildLastTestCard(stat.lastTest!),
                       ],
                     ],
@@ -531,21 +532,21 @@ class _TestReportPageState extends State<TestReportPage>
 
   Widget _buildStatCard(String label, double value, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           Icon(icon, size: 20, color: color.withOpacity(0.7)),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
@@ -553,7 +554,7 @@ class _TestReportPageState extends State<TestReportPage>
           Text(
             value > 0 ? value.toStringAsFixed(1) : '-',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 20.sp,
               fontWeight: FontWeight.w700,
               color: value > 0 ? color : Colors.white.withOpacity(0.3),
             ),
@@ -567,10 +568,10 @@ class _TestReportPageState extends State<TestReportPage>
     final scoreColor = _getScoreColor(test.percentage.toDouble());
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -579,17 +580,17 @@ class _TestReportPageState extends State<TestReportPage>
           Row(
             children: [
               Icon(Icons.calendar_today_rounded, size: 14, color: Colors.white.withOpacity(0.4)),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 _formatDate(test.completedAt),
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -614,15 +615,15 @@ class _TestReportPageState extends State<TestReportPage>
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 11.sp,
             color: Colors.white.withOpacity(0.4),
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 20.sp,
             fontWeight: FontWeight.w700,
             color: color,
           ),
@@ -639,7 +640,7 @@ class _TestReportPageState extends State<TestReportPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 20.h),
       itemCount: _allResults.length,
       itemBuilder: (context, index) {
         final result = _allResults[index];
@@ -653,11 +654,11 @@ class _TestReportPageState extends State<TestReportPage>
     final scoreColor = _getScoreColor(percentage.toDouble());
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Row(
@@ -668,21 +669,21 @@ class _TestReportPageState extends State<TestReportPage>
             height: 44,
             decoration: BoxDecoration(
               color: scoreColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: scoreColor.withOpacity(0.3)),
             ),
             child: Center(
               child: Text(
                 '${result.score}',
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 17.sp,
                   fontWeight: FontWeight.w700,
                   color: scoreColor,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Имя и дата
           Expanded(
             child: Column(
@@ -690,17 +691,17 @@ class _TestReportPageState extends State<TestReportPage>
               children: [
                 Text(
                   result.employeeName,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(
                   _formatDate(result.completedAt),
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 11.sp,
                     color: Colors.white.withOpacity(0.35),
                   ),
                 ),
@@ -714,16 +715,16 @@ class _TestReportPageState extends State<TestReportPage>
               Text(
                 '${result.score}/${result.totalQuestions}',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   fontWeight: FontWeight.w700,
                   color: scoreColor,
                 ),
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               Text(
                 result.formattedTime,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.sp,
                   color: Colors.white.withOpacity(0.35),
                 ),
               ),
@@ -746,7 +747,7 @@ class _TestReportPageState extends State<TestReportPage>
             height: 64,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
@@ -755,11 +756,11 @@ class _TestReportPageState extends State<TestReportPage>
               color: Colors.white.withOpacity(0.3),
             ),
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           Text(
             text,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 15.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
@@ -769,9 +770,9 @@ class _TestReportPageState extends State<TestReportPage>
   }
 
   Color _getScoreColor(double score) {
-    if (score >= 80) return const Color(0xFF4CAF50);
+    if (score >= 80) return Color(0xFF4CAF50);
     if (score >= 60) return Colors.orange;
-    if (score > 0) return const Color(0xFFEF5350);
+    if (score > 0) return Color(0xFFEF5350);
     return Colors.white.withOpacity(0.3);
   }
 

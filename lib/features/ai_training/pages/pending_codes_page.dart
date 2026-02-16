@@ -5,6 +5,7 @@ import '../services/master_catalog_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления новыми кодами товаров (pending codes)
 class PendingCodesPage extends StatefulWidget {
@@ -22,10 +23,10 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   String? _error;
 
   // Цвета
-  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
-  static const _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
-  static const _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
-  static const _redGradient = [Color(0xFFEF4444), Color(0xFFF87171)];
+  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
+  static final _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
+  static final _redGradient = [Color(0xFFEF4444), Color(0xFFF87171)];
 
   @override
   void initState() {
@@ -61,7 +62,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
@@ -77,9 +78,9 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     return RefreshIndicator(
       onRefresh: _loadData,
       color: _greenGradient[0],
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Color(0xFF1A1A2E),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _pendingCodes.length + 1, // +1 для заголовка
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -93,11 +94,11 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
 
   Widget _buildHeader() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -109,20 +110,20 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: _orangeGradient),
-              borderRadius: BorderRadius.circular(10),
+              gradient: LinearGradient(colors: _orangeGradient),
+              borderRadius: BorderRadius.circular(10.r),
             ),
-            child: const Icon(Icons.new_releases, color: Colors.white, size: 20),
+            child: Icon(Icons.new_releases, color: Colors.white, size: 20),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Новые коды (${_pendingCodes.length})',
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
@@ -130,7 +131,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                 Text(
                   'Добавьте их в мастер-каталог',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     color: Colors.white.withOpacity(0.6),
                   ),
                 ),
@@ -144,10 +145,10 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
 
   Widget _buildCodeCard(PendingCode code) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -157,9 +158,9 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showApproveDialog(code),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Иконка
@@ -167,16 +168,16 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: _blueGradient),
-                    borderRadius: BorderRadius.circular(14),
+                    gradient: LinearGradient(colors: _blueGradient),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.qr_code_2,
                     color: Colors.white,
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
 
                 // Информация
                 Expanded(
@@ -185,24 +186,24 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                     children: [
                       Text(
                         code.primaryName.isNotEmpty ? code.primaryName : code.kod,
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         code.kod,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
                           fontFamily: 'monospace',
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           Icon(
@@ -210,25 +211,25 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                             size: 12,
                             color: Colors.white.withOpacity(0.5),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'Магазинов: ${code.shopCount}',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               color: Colors.white.withOpacity(0.5),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Icon(
                             Icons.access_time,
                             size: 12,
                             color: Colors.white.withOpacity(0.5),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             code.formattedDate,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               color: Colors.white.withOpacity(0.5),
                             ),
                           ),
@@ -246,7 +247,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                       color: _greenGradient[0],
                       onTap: () => _showApproveDialog(code),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _buildIconButton(
                       icon: Icons.close,
                       color: _redGradient[0],
@@ -274,7 +275,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         height: 36,
         decoration: BoxDecoration(
           color: color.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
         ),
         child: Icon(icon, color: color, size: 20),
       ),
@@ -284,11 +285,11 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   Widget _buildEmptyView() {
     return Center(
       child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(32),
+        margin: EdgeInsets.all(24.w),
+        padding: EdgeInsets.all(32.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: Colors.white.withOpacity(0.1),
             width: 1,
@@ -301,25 +302,25 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _greenGradient),
-                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(colors: _greenGradient),
+                borderRadius: BorderRadius.circular(18.r),
               ),
-              child: const Icon(Icons.check_circle, size: 36, color: Colors.white),
+              child: Icon(Icons.check_circle, size: 36, color: Colors.white),
             ),
-            const SizedBox(height: 20),
-            const Text(
+            SizedBox(height: 20),
+            Text(
               'Все коды обработаны',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Новые коды товаров будут\nпоявляться при синхронизации DBF',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white.withOpacity(0.6),
               ),
               textAlign: TextAlign.center,
@@ -333,11 +334,11 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   Widget _buildErrorView() {
     return Center(
       child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(24),
+        margin: EdgeInsets.all(24.w),
+        padding: EdgeInsets.all(24.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: Colors.red.withOpacity(0.3),
             width: 1,
@@ -350,25 +351,25 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _redGradient),
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(colors: _redGradient),
+                borderRadius: BorderRadius.circular(16.r),
               ),
-              child: const Icon(Icons.error_outline, size: 32, color: Colors.white),
+              child: Icon(Icons.error_outline, size: 32, color: Colors.white),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _error ?? 'Неизвестная ошибка',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.7),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
+              icon: Icon(Icons.refresh),
+              label: Text('Повторить'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _greenGradient[0],
                 foregroundColor: Colors.white,
@@ -384,12 +385,12 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   void _showApproveDialog(PendingCode code) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: Color(0xFF1A1A2E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -397,30 +398,30 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
             Container(
               width: 40,
               height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
+              margin: EdgeInsets.only(bottom: 16.h),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2.r),
               ),
             ),
             Text(
               'Код: ${code.kod}',
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
                 fontFamily: 'monospace',
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               code.primaryName,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.white.withOpacity(0.6),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Две кнопки
             Row(
@@ -437,7 +438,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Новая карточка
                 Expanded(
                   child: _buildActionButton(
@@ -452,7 +453,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),
@@ -468,20 +469,20 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: EdgeInsets.symmetric(vertical: 20.h),
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: gradient),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: Column(
           children: [
             Icon(icon, color: Colors.white, size: 32),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 13,
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -526,11 +527,11 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
           child: Container(
-            padding: const EdgeInsets.all(24),
-            constraints: const BoxConstraints(maxWidth: 400),
+            padding: EdgeInsets.all(24.w),
+            constraints: BoxConstraints(maxWidth: 400),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -543,17 +544,17 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: _greenGradient),
-                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(colors: _greenGradient),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Icon(Icons.add_circle, color: Colors.white, size: 24),
+                        child: Icon(Icons.add_circle, color: Colors.white, size: 24),
                       ),
-                      const SizedBox(width: 12),
-                      const Expanded(
+                      SizedBox(width: 12),
+                      Expanded(
                         child: Text(
                           'Новая карточка',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
@@ -561,31 +562,31 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // Штрих-код
-                  Text('Штрих-код', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
-                  const SizedBox(height: 4),
+                  Text('Штрих-код', style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
+                  SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.qr_code, color: Colors.white.withOpacity(0.5), size: 20),
-                        const SizedBox(width: 8),
-                        Text(code.kod, style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 14)),
+                        SizedBox(width: 8),
+                        Text(code.kod, style: TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 14.sp)),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // Выбор названия из магазинов
                   if (code.allNames.length > 1) ...[
-                    Text('Варианты из магазинов:', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
-                    const SizedBox(height: 8),
+                    Text('Варианты из магазинов:', style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
+                    SizedBox(height: 8),
                     ...code.sources.map((source) => GestureDetector(
                       onTap: () {
                         setDialogState(() {
@@ -594,12 +595,12 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                         });
                       },
                       child: Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        margin: EdgeInsets.only(bottom: 6.h),
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                         decoration: BoxDecoration(
                           color: nameController.text == source.name
                               ? _blueGradient[0].withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                           border: Border.all(
                             color: nameController.text == source.name ? _blueGradient[0] : Colors.transparent,
                           ),
@@ -618,26 +619,26 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                             Expanded(child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(source.name, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                                Text(source.shopName, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5))),
+                                Text(source.name, style: TextStyle(color: Colors.white, fontSize: 13.sp)),
+                                Text(source.shopName, style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
                               ],
                             )),
                           ],
                         ),
                       ),
                     )),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                   ],
 
                   // Поле ввода названия с подсказками
-                  Text('Название товара', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
-                  const SizedBox(height: 4),
+                  Text('Название товара', style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
+                  SizedBox(height: 4),
                   TextField(
                     controller: nameController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                     onChanged: (value) {
                       debounce?.cancel();
-                      debounce = Timer(const Duration(milliseconds: 400), () async {
+                      debounce = Timer(Duration(milliseconds: 400), () async {
                         if (value.length >= 2) {
                           final results = await MasterCatalogService.searchForAssign(value);
                           setDialogState(() => nameSuggestions = results);
@@ -651,18 +652,18 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                       hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.05),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _blueGradient[0])),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _blueGradient[0])),
                     ),
                   ),
                   // Подсказки похожих товаров
                   if (nameSuggestions.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Container(
-                      constraints: const BoxConstraints(maxHeight: 120),
+                      constraints: BoxConstraints(maxHeight: 120),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: ListView.builder(
                         shrinkWrap: true,
@@ -671,8 +672,8 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                           final s = nameSuggestions[i];
                           return ListTile(
                             dense: true,
-                            title: Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                            subtitle: Text('${s.group} (${s.barcodesCount} шт-кодов)', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5))),
+                            title: Text(s.name, style: TextStyle(color: Colors.white, fontSize: 12.sp)),
+                            subtitle: Text('${s.group} (${s.barcodesCount} шт-кодов)', style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.5))),
                             onTap: () => setDialogState(() {
                               nameController.text = s.name;
                               if (s.group.isNotEmpty) selectedGroup = s.group;
@@ -683,17 +684,17 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // Группа товара
-                  Text('Группа товара', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
-                  const SizedBox(height: 4),
+                  Text('Группа товара', style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
+                  SizedBox(height: 4),
                   if (!useCustomGroup)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Row(
                         children: [
@@ -703,11 +704,11 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                                 value: groups.contains(selectedGroup) ? selectedGroup : null,
                                 hint: Text('Выберите группу', style: TextStyle(color: Colors.white.withOpacity(0.5))),
                                 isExpanded: true,
-                                dropdownColor: const Color(0xFF1A1A2E),
+                                dropdownColor: Color(0xFF1A1A2E),
                                 icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
                                 items: groups.map((g) => DropdownMenuItem(
                                   value: g,
-                                  child: Text(g, style: const TextStyle(color: Colors.white)),
+                                  child: Text(g, style: TextStyle(color: Colors.white)),
                                 )).toList(),
                                 onChanged: (val) => setDialogState(() => selectedGroup = val ?? ''),
                               ),
@@ -727,22 +728,22 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                   else
                     TextField(
                       controller: groupTextController,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.white),
                       onChanged: (val) => selectedGroup = val,
                       decoration: InputDecoration(
                         hintText: 'Название группы',
                         hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.05),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _blueGradient[0])),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide.none),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _blueGradient[0])),
                         suffixIcon: IconButton(
                           icon: Icon(Icons.list, color: Colors.white.withOpacity(0.5), size: 18),
                           onPressed: () => setDialogState(() => useCustomGroup = false),
                         ),
                       ),
                     ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Кнопки
                   Row(
@@ -753,17 +754,17 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                           child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () => _approveCode(code, nameController.text, useCustomGroup ? groupTextController.text : selectedGroup),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _greenGradient[0],
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                           ),
-                          child: const Text('Создать'),
+                          child: Text('Создать'),
                         ),
                       ),
                     ],
@@ -781,7 +782,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   Future<void> _approveCode(PendingCode code, String name, String group) async {
     if (name.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Введите название товара'),
           backgroundColor: Colors.orange,
         ),
@@ -818,7 +819,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка добавления товара'),
               backgroundColor: Colors.red,
             ),
@@ -843,9 +844,9 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        backgroundColor: Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(
           'Отклонить код?',
           style: TextStyle(color: Colors.white),
         ),
@@ -867,7 +868,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
               backgroundColor: _redGradient[0],
               foregroundColor: Colors.white,
             ),
-            child: const Text('Отклонить'),
+            child: Text('Отклонить'),
           ),
         ],
       ),
@@ -883,7 +884,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Код отклонён'),
               backgroundColor: Colors.grey,
             ),
@@ -894,7 +895,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка удаления кода'),
               backgroundColor: Colors.red,
             ),
@@ -920,7 +921,7 @@ class _AssignToExistingDialog extends StatefulWidget {
   final PendingCode code;
   final VoidCallback onAssigned;
 
-  const _AssignToExistingDialog({
+  _AssignToExistingDialog({
     required this.code,
     required this.onAssigned,
   });
@@ -936,8 +937,8 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
   bool _isAssigning = false;
   Timer? _debounce;
 
-  static const _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
-  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
+  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
 
   @override
   void dispose() {
@@ -948,7 +949,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
 
   void _onSearchChanged(String query) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
+    _debounce = Timer(Duration(milliseconds: 300), () async {
       if (query.length < 2) {
         setState(() => _results = []);
         return;
@@ -968,9 +969,9 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Подтвердите', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text('Подтвердите', style: TextStyle(color: Colors.white)),
         content: Text(
           'Добавить код ${widget.code.kod} в карточку "${product.name}"?',
           style: TextStyle(color: Colors.white.withOpacity(0.7)),
@@ -983,7 +984,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: _greenGradient[0], foregroundColor: Colors.white),
-            child: const Text('Добавить'),
+            child: Text('Добавить'),
           ),
         ],
       ),
@@ -1011,7 +1012,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
       } else {
         setState(() => _isAssigning = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка привязки кода'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка привязки кода'), backgroundColor: Colors.red),
         );
       }
     }
@@ -1020,12 +1021,12 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+      backgroundColor: Color(0xFF1A1A2E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+      insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 40.h),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
-        padding: const EdgeInsets.all(20),
+        constraints: BoxConstraints(maxWidth: 500, maxHeight: 500),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1036,18 +1037,18 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: _blueGradient),
-                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(colors: _blueGradient),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: const Icon(Icons.search, color: Colors.white, size: 22),
+                  child: Icon(Icons.search, color: Colors.white, size: 22),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Найти карточку', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
-                      Text('Код: ${widget.code.kod}', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5), fontFamily: 'monospace')),
+                      Text('Найти карточку', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: Colors.white)),
+                      Text('Код: ${widget.code.kod}', style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5), fontFamily: 'monospace')),
                     ],
                   ),
                 ),
@@ -1057,21 +1058,21 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Поле поиска
             TextField(
               controller: _searchController,
               autofocus: true,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Введите название товара...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                 prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.5)),
                 suffixIcon: _isSearching
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
+                    ? Padding(
+                        padding: EdgeInsets.all(12.w),
                         child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                       )
                     : _searchController.text.isNotEmpty
@@ -1085,23 +1086,23 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                         : null,
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.05),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _blueGradient[0])),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: _blueGradient[0])),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Результаты
             Flexible(
               child: _isAssigning
-                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  ? Center(child: CircularProgressIndicator(color: Colors.white))
                   : _results.isEmpty
                       ? Center(
                           child: Text(
                             _searchController.text.length < 2
                                 ? 'Введите минимум 2 символа'
                                 : 'Ничего не найдено',
-                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13.sp),
                           ),
                         )
                       : ListView.builder(
@@ -1109,18 +1110,18 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                           itemBuilder: (ctx, i) {
                             final product = _results[i];
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
+                              margin: EdgeInsets.only(bottom: 8.h),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
                                   onTap: () => _assignToProduct(product),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(12),
+                                    padding: EdgeInsets.all(12.w),
                                     child: Row(
                                       children: [
                                         // Фото или иконка
@@ -1129,7 +1130,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                                           height: 40,
                                           decoration: BoxDecoration(
                                             color: Colors.white.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(10.r),
                                           ),
                                           clipBehavior: Clip.antiAlias,
                                           child: product.productPhotoUrl != null
@@ -1138,11 +1139,11 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                                                   width: 40,
                                                   height: 40,
                                                   fit: BoxFit.cover,
-                                                  errorWidget: (_, __, ___) => const Icon(Icons.inventory_2, color: Colors.white54, size: 20),
+                                                  errorWidget: (_, __, ___) => Icon(Icons.inventory_2, color: Colors.white54, size: 20),
                                                 )
-                                              : const Icon(Icons.inventory_2, color: Colors.white54, size: 20),
+                                              : Icon(Icons.inventory_2, color: Colors.white54, size: 20),
                                         ),
-                                        const SizedBox(width: 12),
+                                        SizedBox(width: 12),
                                         // Название + группа
                                         Expanded(
                                           child: Column(
@@ -1150,18 +1151,18 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                                             children: [
                                               Text(
                                                 product.name,
-                                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                                                style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w500),
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                               Row(
                                                 children: [
                                                   if (product.group.isNotEmpty)
-                                                    Text(product.group, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5))),
+                                                    Text(product.group, style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
                                                   if (product.barcodesCount > 1) ...[
                                                     if (product.group.isNotEmpty)
                                                       Text(' \u2022 ', style: TextStyle(color: Colors.white.withOpacity(0.3))),
-                                                    Text('${product.barcodesCount} шт-кодов', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5))),
+                                                    Text('${product.barcodesCount} шт-кодов', style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
                                                   ],
                                                 ],
                                               ),

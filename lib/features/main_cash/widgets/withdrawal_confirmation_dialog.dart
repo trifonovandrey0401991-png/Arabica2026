@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/withdrawal_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог подтверждения выемки
 class WithdrawalConfirmationDialog extends StatelessWidget {
@@ -13,7 +14,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text(
+      title: Text(
         'Подтверждение выемки',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
@@ -26,37 +27,37 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
             _buildInfoRow('Магазин:', withdrawal.shopAddress),
             _buildInfoRow('Сотрудник:', withdrawal.employeeName),
             _buildInfoRow('Тип:', withdrawal.typeDisplayName),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
+            SizedBox(height: 16),
+            Divider(),
+            SizedBox(height: 8),
 
             // Заголовок расходов
-            const Text(
+            Text(
               'Расходы:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Список расходов
             ...withdrawal.expenses.asMap().entries.map((entry) {
               final index = entry.key;
               final expense = entry.value;
               return Card(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: EdgeInsets.only(bottom: 8.h),
                 color: Colors.grey[50],
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         '${index + 1}. ${expense.displayName}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 14.sp,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -66,20 +67,20 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
                           ),
                           Text(
                             '${expense.amount.toStringAsFixed(0)} руб',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                             ),
                           ),
                         ],
                       ),
                       if (expense.comment.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           'Комментарий: ${expense.comment}',
                           style: TextStyle(
                             color: Colors.grey[700],
-                            fontSize: 12,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ],
@@ -89,32 +90,32 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
               );
             }).toList(),
 
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
+            Divider(),
+            SizedBox(height: 12),
 
             // Общая сумма
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(color: Colors.blue[300]!, width: 2),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Итого:',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     '${withdrawal.totalAmount.toStringAsFixed(0)} руб',
-                    style: const TextStyle(
-                      fontSize: 22,
+                    style: TextStyle(
+                      fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF004D40),
                     ),
@@ -123,17 +124,17 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Предупреждение
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(color: Colors.red[300]!, width: 2),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.warning_amber, color: Colors.red, size: 28),
                   SizedBox(width: 12),
@@ -143,7 +144,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                     ),
                   ),
@@ -156,7 +157,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Отмена'),
+          child: Text('Отмена'),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(true),
@@ -164,7 +165,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
             backgroundColor: Colors.green[700],
             foregroundColor: Colors.white,
           ),
-          child: const Text('Подтвердить'),
+          child: Text('Подтвердить'),
         ),
       ],
     );
@@ -172,7 +173,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: 8.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -180,7 +181,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.grey,
               ),
@@ -189,7 +190,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],

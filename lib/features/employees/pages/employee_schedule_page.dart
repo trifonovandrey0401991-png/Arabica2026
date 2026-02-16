@@ -10,6 +10,7 @@ import '../../work_schedule/work_schedule_validator.dart';
 import '../../../shared/dialogs/schedule_validation_dialog.dart';
 import '../services/employee_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница расписания сотрудника для проставления смен
 class EmployeeSchedulePage extends StatefulWidget {
@@ -245,7 +246,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
   Future<void> _saveShifts() async {
     if (_selectedAbbreviations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Не выбрано ни одной смены'),
           backgroundColor: Colors.orange,
         ),
@@ -342,7 +343,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Смены успешно сохранены'),
             backgroundColor: Colors.green,
           ),
@@ -369,7 +370,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
   }
 
   String _getWeekdayName(int weekday) {
-    const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
   }
 
@@ -380,17 +381,17 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_employee.name),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Icon(Icons.settings),
             onPressed: _editPreferences,
             tooltip: 'Редактировать предпочтения',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Секция предпочтений
@@ -398,7 +399,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
                 // Список дней
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemCount: days.length,
                     itemBuilder: (context, index) {
                       final day = days[index];
@@ -410,9 +411,9 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isSaving ? null : _saveShifts,
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         icon: _isSaving
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
@@ -420,7 +421,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Icon(Icons.save),
+            : Icon(Icons.save),
         label: Text(_isSaving ? 'Сохранение...' : 'Сохранить смены'),
       ),
     );
@@ -428,7 +429,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
 
   Widget _buildPreferencesSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       color: Colors.grey[100],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,27 +437,27 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Предпочтения сотрудника',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               TextButton.icon(
                 onPressed: _editPreferences,
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Редактировать'),
+                icon: Icon(Icons.edit, size: 16),
+                label: Text('Редактировать'),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           if (_employee.preferredWorkDays.isNotEmpty)
             Wrap(
               spacing: 8,
               runSpacing: 4,
               children: _employee.preferredWorkDays.map((day) {
-                const dayNames = {
+                final dayNames = {
                   'monday': 'Пн',
                   'tuesday': 'Вт',
                   'wednesday': 'Ср',
@@ -472,7 +473,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
               }).toList(),
             ),
           if (_employee.preferredShops.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -502,20 +503,20 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
     final selectedAbbrev = _selectedAbbreviations[day];
     
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '${day.day} (${_getWeekdayName(day.weekday)})',
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -562,14 +563,14 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
     return InkWell(
       onTap: isOccupied ? null : onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         decoration: BoxDecoration(
           color: backgroundColor,
           border: Border.all(
             color: borderColor,
             width: borderWidth,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -587,11 +588,11 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(
               abbrev.abbreviation,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? abbrev.shiftType.color : Colors.black87,
               ),

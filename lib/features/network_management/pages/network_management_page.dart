@@ -6,6 +6,7 @@ import '../../shops/models/shop_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления сетью магазинов
 /// Доступна только для developer
@@ -23,10 +24,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   bool _isLoading = true;
 
   // Цветовая схема
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _accent = Color(0xFF2DD4BF);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _accent = Color(0xFF2DD4BF);
 
   // Данные для вкладок
   List<String> _developers = [];
@@ -93,7 +94,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -108,7 +109,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
               _buildTabBar(),
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: _accent))
+                    ? Center(child: CircularProgressIndicator(color: _accent))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -129,26 +130,26 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 12.h),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            icon: Icon(Icons.arrow_back_ios_new, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Управление сетью',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadAllData,
           ),
         ],
@@ -158,10 +159,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildTabBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: 16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: TabBar(
         controller: _tabController,
@@ -170,9 +171,9 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
         indicatorWeight: 3,
         labelColor: _accent,
         unselectedLabelColor: Colors.white60,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        tabs: const [
+        labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp),
+        unselectedLabelStyle: TextStyle(fontSize: 12.sp),
+        tabs: [
           Tab(icon: Icon(Icons.code, size: 20), text: 'Разработчики'),
           Tab(icon: Icon(Icons.business_center, size: 20), text: 'Управляющие'),
           Tab(icon: Icon(Icons.store, size: 20), text: 'Магазины'),
@@ -188,13 +189,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   Widget _buildDevelopersTab() {
     return Column(
       children: [
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         _buildAddButton('Добавить разработчика', Icons.code, _showAddDeveloperDialog),
         Expanded(
           child: _developers.isEmpty
               ? _buildEmptyState('Нет разработчиков', Icons.code)
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                   itemCount: _developers.length,
                   itemBuilder: (context, index) {
                     final phone = _developers[index];
@@ -223,13 +224,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   Widget _buildManagersTab() {
     return Column(
       children: [
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         _buildAddButton('Добавить управляющего', Icons.business_center, _showAddManagerDialog),
         Expanded(
           child: _managers.isEmpty
               ? _buildEmptyState('Нет управляющих', Icons.business_center)
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                   itemCount: _managers.length,
                   itemBuilder: (context, index) {
                     final manager = _managers[index];
@@ -249,10 +250,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildManagerCard(Map<String, dynamic> manager, int shopCount, int employeeCount) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Theme(
@@ -263,13 +264,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             height: 48,
             decoration: BoxDecoration(
               color: Colors.orange.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
-            child: const Icon(Icons.business_center, color: Colors.orange),
+            child: Icon(Icons.business_center, color: Colors.orange),
           ),
           title: Text(
             manager['name']?.toString() ?? 'Без имени',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           subtitle: Text(
             _formatPhone(manager['phone']?.toString() ?? ''),
@@ -279,13 +280,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildBadge('$shopCount маг.', Colors.purple),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _buildBadge('$employeeCount сотр.', Colors.teal),
             ],
           ),
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 children: [
                   _buildManagerOption(
@@ -299,21 +300,21 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                         : 'Не назначены',
                     onEdit: () => _showEditManagerShopsDialog(manager),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildManagerOption(
                     icon: Icons.people,
                     title: 'Сотрудники',
                     value: employeeCount > 0 ? '$employeeCount сотрудников' : 'Не назначены',
                     onEdit: () => _showEditManagerEmployeesDialog(manager),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton.icon(
                         onPressed: () => _confirmRemoveManager(manager['phone']?.toString() ?? ''),
-                        icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                        label: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                        icon: Icon(Icons.delete, color: Colors.red, size: 20),
+                        label: Text('Удалить', style: TextStyle(color: Colors.red)),
                       ),
                     ],
                   ),
@@ -333,24 +334,24 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     required VoidCallback onEdit,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Row(
         children: [
           Icon(icon, color: Colors.white60, size: 20),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
-                const SizedBox(height: 2),
+                Text(title, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.sp)),
+                SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: Colors.white, fontSize: 14.sp),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -358,7 +359,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit, color: _accent, size: 20),
+            icon: Icon(Icons.edit, color: _accent, size: 20),
             onPressed: onEdit,
           ),
         ],
@@ -371,20 +372,20 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   Widget _buildShopsTab() {
     return Column(
       children: [
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Text(
             'Назначение магазинов управляющим',
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16.sp, fontWeight: FontWeight.bold),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Expanded(
           child: _allShops.isEmpty
               ? _buildEmptyState('Нет магазинов', Icons.store)
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                   itemCount: _allShops.length,
                   itemBuilder: (context, index) {
                     final shop = _allShops[index];
@@ -406,10 +407,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildShopCard(Shop shop, String? assignedManager) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: ListTile(
@@ -418,20 +419,20 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           height: 44,
           decoration: BoxDecoration(
             color: Colors.purple.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
-          child: const Icon(Icons.store, color: Colors.purple),
+          child: Icon(Icons.store, color: Colors.purple),
         ),
-        title: Text(shop.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        title: Text(shop.name, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         subtitle: Text(
           assignedManager != null ? 'Управляющий: $assignedManager' : 'Не назначен',
           style: TextStyle(
             color: assignedManager != null ? _accent : Colors.white.withOpacity(0.5),
-            fontSize: 12,
+            fontSize: 12.sp,
           ),
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.edit, color: _accent),
+          icon: Icon(Icons.edit, color: _accent),
           onPressed: () => _showAssignShopDialog(shop.id, shop.name, assignedManager),
         ),
       ),
@@ -456,20 +457,20 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
     return Column(
       children: [
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Text(
             'Привязка сотрудников к управляющим',
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16.sp, fontWeight: FontWeight.bold),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Expanded(
           child: assignedEmployees.isEmpty
               ? _buildEmptyState('Нет привязанных сотрудников\n\nДобавьте через вкладку "Управляющие"', Icons.people)
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                   itemCount: assignedEmployees.length,
                   itemBuilder: (context, index) {
                     final emp = assignedEmployees[index];
@@ -490,10 +491,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildEmployeeCard(Map<String, dynamic> emp, Employee? employee) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: ListTile(
@@ -502,13 +503,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           height: 44,
           decoration: BoxDecoration(
             color: Colors.teal.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
-          child: const Icon(Icons.person, color: Colors.teal),
+          child: Icon(Icons.person, color: Colors.teal),
         ),
         title: Text(
           employee?.employeeName ?? employee?.name ?? _formatPhone(emp['phone'] ?? ''),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,22 +517,22 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             if (employee?.employeeName != null || employee?.name != null)
               Text(
                 _formatPhone(emp['phone'] ?? ''),
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
               ),
             Row(
               children: [
-                const Icon(Icons.business_center, size: 12, color: Colors.orange),
-                const SizedBox(width: 4),
+                Icon(Icons.business_center, size: 12, color: Colors.orange),
+                SizedBox(width: 4),
                 Text(
                   emp['managerName'] ?? '',
-                  style: const TextStyle(color: Colors.orange, fontSize: 12),
+                  style: TextStyle(color: Colors.orange, fontSize: 12.sp),
                 ),
               ],
             ),
           ],
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.swap_horiz, color: _accent),
+          icon: Icon(Icons.swap_horiz, color: _accent),
           onPressed: () => _showTransferEmployeeDialog(emp['phone'] ?? '', emp['managerPhone'] ?? ''),
         ),
       ),
@@ -543,13 +544,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   Widget _buildStoreManagersTab() {
     return Column(
       children: [
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         _buildAddButton('Добавить заведующую', Icons.supervisor_account, _showAddStoreManagerDialog),
         Expanded(
           child: _storeManagers.isEmpty
               ? _buildEmptyState('Нет заведующих\n\nЗаведующая — сотрудник с расширенными правами', Icons.supervisor_account)
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                   itemCount: _storeManagers.length,
                   itemBuilder: (context, index) {
                     final sm = _storeManagers[index];
@@ -582,10 +583,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: canSeeAll ? Colors.green.withOpacity(0.3) : Colors.amber.withOpacity(0.3)),
       ),
       child: Theme(
@@ -596,13 +597,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             height: 48,
             decoration: BoxDecoration(
               color: (canSeeAll ? Colors.green : Colors.amber).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Icon(Icons.supervisor_account, color: canSeeAll ? Colors.green : Colors.amber),
           ),
           title: Text(
             _formatPhone(phone),
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           subtitle: Text(
             'Магазин: $shopName',
@@ -614,20 +615,20 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           ),
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 children: [
                   _buildStoreManagerInfo(Icons.store, 'Магазин', shopName),
                   if (managerName != null) ...[
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _buildStoreManagerInfo(Icons.business_center, 'Управляющий', managerName),
                   ],
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Row(
                       children: [
@@ -636,13 +637,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                           color: canSeeAll ? Colors.green : Colors.amber,
                           size: 20,
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             canSeeAll
                                 ? 'Видит ВСЕ магазины управляющего'
                                 : 'Видит ТОЛЬКО свой магазин',
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            style: TextStyle(color: Colors.white, fontSize: 14.sp),
                           ),
                         ),
                         Switch(
@@ -653,19 +654,19 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       TextButton.icon(
                         onPressed: () => _showEditStoreManagerDialog(sm),
-                        icon: const Icon(Icons.edit, color: _accent, size: 20),
-                        label: const Text('Изменить', style: TextStyle(color: _accent)),
+                        icon: Icon(Icons.edit, color: _accent, size: 20),
+                        label: Text('Изменить', style: TextStyle(color: _accent)),
                       ),
                       TextButton.icon(
                         onPressed: () => _confirmRemoveStoreManager(phone),
-                        icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                        label: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                        icon: Icon(Icons.delete, color: Colors.red, size: 20),
+                        label: Text('Удалить', style: TextStyle(color: Colors.red)),
                       ),
                     ],
                   ),
@@ -682,9 +683,9 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     return Row(
       children: [
         Icon(icon, color: Colors.white60, size: 18),
-        const SizedBox(width: 8),
-        Text('$label: ', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
-        Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 13))),
+        SizedBox(width: 8),
+        Text('$label: ', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp)),
+        Expanded(child: Text(value, style: TextStyle(color: Colors.white, fontSize: 13.sp))),
       ],
     );
   }
@@ -693,21 +694,21 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildAddButton(String text, IconData icon, VoidCallback onPressed) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Material(
         color: _accent.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: EdgeInsets.symmetric(vertical: 14.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, color: _accent, size: 20),
-                const SizedBox(width: 8),
-                Text(text, style: const TextStyle(color: _accent, fontWeight: FontWeight.bold)),
+                SizedBox(width: 8),
+                Text(text, style: TextStyle(color: _accent, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -722,11 +723,11 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 64, color: Colors.white.withOpacity(0.2)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
           ),
         ],
       ),
@@ -735,19 +736,19 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildInfoPanel(String text, Color color) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           Icon(Icons.info_outline, color: color, size: 20),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
-            child: Text(text, style: TextStyle(color: color, fontSize: 13)),
+            child: Text(text, style: TextStyle(color: color, fontSize: 13.sp)),
           ),
         ],
       ),
@@ -763,10 +764,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     VoidCallback? onDelete,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: ListTile(
@@ -775,17 +776,17 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           height: 44,
           decoration: BoxDecoration(
             color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        title: Text(title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         subtitle: subtitle != null
-            ? Text(subtitle, style: TextStyle(color: _accent, fontSize: 12))
+            ? Text(subtitle, style: TextStyle(color: _accent, fontSize: 12.sp))
             : null,
         trailing: onDelete != null
             ? IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
+                icon: Icon(Icons.delete, color: Colors.red),
                 onPressed: onDelete,
               )
             : null,
@@ -795,12 +796,12 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
 
   Widget _buildBadge(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+      child: Text(text, style: TextStyle(color: color, fontSize: 11.sp, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -852,20 +853,20 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Добавить управляющего', style: TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text('Добавить управляющего', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildTextField(nameController, 'Имя', Icons.person),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildTextField(phoneController, 'Телефон', Icons.phone, hint: '79001234567'),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+            child: Text('Отмена', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: _accent),
@@ -883,7 +884,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 _showSnackBar('Управляющий добавлен');
               }
             },
-            child: const Text('Добавить'),
+            child: Text('Добавить'),
           ),
         ],
       ),
@@ -900,19 +901,19 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _emeraldDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Магазины: ${manager['name']}', style: const TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Магазины: ${manager['name']}', style: TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
             height: 400,
             child: _allShops.isEmpty
-                ? const Center(child: Text('Нет магазинов', style: TextStyle(color: Colors.white60)))
+                ? Center(child: Text('Нет магазинов', style: TextStyle(color: Colors.white60)))
                 : ListView.builder(
                     itemCount: _allShops.length,
                     itemBuilder: (context, index) {
                       final shop = _allShops[index];
                       return CheckboxListTile(
-                        title: Text(shop.name, style: const TextStyle(color: Colors.white)),
+                        title: Text(shop.name, style: TextStyle(color: Colors.white)),
                         subtitle: Text(shop.address, style: TextStyle(color: Colors.white.withOpacity(0.5))),
                         value: selectedShops.contains(shop.id),
                         activeColor: _accent,
@@ -933,7 +934,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+              child: Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: _accent),
@@ -947,7 +948,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 _loadAllData();
                 _showSnackBar('Магазины обновлены');
               },
-              child: const Text('Сохранить'),
+              child: Text('Сохранить'),
             ),
           ],
         ),
@@ -986,8 +987,8 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _emeraldDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Сотрудники: ${manager['name']}', style: const TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Сотрудники: ${manager['name']}', style: TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
             height: 500,
@@ -995,28 +996,28 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
               children: [
                 // Счётчик
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
                     color: _accent.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.people, color: _accent, size: 20),
-                      const SizedBox(width: 8),
+                      Icon(Icons.people, color: _accent, size: 20),
+                      SizedBox(width: 8),
                       Text(
                         'Выбрано: ${selectedEmployees.length}',
-                        style: const TextStyle(color: _accent, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: _accent, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 // Список сотрудников
                 Expanded(
                   child: sortedEmployees.isEmpty
-                      ? const Center(child: Text('Нет сотрудников', style: TextStyle(color: Colors.white60)))
+                      ? Center(child: Text('Нет сотрудников', style: TextStyle(color: Colors.white60)))
                       : ListView.builder(
                           itemCount: sortedEmployees.length,
                           itemBuilder: (context, index) {
@@ -1028,14 +1029,14 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                             final isAssignedToOther = assignedTo != null && assignedTo != manager['name'];
 
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 4),
+                              margin: EdgeInsets.only(bottom: 4.h),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? _accent.withOpacity(0.15)
                                     : isAssignedToOther
                                         ? Colors.orange.withOpacity(0.1)
                                         : Colors.white.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
                                 border: isSelected
                                     ? Border.all(color: _accent.withOpacity(0.5))
                                     : null,
@@ -1053,7 +1054,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                                   children: [
                                     Text(
                                       _formatPhone(empPhone),
-                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                                     ),
                                     if (assignedTo != null)
                                       Row(
@@ -1063,12 +1064,12 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                                             size: 12,
                                             color: isAssignedToOther ? Colors.orange : _accent,
                                           ),
-                                          const SizedBox(width: 4),
+                                          SizedBox(width: 4),
                                           Text(
                                             assignedTo,
                                             style: TextStyle(
                                               color: isAssignedToOther ? Colors.orange : _accent,
-                                              fontSize: 12,
+                                              fontSize: 12.sp,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -1099,7 +1100,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+              child: Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: _accent),
@@ -1137,7 +1138,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 _loadAllData();
                 _showSnackBar('Сотрудники обновлены');
               },
-              child: const Text('Сохранить'),
+              child: Text('Сохранить'),
             ),
           ],
         ),
@@ -1175,24 +1176,24 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _emeraldDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Назначить: $shopName', style: const TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Назначить: $shopName', style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               RadioListTile<String?>(
-                title: const Text('Без управляющего', style: TextStyle(color: Colors.white)),
+                title: Text('Без управляющего', style: TextStyle(color: Colors.white)),
                 value: null,
                 groupValue: selectedManagerPhone,
                 activeColor: _accent,
                 onChanged: (value) => setDialogState(() => selectedManagerPhone = value),
               ),
-              const Divider(color: Colors.white24),
+              Divider(color: Colors.white24),
               ..._managers.map((manager) {
                 final phone = manager['phone']?.toString() ?? '';
                 final name = manager['name']?.toString() ?? phone;
                 return RadioListTile<String?>(
-                  title: Text(name, style: const TextStyle(color: Colors.white)),
+                  title: Text(name, style: TextStyle(color: Colors.white)),
                   subtitle: Text(_formatPhone(phone), style: TextStyle(color: Colors.white.withOpacity(0.5))),
                   value: phone,
                   groupValue: selectedManagerPhone,
@@ -1205,7 +1206,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+              child: Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: _accent),
@@ -1246,7 +1247,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 _loadAllData();
                 _showSnackBar('Магазин назначен');
               },
-              child: const Text('Сохранить'),
+              child: Text('Сохранить'),
             ),
           ],
         ),
@@ -1262,15 +1263,15 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _emeraldDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Перевести: ${_formatPhone(employeePhone)}', style: const TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Перевести: ${_formatPhone(employeePhone)}', style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: _managers.map((manager) {
               final phone = manager['phone']?.toString() ?? '';
               final name = manager['name']?.toString() ?? phone;
               return RadioListTile<String?>(
-                title: Text(name, style: const TextStyle(color: Colors.white)),
+                title: Text(name, style: TextStyle(color: Colors.white)),
                 subtitle: Text(_formatPhone(phone), style: TextStyle(color: Colors.white.withOpacity(0.5))),
                 value: phone,
                 groupValue: selectedManagerPhone,
@@ -1282,7 +1283,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+              child: Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: _accent),
@@ -1326,7 +1327,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 _loadAllData();
                 _showSnackBar('Сотрудник переведён');
               },
-              child: const Text('Перевести'),
+              child: Text('Перевести'),
             ),
           ],
         ),
@@ -1344,8 +1345,8 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _emeraldDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Добавить заведующую', style: TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Добавить заведующую', style: TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
@@ -1353,19 +1354,19 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildTextField(phoneController, 'Телефон', Icons.phone, hint: '79001234567'),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text('Магазин:', style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedShopId,
                   isExpanded: true,
                   dropdownColor: _emeraldDark,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.store, color: Colors.white60),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    prefixIcon: Icon(Icons.store, color: Colors.white60),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                     ),
                   ),
@@ -1378,14 +1379,14 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                   }).toList(),
                   onChanged: (value) => setDialogState(() => selectedShopId = value),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: SwitchListTile(
-                    title: const Text('Видеть все магазины', style: TextStyle(color: Colors.white)),
+                    title: Text('Видеть все магазины', style: TextStyle(color: Colors.white)),
                     subtitle: Text(
                       canSeeAll ? 'Все магазины управляющего' : 'Только свой магазин',
                       style: TextStyle(color: canSeeAll ? Colors.green : Colors.white60),
@@ -1401,7 +1402,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+              child: Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: _accent),
@@ -1423,7 +1424,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                   _showSnackBar('Ошибка добавления', isError: true);
                 }
               },
-              child: const Text('Добавить'),
+              child: Text('Добавить'),
             ),
           ],
         ),
@@ -1441,8 +1442,8 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _emeraldDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Редактировать: ${_formatPhone(phone)}', style: const TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Редактировать: ${_formatPhone(phone)}', style: TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
@@ -1450,17 +1451,17 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Магазин:', style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedShopId,
                   isExpanded: true,
                   dropdownColor: _emeraldDark,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.store, color: Colors.white60),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    prefixIcon: Icon(Icons.store, color: Colors.white60),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                     ),
                   ),
@@ -1472,14 +1473,14 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                   }).toList(),
                   onChanged: (value) => setDialogState(() => selectedShopId = value),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: SwitchListTile(
-                    title: const Text('Видеть все магазины', style: TextStyle(color: Colors.white)),
+                    title: Text('Видеть все магазины', style: TextStyle(color: Colors.white)),
                     subtitle: Text(
                       canSeeAll ? 'Все магазины управляющего' : 'Только свой магазин',
                       style: TextStyle(color: canSeeAll ? Colors.green : Colors.white60),
@@ -1495,7 +1496,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+              child: Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: _accent),
@@ -1511,7 +1512,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                   _showSnackBar('Заведующая обновлена');
                 }
               },
-              child: const Text('Сохранить'),
+              child: Text('Сохранить'),
             ),
           ],
         ),
@@ -1557,21 +1558,21 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   Widget _buildTextField(TextEditingController controller, String label, IconData icon, {String? hint}) {
     return TextField(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
         hintText: hint,
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
         prefixIcon: Icon(icon, color: Colors.white60),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _accent),
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide(color: _accent),
         ),
       ),
     );
@@ -1589,18 +1590,18 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title, style: const TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(title, style: TextStyle(color: Colors.white)),
         content: _buildTextField(controller, label, icon, hint: hint),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+            child: Text('Отмена', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: _accent),
             onPressed: onConfirm,
-            child: const Text('Добавить'),
+            child: Text('Добавить'),
           ),
         ],
       ),
@@ -1616,18 +1617,18 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title, style: const TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(title, style: TextStyle(color: Colors.white)),
         content: Text(content, style: TextStyle(color: Colors.white.withOpacity(0.8))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+            child: Text('Отмена', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: onConfirm,
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -1641,7 +1642,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
         content: Text(message),
         backgroundColor: isError ? Colors.red : _accent,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
       ),
     );
   }

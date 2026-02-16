@@ -8,6 +8,7 @@ import '../../../core/services/media_upload_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/media_message_widget.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница диалога "Связь с Руководством" для админа
 class AdminManagementDialogPage extends StatefulWidget {
@@ -60,7 +61,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
   }
 
   void _startAutoRefresh() {
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(Duration(seconds: 5), () {
       if (mounted) {
         _loadMessages();
         _startAutoRefresh();
@@ -95,7 +96,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
           if (_scrollController.hasClients && _messages.isNotEmpty) {
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
           }
@@ -119,26 +120,26 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera, color: Color(0xFF004D40)),
-              title: const Text('Сделать фото'),
+              leading: Icon(Icons.photo_camera, color: Color(0xFF004D40)),
+              title: Text('Сделать фото'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать фото из галереи'),
+              leading: Icon(Icons.photo_library, color: Color(0xFF004D40)),
+              title: Text('Выбрать фото из галереи'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam, color: Color(0xFF004D40)),
-              title: const Text('Записать видео'),
+              leading: Icon(Icons.videocam, color: Color(0xFF004D40)),
+              title: Text('Записать видео'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
             ),
             ListTile(
-              leading: const Icon(Icons.video_library, color: Color(0xFF004D40)),
-              title: const Text('Выбрать видео из галереи'),
+              leading: Icon(Icons.video_library, color: Color(0xFF004D40)),
+              title: Text('Выбрать видео из галереи'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),
@@ -152,7 +153,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
     if (isVideo) {
       file = await _picker.pickVideo(
         source: result['source'] as ImageSource,
-        maxDuration: const Duration(minutes: 2),
+        maxDuration: Duration(minutes: 2),
       );
     } else {
       file = await _picker.pickImage(
@@ -211,7 +212,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
       setState(() => _isSending = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка: не удалось определить телефон админа'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка: не удалось определить телефон админа'), backgroundColor: Colors.red),
         );
       }
       return;
@@ -239,7 +240,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
         }
@@ -247,7 +248,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка отправки'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка отправки'), backgroundColor: Colors.red),
         );
       }
     }
@@ -280,28 +281,28 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
         margin: EdgeInsets.only(
           left: isFromManager ? 48 : 8,
           right: isFromManager ? 8 : 48,
-          bottom: 8,
+          bottom: 8.h,
         ),
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
-          color: isFromManager ? const Color(0xFF004D40) : Colors.grey[200],
-          borderRadius: BorderRadius.circular(16),
+          color: isFromManager ? Color(0xFF004D40) : Colors.grey[200],
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isFromManager)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(bottom: 4.h),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.person, size: 14, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       message.senderName.isNotEmpty ? message.senderName : 'Клиент',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.grey[600],
                         fontWeight: FontWeight.bold,
                       ),
@@ -317,14 +318,14 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
                 ),
               ),
             if (message.imageUrl != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               MediaMessageWidget(mediaUrl: message.imageUrl, maxHeight: 200),
             ],
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               _formatTimestamp(message.timestamp),
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 10.sp,
                 color: isFromManager ? Colors.white70 : Colors.grey,
               ),
             ),
@@ -343,21 +344,21 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.business, size: 20),
-                const SizedBox(width: 8),
-                const Text('Связь с Руководством', style: TextStyle(fontSize: 16)),
+                Icon(Icons.business, size: 20),
+                SizedBox(width: 8),
+                Text('Связь с Руководством', style: TextStyle(fontSize: 16.sp)),
               ],
             ),
             Text(
               widget.client.name.isNotEmpty ? widget.client.name : widget.client.phone,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.normal),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadMessages,
           ),
         ],
@@ -366,29 +367,29 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
         children: [
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               'Нет сообщений',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 18),
+                              style: TextStyle(color: Colors.grey[600], fontSize: 18.sp),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Text(
                               'Клиент ещё не писал руководству',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                              style: TextStyle(color: Colors.grey[500], fontSize: 14.sp),
                             ),
                           ],
                         ),
                       )
                     : ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
                           return _buildMessage(_messages[index]);
@@ -398,18 +399,18 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
           // Предпросмотр прикреплённого медиа
           if (_pendingMediaUrl != null)
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               color: Colors.grey[100],
               child: Row(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                     child: _pendingIsVideo
                         ? Container(
                             width: 60,
                             height: 60,
                             color: Colors.black87,
-                            child: const Icon(Icons.videocam, color: Colors.white),
+                            child: Icon(Icons.videocam, color: Colors.white),
                           )
                         : AppCachedImage(
                             imageUrl: _pendingMediaUrl!,
@@ -420,33 +421,33 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
                               width: 60,
                               height: 60,
                               color: Colors.grey,
-                              child: const Icon(Icons.image),
+                              child: Icon(Icons.image),
                             ),
                           ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _pendingIsVideo ? 'Видео прикреплено' : 'Фото прикреплено',
-                      style: const TextStyle(color: Colors.grey),
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red),
+                    icon: Icon(Icons.close, color: Colors.red),
                     onPressed: _clearPendingMedia,
                   ),
                 ],
               ),
             ),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
                   blurRadius: 4,
-                  offset: const Offset(0, -2),
+                  offset: Offset(0, -2),
                 ),
               ],
             ),
@@ -455,12 +456,12 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
                 IconButton(
                   onPressed: _isUploading ? null : _showMediaPicker,
                   icon: _isUploading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.attach_file, color: Color(0xFF004D40)),
+                      : Icon(Icons.attach_file, color: Color(0xFF004D40)),
                   tooltip: 'Прикрепить фото/видео',
                 ),
                 Expanded(
@@ -469,27 +470,27 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
                     decoration: InputDecoration(
                       hintText: 'Ответить клиенту...',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(24.r),
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
                       fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                     ),
                     maxLines: 3,
                     minLines: 1,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 IconButton(
                   onPressed: _isSending ? null : _sendMessage,
                   icon: _isSending
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.send, color: Color(0xFF004D40)),
+                      : Icon(Icons.send, color: Color(0xFF004D40)),
                 ),
               ],
             ),

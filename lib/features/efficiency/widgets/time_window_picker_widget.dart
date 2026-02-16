@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет редактирования временного окна
 ///
@@ -44,22 +45,22 @@ class TimeWindowPickerWidget extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(icon, color: iconColor, size: 22),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF2D3436),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -71,9 +72,9 @@ class TimeWindowPickerWidget extends StatelessWidget {
                 primaryColor: primaryColor,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Icon(Icons.arrow_forward, color: Colors.grey[400], size: 20),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _TimePickerButton(
                 label: endLabel,
@@ -98,7 +99,7 @@ class _TimePickerButton extends StatelessWidget {
   final Color color;
   final Color primaryColor;
 
-  const _TimePickerButton({
+  _TimePickerButton({
     required this.label,
     required this.time,
     required this.onChanged,
@@ -142,12 +143,12 @@ class _TimePickerButton extends StatelessWidget {
           onChanged(newTime);
         }
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Column(
@@ -155,20 +156,20 @@ class _TimePickerButton extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.access_time, size: 18, color: color),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text(
                   time,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -198,24 +199,24 @@ class TimeWindowsSection extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         children: [
           for (int i = 0; i < windows.length; i++) ...[
             windows[i],
             if (i < windows.length - 1) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Divider(color: Colors.grey[200]),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
           ],
         ],

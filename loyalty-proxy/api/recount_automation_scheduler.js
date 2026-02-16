@@ -189,9 +189,9 @@ async function loadTodayReports() {
         const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
-        // Фильтруем только сегодняшние отчёты
+        // Фильтруем: сегодняшние + pending + review (review может быть за прошлые дни)
         const reportDate = report.createdAt ? report.createdAt.split('T')[0] : null;
-        if (reportDate === today || report.status === 'pending') {
+        if (reportDate === today || report.status === 'pending' || report.status === 'review') {
           reports.push({ ...report, _filePath: filePath });
         }
       } catch (e) {

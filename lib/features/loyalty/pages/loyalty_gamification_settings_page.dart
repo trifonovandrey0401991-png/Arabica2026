@@ -2,10 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница настроек геймификации программы лояльности
 class LoyaltyGamificationSettingsPage extends StatefulWidget {
@@ -29,7 +31,7 @@ class _LoyaltyGamificationSettingsPageState
   final List<TextEditingController> _levelMinDrinksControllers = [];
 
   // Данные колеса
-  WheelSettings _wheelSettings = const WheelSettings(
+  WheelSettings _wheelSettings = WheelSettings(
     enabled: true,
     freeDrinksPerSpin: 5,
     sectors: [],
@@ -41,9 +43,9 @@ class _LoyaltyGamificationSettingsPageState
   final List<TextEditingController> _sectorValueControllers = [];
 
   // Премиум цвета
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00897B);
-  static const _goldColor = Color(0xFFFFD700);
+  static final _primaryColor = Color(0xFF004D40);
+  static final _accentColor = Color(0xFF00897B);
+  static final _goldColor = Color(0xFFFFD700);
 
   @override
   void initState() {
@@ -156,7 +158,7 @@ class _LoyaltyGamificationSettingsPageState
   Future<void> _saveSettings() async {
     if (!_canSave()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Сумма вероятностей не должна превышать 100%'),
           backgroundColor: Colors.red,
         ),
@@ -165,6 +167,10 @@ class _LoyaltyGamificationSettingsPageState
     }
 
     setState(() => _isSaving = true);
+
+    // Получаем телефон админа из SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final adminPhone = prefs.getString('user_phone') ?? '';
 
     // Собираем уровни
     final updatedLevels = <LoyaltyLevel>[];
@@ -206,7 +212,7 @@ class _LoyaltyGamificationSettingsPageState
 
     final success = await LoyaltyGamificationService.saveSettings(
       settings: updatedSettings,
-      employeePhone: '',
+      employeePhone: adminPhone,
     );
 
     setState(() => _isSaving = false);
@@ -220,13 +226,13 @@ class _LoyaltyGamificationSettingsPageState
                 success ? Icons.check_circle : Icons.error,
                 color: Colors.white,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(success ? 'Настройки сохранены' : 'Ошибка сохранения'),
             ],
           ),
           backgroundColor: success ? Colors.green : Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
 
@@ -240,7 +246,7 @@ class _LoyaltyGamificationSettingsPageState
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -259,39 +265,39 @@ class _LoyaltyGamificationSettingsPageState
               // Контент
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       )
                     : Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        decoration: const BoxDecoration(
+                        margin: EdgeInsets.only(top: 8.h),
+                        decoration: BoxDecoration(
                           color: Color(0xFFF5F7FA),
                           borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(24),
+                            top: Radius.circular(24.r),
                           ),
                         ),
                         child: Column(
                           children: [
                             // Табы
                             Container(
-                              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              margin: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: TabBar(
                                 controller: _tabController,
                                 indicator: BoxDecoration(
                                   color: _primaryColor,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 labelColor: Colors.white,
                                 unselectedLabelColor: Colors.grey.shade700,
-                                labelStyle: const TextStyle(
+                                labelStyle: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 14.sp,
                                 ),
-                                tabs: const [
+                                tabs: [
                                   Tab(
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
@@ -338,30 +344,30 @@ class _LoyaltyGamificationSettingsPageState
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Программа лояльности',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
@@ -369,8 +375,8 @@ class _LoyaltyGamificationSettingsPageState
           ),
           _isSaving
               ? Container(
-                  padding: const EdgeInsets.all(16),
-                  child: const SizedBox(
+                  padding: EdgeInsets.all(16.w),
+                  child: SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
@@ -382,12 +388,12 @@ class _LoyaltyGamificationSettingsPageState
               : IconButton(
                   onPressed: _canSave() ? _saveSettings : null,
                   icon: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: _canSave()
                           ? _goldColor
                           : Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Icon(
                       Icons.save,
@@ -403,7 +409,7 @@ class _LoyaltyGamificationSettingsPageState
 
   Widget _buildLevelsTab() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: _levels.length + 1, // +1 для информационной карточки
       itemBuilder: (context, index) {
         if (index == 0) {
@@ -416,8 +422,8 @@ class _LoyaltyGamificationSettingsPageState
 
   Widget _buildLevelsInfoCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -427,7 +433,7 @@ class _LoyaltyGamificationSettingsPageState
             _accentColor.withOpacity(0.05),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: _primaryColor.withOpacity(0.2)),
       ),
       child: Column(
@@ -436,49 +442,49 @@ class _LoyaltyGamificationSettingsPageState
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: _primaryColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(Icons.info_outline, color: _primaryColor, size: 20),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Настройка уровней',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             'Клиенты получают уровни за бесплатные напитки. '
             'Значки появляются вокруг QR-кода.',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.grey.shade700,
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: Colors.amber.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Row(
               children: [
-                const Icon(Icons.image, color: Colors.amber, size: 16),
-                const SizedBox(width: 8),
+                Icon(Icons.image, color: Colors.amber, size: 16),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Рекомендуемый размер значка: 100x100 px, PNG с прозрачностью',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.amber.shade800,
                     ),
                   ),
@@ -495,20 +501,20 @@ class _LoyaltyGamificationSettingsPageState
     final level = _levels[index];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -520,12 +526,12 @@ class _LoyaltyGamificationSettingsPageState
                   height: 48,
                   decoration: BoxDecoration(
                     color: level.color,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
                       BoxShadow(
                         color: level.color.withOpacity(0.4),
                         blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
@@ -537,13 +543,13 @@ class _LoyaltyGamificationSettingsPageState
                             size: 28,
                           )
                         : ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             child: AppCachedImage(
                               imageUrl: _getBadgeImageUrl(level.badge.value),
                               width: 40,
                               height: 40,
                               fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) => const Icon(
+                              errorWidget: (_, __, ___) => Icon(
                                 Icons.image,
                                 color: Colors.white,
                                 size: 28,
@@ -552,22 +558,22 @@ class _LoyaltyGamificationSettingsPageState
                           ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Уровень ${index + 1}',
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         'от ${_levelMinDrinksControllers[index].text} напитков',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -577,34 +583,34 @@ class _LoyaltyGamificationSettingsPageState
                 // Кнопка выбора цвета
                 InkWell(
                   onTap: () => _showColorPicker(index),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   child: Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
                       color: level.color,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: const Icon(Icons.palette, color: Colors.white, size: 18),
+                    child: Icon(Icons.palette, color: Colors.white, size: 18),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Название уровня
             TextField(
               controller: _levelNameControllers[index],
               decoration: InputDecoration(
                 labelText: 'Название уровня',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 isDense: true,
-                prefixIcon: const Icon(Icons.label_outline),
+                prefixIcon: Icon(Icons.label_outline),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             // Порог напитков и кнопка значка
             Row(
               children: [
@@ -615,26 +621,26 @@ class _LoyaltyGamificationSettingsPageState
                     decoration: InputDecoration(
                       labelText: 'Мин. напитков',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       isDense: true,
-                      prefixIcon: const Icon(Icons.local_cafe_outlined),
+                      prefixIcon: Icon(Icons.local_cafe_outlined),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Кнопка выбора значка
                 ElevatedButton.icon(
                   onPressed: () => _showBadgeSelector(index),
-                  icon: const Icon(Icons.edit, size: 18),
-                  label: const Text('Значок'),
+                  icon: Icon(Icons.edit, size: 18),
+                  label: Text('Значок'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 16.w, vertical: 14.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                   ),
                 ),
@@ -648,21 +654,21 @@ class _LoyaltyGamificationSettingsPageState
 
   void _showColorPicker(int index) {
     final colors = [
-      const Color(0xFF78909C), const Color(0xFF4CAF50),
-      const Color(0xFF2196F3), const Color(0xFF9C27B0),
-      const Color(0xFFFF9800), const Color(0xFFF44336),
-      const Color(0xFF00BCD4), const Color(0xFFE91E63),
-      const Color(0xFFFF5722), const Color(0xFFFFD700),
-      const Color(0xFF795548), const Color(0xFF607D8B),
-      const Color(0xFF3F51B5), const Color(0xFF009688),
-      const Color(0xFFCDDC39), const Color(0xFF8BC34A),
+      Color(0xFF78909C), Color(0xFF4CAF50),
+      Color(0xFF2196F3), Color(0xFF9C27B0),
+      Color(0xFFFF9800), Color(0xFFF44336),
+      Color(0xFF00BCD4), Color(0xFFE91E63),
+      Color(0xFFFF5722), Color(0xFFFFD700),
+      Color(0xFF795548), Color(0xFF607D8B),
+      Color(0xFF3F51B5), Color(0xFF009688),
+      Color(0xFFCDDC39), Color(0xFF8BC34A),
     ];
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выберите цвет'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Выберите цвет'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         content: Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -678,13 +684,13 @@ class _LoyaltyGamificationSettingsPageState
                 });
                 Navigator.of(context).pop();
               },
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               child: Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: isSelected
                       ? Border.all(color: Colors.black, width: 3)
                       : null,
@@ -692,12 +698,12 @@ class _LoyaltyGamificationSettingsPageState
                     BoxShadow(
                       color: color.withOpacity(0.4),
                       blurRadius: 4,
-                      offset: const Offset(0, 2),
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check, color: Colors.white)
+                    ? Icon(Icons.check, color: Colors.white)
                     : null,
               ),
             );
@@ -710,11 +716,11 @@ class _LoyaltyGamificationSettingsPageState
   void _showBadgeSelector(int index) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,46 +731,46 @@ class _LoyaltyGamificationSettingsPageState
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
+            SizedBox(height: 20),
+            Text(
               'Выберите значок',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             // Кнопка загрузки картинки
             Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: ListTile(
                 leading: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Icon(Icons.photo_library, color: _primaryColor),
                 ),
-                title: const Text('Загрузить картинку'),
-                subtitle: const Text('PNG 100x100 px, прозрачный фон'),
-                trailing: const Icon(Icons.chevron_right),
+                title: Text('Загрузить картинку'),
+                subtitle: Text('PNG 100x100 px, прозрачный фон'),
+                trailing: Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(context);
                   _pickBadgeImage(index);
                 },
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Или выберите иконку:',
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             // Сетка иконок
             Wrap(
               spacing: 8,
@@ -783,7 +789,7 @@ class _LoyaltyGamificationSettingsPageState
                     });
                     Navigator.pop(context);
                   },
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   child: Container(
                     width: 52,
                     height: 52,
@@ -791,7 +797,7 @@ class _LoyaltyGamificationSettingsPageState
                       color: isSelected
                           ? _levels[index].color
                           : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: isSelected
                           ? Border.all(color: _levels[index].color, width: 2)
                           : null,
@@ -805,7 +811,7 @@ class _LoyaltyGamificationSettingsPageState
                 );
               }).toList(),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
         ),
       ),
@@ -826,7 +832,7 @@ class _LoyaltyGamificationSettingsPageState
     // Открываем редактор кадрирования (как в Telegram)
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: image.path,
-      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      aspectRatio: CropAspectRatio(ratioX: 1, ratioY: 1),
       compressQuality: 90,
       maxWidth: 200,
       maxHeight: 200,
@@ -853,7 +859,7 @@ class _LoyaltyGamificationSettingsPageState
     // Показываем индикатор загрузки
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Row(
             children: [
               SizedBox(
@@ -890,7 +896,7 @@ class _LoyaltyGamificationSettingsPageState
         );
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Row(
             children: [
               Icon(Icons.check_circle, color: Colors.white),
@@ -903,7 +909,7 @@ class _LoyaltyGamificationSettingsPageState
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Ошибка загрузки значка'),
           backgroundColor: Colors.red,
         ),
@@ -916,71 +922,71 @@ class _LoyaltyGamificationSettingsPageState
     final isValid = totalProbability <= 100;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Индикатор общего процента
           _buildProbabilityIndicator(totalProbability, isValid),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Основные настройки
           _buildWheelMainSettings(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Заголовок секторов
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: _goldColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Icon(Icons.pie_chart, color: Color(0xFFB8860B), size: 20),
+                child: Icon(Icons.pie_chart, color: Color(0xFFB8860B), size: 20),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Секторы колеса',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
               ),
-              const Spacer(),
+              Spacer(),
               Text(
                 '${_wheelSettings.sectors.length} шт',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: Colors.grey.shade600,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Секторы
           ListView.builder(
             shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+            physics: NeverScrollableScrollPhysics(),
             itemCount: _wheelSettings.sectors.length,
             itemBuilder: (context, index) {
               return _buildSectorCard(index);
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Кнопка добавления сектора
           Center(
             child: ElevatedButton.icon(
               onPressed: _addSector,
-              icon: const Icon(Icons.add),
-              label: const Text('Добавить сектор'),
+              icon: Icon(Icons.add),
+              label: Text('Добавить сектор'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryColor,
                 foregroundColor: Colors.white,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
         ],
       ),
     );
@@ -988,7 +994,7 @@ class _LoyaltyGamificationSettingsPageState
 
   Widget _buildProbabilityIndicator(double total, bool isValid) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1003,7 +1009,7 @@ class _LoyaltyGamificationSettingsPageState
                   Colors.red.withOpacity(0.05),
                 ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: isValid ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
         ),
@@ -1013,12 +1019,12 @@ class _LoyaltyGamificationSettingsPageState
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: isValid
                       ? Colors.green.withOpacity(0.15)
                       : Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
                   isValid ? Icons.check_circle : Icons.warning,
@@ -1026,15 +1032,15 @@ class _LoyaltyGamificationSettingsPageState
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Общая вероятность',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1043,7 +1049,7 @@ class _LoyaltyGamificationSettingsPageState
                           ? 'Сумма вероятностей должна быть ≤ 100%'
                           : 'Превышен лимит! Уменьшите вероятности.',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: isValid ? Colors.grey.shade600 : Colors.red,
                       ),
                     ),
@@ -1053,17 +1059,17 @@ class _LoyaltyGamificationSettingsPageState
               Text(
                 '${total.toStringAsFixed(0)}%',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                   color: isValid ? Colors.green : Colors.red,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Прогресс бар
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
             child: LinearProgressIndicator(
               value: (total / 100).clamp(0.0, 1.0),
               backgroundColor: Colors.grey.shade200,
@@ -1082,50 +1088,50 @@ class _LoyaltyGamificationSettingsPageState
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Icon(Icons.settings, color: _primaryColor, size: 20),
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Основные настройки',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Включено/выключено
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: _wheelSettings.enabled
                     ? Colors.green.withOpacity(0.1)
                     : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Колесо удачи'),
+                title: Text('Колесо удачи'),
                 subtitle: Text(
                   _wheelSettings.enabled
                       ? 'Клиенты могут крутить колесо'
@@ -1140,7 +1146,7 @@ class _LoyaltyGamificationSettingsPageState
                 activeColor: Colors.green,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Напитков для прокрутки
             TextField(
               controller: _freeDrinksPerSpinController,
@@ -1149,9 +1155,9 @@ class _LoyaltyGamificationSettingsPageState
                 labelText: 'Напитков для прокрутки',
                 helperText: 'Сколько бесплатных напитков нужно для 1 спина',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                prefixIcon: const Icon(Icons.local_cafe),
+                prefixIcon: Icon(Icons.local_cafe),
               ),
             ),
           ],
@@ -1164,20 +1170,20 @@ class _LoyaltyGamificationSettingsPageState
     final sector = _wheelSettings.sectors[index];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1189,62 +1195,62 @@ class _LoyaltyGamificationSettingsPageState
                   height: 36,
                   decoration: BoxDecoration(
                     color: sector.color,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     boxShadow: [
                       BoxShadow(
                         color: sector.color.withOpacity(0.4),
                         blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
                   child: Center(
                     child: Text(
                       '${index + 1}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _sectorTextControllers[index],
                     decoration: InputDecoration(
                       labelText: 'Текст приза',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       isDense: true,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Цвет сектора
                 InkWell(
                   onTap: () => _showSectorColorPicker(index),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   child: Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
                       color: sector.color,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: const Icon(Icons.palette, color: Colors.white, size: 18),
+                    child: Icon(Icons.palette, color: Colors.white, size: 18),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  icon: Icon(Icons.delete_outline, color: Colors.red),
                   onPressed: () => _removeSector(index),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 // Вероятность
@@ -1257,14 +1263,14 @@ class _LoyaltyGamificationSettingsPageState
                     decoration: InputDecoration(
                       labelText: 'Вероятность %',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       isDense: true,
-                      prefixIcon: const Icon(Icons.percent, size: 20),
+                      prefixIcon: Icon(Icons.percent, size: 20),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Тип приза
                 Expanded(
                   flex: 2,
@@ -1273,11 +1279,11 @@ class _LoyaltyGamificationSettingsPageState
                     decoration: InputDecoration(
                       labelText: 'Тип приза',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       isDense: true,
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                           value: 'bonus_points', child: Text('Баллы')),
                       DropdownMenuItem(
@@ -1297,7 +1303,7 @@ class _LoyaltyGamificationSettingsPageState
                     },
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Значение
                 Expanded(
                   flex: 1,
@@ -1307,7 +1313,7 @@ class _LoyaltyGamificationSettingsPageState
                     decoration: InputDecoration(
                       labelText: 'Кол-во',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       isDense: true,
                     ),
@@ -1323,19 +1329,19 @@ class _LoyaltyGamificationSettingsPageState
 
   void _showSectorColorPicker(int index) {
     final colors = [
-      const Color(0xFF4CAF50), const Color(0xFF2196F3),
-      const Color(0xFFFF9800), const Color(0xFF9C27B0),
-      const Color(0xFFF44336), const Color(0xFF795548),
-      const Color(0xFF00BCD4), const Color(0xFFE91E63),
-      const Color(0xFFFFEB3B), const Color(0xFF8BC34A),
-      const Color(0xFF3F51B5), const Color(0xFF009688),
+      Color(0xFF4CAF50), Color(0xFF2196F3),
+      Color(0xFFFF9800), Color(0xFF9C27B0),
+      Color(0xFFF44336), Color(0xFF795548),
+      Color(0xFF00BCD4), Color(0xFFE91E63),
+      Color(0xFFFFEB3B), Color(0xFF8BC34A),
+      Color(0xFF3F51B5), Color(0xFF009688),
     ];
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выберите цвет'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Выберите цвет'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         content: Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -1354,13 +1360,13 @@ class _LoyaltyGamificationSettingsPageState
                 });
                 Navigator.of(context).pop();
               },
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               child: Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: isSelected
                       ? Border.all(color: Colors.black, width: 3)
                       : null,
@@ -1368,12 +1374,12 @@ class _LoyaltyGamificationSettingsPageState
                     BoxShadow(
                       color: color.withOpacity(0.4),
                       blurRadius: 4,
-                      offset: const Offset(0, 2),
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check, color: Colors.white)
+                    ? Icon(Icons.check, color: Colors.white)
                     : null,
               ),
             );
@@ -1410,7 +1416,7 @@ class _LoyaltyGamificationSettingsPageState
     if (_wheelSettings.sectors.length <= 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
               Icon(Icons.warning, color: Colors.white),
               SizedBox(width: 12),
@@ -1419,7 +1425,7 @@ class _LoyaltyGamificationSettingsPageState
           ),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
       return;

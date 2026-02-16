@@ -5,6 +5,7 @@ import '../services/biometric_service.dart';
 import '../widgets/pin_input_widget.dart';
 import '../../../features/clients/pages/registration_page.dart';
 import 'forgot_pin_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ввода PIN-кода
 ///
@@ -34,9 +35,9 @@ class _PinEntryPageState extends State<PinEntryPage> {
   final BiometricService _biometricService = BiometricService();
 
   // Брендовые цвета Arabica
-  static const Color _primaryColor = Color(0xFF1A4D4D);
-  static const Color _primaryDark = Color(0xFF0D3333);
-  static const Color _accentGold = Color(0xFFD4AF37);
+  static final Color _primaryColor = Color(0xFF1A4D4D);
+  static final Color _primaryDark = Color(0xFF0D3333);
+  static final Color _accentGold = Color(0xFFD4AF37);
 
   bool _isLoading = false;
   bool _showError = false;
@@ -99,7 +100,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
         _clearPin = true;
       });
 
-      Future.delayed(const Duration(milliseconds: 100), () {
+      Future.delayed(Duration(milliseconds: 100), () {
         if (mounted) {
           setState(() {
             _clearPin = false;
@@ -123,11 +124,11 @@ class _PinEntryPageState extends State<PinEntryPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Не сейчас'),
+            child: Text('Не сейчас'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Включить'),
+            child: Text('Включить'),
           ),
         ],
       ),
@@ -158,11 +159,11 @@ class _PinEntryPageState extends State<PinEntryPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Отмена'),
+              child: Text('Отмена'),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Включить'),
+              child: Text('Включить'),
             ),
           ],
         ),
@@ -222,18 +223,18 @@ class _PinEntryPageState extends State<PinEntryPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выход'),
-        content: const Text(
+        title: Text('Выход'),
+        content: Text(
           'Вы уверены, что хотите выйти? Для повторного входа потребуется подтверждение через Telegram.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Выйти'),
+            child: Text('Выйти'),
           ),
         ],
       ),
@@ -245,7 +246,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const RegistrationPage(),
+          builder: (context) => RegistrationPage(),
         ),
       );
     }
@@ -255,18 +256,18 @@ class _PinEntryPageState extends State<PinEntryPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Забыли PIN?'),
-        content: const Text(
+        title: Text('Забыли PIN?'),
+        content: Text(
           'Для сброса PIN-кода мы отправим код подтверждения в Telegram.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Сбросить PIN'),
+            child: Text('Сбросить PIN'),
           ),
         ],
       ),
@@ -293,7 +294,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -308,119 +309,110 @@ class _PinEntryPageState extends State<PinEntryPage> {
         child: SafeArea(
           child: Stack(
             children: [
-              Column(
-                children: [
-                  // Верхняя панель с кнопкой выхода
-                  if (widget.showLogout)
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: Column(
+                  children: [
+                    // Верхняя панель с кнопкой выхода
+                    if (widget.showLogout)
+                      Align(
+                        alignment: Alignment.topRight,
                         child: TextButton(
                           onPressed: _logout,
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.white70,
                           ),
-                          child: const Text('Выйти'),
+                          child: Text('Выйти'),
+                        ),
+                      ),
+
+                    // Логотип Arabica
+                    SizedBox(height: 8),
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16.r),
+                        color: Colors.white.withOpacity(0.1),
+                        border: Border.all(
+                          color: _accentGold.withOpacity(0.4),
+                          width: 2,
+                        ),
+                      ),
+                      child: Image.asset(
+                        'assets/images/arabica_logo.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+
+                    // PIN ввод — занимает всё оставшееся пространство
+                    Expanded(
+                      child: PinInputWidget(
+                        pinLength: 4,
+                        title: 'Введите PIN-код',
+                        subtitle: 'Для входа в приложение',
+                        onCompleted: _onPinEntered,
+                        showError: _showError,
+                        errorMessage: _errorMessage,
+                        clear: _clearPin,
+                        lightTheme: true,
+                        accentColor: _accentGold,
+                      ),
+                    ),
+
+                    // Кнопка биометрии (показываем если доступна)
+                    if (_biometricAvailable)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: OutlinedButton.icon(
+                          onPressed: _onBiometricButtonPressed,
+                          icon: Icon(
+                            _biometricName == 'Face ID'
+                                ? Icons.face
+                                : Icons.fingerprint,
+                            color: _accentGold,
+                            size: 24,
+                          ),
+                          label: Text(
+                            _biometricEnabled
+                                ? 'Войти через $_biometricName'
+                                : 'Использовать $_biometricName',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: _accentGold.withOpacity(0.6),
+                              width: 1.5,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 10.h,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Забыли PIN
+                    TextButton(
+                      onPressed: _forgotPin,
+                      style: TextButton.styleFrom(
+                        foregroundColor: _accentGold,
+                      ),
+                      child: Text(
+                        'Забыли PIN-код?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-
-                  // Логотип Arabica
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: Colors.white.withOpacity(0.1),
-                      border: Border.all(
-                        color: _accentGold.withOpacity(0.4),
-                        width: 2,
-                      ),
-                    ),
-                    child: Image.asset(
-                      'assets/images/arabica_logo.png',
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // PIN ввод
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: PinInputWidget(
-                              pinLength: 4,
-                              title: 'Введите PIN-код',
-                              subtitle: 'Для входа в приложение',
-                              onCompleted: _onPinEntered,
-                              showError: _showError,
-                              errorMessage: _errorMessage,
-                              clear: _clearPin,
-                              lightTheme: true,
-                              accentColor: _accentGold,
-                            ),
-                          ),
-
-                          // Кнопка биометрии (показываем если доступна)
-                          if (_biometricAvailable) ...[
-                            const SizedBox(height: 16),
-                            OutlinedButton.icon(
-                              onPressed: _onBiometricButtonPressed,
-                              icon: Icon(
-                                _biometricName == 'Face ID'
-                                    ? Icons.face
-                                    : Icons.fingerprint,
-                                color: _accentGold,
-                                size: 28,
-                              ),
-                              label: Text(
-                                _biometricEnabled
-                                    ? 'Войти через $_biometricName'
-                                    : 'Использовать $_biometricName',
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                side: BorderSide(
-                                  color: _accentGold.withOpacity(0.6),
-                                  width: 1.5,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ],
-
-                          // Забыли PIN
-                          const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: _forgotPin,
-                            style: TextButton.styleFrom(
-                              foregroundColor: _accentGold,
-                            ),
-                            child: const Text(
-                              'Забыли PIN-код?',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                    SizedBox(height: 8),
+                  ],
+                ),
               ),
 
               // Индикатор загрузки
@@ -429,12 +421,12 @@ class _PinEntryPageState extends State<PinEntryPage> {
                   color: Colors.black45,
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(24.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
-                      child: const CircularProgressIndicator(
+                      child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(_accentGold),
                       ),
                     ),

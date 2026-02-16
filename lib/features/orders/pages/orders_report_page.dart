@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/order_service.dart';
 import 'employee_order_detail_page.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчётов по заказам клиентов (только для админа)
 /// Содержит 4 вкладки: Ожидают, Выполнено, Отказано, Не подтверждено
@@ -13,10 +14,10 @@ class OrdersReportPage extends StatefulWidget {
 }
 
 class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
 
@@ -166,16 +167,16 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: status == 'pending' ? () async {
             final result = await Navigator.push(
               context,
@@ -191,7 +192,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
             }
           } : null,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка статуса
@@ -200,7 +201,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                   height: 48,
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     statusIcon,
@@ -208,7 +209,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Информация о заказе
                 Expanded(
                   child: Column(
@@ -223,7 +224,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                                 : 'Заказ ${order['id'].toString().substring(0, 6)}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               color: Colors.white.withOpacity(0.9),
                             ),
                           ),
@@ -231,61 +232,61 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                             '${_formatPrice(totalPrice)} руб.',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               color: statusColor,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(Icons.store, size: 14, color: Colors.white.withOpacity(0.3)),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               shopAddress,
-                              style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
+                              style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Row(
                         children: [
                           Icon(Icons.person, size: 14, color: Colors.white.withOpacity(0.3)),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             clientName,
-                            style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
                           ),
                         ],
                       ),
                       // Дата создания
                       if (createdAt != null && createdAt.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Row(
                           children: [
                             Icon(Icons.access_time, size: 14, color: Colors.white.withOpacity(0.3)),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               _formatDateTime(createdAt),
-                              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                              style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
                             ),
                           ],
                         ),
                       ],
                       // Сотрудник
                       if (acceptedBy != null && acceptedBy.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Row(
                           children: [
-                            const Icon(Icons.person_outline, size: 14, color: Colors.green),
-                            const SizedBox(width: 4),
+                            Icon(Icons.person_outline, size: 14, color: Colors.green),
+                            SizedBox(width: 4),
                             Text(
                               'Принял: $acceptedBy',
-                              style: const TextStyle(
-                                fontSize: 11,
+                              style: TextStyle(
+                                fontSize: 11.sp,
                                 color: Colors.green,
                                 fontStyle: FontStyle.italic,
                               ),
@@ -294,16 +295,16 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                         ),
                       ],
                       if (rejectedBy != null && rejectedBy.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Row(
                           children: [
-                            const Icon(Icons.person_off, size: 14, color: Colors.red),
-                            const SizedBox(width: 4),
+                            Icon(Icons.person_off, size: 14, color: Colors.red),
+                            SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 'Отказал: $rejectedBy',
-                                style: const TextStyle(
-                                  fontSize: 11,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
                                   color: Colors.red,
                                   fontStyle: FontStyle.italic,
                                 ),
@@ -314,23 +315,23 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                       ],
                       // Просрочка
                       if (status == 'unconfirmed' && expiredAt != null) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                           decoration: BoxDecoration(
                             color: Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(6.r),
                             border: Border.all(color: Colors.orange.withOpacity(0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.timer_off, size: 14, color: Colors.orange),
-                              const SizedBox(width: 4),
-                              const Text(
+                              Icon(Icons.timer_off, size: 14, color: Colors.orange),
+                              SizedBox(width: 4),
+                              Text(
                                 'Не подтверждён вовремя',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                   color: Colors.orange,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -339,11 +340,11 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                           ),
                         ),
                       ],
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         _getItemsPreview(items),
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.white.withOpacity(0.4),
                         ),
                         maxLines: 2,
@@ -379,10 +380,10 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
               ),
               child: Icon(Icons.receipt_long, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
             ),
           ],
         ),
@@ -394,7 +395,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: orders.length,
         itemBuilder: (context, index) {
           return _buildOrderCard(orders[index], showStatusIcon: showStatusIcon);
@@ -421,14 +422,14 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
       child: Container(
         decoration: BoxDecoration(
           color: isSelected ? accentColor.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
             color: isSelected ? accentColor.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -437,29 +438,29 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                 color: isSelected ? accentColor : Colors.white.withOpacity(0.4),
                 size: 26,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   color: isSelected ? accentColor : Colors.white.withOpacity(0.5),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Text(
                   '$count',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
                     color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
                   ),
@@ -477,7 +478,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -490,7 +491,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -500,19 +501,19 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Отчёты (Заказы клиентов)',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -524,10 +525,10 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -536,7 +537,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
 
               // Кастомные вкладки в 2 ряда по 2
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: Column(
                   children: [
                     // Первый ряд: Ожидают + Выполнено
@@ -551,7 +552,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                             accentColor: _gold,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         Expanded(
                           child: _buildTabButton(
                             label: 'Выполнено',
@@ -563,7 +564,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     // Второй ряд: Отказано + Не подтв.
                     Row(
                       children: [
@@ -576,7 +577,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                             accentColor: Colors.red,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         Expanded(
                           child: _buildTabButton(
                             label: 'Не подтв.',
@@ -591,7 +592,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // Контент вкладок
               Expanded(

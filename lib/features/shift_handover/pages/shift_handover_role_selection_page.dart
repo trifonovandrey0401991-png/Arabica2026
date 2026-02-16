@@ -5,6 +5,7 @@ import '../../coffee_machine/pages/coffee_machine_form_page.dart';
 import '../services/pending_shift_handover_service.dart';
 import '../models/pending_shift_handover_report_model.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора типа сдачи смены
 class ShiftHandoverRoleSelectionPage extends StatefulWidget {
@@ -28,10 +29,10 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
   bool _isLoading = true;
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -84,59 +85,59 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: _emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.schedule,
                   color: Colors.orange,
                   size: 44,
                 ),
               ),
-              const SizedBox(height: 20),
-              const Text(
+              SizedBox(height: 20),
+              Text(
                 'Время для сдачи прошло',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Text(
                 'Ожидайте следующей возможности',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: GestureDetector(
                   onTap: () => Navigator.pop(ctx),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
                     decoration: BoxDecoration(
                       color: _gold.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: _gold.withOpacity(0.4)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Понятно',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -178,7 +179,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -199,40 +200,40 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                         ),
                       )
                     : SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                        padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 32.h),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Заголовок
-                            const Text(
+                            Text(
                               'Выберите тип:',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 20,
+                                fontSize: 20.sp,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            SizedBox(height: 6),
                             Text(
                               widget.shopAddress,
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.5),
-                                fontSize: 13,
+                                fontSize: 13.sp,
                               ),
                             ),
 
                             // Индикатор наличия pending отчёта
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
                             _buildPendingStatusIndicator(),
 
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
 
                             // Формирование конверта
                             _buildOptionCard(
                               title: 'Формирование конверта',
                               icon: Icons.mail_rounded,
                               description: 'Выручка, расходы, итог',
-                              accentColor: const Color(0xFF43A047),
+                              accentColor: Color(0xFF43A047),
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -245,26 +246,26 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                                 );
                               },
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
 
                             // Divider
                             Row(
                               children: [
                                 Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                                   child: Text(
                                     'Вопросы',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.4),
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                     ),
                                   ),
                                 ),
                                 Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
 
                             // Сдать смену
                             _buildOptionCard(
@@ -275,7 +276,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                               onTap: () => _onQuestionsCardTap(widget.isCurrentUserManager ? 'manager' : 'employee'),
                               isDisabled: !_hasPendingReport(),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
 
                             // Счётчик кофемашин
                             _buildOptionCard(
@@ -308,13 +309,13 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -322,13 +323,13 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
               'Сдача смены',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
               ),
@@ -345,15 +346,15 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
     final shiftName = currentShift == 'morning' ? 'Утренняя смена' : 'Вечерняя смена';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: hasPending
-            ? const Color(0xFF43A047).withOpacity(0.12)
+            ? Color(0xFF43A047).withOpacity(0.12)
             : Colors.orange.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: hasPending
-              ? const Color(0xFF43A047).withOpacity(0.3)
+              ? Color(0xFF43A047).withOpacity(0.3)
               : Colors.orange.withOpacity(0.3),
         ),
       ),
@@ -362,17 +363,17 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
         children: [
           Icon(
             hasPending ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-            color: hasPending ? const Color(0xFF43A047) : Colors.orange,
+            color: hasPending ? Color(0xFF43A047) : Colors.orange,
             size: 18,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Text(
             hasPending
                 ? '$shiftName: можно сдать'
                 : '$shiftName: время истекло',
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
-              fontSize: 13,
+              fontSize: 13.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -395,10 +396,10 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
         opacity: isDisabled ? 0.5 : 1.0,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(18),
+          padding: EdgeInsets.all(18.w),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(color: accentColor.withOpacity(0.3)),
           ),
           child: Row(
@@ -408,7 +409,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                 height: 52,
                 decoration: BoxDecoration(
                   color: accentColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                 ),
                 child: Icon(
                   icon,
@@ -416,25 +417,25 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                   color: accentColor,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 17,
+                        fontSize: 17.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       description,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.45),
-                        fontSize: 13,
+                        fontSize: 13.sp,
                       ),
                     ),
                   ],

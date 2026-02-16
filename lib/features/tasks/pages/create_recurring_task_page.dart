@@ -3,6 +3,7 @@ import '../models/recurring_task_model.dart';
 import '../models/task_model.dart' show TaskResponseType, TaskResponseTypeExtension;
 import '../services/recurring_task_service.dart';
 import 'recurring_recipient_selection_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница создания/редактирования циклической задачи
 class CreateRecurringTaskPage extends StatefulWidget {
@@ -27,21 +28,21 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
 
   TaskResponseType _responseType = TaskResponseType.text;
   final Set<int> _selectedDays = {};
-  TimeOfDay _startTime = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 18, minute: 0);
+  TimeOfDay _startTime = TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _endTime = TimeOfDay(hour: 18, minute: 0);
   final List<TimeOfDay> _reminderTimes = [
-    const TimeOfDay(hour: 9, minute: 0),
-    const TimeOfDay(hour: 12, minute: 0),
-    const TimeOfDay(hour: 17, minute: 0),
+    TimeOfDay(hour: 9, minute: 0),
+    TimeOfDay(hour: 12, minute: 0),
+    TimeOfDay(hour: 17, minute: 0),
   ];
   List<TaskRecipient> _recipients = [];
   bool _isSubmitting = false;
 
   // Цвета темы
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool get _isEditing => widget.editTask != null;
 
@@ -237,17 +238,17 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
                 Text(
                   _isEditing ? 'Задача обновлена' : 'Циклическая задача создана',
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                 ),
               ],
             ),
             backgroundColor: _emeraldDark,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
         Navigator.pop(context, true);
@@ -258,14 +259,14 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Ошибка: $e', style: const TextStyle(color: Colors.white))),
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Ошибка: $e', style: TextStyle(color: Colors.white))),
               ],
             ),
             backgroundColor: Colors.red[900],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -281,7 +282,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -296,28 +297,28 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
               children: [
                 // Custom AppBar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Row(
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(10.w),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
-                          child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                          child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       Expanded(
                         child: Text(
                           _isEditing ? 'Редактировать задачу' : 'Циклическая задача',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 20.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -328,7 +329,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
 
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -352,7 +353,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                                 },
                                 onChanged: (_) => setState(() {}),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               _buildTextField(
                                 controller: _descriptionController,
                                 label: 'Описание',
@@ -363,7 +364,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Карточка дней выполнения
                         _buildCard(
@@ -376,7 +377,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                           hasError: _selectedDays.isEmpty,
                           child: _buildDaySelector(),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Карточка периода выполнения
                         _buildCard(
@@ -385,7 +386,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                           subtitle: '${_formatTime(_startTime)} - ${_formatTime(_endTime)}',
                           child: _buildTimePeriodSelector(),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Карточка напоминаний
                         _buildCard(
@@ -394,7 +395,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                           subtitle: 'Push-уведомления в указанное время',
                           child: _buildRemindersSection(),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Карточка типа ответа
                         _buildCard(
@@ -402,7 +403,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                           title: 'Тип ответа',
                           child: _buildResponseTypeSelector(),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Карточка получателей
                         _buildCard(
@@ -413,11 +414,11 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                           hasError: _recipients.isEmpty,
                           child: _buildRecipientsSection(),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Информация о баллах
                         _buildInfoCard(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -444,7 +445,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
           color: hasError
               ? Colors.red.withOpacity(0.5)
@@ -456,18 +457,18 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(icon, color: _gold, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,19 +477,19 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (isRequired) ...[
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               '*',
                               style: TextStyle(
                                 color: hasError ? Colors.red : _gold,
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -496,14 +497,14 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                         ],
                       ),
                       if (subtitle != null) ...[
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           subtitle,
                           style: TextStyle(
                             color: hasError
                                 ? Colors.red[300]
                                 : Colors.white.withOpacity(0.6),
-                            fontSize: 12,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ],
@@ -518,7 +519,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
             color: Colors.white.withOpacity(0.1),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: child,
           ),
         ],
@@ -539,7 +540,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
         hintText: hint,
@@ -549,23 +550,23 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         filled: true,
         fillColor: Colors.white.withOpacity(0.06),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _gold, width: 2),
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: _gold, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: Colors.red),
         ),
-        errorStyle: const TextStyle(color: Colors.red),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        errorStyle: TextStyle(color: Colors.red),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
       ),
       validator: validator,
       onChanged: onChanged,
@@ -573,7 +574,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
   }
 
   Widget _buildDaySelector() {
-    const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    final days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
     return Wrap(
       spacing: 8,
@@ -591,12 +592,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
             });
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: Duration(milliseconds: 200),
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               color: isSelected ? _gold : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
                 color: isSelected ? _gold : Colors.white.withOpacity(0.1),
                 width: isSelected ? 2 : 1,
@@ -608,7 +609,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                 style: TextStyle(
                   color: isSelected ? Colors.black : Colors.white70,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 13,
+                  fontSize: 13.sp,
                 ),
               ),
             ),
@@ -629,7 +630,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12.w),
           child: Icon(Icons.arrow_forward, color: _gold.withOpacity(0.6)),
         ),
         Expanded(
@@ -650,12 +651,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Column(
@@ -664,15 +665,15 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
               label,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.6),
-                fontSize: 12,
+                fontSize: 12.sp,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               _formatTime(time),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -689,12 +690,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
           padding: EdgeInsets.only(bottom: index < 2 ? 12 : 0),
           child: InkWell(
             onTap: () => _selectTime(index),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Row(
@@ -704,36 +705,36 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                     height: 28,
                     decoration: BoxDecoration(
                       color: _gold.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Center(
                       child: Text(
                         '${index + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: _gold,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Text(
                     'Напоминание ${index + 1}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
-                      fontSize: 14,
+                      fontSize: 14.sp,
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Text(
                     _formatTime(_reminderTimes[index]),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Icon(
                     Icons.edit,
                     color: _gold.withOpacity(0.5),
@@ -760,11 +761,11 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
             child: GestureDetector(
               onTap: () => setState(() => _responseType = type),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                duration: Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(vertical: 14.h),
                 decoration: BoxDecoration(
                   color: isSelected ? _gold : Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
                     color: isSelected ? _gold : Colors.white.withOpacity(0.1),
                     width: isSelected ? 2 : 1,
@@ -777,12 +778,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                       color: isSelected ? Colors.black : Colors.white60,
                       size: 24,
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       type.displayName,
                       style: TextStyle(
                         color: isSelected ? Colors.black : Colors.white70,
-                        fontSize: 11,
+                        fontSize: 11.sp,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
                       textAlign: TextAlign.center,
@@ -813,12 +814,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
       children: [
         InkWell(
           onTap: _selectRecipients,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
                 color: _recipients.isEmpty
                     ? Colors.red.withOpacity(0.5)
@@ -828,12 +829,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _recipients.isEmpty
                         ? Colors.red.withOpacity(0.2)
                         : _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     _recipients.isEmpty ? Icons.person_add : Icons.group,
@@ -841,32 +842,32 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: _recipients.isEmpty
                       ? Text(
                           'Выберите получателей',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
-                            fontSize: 16,
+                            fontSize: 16.sp,
                           ),
                         )
                       : Text(
                           '${_recipients.length} ${_getRecipientsWord(_recipients.length)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                 ),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.chevron_right,
                     color: Colors.white70,
                     size: 20,
@@ -878,15 +879,15 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         ),
 
         if (_recipients.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: _recipients.map((r) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 border: Border.all(color: _gold.withOpacity(0.3)),
               ),
               child: Row(
@@ -894,19 +895,19 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                 children: [
                   Text(
                     r.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 13,
+                      fontSize: 13.sp,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   GestureDetector(
                     onTap: () {
                       setState(() {
                         _recipients.remove(r);
                       });
                     },
-                    child: const Icon(
+                    child: Icon(
                       Icons.close,
                       size: 16,
                       color: Colors.white70,
@@ -933,28 +934,28 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
 
   Widget _buildInfoCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: _gold.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: _gold.withOpacity(0.25)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.info_outline,
               color: _gold,
               size: 24,
             ),
           ),
-          const SizedBox(width: 16),
-          const Expanded(
+          SizedBox(width: 16),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -963,7 +964,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                   style: TextStyle(
                     color: _gold,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
                 SizedBox(height: 4),
@@ -971,7 +972,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                   'За выполнение: 0 баллов\nЗа невыполнение: -3 балла',
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ],
@@ -984,7 +985,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
 
   Widget _buildSubmitButton() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         border: Border(
@@ -1001,14 +1002,14 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
               foregroundColor: Colors.black,
               disabledBackgroundColor: Colors.grey[800],
               disabledForegroundColor: Colors.white54,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               elevation: _isFormValid ? 4 : 0,
             ),
             child: _isSubmitting
-                ? const SizedBox(
+                ? SizedBox(
                     height: 24,
                     width: 24,
                     child: CircularProgressIndicator(
@@ -1025,13 +1026,13 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                             : Icons.block,
                         size: 20,
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Text(
                         _isFormValid
                             ? (_isEditing ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'СОЗДАТЬ ЗАДАЧУ')
                             : 'ЗАПОЛНИТЕ ВСЕ ПОЛЯ',
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),

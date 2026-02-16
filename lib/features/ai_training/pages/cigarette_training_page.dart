@@ -13,6 +13,7 @@ import 'photo_templates_page.dart';
 import 'training_settings_page.dart';
 import 'pending_codes_page.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница обучения ИИ распознаванию сигарет - Премиум версия
 class CigaretteTrainingPage extends StatefulWidget {
@@ -47,11 +48,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   String _accuracySortMode = 'none'; // 'none', 'worst', 'best'
 
   // Цвета и градиенты
-  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
-  static const _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
-  static const _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
-  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
-  static const _redGradient = [Color(0xFFEF4444), Color(0xFFF87171)];
+  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
+  static final _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
+  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static final _redGradient = [Color(0xFFEF4444), Color(0xFFF87171)];
 
   /// Количество вкладок зависит от роли
   /// Для админа: Фото, Товары, Новые коды, Статистика, Настройки = 5
@@ -149,7 +150,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -172,7 +173,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               // Контент
               Expanded(
                 child: _isLoading || _tabController == null
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       )
                     : _error != null
@@ -198,36 +199,36 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Подсчёт сигарет',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -235,14 +236,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildTabBar() {
     if (_tabController == null) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -251,51 +252,51 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
-          gradient: const LinearGradient(colors: _greenGradient),
-          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(colors: _greenGradient),
+          borderRadius: BorderRadius.circular(12.r),
           boxShadow: [
             BoxShadow(
               color: _greenGradient[0].withOpacity(0.4),
               blurRadius: 8,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
-        indicatorPadding: const EdgeInsets.all(4),
+        indicatorPadding: EdgeInsets.all(4.w),
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white.withOpacity(0.5),
-        labelStyle: const TextStyle(
-          fontSize: 11,
+        labelStyle: TextStyle(
+          fontSize: 11.sp,
           fontWeight: FontWeight.w600,
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 11,
+        unselectedLabelStyle: TextStyle(
+          fontSize: 11.sp,
           fontWeight: FontWeight.w500,
         ),
         tabs: [
-          const Tab(
+          Tab(
             icon: Icon(Icons.add_a_photo, size: 20),
             text: 'Фото',
           ),
           // Вкладка "Товары" только для админа
           if (_isAdmin)
-            const Tab(
+            Tab(
               icon: Icon(Icons.inventory_2, size: 20),
               text: 'Товары',
             ),
           if (_isAdmin)
-            const Tab(
+            Tab(
               icon: Icon(Icons.new_releases, size: 20),
               text: 'Новые',
             ),
-          const Tab(
+          Tab(
             icon: Icon(Icons.bar_chart, size: 20),
             text: 'Статистика',
           ),
           if (_isAdmin)
-            const Tab(
+            Tab(
               icon: Icon(Icons.settings, size: 20),
               text: 'Настройки',
             ),
@@ -307,11 +308,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   Widget _buildErrorView() {
     return Center(
       child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(24),
+        margin: EdgeInsets.all(24.w),
+        padding: EdgeInsets.all(24.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: Colors.red.withOpacity(0.3),
             width: 1,
@@ -324,21 +325,21 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _redGradient),
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(colors: _redGradient),
+                borderRadius: BorderRadius.circular(16.r),
               ),
-              child: const Icon(Icons.error_outline, size: 32, color: Colors.white),
+              child: Icon(Icons.error_outline, size: 32, color: Colors.white),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _error ?? 'Неизвестная ошибка',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.7),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildGradientButton(
               onTap: _loadData,
               gradient: _greenGradient,
@@ -354,7 +355,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   /// Вкладка добавления фото
   Widget _buildAddPhotoTab() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       children: [
         // Информационная карточка
         _buildInfoCard(
@@ -367,12 +368,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               'Чем больше разных фото - тем точнее будет распознавание!',
           gradient: _blueGradient,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // Фильтр по группе
         if (_productGroups.isNotEmpty) ...[
           _buildGroupDropdown(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
 
         // Список товаров для добавления фото
@@ -562,13 +563,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return RefreshIndicator(
       onRefresh: _loadData,
       color: _greenGradient[0],
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Color(0xFF1A1A2E),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         children: [
           // Поиск по наименованию
           _buildSearchField(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Фильтры: группа и точность
           Row(
@@ -577,21 +578,21 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               if (_productGroups.isNotEmpty)
                 Expanded(child: _buildGroupDropdown()),
               if (_productGroups.isNotEmpty)
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
               // Сортировка по точности ИИ
               Expanded(child: _buildAccuracySortDropdown()),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Счётчик найденных товаров
           if (_searchQuery.isNotEmpty) ...[
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 12.h),
               child: Text(
                 'Найдено: ${filteredProducts.length} из ${_products.length}',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   color: Colors.white.withOpacity(0.6),
                 ),
               ),
@@ -610,7 +611,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -618,7 +619,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       ),
       child: TextField(
         controller: _searchController,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: 'Поиск (поддерживает опечатки)...',
           hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
@@ -641,7 +642,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
         onChanged: (value) {
           setState(() {
@@ -657,13 +658,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return RefreshIndicator(
       onRefresh: _loadData,
       color: _greenGradient[0],
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Color(0xFF1A1A2E),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         children: [
           // Общий прогресс
           _buildOverallProgressCard(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Статистика товаров
           Row(
@@ -676,7 +677,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   _blueGradient,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
                   'С фото',
@@ -687,7 +688,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -698,7 +699,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   _greenGradient,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
                   'Нужно фото',
@@ -709,11 +710,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Статистика фото
           _buildPhotoStatsCard(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Инструкция
           _buildInfoCard(
@@ -746,10 +747,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     required List<Color> gradient,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -765,26 +766,26 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 height: 40,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: gradient),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Icon(icon, color: Colors.white, size: 20),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             description,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.white.withOpacity(0.7),
               height: 1.5,
             ),
@@ -796,10 +797,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildGroupDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -809,12 +810,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         child: DropdownButton<String>(
           value: _selectedGroup,
           isExpanded: true,
-          dropdownColor: const Color(0xFF1A1A2E),
+          dropdownColor: Color(0xFF1A1A2E),
           icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
           hint: Row(
             children: [
               Icon(Icons.filter_list, color: Colors.white.withOpacity(0.5), size: 20),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 'Все группы',
                 style: TextStyle(color: Colors.white.withOpacity(0.7)),
@@ -827,14 +828,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               child: Row(
                 children: [
                   Icon(Icons.filter_list, color: Colors.white.withOpacity(0.5), size: 20),
-                  const SizedBox(width: 12),
-                  const Text('Все группы', style: TextStyle(color: Colors.white)),
+                  SizedBox(width: 12),
+                  Text('Все группы', style: TextStyle(color: Colors.white)),
                 ],
               ),
             ),
             ..._productGroups.map((group) => DropdownMenuItem(
               value: group,
-              child: Text(group, style: const TextStyle(color: Colors.white)),
+              child: Text(group, style: TextStyle(color: Colors.white)),
             )),
           ],
           onChanged: (value) {
@@ -851,12 +852,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   /// Dropdown сортировки по точности ИИ
   Widget _buildAccuracySortDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: _accuracySortMode != 'none'
             ? (_accuracySortMode == 'worst' ? _redGradient[0] : _greenGradient[0]).withOpacity(0.1)
             : Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: _accuracySortMode != 'none'
               ? (_accuracySortMode == 'worst' ? _redGradient[0] : _greenGradient[0]).withOpacity(0.3)
@@ -868,7 +869,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         child: DropdownButton<String>(
           value: _accuracySortMode,
           isExpanded: true,
-          dropdownColor: const Color(0xFF1A1A2E),
+          dropdownColor: Color(0xFF1A1A2E),
           icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
           items: [
             DropdownMenuItem(
@@ -876,8 +877,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               child: Row(
                 children: [
                   Icon(Icons.sort, color: Colors.white.withOpacity(0.5), size: 20),
-                  const SizedBox(width: 8),
-                  const Text('По прогрессу', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  SizedBox(width: 8),
+                  Text('По прогрессу', style: TextStyle(color: Colors.white, fontSize: 13.sp)),
                 ],
               ),
             ),
@@ -886,8 +887,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               child: Row(
                 children: [
                   Icon(Icons.trending_down, color: _redGradient[0], size: 20),
-                  const SizedBox(width: 8),
-                  Text('Худшая точность', style: TextStyle(color: _redGradient[0], fontSize: 13)),
+                  SizedBox(width: 8),
+                  Text('Худшая точность', style: TextStyle(color: _redGradient[0], fontSize: 13.sp)),
                 ],
               ),
             ),
@@ -896,8 +897,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               child: Row(
                 children: [
                   Icon(Icons.trending_up, color: _greenGradient[0], size: 20),
-                  const SizedBox(width: 8),
-                  Text('Лучшая точность', style: TextStyle(color: _greenGradient[0], fontSize: 13)),
+                  SizedBox(width: 8),
+                  Text('Лучшая точность', style: TextStyle(color: _greenGradient[0], fontSize: 13.sp)),
                 ],
               ),
             ),
@@ -917,10 +918,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final progressColor = _getProgressGradient(_stats.overallProgress);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -936,16 +937,16 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 height: 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: progressColor),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(Icons.trending_up, color: Colors.white, size: 24),
+                child: Icon(Icons.trending_up, color: Colors.white, size: 24),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: Text(
                   'Общий прогресс обучения',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
@@ -955,8 +956,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 shaderCallback: (bounds) => LinearGradient(colors: progressColor).createShader(bounds),
                 child: Text(
                   '${_stats.overallProgress.toStringAsFixed(1)}%',
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -964,15 +965,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
             height: 12,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(6.r),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(6.r),
               child: Stack(
                 children: [
                   FractionallySizedBox(
@@ -980,7 +981,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(colors: progressColor),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(6.r),
                         boxShadow: [
                           BoxShadow(
                             color: progressColor[0].withOpacity(0.5),
@@ -1006,10 +1007,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     List<Color> gradient,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -1022,34 +1023,34 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             height: 48,
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: gradient),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               boxShadow: [
                 BoxShadow(
                   color: gradient[0].withOpacity(0.4),
                   blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
             child: Icon(icon, color: Colors.white, size: 24),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           ShaderMask(
             shaderCallback: (bounds) => LinearGradient(colors: gradient).createShader(bounds),
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 28,
+              style: TextStyle(
+                fontSize: 28.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               color: Colors.white.withOpacity(0.6),
             ),
             textAlign: TextAlign.center,
@@ -1061,10 +1062,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildPhotoStatsCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -1079,23 +1080,23 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: _purpleGradient),
-                  borderRadius: BorderRadius.circular(10),
+                  gradient: LinearGradient(colors: _purpleGradient),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
-                child: const Icon(Icons.photo_library, color: Colors.white, size: 20),
+                child: Icon(Icons.photo_library, color: Colors.white, size: 20),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Загружено фотографий',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -1139,17 +1140,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           height: 40,
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: gradient),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         ShaderMask(
           shaderCallback: (bounds) => LinearGradient(colors: gradient).createShader(bounds),
           child: Text(
             '$value',
-            style: const TextStyle(
-              fontSize: 24,
+            style: TextStyle(
+              fontSize: 24.sp,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -1158,7 +1159,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: Colors.white.withOpacity(0.6),
           ),
         ),
@@ -1173,10 +1174,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final countingGradient = _getProgressGradient(product.countingProgress);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -1186,9 +1187,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         color: Colors.transparent,
         child: InkWell(
           onTap: forUpload ? () => _showPhotoTypeDialog(product) : () => _showProductDetails(product),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Column(
               children: [
                 // Заголовок: иконка + название + кнопка справа
@@ -1202,12 +1203,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         gradient: product.productPhotoUrl == null
                             ? LinearGradient(colors: progressGradient)
                             : null,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         boxShadow: [
                           BoxShadow(
                             color: progressGradient[0].withOpacity(0.3),
                             blurRadius: 6,
-                            offset: const Offset(0, 2),
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
@@ -1222,7 +1223,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(colors: progressGradient),
                                 ),
-                                child: const Icon(Icons.inventory_2, color: Colors.white, size: 22),
+                                child: Icon(Icons.inventory_2, color: Colors.white, size: 22),
                               ),
                             )
                           : Icon(
@@ -1233,7 +1234,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               size: 22,
                             ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
 
                     // Название товара
                     Expanded(
@@ -1243,8 +1244,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                           Text(
                             product.productName,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -1256,22 +1257,22 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               product.productGroup,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: Colors.white.withOpacity(0.5),
                               ),
                             ),
                           if (product.barcodes.length > 1)
                             Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              margin: EdgeInsets.only(top: 4.h),
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Text(
                                 '${product.barcodes.length} шт-кодов',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 10.sp,
                                   color: Colors.white.withOpacity(0.6),
                                 ),
                               ),
@@ -1279,7 +1280,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
 
                     // Кнопка добавления фото или Toggle ИИ
                     if (forUpload)
@@ -1288,7 +1289,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         height: 44,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: Icon(
                           Icons.camera_alt,
@@ -1299,10 +1300,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     else if (_isAdmin)
                       _buildAiToggle(product)
                     else
-                      const SizedBox(width: 44), // Placeholder для выравнивания
+                      SizedBox(width: 44), // Placeholder для выравнивания
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
 
                 // Прогресс-бары
                 // Раздельный прогресс: крупный план
@@ -1313,7 +1314,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   gradient: recountGradient,
                   isComplete: product.isRecountComplete,
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 // Раздельный прогресс: выкладка (per-shop)
                 if (_isAdmin)
                   _buildShopsSummaryRow(product, displayGradient)
@@ -1321,7 +1322,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   _buildShopProgressRow(product, displayGradient)
                 else
                   _buildNoShopSelectedRow(),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 // Прогресс: пересчёт (counting) - фото с пересчёта для обучения
                 _buildCountingProgressRow(product, countingGradient),
               ],
@@ -1344,10 +1345,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final mainColor = isComplete ? _greenGradient[0] : gradient[0];
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1356,16 +1357,16 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           Row(
             children: [
               Icon(icon, size: 20, color: mainColor),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Container(
                   height: 8,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(4.r),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(4.r),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
                       widthFactor: progress.clamp(0.0, 1.0),
@@ -1380,7 +1381,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Вторая строка: статистика (центрировано)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1388,13 +1389,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w600,
                   color: mainColor,
                 ),
               ),
               if (isComplete) ...[
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
               ],
             ],
@@ -1418,12 +1419,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _showShopDetailsDialog(product),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Column(
@@ -1433,16 +1434,16 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Row(
                 children: [
                   Icon(Icons.store, size: 20, color: mainColor),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       height: 8,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4.r),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4.r),
                         child: FractionallySizedBox(
                           alignment: Alignment.centerLeft,
                           widthFactor: progress.clamp(0.0, 1.0),
@@ -1455,11 +1456,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Icon(Icons.chevron_right, size: 18, color: Colors.white.withOpacity(0.5)),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               // Вторая строка: статистика и бейджи (центрировано)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1467,17 +1468,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   Text(
                     '$ready/$total маг.',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
                       color: mainColor,
                     ),
                   ),
                   if (isComplete) ...[
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
                   ],
                   if (product.displayAccuracy != null) ...[
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     _buildAccuracyBadge(product.displayAccuracy!, product.displayAttempts),
                   ],
                 ],
@@ -1504,10 +1505,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final mainColor = isComplete ? _greenGradient[0] : shopGradient[0];
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1516,16 +1517,16 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           Row(
             children: [
               Icon(Icons.grid_view, size: 20, color: mainColor),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Container(
                   height: 8,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(4.r),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(4.r),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
                       widthFactor: progress.clamp(0.0, 1.0),
@@ -1540,7 +1541,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Вторая строка: статистика (центрировано)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1548,13 +1549,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Text(
                 '${shopStats.displayPhotosCount}/${shopStats.requiredDisplayPhotos}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w600,
                   color: mainColor,
                 ),
               ),
               if (isComplete) ...[
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
               ],
             ],
@@ -1571,12 +1572,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       color: Colors.transparent,
       child: InkWell(
         onTap: _showShopSelectionDialog,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
             color: _orangeGradient[0].withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             border: Border.all(color: _orangeGradient[0].withOpacity(0.3)),
           ),
           child: Column(
@@ -1585,17 +1586,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Row(
                 children: [
                   Icon(Icons.warning_amber, size: 20, color: _orangeGradient[0]),
-                  const Spacer(),
+                  Spacer(),
                   Icon(Icons.chevron_right, size: 18, color: _orangeGradient[0]),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               // Вторая строка: текст (центрировано)
               Text(
                 'Выберите магазин',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w600,
                   color: _orangeGradient[0],
                 ),
@@ -1620,12 +1621,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       color: Colors.transparent,
       child: InkWell(
         onTap: hasPhotos ? () => _showCountingSamplesDialog(product) : null,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
             color: hasPhotos ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.02),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             border: hasPhotos ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
           ),
           child: Column(
@@ -1635,16 +1636,16 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Row(
                 children: [
                   Icon(Icons.calculate, size: 20, color: mainColor),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       height: 8,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4.r),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4.r),
                         child: FractionallySizedBox(
                           alignment: Alignment.centerLeft,
                           widthFactor: progress.clamp(0.0, 1.0),
@@ -1658,12 +1659,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     ),
                   ),
                   if (hasPhotos) ...[
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(Icons.chevron_right, size: 18, color: Colors.white.withOpacity(0.5)),
                   ],
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               // Вторая строка: статистика и бейджи (центрировано)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1671,36 +1672,36 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   Text(
                     '${product.countingPhotosCount}/${product.requiredCountingPhotos}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
                       color: mainColor,
                     ),
                   ),
                   if (isComplete) ...[
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
                   ],
                   if (product.countingAccuracy != null) ...[
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     _buildAccuracyBadge(product.countingAccuracy!, product.countingAttempts),
                   ],
                   if (hasPending) ...[
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                       decoration: BoxDecoration(
                         color: Colors.amber.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.hourglass_empty, size: 12, color: Colors.amber[300]),
-                          const SizedBox(width: 3),
+                          SizedBox(width: 3),
                           Text(
                             '+${product.pendingCountingPhotosCount}',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.amber[300],
                             ),
@@ -1750,10 +1751,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return Tooltip(
       message: 'Точность ИИ: $accuracy% (из $attempts попыток)',
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
         decoration: BoxDecoration(
           color: badgeColor,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(6.r),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1763,11 +1764,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               size: 12,
               color: textColor,
             ),
-            const SizedBox(width: 3),
+            SizedBox(width: 3),
             Text(
               '$accuracy%',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 11.sp,
                 fontWeight: FontWeight.bold,
                 color: textColor,
               ),
@@ -1784,7 +1785,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),
     );
@@ -1807,19 +1808,19 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           maxChildSize: 0.95,
           expand: false,
           builder: (context, scrollController) => Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
               ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
             ),
             child: Column(
               children: [
                 // Заголовок
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     children: [
                       Container(
@@ -1827,29 +1828,29 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         height: 4,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius: BorderRadius.circular(2.r),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: EdgeInsets.all(10.w),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: _greenGradient),
-                              borderRadius: BorderRadius.circular(12),
+                              gradient: LinearGradient(colors: _greenGradient),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
-                            child: const Icon(Icons.calculate, color: Colors.white, size: 24),
+                            child: Icon(Icons.calculate, color: Colors.white, size: 24),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Фото пересчёта',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 18.sp,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
                                   ),
@@ -1857,7 +1858,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                 Text(
                                   product.productName,
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 13.sp,
                                     color: Colors.white.withOpacity(0.6),
                                   ),
                                   maxLines: 1,
@@ -1868,7 +1869,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                           ),
                           IconButton(
                             onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close, color: Colors.white),
+                            icon: Icon(Icons.close, color: Colors.white),
                           ),
                         ],
                       ),
@@ -1885,12 +1886,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             children: [
                               Icon(Icons.photo_library_outlined,
                                   size: 64, color: Colors.white.withOpacity(0.3)),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Text(
                                 'Нет загруженных фото',
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.5),
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                 ),
                               ),
                             ],
@@ -1898,7 +1899,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         )
                       : ListView(
                           controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
                           children: [
                             // Секция "Ожидают подтверждения"
                             if (pendingSamples.isNotEmpty) ...[
@@ -1908,9 +1909,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                 count: pendingSamples.length,
                                 total: null,
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               _buildPendingCountingGrid(pendingSamples, setDialogState),
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
                             ],
 
                             // Секция "Подтверждённые"
@@ -1921,9 +1922,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                 count: countingSamples.length,
                                 total: product.requiredCountingPhotos,
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               _buildCountingPhotosGrid(countingSamples, product, setDialogState),
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
                             ],
                           ],
                         ),
@@ -1940,8 +1941,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   Widget _buildPendingCountingGrid(List<TrainingSample> samples, StateSetter setDialogState) {
     return GridView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
@@ -1959,7 +1960,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.amber.withOpacity(0.5)),
       ),
       child: Column(
@@ -1968,36 +1969,36 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           // Изображение
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
               child: AppCachedImage(
                 imageUrl: '${ApiConstants.serverUrl}${sample.imageUrl}',
                 fit: BoxFit.cover,
                 errorWidget: (context, error, stackTrace) => Container(
                   color: Colors.grey[800],
-                  child: const Icon(Icons.broken_image, color: Colors.white38, size: 40),
+                  child: Icon(Icons.broken_image, color: Colors.white38, size: 40),
                 ),
               ),
             ),
           ),
           // Бейдж "Ожидает"
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: EdgeInsets.symmetric(vertical: 4.h),
             color: Colors.amber.withOpacity(0.2),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.hourglass_empty, size: 12, color: Colors.amber),
                 SizedBox(width: 4),
                 Text(
                   'Ожидает',
-                  style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 10.sp, color: Colors.amber, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
           // Кнопки
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             child: Row(
               children: [
                 Expanded(
@@ -2008,20 +2009,20 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         setDialogState(() {});
                         _loadData(); // Обновить данные
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Фото подтверждено'), backgroundColor: Colors.green),
+                          SnackBar(content: Text('Фото подтверждено'), backgroundColor: Colors.green),
                         );
                         Navigator.pop(context); // Закрыть диалог для обновления
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: EdgeInsets.symmetric(vertical: 6.h),
                       minimumSize: Size.zero,
                     ),
-                    child: const Icon(Icons.check, size: 16, color: Colors.white),
+                    child: Icon(Icons.check, size: 16, color: Colors.white),
                   ),
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
@@ -2030,17 +2031,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         setDialogState(() {});
                         _loadData();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Фото отклонено'), backgroundColor: Colors.orange),
+                          SnackBar(content: Text('Фото отклонено'), backgroundColor: Colors.orange),
                         );
                         Navigator.pop(context);
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: EdgeInsets.symmetric(vertical: 6.h),
                       minimumSize: Size.zero,
                     ),
-                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                    child: Icon(Icons.close, size: 16, color: Colors.white),
                   ),
                 ),
               ],
@@ -2055,8 +2056,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   Widget _buildCountingPhotosGrid(List<TrainingSample> samples, CigaretteProduct product, StateSetter setDialogState) {
     return GridView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
@@ -2074,7 +2075,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: _greenGradient[0].withOpacity(0.5)),
       ),
       child: Column(
@@ -2085,7 +2086,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             child: Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
                   child: AppCachedImage(
                     imageUrl: '${ApiConstants.serverUrl}${sample.imageUrl}',
                     fit: BoxFit.cover,
@@ -2093,42 +2094,42 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     height: double.infinity,
                     errorWidget: (context, error, stackTrace) => Container(
                       color: Colors.grey[800],
-                      child: const Icon(Icons.broken_image, color: Colors.white38, size: 40),
+                      child: Icon(Icons.broken_image, color: Colors.white38, size: 40),
                     ),
                   ),
                 ),
                 // Бейдж "Подтверждено"
                 Positioned(
-                  top: 6,
-                  left: 6,
+                  top: 6.h,
+                  left: 6.w,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                     decoration: BoxDecoration(
                       color: _greenGradient[0].withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(4.r),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.check, size: 10, color: Colors.white),
                         SizedBox(width: 2),
-                        Text('OK', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text('OK', style: TextStyle(fontSize: 9.sp, color: Colors.white, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
                 ),
                 // Кнопка удаления
                 Positioned(
-                  top: 6,
-                  right: 6,
+                  top: 6.h,
+                  right: 6.w,
                   child: Material(
                     color: Colors.red.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(6.r),
                     child: InkWell(
                       onTap: () => _confirmDeleteCountingSample(sample, product, setDialogState),
-                      borderRadius: BorderRadius.circular(6),
-                      child: const Padding(
-                        padding: EdgeInsets.all(4),
+                      borderRadius: BorderRadius.circular(6.r),
+                      child: Padding(
+                        padding: EdgeInsets.all(4.w),
                         child: Icon(Icons.delete, size: 16, color: Colors.white),
                       ),
                     ),
@@ -2139,20 +2140,20 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           ),
           // Информация
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   sample.shopAddress ?? 'Неизвестный магазин',
-                  style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.7)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   _formatDate(sample.createdAt),
-                  style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.5)),
+                  style: TextStyle(fontSize: 9.sp, color: Colors.white.withOpacity(0.5)),
                 ),
               ],
             ),
@@ -2167,23 +2168,23 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        backgroundColor: Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Row(
           children: [
             Icon(Icons.delete_outline, color: Colors.red),
             SizedBox(width: 8),
             Text('Удалить фото?', style: TextStyle(color: Colors.white)),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Фото будет удалено из обучающего датасета.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -2193,13 +2194,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 setDialogState(() {});
                 _loadData();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Фото удалено'), backgroundColor: Colors.green),
+                  SnackBar(content: Text('Фото удалено'), backgroundColor: Colors.green),
                 );
                 Navigator.pop(context); // Закрыть диалог фото для обновления
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить', style: TextStyle(color: Colors.white)),
+            child: Text('Удалить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -2214,7 +2215,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   void _showShopSelectionDialog() {
     if (_shops.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Не удалось загрузить список магазинов'),
           backgroundColor: Colors.red,
         ),
@@ -2230,7 +2231,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.7,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -2239,55 +2240,55 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Color(0xFF16213E),
             ],
           ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Индикатор
             Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: EdgeInsets.only(top: 12.h),
               child: Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
             ),
             // Заголовок
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 children: [
                   Container(
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: _blueGradient),
-                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(colors: _blueGradient),
+                      borderRadius: BorderRadius.circular(16.r),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.store,
                       color: Colors.white,
                       size: 28,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: 12),
+                  Text(
                     'Выберите магазин',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Для загрузки фото выкладки нужно выбрать магазин',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.6),
                     ),
                     textAlign: TextAlign.center,
@@ -2298,14 +2299,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             // Список магазинов
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
                 itemCount: _shops.length,
                 itemBuilder: (context, index) {
                   final shop = _shops[index];
                   final isSelected = shop.address == _selectedShopAddress;
 
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: EdgeInsets.only(bottom: 8.h),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -2324,15 +2325,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               SnackBar(
                                 content: Row(
                                   children: [
-                                    const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                                    const SizedBox(width: 12),
+                                    Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                    SizedBox(width: 12),
                                     Expanded(
                                       child: Text('Выбран магазин: ${shop.name}'),
                                     ),
                                   ],
                                 ),
                                 backgroundColor: _greenGradient[0],
-                                duration: const Duration(seconds: 2),
+                                duration: Duration(seconds: 2),
                               ),
                             );
 
@@ -2340,14 +2341,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             _loadData();
                           }
                         },
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.all(12.w),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? _blueGradient[0].withOpacity(0.2)
                                 : Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(
                               color: isSelected
                                   ? _blueGradient[0]
@@ -2364,7 +2365,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                   gradient: LinearGradient(
                                     colors: isSelected ? _blueGradient : _purpleGradient,
                                   ),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(10.r),
                                 ),
                                 child: Icon(
                                   isSelected ? Icons.check : Icons.store,
@@ -2372,7 +2373,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                   size: 20,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2380,18 +2381,18 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                     Text(
                                       shop.name,
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 14.sp,
                                         fontWeight: FontWeight.w600,
                                         color: isSelected ? _blueGradient[0] : Colors.white,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    const SizedBox(height: 2),
+                                    SizedBox(height: 2),
                                     Text(
                                       shop.address,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         color: Colors.white.withOpacity(0.5),
                                       ),
                                       maxLines: 1,
@@ -2417,14 +2418,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             ),
             // Кнопка закрытия
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Отмена',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.6),
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ),
@@ -2445,7 +2446,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.7,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -2454,49 +2455,49 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Color(0xFF16213E),
             ],
           ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Индикатор
             Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: EdgeInsets.only(top: 12.h),
               child: Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
             ),
             // Заголовок
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 children: [
                   Text(
                     'Статус по магазинам',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     product.productName,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Colors.white.withOpacity(0.6),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: _getProgressGradient(
@@ -2505,12 +2506,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             : 0,
                         ),
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20.r),
                     ),
                     child: Text(
                       '${product.shopsWithAiReady}/${product.totalShops} магазинов готовы',
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -2522,18 +2523,18 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             // Список магазинов
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
                 itemCount: product.perShopDisplayStats.length,
                 itemBuilder: (context, index) {
                   final stats = product.perShopDisplayStats[index];
                   final shopGradient = _getProgressGradient(stats.progress);
 
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
+                    margin: EdgeInsets.only(bottom: 8.h),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
                         color: stats.isDisplayComplete
                             ? _greenGradient[0].withOpacity(0.5)
@@ -2550,7 +2551,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             gradient: LinearGradient(
                               colors: stats.isDisplayComplete ? _greenGradient : shopGradient,
                             ),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(
                             stats.isDisplayComplete ? Icons.check : Icons.store,
@@ -2558,22 +2559,22 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             size: 18,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 stats.shopName ?? stats.shopAddress,
-                                style: const TextStyle(
-                                  fontSize: 13,
+                                style: TextStyle(
+                                  fontSize: 13.sp,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Row(
                                 children: [
                                   Expanded(
@@ -2581,10 +2582,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                       height: 4,
                                       decoration: BoxDecoration(
                                         color: Colors.white.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(2),
+                                        borderRadius: BorderRadius.circular(2.r),
                                       ),
                                       child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(2),
+                                        borderRadius: BorderRadius.circular(2.r),
                                         child: FractionallySizedBox(
                                           alignment: Alignment.centerLeft,
                                           widthFactor: (stats.progress / 100).clamp(0.0, 1.0),
@@ -2599,11 +2600,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Text(
                                     '${stats.displayPhotosCount}/${stats.requiredDisplayPhotos}',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 11.sp,
                                       fontWeight: FontWeight.w600,
                                       color: stats.isDisplayComplete ? _greenGradient[0] : shopGradient[0],
                                     ),
@@ -2619,7 +2620,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),
@@ -2637,7 +2638,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             color: product.isAiActive
                 ? _greenGradient[0].withOpacity(0.2)
                 : Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(
               color: product.isAiActive
                   ? _greenGradient[0].withOpacity(0.5)
@@ -2655,11 +2656,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             tooltip: product.isAiActive ? 'ИИ проверка включена' : 'ИИ проверка выключена',
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           'ИИ',
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 9.sp,
             color: product.isAiActive ? _greenGradient[0] : Colors.white.withOpacity(0.4),
             fontWeight: FontWeight.w500,
           ),
@@ -2677,7 +2678,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       SnackBar(
         content: Row(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
@@ -2685,12 +2686,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(newStatus ? 'Включаю ИИ проверку...' : 'Выключаю ИИ проверку...'),
           ],
         ),
-        duration: const Duration(seconds: 1),
-        backgroundColor: const Color(0xFF1A1A2E),
+        duration: Duration(seconds: 1),
+        backgroundColor: Color(0xFF1A1A2E),
       ),
     );
 
@@ -2712,7 +2713,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 color: Colors.white,
                 size: 20,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   newStatus
@@ -2723,7 +2724,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             ],
           ),
           backgroundColor: newStatus ? _greenGradient[0] : Colors.grey[700],
-          duration: const Duration(seconds: 2),
+          duration: Duration(seconds: 2),
         ),
       );
 
@@ -2733,7 +2734,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.white, size: 20),
               SizedBox(width: 12),
@@ -2763,17 +2764,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: gradient),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             boxShadow: [
               BoxShadow(
                 color: gradient[0].withOpacity(0.4),
                 blurRadius: 8,
-                offset: const Offset(0, 2),
+                offset: Offset(0, 2),
               ),
             ],
           ),
@@ -2781,10 +2782,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2809,13 +2810,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20.w),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.circular(20),
+            color: Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.circular(20.r),
             border: Border.all(
               color: Colors.white.withOpacity(0.1),
               width: 1,
@@ -2826,8 +2827,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             children: [
               Text(
                 product.productName,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
@@ -2835,15 +2836,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Выберите тип фото для обучения:',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   color: Colors.white.withOpacity(0.6),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
 
               // Кнопка: Крупный план (общий для всех магазинов)
               _buildPhotoTypeOption(
@@ -2858,7 +2859,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 gradient: recountGradient,
                 isComplete: product.isRecountComplete,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               // Кнопка: Выкладка (per-shop)
               _buildPhotoTypeOption(
@@ -2870,15 +2871,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                       SnackBar(
                         content: Row(
                           children: [
-                            const Icon(Icons.warning_amber, color: Colors.white, size: 20),
-                            const SizedBox(width: 12),
-                            const Expanded(
+                            Icon(Icons.warning_amber, color: Colors.white, size: 20),
+                            SizedBox(width: 12),
+                            Expanded(
                               child: Text('Выберите магазин для загрузки фото выкладки'),
                             ),
                           ],
                         ),
                         backgroundColor: _orangeGradient[0],
-                        duration: const Duration(seconds: 3),
+                        duration: Duration(seconds: 3),
                       ),
                     );
                     return;
@@ -2898,7 +2899,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 gradient: hasShop ? displayGradient : _orangeGradient,
                 isComplete: shopStats?.isDisplayComplete ?? false,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -2928,12 +2929,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(
               color: isComplete ? _greenGradient[0].withOpacity(0.5) : gradient[0].withOpacity(0.3),
               width: 2,
@@ -2946,18 +2947,18 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 height: 48,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: isComplete ? _greenGradient : gradient),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(icon, color: Colors.white, size: 24),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -2965,11 +2966,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.white.withOpacity(0.5),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
@@ -2977,10 +2978,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             height: 4,
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(2),
+                              borderRadius: BorderRadius.circular(2.r),
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
+                              borderRadius: BorderRadius.circular(2.r),
                               child: FractionallySizedBox(
                                 alignment: Alignment.centerLeft,
                                 widthFactor: progress.clamp(0.0, 1.0),
@@ -2994,11 +2995,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                           ),
                         ),
                         if (progressLabel != null) ...[
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Text(
                             progressLabel,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.w600,
                               color: isComplete ? _greenGradient[0] : gradient[0],
                             ),
@@ -3014,10 +3015,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: _greenGradient),
+                    gradient: LinearGradient(colors: _greenGradient),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 18),
+                  child: Icon(Icons.check, color: Colors.white, size: 18),
                 ),
             ],
           ),
@@ -3115,7 +3116,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         maxChildSize: 0.9,
         expand: false,
         builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -3124,11 +3125,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 Color(0xFF16213E),
               ],
             ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
           ),
           child: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             children: [
               // Индикатор
               Center(
@@ -3137,11 +3138,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   height: 4,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
 
               // Заголовок
               Row(
@@ -3151,7 +3152,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     height: 56,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(colors: progressGradient),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                     child: Icon(
                       product.isTrainingComplete ? Icons.check_circle : Icons.hourglass_empty,
@@ -3159,15 +3160,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                       size: 28,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           product.productName,
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -3181,15 +3182,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Прогресс
               _buildDetailProgressCard(product),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Информация
               _buildDetailInfoCard(product),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
 
               // Кнопка добавления фото
               _buildGradientButton(
@@ -3204,7 +3205,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
               // Кнопка управления фото (только для админа)
               if (_isAdmin && product.trainingPhotosCount > 0) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildGradientButton(
                   onTap: () {
                     Navigator.pop(context);
@@ -3224,10 +3225,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildDetailProgressCard(CigaretteProduct product) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -3236,15 +3237,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Прогресс обучения',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 16.sp,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Крупный план
           _buildDetailProgressRow(
@@ -3255,7 +3256,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             progress: product.recountProgress,
             isComplete: product.isRecountComplete,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Выкладка
           _buildDetailProgressRow(
@@ -3266,24 +3267,24 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             progress: product.displayProgress,
             isComplete: product.isDisplayComplete,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Общий статус
           Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: _getProgressGradient(product.trainingProgress),
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
               ),
               child: Text(
                 product.isTrainingComplete
                     ? '✅ Обучение завершено!'
                     : 'Всего: ${product.trainingPhotosCount}/${product.requiredPhotosCount} фото',
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
@@ -3310,12 +3311,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         Row(
           children: [
             Icon(icon, size: 20, color: gradient[0]),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(color: Colors.white.withOpacity(0.8)),
             ),
-            const Spacer(),
+            Spacer(),
             Text(
               '$current/$total',
               style: TextStyle(
@@ -3324,20 +3325,20 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
             ),
             if (isComplete) ...[
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Icon(Icons.check_circle, color: _greenGradient[0], size: 18),
             ],
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Container(
           height: 8,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: (progress / 100).clamp(0.0, 1.0),
@@ -3355,10 +3356,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildDetailInfoCard(CigaretteProduct product) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -3376,7 +3377,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: 6.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -3386,7 +3387,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           ),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Colors.white,
             ),
@@ -3402,7 +3403,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),
     );
@@ -3436,19 +3437,19 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         maxChildSize: 0.95,
         expand: false,
         builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
             ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
           ),
           child: Column(
             children: [
               // Заголовок
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Column(
                   children: [
                     Container(
@@ -3456,29 +3457,29 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius: BorderRadius.circular(2.r),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(10.w),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: _purpleGradient),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(colors: _purpleGradient),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
-                          child: const Icon(Icons.photo_library, color: Colors.white, size: 24),
+                          child: Icon(Icons.photo_library, color: Colors.white, size: 24),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Фотографии',
-                                style: const TextStyle(
-                                  fontSize: 18,
+                                style: TextStyle(
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -3486,7 +3487,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               Text(
                                 product.productName,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 13.sp,
                                   color: Colors.white.withOpacity(0.6),
                                 ),
                                 maxLines: 1,
@@ -3497,7 +3498,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon: Icon(Icons.close, color: Colors.white),
                         ),
                       ],
                     ),
@@ -3514,12 +3515,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                           children: [
                             Icon(Icons.photo_library_outlined,
                                 size: 64, color: Colors.white.withOpacity(0.3)),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               'Нет загруженных фото',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.5),
-                                fontSize: 16,
+                                fontSize: 16.sp,
                               ),
                             ),
                           ],
@@ -3527,7 +3528,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                       )
                     : ListView(
                         controller: scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(horizontal: 16.w),
                         children: [
                           // Секция "Крупный план"
                           if (recountSamples.isNotEmpty) ...[
@@ -3537,9 +3538,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               count: recountSamples.length,
                               total: product.requiredRecountPhotos,
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             _buildPhotosGrid(recountSamples, product, isRecount: true),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                           ],
 
                           // Секция "Выкладка"
@@ -3550,9 +3551,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               count: displaySamples.length,
                               total: null, // общее количество не ограничено
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             _buildPhotosGrid(displaySamples, product, isRecount: false),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                           ],
                         ],
                       ),
@@ -3573,33 +3574,33 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
           ),
           child: Icon(icon, color: Colors.white, size: 18),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: 16.sp,
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
         ),
-        const Spacer(),
+        Spacer(),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Text(
             total != null ? '$count/$total' : '$count фото',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.white.withOpacity(0.8),
             ),
           ),
@@ -3611,8 +3612,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   Widget _buildPhotosGrid(List<TrainingSample> samples, CigaretteProduct product, {required bool isRecount}) {
     return GridView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
@@ -3635,11 +3636,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       onTap: () => _showPhotoPreview(sample, product),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(11.r),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -3649,17 +3650,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 fit: BoxFit.cover,
                 errorWidget: (_, __, ___) => Container(
                   color: Colors.grey[800],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                  child: Icon(Icons.broken_image, color: Colors.grey),
                 ),
               ),
 
               // Градиент снизу
               Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
+                left: 0.w,
+                right: 0.w,
+                bottom: 0.h,
                 child: Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: EdgeInsets.all(6.w),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
@@ -3672,8 +3673,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                   child: Text(
                     subtitle,
-                    style: const TextStyle(
-                      fontSize: 10,
+                    style: TextStyle(
+                      fontSize: 10.sp,
                       color: Colors.white,
                     ),
                     maxLines: 1,
@@ -3685,17 +3686,17 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
               // Кнопка удаления
               Positioned(
-                top: 4,
-                right: 4,
+                top: 4.h,
+                right: 4.w,
                 child: GestureDetector(
                   onTap: () => _confirmDeletePhoto(sample, product),
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: EdgeInsets.all(4.w),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.9),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close,
                       color: Colors.white,
                       size: 14,
@@ -3727,10 +3728,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             // Заголовок
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3742,30 +3743,30 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         color: Colors.white,
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         isRecount ? 'Крупный план' : 'Выкладка',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 16.sp,
                         ),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.white),
+                        icon: Icon(Icons.close, color: Colors.white),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                        constraints: BoxConstraints(),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
-                      fontSize: 13,
+                      fontSize: 13.sp,
                     ),
                   ),
                 ],
@@ -3783,7 +3784,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 errorWidget: (_, __, ___) => Container(
                   height: 200,
                   color: Colors.grey[800],
-                  child: const Center(
+                  child: Center(
                     child: Icon(Icons.broken_image, color: Colors.grey, size: 48),
                   ),
                 ),
@@ -3793,10 +3794,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             // Кнопка удаления
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
                 color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(16.r)),
               ),
               child: ElevatedButton.icon(
                 onPressed: () {
@@ -3806,13 +3807,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                icon: const Icon(Icons.delete),
-                label: const Text('Удалить фото'),
+                icon: Icon(Icons.delete),
+                label: Text('Удалить фото'),
               ),
             ),
           ],
@@ -3832,22 +3833,22 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              child: const Icon(Icons.warning, color: Colors.red, size: 24),
+              child: Icon(Icons.warning, color: Colors.red, size: 24),
             ),
-            const SizedBox(width: 12),
-            const Text(
+            SizedBox(width: 12),
+            Text(
               'Удалить фото?',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: TextStyle(color: Colors.white, fontSize: 18.sp),
             ),
           ],
         ),
@@ -3859,12 +3860,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               'Вы собираетесь удалить фото $typeLabel:',
               style: TextStyle(color: Colors.white.withOpacity(0.8)),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Row(
                 children: [
@@ -3873,22 +3874,22 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     color: Colors.white.withOpacity(0.6),
                     size: 20,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       positionLabel,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               'Прогресс обучения будет пересчитан.',
               style: TextStyle(
                 color: Colors.orange.withOpacity(0.8),
-                fontSize: 13,
+                fontSize: 13.sp,
               ),
             ),
           ],
@@ -3910,7 +3911,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -3923,7 +3924,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),
     );
@@ -3939,9 +3940,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                const Expanded(child: Text('Фото удалено')),
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text('Фото удалено')),
               ],
             ),
             backgroundColor: Colors.green,
@@ -3965,7 +3966,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error, color: Colors.white),
@@ -3986,8 +3987,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.error, color: Colors.white),
-              const SizedBox(width: 8),
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 8),
               Expanded(child: Text('Ошибка: $e')),
             ],
           ),

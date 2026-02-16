@@ -4,6 +4,7 @@ import '../services/client_service.dart';
 import '../../../shared/dialogs/send_message_dialog.dart';
 import 'client_chat_page.dart';
 import 'admin_management_dialog_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления клиентами
 class ClientsManagementPage extends StatefulWidget {
@@ -14,10 +15,10 @@ class ClientsManagementPage extends StatefulWidget {
 }
 
 class _ClientsManagementPageState extends State<ClientsManagementPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   List<Client> _clients = [];
   List<Client> _filteredClients = [];
@@ -107,10 +108,10 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
             color: _emeraldDark,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20.r),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
           child: Column(
@@ -118,16 +119,16 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
             children: [
               // Шапка
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [_emerald, _emeraldDark],
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20.r),
+                    topRight: Radius.circular(20.r),
                   ),
                 ),
                 child: Row(
@@ -137,17 +138,17 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                       height: 44,
                       decoration: BoxDecoration(
                         color: _gold.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: _gold.withOpacity(0.3)),
                       ),
-                      child: const Icon(Icons.person, color: _gold, size: 24),
+                      child: Icon(Icons.person, color: _gold, size: 24),
                     ),
-                    const SizedBox(width: 14),
+                    SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         client.name.isNotEmpty ? client.name : client.phone,
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -157,7 +158,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded),
+                      icon: Icon(Icons.close_rounded),
                       color: Colors.white70,
                       style: IconButton.styleFrom(
                         backgroundColor: Colors.white.withOpacity(0.1),
@@ -168,7 +169,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
               ),
               // Пункты меню
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 8.h),
                 child: Column(
                   children: [
                     _buildActionTile(
@@ -179,13 +180,13 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                     ),
                     _buildActionTile(
                       icon: Icons.chat,
-                      color: const Color(0xFF4FC3F7),
+                      color: Color(0xFF4FC3F7),
                       title: 'Начать диалог',
                       onTap: () => Navigator.pop(context, 'chat'),
                     ),
                     _buildActionTile(
                       icon: Icons.business,
-                      color: client.hasUnreadManagement ? Colors.orange : const Color(0xFF81C784),
+                      color: client.hasUnreadManagement ? Colors.orange : Color(0xFF81C784),
                       title: 'Связь с руководством',
                       badge: client.hasUnreadManagement ? 'NEW' : null,
                       onTap: () => Navigator.pop(context, 'management'),
@@ -220,7 +221,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           child: Row(
             children: [
               Container(
@@ -228,17 +229,17 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   border: Border.all(color: color.withOpacity(0.3)),
                 ),
                 child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 15.sp,
                     color: Colors.white.withOpacity(0.9),
                     fontWeight: FontWeight.w500,
                   ),
@@ -246,22 +247,22 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
               ),
               if (badge != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                     border: Border.all(color: Colors.orange.withOpacity(0.4)),
                   ),
                   child: Text(
                     badge,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.orange,
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 20),
             ],
           ),
@@ -323,29 +324,29 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Клиенты', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Клиенты', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(color: _gold.withOpacity(0.3)),
               ),
-              child: const Icon(Icons.send, size: 18, color: _gold),
+              child: Icon(Icons.send, size: 18, color: _gold),
             ),
             onPressed: () => _showSendMessageDialog(null),
             tooltip: 'Отправить всем',
           ),
           IconButton(
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Icon(Icons.refresh, size: 18, color: Colors.white.withOpacity(0.7)),
@@ -353,11 +354,11 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
             onPressed: _loadClients,
             tooltip: 'Обновить',
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -370,11 +371,11 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
             children: [
               // Поиск
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: TextField(
@@ -394,44 +395,44 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                             )
                           : null,
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                     ),
                   ),
                 ),
               ),
               // Счётчик
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                       decoration: BoxDecoration(
                         color: _gold.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                         border: Border.all(color: _gold.withOpacity(0.3)),
                       ),
                       child: Text(
                         '${_filteredClients.length}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: _gold,
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(
                       'клиентов',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.5),
-                        fontSize: 13,
+                        fontSize: 13.sp,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               // Список
               Expanded(
                 child: _isLoading
@@ -447,10 +448,10 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(20),
+                                  padding: EdgeInsets.all(20.w),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.06),
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(20.r),
                                     border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   ),
                                   child: Icon(
@@ -459,23 +460,23 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                     color: _gold.withOpacity(0.5),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   _clients.isEmpty
                                       ? 'Нет клиентов'
                                       : 'Клиенты не найдены',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 18.sp,
                                     color: Colors.white.withOpacity(0.7),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 if (_clients.isEmpty) ...[
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   Text(
                                     'Клиенты появятся после регистрации',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 14.sp,
                                       color: Colors.white.withOpacity(0.4),
                                     ),
                                   ),
@@ -484,17 +485,17 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(horizontal: 16.w),
                             itemCount: _filteredClients.length,
                             itemBuilder: (context, index) {
                               final client = _filteredClients[index];
                               final hasUnread = client.hasUnreadFromClient || client.hasUnreadManagement;
 
                               return Container(
-                                margin: const EdgeInsets.only(bottom: 10),
+                                margin: EdgeInsets.only(bottom: 10.h),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.06),
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14.r),
                                   border: Border.all(
                                     color: hasUnread
                                         ? Colors.red.withOpacity(0.4)
@@ -504,12 +505,12 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                 ),
                                 child: Material(
                                   color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14.r),
                                   child: InkWell(
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                     onTap: () => _showClientActions(client),
                                     child: Padding(
-                                      padding: const EdgeInsets.all(14),
+                                      padding: EdgeInsets.all(14.w),
                                       child: Row(
                                         children: [
                                           // Аватар
@@ -542,7 +543,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                         : client.phone.isNotEmpty ? client.phone[0] : '?',
                                                     style: TextStyle(
                                                       color: hasUnread ? Colors.white : _gold,
-                                                      fontSize: 20,
+                                                      fontSize: 20.sp,
                                                       fontWeight: FontWeight.bold,
                                                     ),
                                                   ),
@@ -561,7 +562,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                       shape: BoxShape.circle,
                                                       border: Border.all(color: _emeraldDark, width: 2),
                                                     ),
-                                                    child: const Center(
+                                                    child: Center(
                                                       child: Icon(
                                                         Icons.mail,
                                                         color: Colors.white,
@@ -572,7 +573,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                 ),
                                             ],
                                           ),
-                                          const SizedBox(width: 14),
+                                          SizedBox(width: 14),
                                           // Информация о клиенте
                                           Expanded(
                                             child: Column(
@@ -584,7 +585,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                       child: Text(
                                                         client.name.isNotEmpty ? client.name : 'Без имени',
                                                         style: TextStyle(
-                                                          fontSize: 15,
+                                                          fontSize: 15.sp,
                                                           fontWeight: FontWeight.bold,
                                                           color: hasUnread ? Colors.red[300] : Colors.white.withOpacity(0.9),
                                                         ),
@@ -594,14 +595,14 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                     ),
                                                     if (client.hasUnreadManagement)
                                                       Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                                        margin: const EdgeInsets.only(left: 8),
+                                                        padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                                                        margin: EdgeInsets.only(left: 8.w),
                                                         decoration: BoxDecoration(
                                                           color: Colors.blue.withOpacity(0.2),
-                                                          borderRadius: BorderRadius.circular(8),
+                                                          borderRadius: BorderRadius.circular(8.r),
                                                           border: Border.all(color: Colors.blue.withOpacity(0.4)),
                                                         ),
-                                                        child: const Row(
+                                                        child: Row(
                                                           mainAxisSize: MainAxisSize.min,
                                                           children: [
                                                             Icon(Icons.business, size: 11, color: Color(0xFF64B5F6)),
@@ -610,7 +611,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                               'Рук.',
                                                               style: TextStyle(
                                                                 color: Color(0xFF64B5F6),
-                                                                fontSize: 10,
+                                                                fontSize: 10.sp,
                                                                 fontWeight: FontWeight.bold,
                                                               ),
                                                             ),
@@ -619,7 +620,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                       ),
                                                   ],
                                                 ),
-                                                const SizedBox(height: 5),
+                                                SizedBox(height: 5),
                                                 Row(
                                                   children: [
                                                     Icon(
@@ -627,22 +628,22 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                       size: 14,
                                                       color: Colors.white.withOpacity(0.35),
                                                     ),
-                                                    const SizedBox(width: 5),
+                                                    SizedBox(width: 5),
                                                     Text(
                                                       client.phone,
                                                       style: TextStyle(
-                                                        fontSize: 13,
+                                                        fontSize: 13.sp,
                                                         color: Colors.white.withOpacity(0.5),
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 10),
+                                                    SizedBox(width: 10),
                                                     Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
                                                       decoration: BoxDecoration(
                                                         color: client.freeDrinksGiven > 0
                                                             ? _gold.withOpacity(0.15)
                                                             : Colors.white.withOpacity(0.06),
-                                                        borderRadius: BorderRadius.circular(8),
+                                                        borderRadius: BorderRadius.circular(8.r),
                                                         border: Border.all(
                                                           color: client.freeDrinksGiven > 0
                                                               ? _gold.withOpacity(0.3)
@@ -659,14 +660,14 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                                 ? _gold
                                                                 : Colors.white.withOpacity(0.4),
                                                           ),
-                                                          const SizedBox(width: 3),
+                                                          SizedBox(width: 3),
                                                           Text(
                                                             '${client.freeDrinksGiven}',
                                                             style: TextStyle(
                                                               color: client.freeDrinksGiven > 0
                                                                   ? _gold
                                                                   : Colors.white.withOpacity(0.4),
-                                                              fontSize: 11,
+                                                              fontSize: 11.sp,
                                                               fontWeight: FontWeight.bold,
                                                             ),
                                                           ),
@@ -676,23 +677,23 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                   ],
                                                 ),
                                                 if (hasUnread) ...[
-                                                  const SizedBox(height: 6),
+                                                  SizedBox(height: 6),
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                                                     decoration: BoxDecoration(
                                                       color: Colors.red.withOpacity(0.15),
-                                                      borderRadius: BorderRadius.circular(6),
+                                                      borderRadius: BorderRadius.circular(6.r),
                                                       border: Border.all(color: Colors.red.withOpacity(0.3)),
                                                     ),
                                                     child: Row(
                                                       mainAxisSize: MainAxisSize.min,
                                                       children: [
                                                         Icon(Icons.mark_email_unread, size: 12, color: Colors.red[300]),
-                                                        const SizedBox(width: 4),
+                                                        SizedBox(width: 4),
                                                         Text(
                                                           'Новое сообщение',
                                                           style: TextStyle(
-                                                            fontSize: 11,
+                                                            fontSize: 11.sp,
                                                             color: Colors.red[300],
                                                             fontWeight: FontWeight.w600,
                                                           ),
@@ -704,14 +705,14 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                               ],
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          SizedBox(width: 8),
                                           // Стрелка
                                           Container(
                                             width: 32,
                                             height: 32,
                                             decoration: BoxDecoration(
                                               color: Colors.white.withOpacity(0.06),
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius: BorderRadius.circular(8.r),
                                               border: Border.all(color: Colors.white.withOpacity(0.08)),
                                             ),
                                             child: Icon(

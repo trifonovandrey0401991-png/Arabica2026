@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring coffee machine counter points settings
 class CoffeeMachinePointsSettingsPage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _CoffeeMachinePointsSettingsPageState
   String _eveningEndTime = '22:00';
 
   // Gradient colors for this page (gold theme)
-  static const _gradientColors = [Color(0xFFD4AF37), Color(0xFFF0C850)];
+  static final _gradientColors = [Color(0xFFD4AF37), Color(0xFFF0C850)];
 
   @override
   void initState() {
@@ -83,7 +84,7 @@ class _CoffeeMachinePointsSettingsPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -92,7 +93,7 @@ class _CoffeeMachinePointsSettingsPageState
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -115,9 +116,9 @@ class _CoffeeMachinePointsSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за счётчик кофе'),
+        title: Text('Баллы за счётчик кофе'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -135,7 +136,7 @@ class _CoffeeMachinePointsSettingsPageState
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -152,7 +153,7 @@ class _CoffeeMachinePointsSettingsPageState
                           accentColor: Colors.green,
                           icon: Icons.check_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Not submitted points slider
                         SettingsSliderWidget(
@@ -167,26 +168,26 @@ class _CoffeeMachinePointsSettingsPageState
                           accentColor: Colors.red,
                           icon: Icons.cancel_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Time windows section
                         SettingsSectionTitle(
                           title: 'Временные окна для сдачи счётчика',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 8),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                           child: Text(
                             'Укажите временное окно, в течение которого сотрудник должен сдать показания счётчика кофемашин',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Color(0xFF607D8B),
                               height: 1.4,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TimeWindowsSection(
                           windows: [
                             TimeWindowPickerWidget(
@@ -215,14 +216,14 @@ class _CoffeeMachinePointsSettingsPageState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         BinaryPreviewWidget(
                           positiveLabel: 'Сдан',
                           negativeLabel: 'Не сдан',
@@ -231,7 +232,7 @@ class _CoffeeMachinePointsSettingsPageState
                           gradientColors: _gradientColors,
                           valueColumnTitle: 'Статус',
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -239,7 +240,7 @@ class _CoffeeMachinePointsSettingsPageState
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

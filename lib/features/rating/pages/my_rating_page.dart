@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/employee_rating_model.dart';
 import '../services/rating_service.dart';
 import '../widgets/rating_badge_widget.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница "Мой рейтинг" с историей за 3 месяца
 class MyRatingPage extends StatefulWidget {
@@ -21,6 +22,12 @@ class MyRatingPage extends StatefulWidget {
 class _MyRatingPageState extends State<MyRatingPage> {
   List<MonthlyRating> _history = [];
   bool _isLoading = true;
+
+  // Dark Emerald palette
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -47,24 +54,89 @@ class _MyRatingPageState extends State<MyRatingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Мой рейтинг'),
-        backgroundColor: const Color(0xFF004D40),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadHistory,
-              child: _history.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _history.length,
-                      itemBuilder: (context, index) {
-                        return _buildMonthCard(_history[index]);
-                      },
+      backgroundColor: _night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              Padding(
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.8), size: 20),
+                      ),
                     ),
-            ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Мой рейтинг',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _loadHistory,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Icon(Icons.refresh, color: Colors.white.withOpacity(0.8), size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12.h),
+              // Body
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold, strokeWidth: 3))
+                    : RefreshIndicator(
+                        onRefresh: _loadHistory,
+                        color: _gold,
+                        child: _history.isEmpty
+                            ? _buildEmptyState()
+                            : ListView.builder(
+                                padding: EdgeInsets.all(16.w),
+                                itemCount: _history.length,
+                                itemBuilder: (context, index) {
+                                  return _buildMonthCard(_history[index]);
+                                },
+                              ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -73,25 +145,33 @@ class _MyRatingPageState extends State<MyRatingPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.leaderboard_outlined,
-            size: 80,
-            color: Colors.grey[400],
+          Container(
+            padding: EdgeInsets.all(24.w),
+            decoration: BoxDecoration(
+              color: _emerald.withOpacity(0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.leaderboard_outlined,
+              size: 64,
+              color: Colors.white.withOpacity(0.4),
+            ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 20),
           Text(
             'Нет данных о рейтинге',
             style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.white.withOpacity(0.9),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Рейтинг появится после первых смен',
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+              fontSize: 14.sp,
+              color: Colors.white.withOpacity(0.5),
             ),
           ),
         ],
@@ -100,20 +180,20 @@ class _MyRatingPageState extends State<MyRatingPage> {
   }
 
   Widget _buildMonthCard(MonthlyRating rating) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: rating.isTop3 ? 4 : 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: rating.isTop3
-            ? BorderSide(
-                color: _getBorderColor(rating.position),
-                width: 2,
-              )
-            : BorderSide.none,
+    return Container(
+      margin: EdgeInsets.only(bottom: 16.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: rating.isTop3
+              ? _getBorderColor(rating.position).withOpacity(0.6)
+              : Colors.white.withOpacity(0.1),
+          width: rating.isTop3 ? 1.5 : 1,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -123,9 +203,10 @@ class _MyRatingPageState extends State<MyRatingPage> {
               children: [
                 Text(
                   rating.monthName,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white.withOpacity(0.95),
                   ),
                 ),
                 RatingBadgeInline(
@@ -134,7 +215,7 @@ class _MyRatingPageState extends State<MyRatingPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 16),
 
             // Статистика
             Row(
@@ -145,46 +226,47 @@ class _MyRatingPageState extends State<MyRatingPage> {
                   Icons.star,
                   Colors.amber,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 10),
                 _buildStatItem(
                   'Смен',
                   rating.shiftsCount.toString(),
                   Icons.work,
-                  Colors.blue,
+                  Colors.blue[300]!,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 10),
                 _buildStatItem(
                   'Рефералы',
                   rating.referralPoints.toInt().toString(),
                   Icons.person_add,
-                  Colors.green,
+                  Colors.green[400]!,
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 14),
 
             // Нормализованный рейтинг
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: const Color(0xFF004D40).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: _emerald.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.trending_up,
-                    size: 20,
-                    color: Color(0xFF004D40),
+                    size: 18,
+                    color: _gold,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
                     'Нормализованный рейтинг: ${rating.normalizedRating.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF004D40),
+                      color: Colors.white.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -193,26 +275,26 @@ class _MyRatingPageState extends State<MyRatingPage> {
 
             // Награда за топ-N (динамически: 1-10)
             if (rating.position >= 1 && rating.position <= 10) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: _getGradientColors(rating.position),
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Row(
                   children: [
                     Text(
                       rating.positionIcon,
-                      style: const TextStyle(fontSize: 24),
+                      style: TextStyle(fontSize: 24.sp),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _getRewardText(rating.position),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -235,25 +317,33 @@ class _MyRatingPageState extends State<MyRatingPage> {
     Color color,
   ) {
     return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(10.r),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 22),
+            SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.white.withOpacity(0.95),
+              ),
             ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: Colors.white.withOpacity(0.5),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -261,11 +351,11 @@ class _MyRatingPageState extends State<MyRatingPage> {
   Color _getBorderColor(int position) {
     switch (position) {
       case 1:
-        return const Color(0xFFFFD700);
+        return Color(0xFFFFD700);
       case 2:
-        return const Color(0xFFC0C0C0);
+        return Color(0xFFC0C0C0);
       case 3:
-        return const Color(0xFFCD7F32);
+        return Color(0xFFCD7F32);
       default:
         return Colors.transparent;
     }
@@ -274,11 +364,11 @@ class _MyRatingPageState extends State<MyRatingPage> {
   List<Color> _getGradientColors(int position) {
     switch (position) {
       case 1:
-        return [const Color(0xFFFFD700), const Color(0xFFFFA500)];
+        return [Color(0xFFFFD700), Color(0xFFFFA500)];
       case 2:
-        return [const Color(0xFFC0C0C0), const Color(0xFF808080)];
+        return [Color(0xFFC0C0C0), Color(0xFF808080)];
       case 3:
-        return [const Color(0xFFCD7F32), const Color(0xFF8B4513)];
+        return [Color(0xFFCD7F32), Color(0xFF8B4513)];
       default:
         return [Colors.grey, Colors.grey];
     }

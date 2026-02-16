@@ -4,6 +4,7 @@ import '../../shops/services/shop_service.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_shop_month_stats.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка всех магазинов для KPI
 class KPIShopsListPage extends StatefulWidget {
@@ -14,8 +15,8 @@ class KPIShopsListPage extends StatefulWidget {
 }
 
 class _KPIShopsListPageState extends State<KPIShopsListPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _gold = Color(0xFFD4AF37);
 
   List<Shop> _shops = [];
   bool _isLoading = true;
@@ -50,44 +51,24 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
           _isLoading = false;
         });
 
-        // Ленивая загрузка: предзагружаем первые 3 магазина ПОСЛЕДОВАТЕЛЬНО
-        // чтобы не перегружать сервер запросами
-        final preloadCount = shops.length > 3 ? 3 : shops.length;
-        for (var i = 0; i < preloadCount; i++) {
-          await _loadMonthlyStats(shops[i].address);
+        // BATCH: загружаем статистику ВСЕХ магазинов одним пакетом (8 запросов вместо 78)
+        final addresses = shops.map((s) => s.address).toList();
+        final batchStats = await KPIService.getAllShopsMonthlyStatsBatch(addresses);
+
+        if (mounted) {
+          setState(() {
+            _monthlyStatsCache.addAll(batchStats);
+            // Для магазинов без данных — пустой список
+            for (final shop in shops) {
+              _monthlyStatsCache.putIfAbsent(shop.address, () => []);
+            }
+          });
         }
       }
     } catch (e) {
       Logger.error('Ошибка загрузки списка магазинов', e);
       if (mounted) {
         setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _loadMonthlyStats(String shopAddress) async {
-    if (_loadingShops.contains(shopAddress) || _monthlyStatsCache.containsKey(shopAddress)) {
-      return;
-    }
-
-    _loadingShops.add(shopAddress);
-
-    try {
-      final stats = await KPIService.getShopMonthlyStats(shopAddress);
-      if (mounted) {
-        setState(() {
-          _monthlyStatsCache[shopAddress] = stats;
-          _loadingShops.remove(shopAddress);
-        });
-      }
-    } catch (e) {
-      Logger.error('Ошибка загрузки месячной статистики магазина: $shopAddress', e);
-      if (mounted) {
-        setState(() {
-          // Сохраняем пустой список чтобы показать "Нет данных" вместо бесконечных retry
-          _monthlyStatsCache[shopAddress] = [];
-          _loadingShops.remove(shopAddress);
-        });
       }
     }
   }
@@ -111,38 +92,38 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
           // Индикатор графика (если есть данные из графика)
           if (stats.hasScheduleData) ...[
             _buildScheduleBadge(stats),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
           ],
           _buildIndicatorWithFraction(
             Icons.access_time,
             stats.attendanceFraction,
             stats.attendancePercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.handshake,
             stats.shiftsFraction,
             stats.shiftsPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.calculate,
             stats.recountsFraction,
             stats.recountsPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.description,
             stats.rkosFraction,
             stats.rkosPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.mail,
             stats.envelopesFraction,
             stats.envelopesPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.payments,
             stats.shiftHandoversFraction,
@@ -158,10 +139,10 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
     final hasProblems = stats.lateArrivals > 0 || stats.missedDays > 0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
       decoration: BoxDecoration(
         color: hasProblems ? Colors.red.withOpacity(0.15) : Colors.green.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4.r),
         border: Border.all(
           color: hasProblems ? Colors.red.withOpacity(0.3) : Colors.green.withOpacity(0.3),
         ),
@@ -172,20 +153,20 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
           // Опоздания
           if (stats.lateArrivals > 0) ...[
             Icon(Icons.schedule, size: 10, color: Colors.orange),
-            const SizedBox(width: 2),
+            SizedBox(width: 2),
             Text(
               '${stats.lateArrivals}',
-              style: TextStyle(fontSize: 8, color: Colors.orange, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 8.sp, color: Colors.orange, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
           ],
           // Пропуски
           if (stats.missedDays > 0) ...[
             Icon(Icons.event_busy, size: 10, color: Colors.red),
-            const SizedBox(width: 2),
+            SizedBox(width: 2),
             Text(
               '${stats.missedDays}',
-              style: TextStyle(fontSize: 8, color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 8.sp, color: Colors.red, fontWeight: FontWeight.bold),
             ),
           ],
           // Если нет проблем - показываем галочку
@@ -207,16 +188,16 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: EdgeInsets.symmetric(horizontal: 2.w),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: Colors.white.withOpacity(0.5)),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             fraction,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 9.sp,
               color: fractionColor,
               fontWeight: FontWeight.bold,
             ),
@@ -227,7 +208,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
   }
 
   String _getMonthName(int month) {
-    const months = [
+    final months = [
       'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
     ];
@@ -238,14 +219,14 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
     final monthLabel = '${_getMonthName(stats.month)} ${stats.year}';
 
     return Container(
-      margin: const EdgeInsets.only(left: 40, right: 8, top: 2, bottom: 2),
+      margin: EdgeInsets.only(left: 40.w, right: 8.w, top: 2.h, bottom: 2.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -254,16 +235,16 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
+                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   monthLabel,
-                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                  style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
                 ),
               ],
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             _buildMonthIndicators(stats),
           ],
         ),
@@ -276,9 +257,9 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: EdgeInsets.all(12.0.w),
           child: TextField(
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: Colors.white),
             cursorColor: _gold,
             decoration: InputDecoration(
               hintText: 'Поиск магазина...',
@@ -287,7 +268,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
               filled: true,
               fillColor: Colors.white.withOpacity(0.08),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide.none,
               ),
             ),
@@ -297,7 +278,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
           ),
         ),
         _isLoading
-            ? const Expanded(
+            ? Expanded(
                 child: Center(child: CircularProgressIndicator(color: _gold)),
               )
             : _filteredShops.isEmpty
@@ -307,33 +288,27 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                         _searchQuery.isEmpty
                             ? 'Нет магазинов'
                             : 'Магазины не найдены',
-                        style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
+                        style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5)),
                       ),
                     ),
                   )
                 : Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
                       itemCount: _filteredShops.length,
                       itemBuilder: (context, index) {
                         final shop = _filteredShops[index];
                         final isExpanded = _expandedShops.contains(shop.address);
                         final monthlyStats = _monthlyStatsCache[shop.address];
 
-                        // Ленивая загрузка: загружаем статистику когда элемент становится видимым
-                        // НЕ добавляем в _loadingShops здесь - это делается внутри _loadMonthlyStats
-                        if (monthlyStats == null && !_loadingShops.contains(shop.address)) {
-                          _loadMonthlyStats(shop.address);
-                        }
-
                         return Column(
                           children: [
                             // Главная строка магазина
                             Container(
-                              margin: const EdgeInsets.symmetric(vertical: 2),
+                              margin: EdgeInsets.symmetric(vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(color: Colors.white.withOpacity(0.1)),
                               ),
                               child: Material(
@@ -345,28 +320,25 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                                         _expandedShops.remove(shop.address);
                                       } else {
                                         _expandedShops.add(shop.address);
-                                        if (!_monthlyStatsCache.containsKey(shop.address)) {
-                                          _loadMonthlyStats(shop.address);
-                                        }
                                       }
                                     });
                                   },
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14.r),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                                     child: Row(
                                       children: [
                                         // Иконка магазина
                                         CircleAvatar(
                                           radius: 16,
                                           backgroundColor: _emerald,
-                                          child: const Icon(
+                                          child: Icon(
                                             Icons.store,
                                             color: Colors.white,
                                             size: 16,
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
+                                        SizedBox(width: 8),
                                         // Адрес и показатели
                                         Expanded(
                                           child: Column(
@@ -378,13 +350,13 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                                                 shop.address,
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
+                                                  fontSize: 13.sp,
                                                   color: Colors.white.withOpacity(0.9),
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                              const SizedBox(height: 4),
+                                              SizedBox(height: 4),
                                               // Показатели под адресом
                                               monthlyStats != null && monthlyStats.isNotEmpty
                                                   ? _buildMonthIndicators(monthlyStats[0])
@@ -392,7 +364,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                                                       ? Text(
                                                           'Нет данных',
                                                           style: TextStyle(
-                                                            fontSize: 11,
+                                                            fontSize: 11.sp,
                                                             color: Colors.white.withOpacity(0.4),
                                                             fontStyle: FontStyle.italic,
                                                           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/shift_ai_verification_service.dart';
 import '../models/shift_ai_verification_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления товарами для ИИ проверки при пересменке
 class ShiftTrainingPage extends StatefulWidget {
@@ -79,7 +80,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка сохранения')),
+          SnackBar(content: Text('Ошибка сохранения')),
         );
       }
     } else {
@@ -99,7 +100,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -118,7 +119,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
               _buildGroupFilter(),
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       )
                     : _buildProductsList(),
@@ -132,31 +133,31 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Пересменка',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -164,12 +165,12 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
           IconButton(
             onPressed: _loadData,
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.refresh,
                 color: Colors.white,
                 size: 20,
@@ -188,20 +189,20 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
     final isTrained = _modelStatus['isTrained'] ?? false;
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFFF59E0B).withOpacity(0.2),
-            const Color(0xFFFBBF24).withOpacity(0.1),
+            Color(0xFFF59E0B).withOpacity(0.2),
+            Color(0xFFFBBF24).withOpacity(0.1),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: const Color(0xFFF59E0B).withOpacity(0.3),
+          color: Color(0xFFF59E0B).withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -214,30 +215,30 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                 icon: Icons.check_circle,
                 value: '$activeCount',
                 label: 'Активных',
-                color: const Color(0xFF10B981),
+                color: Color(0xFF10B981),
               ),
               _buildStatItem(
                 icon: Icons.inventory_2,
                 value: '$totalCount',
                 label: 'Всего',
-                color: const Color(0xFF6366F1),
+                color: Color(0xFF6366F1),
               ),
               _buildStatItem(
                 icon: Icons.photo_library,
                 value: '$trainingPhotos',
                 label: 'Фото',
-                color: const Color(0xFFF59E0B),
+                color: Color(0xFFF59E0B),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
             decoration: BoxDecoration(
               color: isTrained
-                  ? const Color(0xFF10B981).withOpacity(0.2)
-                  : const Color(0xFFEF4444).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+                  ? Color(0xFF10B981).withOpacity(0.2)
+                  : Color(0xFFEF4444).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -245,18 +246,18 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                 Icon(
                   isTrained ? Icons.check_circle : Icons.pending,
                   color: isTrained
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFFEF4444),
+                      ? Color(0xFF10B981)
+                      : Color(0xFFEF4444),
                   size: 16,
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text(
                   isTrained ? 'Модель обучена' : 'Модель не обучена',
                   style: TextStyle(
                     color: isTrained
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFEF4444),
-                    fontSize: 12,
+                        ? Color(0xFF10B981)
+                        : Color(0xFFEF4444),
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -281,16 +282,16 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
           height: 48,
           decoration: BoxDecoration(
             color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Icon(icon, color: color, size: 24),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 20.sp,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -298,7 +299,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
           label,
           style: TextStyle(
             color: Colors.white.withOpacity(0.6),
-            fontSize: 12,
+            fontSize: 12.sp,
           ),
         ),
       ],
@@ -308,7 +309,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
   Widget _buildGroupFilter() {
     return Container(
       height: 50,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: 16.w),
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
@@ -341,16 +342,16 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: EdgeInsets.only(right: 8.w),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFFF59E0B)
+              ? Color(0xFFF59E0B)
               : Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFFF59E0B)
+                ? Color(0xFFF59E0B)
                 : Colors.white.withOpacity(0.2),
             width: 1,
           ),
@@ -359,7 +360,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
           label,
           style: TextStyle(
             color: isSelected ? Colors.black : Colors.white,
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
@@ -378,20 +379,20 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
               size: 64,
               color: Colors.white.withOpacity(0.3),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Нет товаров',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.6),
-                fontSize: 16,
+                fontSize: 16.sp,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Добавьте товары в мастер-каталог',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.4),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -400,7 +401,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: _products.length,
       itemBuilder: (context, index) {
         final product = _products[index];
@@ -411,13 +412,13 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
 
   Widget _buildProductCard(ShiftTrainingProduct product) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: product.isAiActive
-              ? const Color(0xFF10B981).withOpacity(0.5)
+              ? Color(0xFF10B981).withOpacity(0.5)
               : Colors.white.withOpacity(0.1),
           width: 1,
         ),
@@ -426,9 +427,9 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _toggleProductAi(product),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Чекбокс
@@ -437,18 +438,18 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                   height: 28,
                   decoration: BoxDecoration(
                     color: product.isAiActive
-                        ? const Color(0xFF10B981)
+                        ? Color(0xFF10B981)
                         : Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                     border: Border.all(
                       color: product.isAiActive
-                          ? const Color(0xFF10B981)
+                          ? Color(0xFF10B981)
                           : Colors.white.withOpacity(0.3),
                       width: 2,
                     ),
                   ),
                   child: product.isAiActive
-                      ? const Icon(
+                      ? Icon(
                           Icons.check,
                           color: Colors.white,
                           size: 18,
@@ -456,7 +457,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                       : null,
                 ),
 
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
 
                 // Информация о товаре
                 Expanded(
@@ -465,22 +466,22 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                     children: [
                       Text(
                         product.productName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           Text(
                             product.barcode,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.5),
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                           ),
                           if (product.productGroup != null) ...[
@@ -488,14 +489,14 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                               ' • ',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.3),
-                                fontSize: 12,
+                                fontSize: 12.sp,
                               ),
                             ),
                             Text(
                               product.productGroup!,
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.5),
-                                fontSize: 12,
+                                fontSize: 12.sp,
                               ),
                             ),
                           ],
@@ -508,28 +509,28 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                 // Счётчик фото
                 if (product.trainingPhotosCount > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      color: Color(0xFFF59E0B).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.photo,
                           color: Color(0xFFF59E0B),
                           size: 14,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           '${product.trainingPhotosCount}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Color(0xFFF59E0B),
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

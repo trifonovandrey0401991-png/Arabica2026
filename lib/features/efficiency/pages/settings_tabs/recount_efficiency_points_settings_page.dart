@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring recount efficiency points settings (Пересчет - баллы эффективности)
 /// Не путать с RecountPointsSettingsPage из recount/pages - там настройки баллов верификации фото
@@ -30,7 +31,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
   int _adminReviewTimeout = 2; // Время на проверку админом (часы)
 
   // Gradient colors for this page (teal theme)
-  static const _gradientColors = [Color(0xFF00b09b), Color(0xFF96c93d)];
+  static final _gradientColors = [Color(0xFF00b09b), Color(0xFF96c93d)];
 
   @override
   void initState() {
@@ -91,7 +92,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -100,7 +101,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -144,9 +145,9 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за пересчет'),
+        title: Text('Баллы за пересчет'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -164,7 +165,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -181,7 +182,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                           accentColor: Colors.red,
                           icon: Icons.remove_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Zero threshold slider
                         SettingsSliderWidget(
@@ -197,7 +198,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                           accentColor: Colors.orange,
                           icon: Icons.adjust,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Max points slider
                         SettingsSliderWidget(
@@ -212,14 +213,14 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                           accentColor: Colors.green,
                           icon: Icons.add_circle_outline,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Time windows section
                         SettingsSectionTitle(
                           title: 'Временные окна сдачи пересчёта',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TimeWindowsSection(
                           windows: [
                             TimeWindowPickerWidget(
@@ -244,7 +245,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Missed penalty slider
                         SettingsSliderWidget(
@@ -259,29 +260,29 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                           accentColor: Colors.deepOrange,
                           icon: Icons.warning_amber_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Admin review timeout section
                         SettingsSectionTitle(
                           title: 'Время на проверку админом',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _buildAdminReviewTimeoutSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр расчета баллов',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         RatingPreviewWidget(
                           previewRatings: [1, 4, _zeroThreshold, 8, 10],
                           calculatePoints: _calculatePoints,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -289,7 +290,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -303,16 +304,16 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.purple.withOpacity(0.1),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -323,19 +324,19 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                 height: 44,
                 decoration: BoxDecoration(
                   color: Colors.purple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(Icons.admin_panel_settings, color: Colors.purple, size: 24),
+                child: Icon(Icons.admin_panel_settings, color: Colors.purple, size: 24),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Таймаут проверки',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF2D3436),
                       ),
@@ -343,7 +344,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                     Text(
                       'Время на оценку отчёта админом',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.grey[500],
                       ),
                     ),
@@ -351,24 +352,24 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [Colors.purple, Colors.deepPurple],
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.purple.withOpacity(0.3),
                       blurRadius: 8,
-                      offset: const Offset(0, 4),
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Text(
                   formatHours(_adminReviewTimeout),
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -376,7 +377,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: Colors.purple,
@@ -384,7 +385,7 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
               thumbColor: Colors.purple,
               overlayColor: Colors.purple.withOpacity(0.2),
               trackHeight: 6,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: 10),
             ),
             child: Slider(
               value: _adminReviewTimeout.toDouble(),
@@ -397,35 +398,35 @@ class _RecountEfficiencyPointsSettingsPageState extends State<RecountEfficiencyP
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('1 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('6 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('12 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('18 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('24 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('1 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('6 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('12 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('18 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('24 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
               color: Colors.amber.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.amber.withOpacity(0.3)),
             ),
             child: Row(
               children: [
                 Icon(Icons.info_outline, color: Colors.amber[700], size: 20),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Если админ не оценит отчёт за ${formatHours(_adminReviewTimeout)}, статус изменится на "Отклонено" и сотрудник получит штраф',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.amber[900],
                     ),
                   ),

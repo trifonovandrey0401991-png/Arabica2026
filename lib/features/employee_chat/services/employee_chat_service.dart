@@ -127,10 +127,11 @@ class EmployeeChatService {
         request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
       }
 
-      final bytes = await photoFile.readAsBytes();
-      final multipartFile = http.MultipartFile.fromBytes(
+      // image_picker с maxWidth/maxHeight уже конвертирует в JPEG
+      // Отправляем файл напрямую через fromPath для корректного MIME-типа
+      final multipartFile = await http.MultipartFile.fromPath(
         'file',
-        bytes,
+        photoFile.path,
         filename: 'chat_${DateTime.now().millisecondsSinceEpoch}.jpg',
         contentType: MediaType('image', 'jpeg'),
       );

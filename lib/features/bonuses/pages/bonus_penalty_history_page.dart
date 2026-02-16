@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/bonus_penalty_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class BonusPenaltyHistoryPage extends StatelessWidget {
   final String title;
@@ -15,8 +16,8 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
   });
 
   // Gradient colors
-  static const _bonusGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
-  static const _penaltyGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
+  static final _bonusGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
+  static final _penaltyGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
 
   List<Color> get _currentGradient => total >= 0 ? _bonusGradient : _penaltyGradient;
 
@@ -25,7 +26,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         title: Text(title),
         backgroundColor: _currentGradient[0],
@@ -43,12 +44,12 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: _currentGradient,
               ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(32),
-                bottomRight: Radius.circular(32),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(32.r),
+                bottomRight: Radius.circular(32.r),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+            padding: EdgeInsets.fromLTRB(24.w, 0.h, 24.w, 32.h),
             child: Column(
               children: [
                 // Icon
@@ -57,7 +58,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                   height: 72,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: Icon(
                     total >= 0 ? Icons.trending_up : Icons.trending_down,
@@ -65,45 +66,45 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                     size: 36,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Label
                 Text(
                   'Итого',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
-                    fontSize: 16,
+                    fontSize: 16.sp,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 // Total amount
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                   ),
                   child: Text(
                     '${total >= 0 ? '+' : ''}${total.toStringAsFixed(0)} руб',
-                    style: const TextStyle(
-                      fontSize: 36,
+                    style: TextStyle(
+                      fontSize: 36.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 // Records count
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: Text(
                     '${records.length} ${_getRecordsText(records.length)}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.95),
-                      fontSize: 14,
+                      fontSize: 14.sp,
                     ),
                   ),
                 ),
@@ -123,11 +124,11 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                           size: 64,
                           color: Colors.grey[300],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Text(
                           'Нет записей',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             color: Colors.grey[500],
                           ),
                         ),
@@ -136,22 +137,22 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                   )
                 : ListView.builder(
                     itemCount: records.length,
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemBuilder: (context, index) {
                       final record = records[index];
                       final isBonus = record.isBonus;
                       final gradientColors = isBonus ? _bonusGradient : _penaltyGradient;
 
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
+                        margin: EdgeInsets.only(bottom: 16.h),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(20.r),
                           boxShadow: [
                             BoxShadow(
                               color: gradientColors[0].withOpacity(0.1),
                               blurRadius: 15,
-                              offset: const Offset(0, 5),
+                              offset: Offset(0, 5),
                             ),
                           ],
                         ),
@@ -159,7 +160,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                           children: [
                             // Header row
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16.w),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   begin: Alignment.topLeft,
@@ -169,9 +170,9 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                     gradientColors[1].withOpacity(0.05),
                                   ],
                                 ),
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(20),
-                                  topRight: Radius.circular(20),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(20.r),
+                                  topRight: Radius.circular(20.r),
                                 ),
                               ),
                               child: Row(
@@ -185,12 +186,12 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                         end: Alignment.bottomRight,
                                         colors: gradientColors,
                                       ),
-                                      borderRadius: BorderRadius.circular(14),
+                                      borderRadius: BorderRadius.circular(14.r),
                                       boxShadow: [
                                         BoxShadow(
                                           color: gradientColors[0].withOpacity(0.4),
                                           blurRadius: 8,
-                                          offset: const Offset(0, 4),
+                                          offset: Offset(0, 4),
                                         ),
                                       ],
                                     ),
@@ -200,7 +201,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                       size: 24,
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
+                                  SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +209,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                         Text(
                                           isBonus ? 'Премия' : 'Штраф',
                                           style: TextStyle(
-                                            fontSize: 17,
+                                            fontSize: 17.sp,
                                             fontWeight: FontWeight.bold,
                                             color: gradientColors[0],
                                           ),
@@ -216,7 +217,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                         Text(
                                           dateFormat.format(record.createdAt),
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: 12.sp,
                                             color: Colors.grey[500],
                                           ),
                                         ),
@@ -224,24 +225,24 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: gradientColors,
                                       ),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12.r),
                                       boxShadow: [
                                         BoxShadow(
                                           color: gradientColors[0].withOpacity(0.4),
                                           blurRadius: 8,
-                                          offset: const Offset(0, 4),
+                                          offset: Offset(0, 4),
                                         ),
                                       ],
                                     ),
                                     child: Text(
                                       '${isBonus ? '+' : '-'}${record.amount.toStringAsFixed(0)}',
-                                      style: const TextStyle(
-                                        fontSize: 18,
+                                      style: TextStyle(
+                                        fontSize: 18.sp,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
@@ -254,7 +255,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                             if (record.comment.isNotEmpty)
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.all(16),
+                                padding: EdgeInsets.all(16.w),
                                 decoration: BoxDecoration(
                                   color: Colors.grey[50],
                                   border: Border(
@@ -269,7 +270,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                       height: 32,
                                       decoration: BoxDecoration(
                                         color: Colors.grey[200],
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(8.r),
                                       ),
                                       child: Icon(
                                         Icons.comment_outlined,
@@ -277,12 +278,12 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                         color: Colors.grey[600],
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         record.comment,
                                         style: TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 14.sp,
                                           color: Colors.grey[700],
                                           height: 1.4,
                                         ),
@@ -293,12 +294,12 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                               ),
                             // Footer with admin info
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                               decoration: BoxDecoration(
                                 color: Colors.grey[50],
-                                borderRadius: const BorderRadius.only(
-                                  bottomLeft: Radius.circular(20),
-                                  bottomRight: Radius.circular(20),
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(20.r),
+                                  bottomRight: Radius.circular(20.r),
                                 ),
                                 border: Border(
                                   top: BorderSide(color: Colors.grey[200]!),
@@ -311,7 +312,7 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                     height: 28,
                                     decoration: BoxDecoration(
                                       color: gradientColors[0].withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(8.r),
                                     ),
                                     child: Icon(
                                       Icons.person_outline,
@@ -319,11 +320,11 @@ class BonusPenaltyHistoryPage extends StatelessWidget {
                                       color: gradientColors[0],
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  SizedBox(width: 10),
                                   Text(
                                     record.adminName,
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                       color: Colors.grey[600],
                                       fontWeight: FontWeight.w500,
                                     ),

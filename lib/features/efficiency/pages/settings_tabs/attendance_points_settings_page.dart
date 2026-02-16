@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring attendance points settings (Я на работе)
 class AttendancePointsSettingsPage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _AttendancePointsSettingsPageState
   String _eveningEndTime = '21:00';
 
   // Gradient colors for this page
-  static const _gradientColors = [Color(0xFF11998e), Color(0xFF38ef7d)];
+  static final _gradientColors = [Color(0xFF11998e), Color(0xFF38ef7d)];
 
   @override
   void initState() {
@@ -83,7 +84,7 @@ class _AttendancePointsSettingsPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -92,7 +93,7 @@ class _AttendancePointsSettingsPageState
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -115,14 +116,14 @@ class _AttendancePointsSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за посещаемость'),
+        title: Text('Баллы за посещаемость'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF11998e)))
+          ? Center(child: CircularProgressIndicator(color: Color(0xFF11998e)))
           : Column(
               children: [
                 // Заголовок
@@ -135,7 +136,7 @@ class _AttendancePointsSettingsPageState
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -152,7 +153,7 @@ class _AttendancePointsSettingsPageState
                           accentColor: Colors.green,
                           icon: Icons.check_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Late points slider
                         SettingsSliderWidget(
@@ -167,14 +168,14 @@ class _AttendancePointsSettingsPageState
                           accentColor: Colors.red,
                           icon: Icons.access_time_filled,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Time windows section
                         SettingsSectionTitle(
                           title: 'Временные окна посещаемости',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TimeWindowsSection(
                           windows: [
                             TimeWindowPickerWidget(
@@ -199,14 +200,14 @@ class _AttendancePointsSettingsPageState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         BinaryPreviewWidget(
                           positiveLabel: 'Вовремя',
                           negativeLabel: 'Опоздал',
@@ -217,7 +218,7 @@ class _AttendancePointsSettingsPageState
                           negativeIcon: Icons.warning_rounded,
                           negativeIconColor: Colors.orange,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -225,7 +226,7 @@ class _AttendancePointsSettingsPageState
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

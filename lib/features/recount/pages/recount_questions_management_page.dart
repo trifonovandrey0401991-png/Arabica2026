@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:io';
 import '../models/recount_question_model.dart';
 import '../services/recount_question_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления товарами пересчета
 class RecountQuestionsManagementPage extends StatefulWidget {
@@ -20,7 +21,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   String _searchQuery = '';
   final _searchController = TextEditingController();
 
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   @override
   void initState() {
@@ -62,7 +63,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка загрузки товаров: $e', style: const TextStyle(color: Colors.white)),
+            content: Text('Ошибка загрузки товаров: $e', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.red,
           ),
         );
@@ -75,52 +76,52 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     final mode = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Загрузка из Excel'),
+        title: Text('Загрузка из Excel'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Формат файла: только .xlsx\n\nСтолбец 1: Баркод\nСтолбец 2: Группа товара\nСтолбец 3: Наименование\nСтолбец 4: Грейд (1, 2 или 3)',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => Navigator.pop(context, 'replace'),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Заменить все'),
+                icon: Icon(Icons.refresh),
+                label: Text('Заменить все'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Удалить текущие товары и загрузить новые из файла',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => Navigator.pop(context, 'add_new'),
-                icon: const Icon(Icons.add),
-                label: const Text('Добавить новые'),
+                icon: Icon(Icons.add),
+                label: Text('Добавить новые'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Добавить только товары с новыми баркодами',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -128,7 +129,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
         ],
       ),
@@ -157,7 +158,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(
+          builder: (context) => Center(
             child: CircularProgressIndicator(),
           ),
         );
@@ -174,7 +175,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Не удалось прочитать файл', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
             ),
@@ -189,7 +190,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
                 'Формат .xls не поддерживается.\nСохраните файл в формате .xlsx',
                 style: TextStyle(color: Colors.white),
@@ -212,10 +213,10 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
             SnackBar(
               content: Text(
                 'Ошибка чтения файла.\nУбедитесь, что файл в формате .xlsx',
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: Colors.white),
               ),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
+              duration: Duration(seconds: 4),
             ),
           );
         }
@@ -226,7 +227,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Excel файл не содержит листов', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
             ),
@@ -290,7 +291,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Excel файл не содержит валидных товаров', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.orange,
             ),
@@ -319,7 +320,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text('Отмена'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
@@ -343,7 +344,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(
+          builder: (context) => Center(
             child: CircularProgressIndicator(),
           ),
         );
@@ -360,7 +361,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Загружено ${uploadResult.length} товаров', style: const TextStyle(color: Colors.white)),
+                content: Text('Загружено ${uploadResult.length} товаров', style: TextStyle(color: Colors.white)),
                 backgroundColor: Colors.green,
               ),
             );
@@ -368,7 +369,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Ошибка загрузки товаров', style: TextStyle(color: Colors.white)),
                 backgroundColor: Colors.red,
               ),
@@ -387,17 +388,17 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
               SnackBar(
                 content: Text(
                   'Добавлено ${addResult.added} новых товаров\nПропущено ${addResult.skipped} (уже есть в базе)',
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                 ),
                 backgroundColor: Colors.green,
-                duration: const Duration(seconds: 4),
+                duration: Duration(seconds: 4),
               ),
             );
           }
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Ошибка добавления товаров', style: TextStyle(color: Colors.white)),
                 backgroundColor: Colors.red,
               ),
@@ -413,7 +414,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка при обработке Excel файла: $e', style: const TextStyle(color: Colors.white)),
+            content: Text('Ошибка при обработке Excel файла: $e', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.red,
           ),
         );
@@ -425,17 +426,17 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить товар?'),
+        title: Text('Удалить товар?'),
         content: Text('Вы уверены, что хотите удалить:\n"${product.productName}"?\n\nБаркод: ${product.barcode}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -447,7 +448,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         await _loadProducts();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Товар успешно удален', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.green,
             ),
@@ -456,7 +457,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка удаления товара', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
             ),
@@ -496,36 +497,36 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Товары пересчета'),
+        title: Text('Товары пересчета'),
         backgroundColor: _primaryColor,
         actions: [
           IconButton(
-            icon: const Icon(Icons.upload_file),
+            icon: Icon(Icons.upload_file),
             onPressed: _showUploadModeDialog,
             tooltip: 'Загрузить из Excel',
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadProducts,
             tooltip: 'Обновить',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Поиск по баркоду/названию
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'Поиск по баркоду или названию...',
-                      prefixIcon: const Icon(Icons.search),
+                      prefixIcon: Icon(Icons.search),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear),
+                              icon: Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() => _searchQuery = '');
@@ -533,31 +534,31 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                             )
                           : null,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                     ),
                     onChanged: (value) => setState(() => _searchQuery = value),
                   ),
                 ),
                 // Счетчик товаров
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: Row(
                     children: [
                       Text(
                         'Товаров: ${_filteredProducts.length}',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14.sp),
                       ),
                       if (_searchQuery.isNotEmpty && _filteredProducts.length != _products.length)
                         Text(
                           ' из ${_products.length}',
-                          style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                          style: TextStyle(color: Colors.grey[400], fontSize: 14.sp),
                         ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 // Список товаров
                 Expanded(
                   child: _filteredProducts.isEmpty
@@ -570,18 +571,18 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                                 size: 64,
                                 color: Colors.grey,
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Text(
                                 _searchQuery.isNotEmpty
                                     ? 'Товары не найдены'
                                     : 'Нет товаров',
-                                style: const TextStyle(fontSize: 18, color: Colors.grey),
+                                style: TextStyle(fontSize: 18.sp, color: Colors.grey),
                               ),
                               if (_searchQuery.isEmpty) ...[
-                                const SizedBox(height: 8),
-                                const Text(
+                                SizedBox(height: 8),
+                                Text(
                                   'Нажмите иконку загрузки чтобы добавить товары из Excel',
-                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  style: TextStyle(fontSize: 14.sp, color: Colors.grey),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
@@ -589,18 +590,18 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
                           itemCount: _filteredProducts.length,
                           itemBuilder: (context, index) {
                             final product = _filteredProducts[index];
                             return Card(
                               elevation: 2,
-                              margin: const EdgeInsets.only(bottom: 8),
+                              margin: EdgeInsets.only(bottom: 8.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.all(12),
+                                padding: EdgeInsets.all(12.w),
                                 child: Row(
                                   children: [
                                     // Грейд
@@ -609,10 +610,10 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                                       height: 60,
                                       decoration: BoxDecoration(
                                         color: _getGradeColor(product.grade),
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: BorderRadius.circular(4.r),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    SizedBox(width: 12),
                                     // Информация о товаре
                                     Expanded(
                                       child: Column(
@@ -621,20 +622,20 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                                           // Баркод
                                           Text(
                                             product.barcode,
-                                            style: const TextStyle(
-                                              fontSize: 14,
+                                            style: TextStyle(
+                                              fontSize: 14.sp,
                                               fontWeight: FontWeight.bold,
                                               fontFamily: 'monospace',
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
+                                          SizedBox(height: 4),
                                           // Наименование
                                           Text(
                                             product.productName.isNotEmpty
                                                 ? product.productName
                                                 : '(без названия)',
                                             style: TextStyle(
-                                              fontSize: 14,
+                                              fontSize: 14.sp,
                                               color: product.productName.isNotEmpty
                                                   ? Colors.black87
                                                   : Colors.grey,
@@ -643,12 +644,12 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           if (product.productGroup.isNotEmpty) ...[
-                                            const SizedBox(height: 2),
+                                            SizedBox(height: 2),
                                             // Группа товара
                                             Text(
                                               product.productGroup,
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 12.sp,
                                                 color: Colors.grey[600],
                                               ),
                                             ),
@@ -656,29 +657,29 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     // Грейд чип + удаление
                                     Column(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 8.w,
+                                            vertical: 4.h,
                                           ),
                                           decoration: BoxDecoration(
                                             color: _getGradeColor(product.grade).withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8.r),
                                           ),
                                           child: Text(
                                             _getGradeLabel(product.grade),
                                             style: TextStyle(
-                                              fontSize: 11,
+                                              fontSize: 11.sp,
                                               fontWeight: FontWeight.w500,
                                               color: _getGradeColor(product.grade),
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(height: 8),
+                                        SizedBox(height: 8),
                                         GestureDetector(
                                           onTap: () => _deleteProduct(product),
                                           child: Icon(

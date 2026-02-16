@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/kpi_models.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог с сотрудниками и их показателями за день
 class KPIShopDayDetailDialog extends StatelessWidget {
@@ -19,38 +20,38 @@ class KPIShopDayDetailDialog extends StatelessWidget {
 
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 600),
-        padding: const EdgeInsets.all(16.0),
+        constraints: BoxConstraints(maxWidth: 600, maxHeight: 600),
+        padding: EdgeInsets.all(16.0.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '${dayData.date.day}.${dayData.date.month.toString().padLeft(2, '0')}.${dayData.date.year}',
-              style: const TextStyle(
-                fontSize: 20,
+              style: TextStyle(
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF004D40),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               dayData.shopAddress,
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: 16.sp,
                 color: Colors.grey,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (tableRows.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(32.0),
+              Padding(
+                padding: EdgeInsets.all(32.0.w),
                 child: Text(
                   'Нет данных за этот день',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  style: TextStyle(fontSize: 16.sp, color: Colors.grey),
                 ),
               )
             else
@@ -64,26 +65,26 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                       dataRowMinHeight: 36,
                       dataRowMaxHeight: 36,
                       headingRowColor: MaterialStateColor.resolveWith(
-                        (states) => const Color(0xFF004D40).withOpacity(0.1),
+                        (states) => Color(0xFF004D40).withOpacity(0.1),
                       ),
                       columns: [
-                        const DataColumn(
+                        DataColumn(
                           label: Text(
                             'ФИО',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                           ),
                         ),
                         DataColumn(
                           label: RotatedBox(
                             quarterTurns: 3,
-                            child: const Text(
+                            child: Text(
                               'Приход',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                               ),
                             ),
                           ),
@@ -91,11 +92,11 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                         DataColumn(
                           label: RotatedBox(
                             quarterTurns: 3,
-                            child: const Text(
+                            child: Text(
                               'Смена',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                               ),
                             ),
                           ),
@@ -103,11 +104,11 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                         DataColumn(
                           label: RotatedBox(
                             quarterTurns: 3,
-                            child: const Text(
+                            child: Text(
                               'Пересчет',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                               ),
                             ),
                           ),
@@ -115,11 +116,11 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                         DataColumn(
                           label: RotatedBox(
                             quarterTurns: 3,
-                            child: const Text(
+                            child: Text(
                               'РКО',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                               ),
                             ),
                           ),
@@ -127,11 +128,11 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                         DataColumn(
                           label: RotatedBox(
                             quarterTurns: 3,
-                            child: const Text(
+                            child: Text(
                               'Конверт',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                               ),
                             ),
                           ),
@@ -139,11 +140,11 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                         DataColumn(
                           label: RotatedBox(
                             quarterTurns: 3,
-                            child: const Text(
+                            child: Text(
                               'Сдача',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                               ),
                             ),
                           ),
@@ -155,7 +156,7 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                             DataCell(
                               Text(
                                 row.employeeName,
-                                style: const TextStyle(fontSize: 12),
+                                style: TextStyle(fontSize: 12.sp),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -164,7 +165,7 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                               Text(
                                 row.attendanceTime ?? '-',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: row.attendanceTime != null 
                                       ? Colors.green 
                                       : Colors.grey,
@@ -216,10 +217,10 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Закрыть'),
+              child: Text('Закрыть'),
             ),
           ],
         ),

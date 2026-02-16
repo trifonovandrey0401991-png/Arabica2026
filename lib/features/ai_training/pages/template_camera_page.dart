@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../models/photo_template.dart';
 import '../widgets/template_overlay_painter.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница камеры с overlay-схемой шаблона
 class TemplateCameraPage extends StatefulWidget {
@@ -121,11 +122,11 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
           children: [
             Text(
               widget.template.name,
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16.sp),
             ),
             Text(
               widget.productName,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -142,17 +143,17 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
+            Icon(Icons.error_outline, size: 64, color: Colors.red),
+            SizedBox(height: 16),
             Text(
               _error!,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Назад'),
+              child: Text('Назад'),
             ),
           ],
         ),
@@ -160,7 +161,7 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
     }
 
     if (!_isInitialized || _controller == null) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
@@ -195,23 +196,23 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
 
               // Подсказка снизу
               Positioned(
-                left: 16,
-                right: 16,
-                bottom: 16,
+                left: 16.w,
+                right: 16.w,
+                bottom: 16.h,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: Colors.yellow, size: 20),
-                      const SizedBox(width: 8),
+                      Icon(Icons.info_outline, color: Colors.yellow, size: 20),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           widget.template.hint,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: TextStyle(color: Colors.white, fontSize: 13.sp),
                         ),
                       ),
                     ],
@@ -225,7 +226,7 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
         // Кнопка съёмки
         Container(
           color: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 24),
+          padding: EdgeInsets.symmetric(vertical: 24.h),
           child: SafeArea(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -233,7 +234,7 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
                 // Кнопка отмены
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                  icon: Icon(Icons.close, color: Colors.white, size: 32),
                 ),
 
                 // Кнопка съёмки
@@ -248,16 +249,16 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
                       color: _isTakingPhoto ? Colors.grey : Colors.transparent,
                     ),
                     child: _isTakingPhoto
-                        ? const Padding(
-                            padding: EdgeInsets.all(20),
+                        ? Padding(
+                            padding: EdgeInsets.all(20.w),
                             child: CircularProgressIndicator(
                               color: Colors.white,
                               strokeWidth: 2,
                             ),
                           )
                         : Container(
-                            margin: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
+                            margin: EdgeInsets.all(4.w),
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.white,
                             ),
@@ -266,7 +267,7 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
                 ),
 
                 // Placeholder для симметрии
-                const SizedBox(width: 48),
+                SizedBox(width: 48),
               ],
             ),
           ),

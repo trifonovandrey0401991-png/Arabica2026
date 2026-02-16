@@ -48,37 +48,36 @@ class RecountService {
     try {
       Logger.debug('📤 Создание отчета пересчета...');
 
-      // Загружаем фото на сервер, если есть
-      final List<RecountAnswer> answersWithPhotos = [];
-      for (var answer in report.answers) {
+      // Загрузка фото пакетами (по 3 одновременно, не перегружая сеть)
+      final photoTasks = <int, List<String>>{};
+      for (var i = 0; i < report.answers.length; i++) {
+        final answer = report.answers[i];
         if (answer.photoPath != null && answer.photoRequired) {
-          try {
-            final fileName = 'recount_${report.id}_${report.answers.indexOf(answer)}.jpg';
-            final photoUrl = await PhotoUploadService.uploadPhoto(
-              answer.photoPath!,
-              fileName,
-            );
+          photoTasks[i] = [answer.photoPath!, 'recount_${report.id}_$i.jpg'];
+        }
+      }
+      final uploadResults = await PhotoUploadService.uploadInBatches(photoTasks);
 
-            if (photoUrl != null) {
-              answersWithPhotos.add(RecountAnswer(
-                question: answer.question,
-                grade: answer.grade,
-                answer: answer.answer,
-                quantity: answer.quantity,
-                programBalance: answer.programBalance,
-                actualBalance: answer.actualBalance,
-                difference: answer.difference,
-                photoPath: answer.photoPath,
-                photoUrl: photoUrl,
-                photoRequired: answer.photoRequired,
-              ));
-            } else {
-              // Если не удалось загрузить, продолжаем без фото
-              answersWithPhotos.add(answer);
-            }
-          } catch (e) {
-            Logger.error('⚠️ Ошибка загрузки фото', e);
-            // Продолжаем без фото
+      // Собираем ответы с результатами загрузок
+      final List<RecountAnswer> answersWithPhotos = [];
+      for (var i = 0; i < report.answers.length; i++) {
+        final answer = report.answers[i];
+        if (uploadResults.containsKey(i)) {
+          final photoUrl = uploadResults[i];
+          if (photoUrl != null) {
+            answersWithPhotos.add(RecountAnswer(
+              question: answer.question,
+              grade: answer.grade,
+              answer: answer.answer,
+              quantity: answer.quantity,
+              programBalance: answer.programBalance,
+              actualBalance: answer.actualBalance,
+              difference: answer.difference,
+              photoPath: answer.photoPath,
+              photoUrl: photoUrl,
+              photoRequired: answer.photoRequired,
+            ));
+          } else {
             answersWithPhotos.add(answer);
           }
         } else {
@@ -195,35 +194,35 @@ class RecountService {
     Logger.debug('📤 Отправка отчета пересчёта: ${report.id}');
 
     try {
-      // Загружаем фото на сервер, если есть
-      final List<RecountAnswer> answersWithPhotos = [];
-      for (var answer in report.answers) {
+      // Загрузка фото пакетами (по 3 одновременно, не перегружая сеть)
+      final photoTasks2 = <int, List<String>>{};
+      for (var i = 0; i < report.answers.length; i++) {
+        final answer = report.answers[i];
         if (answer.photoPath != null && answer.photoRequired) {
-          try {
-            final fileName = 'recount_${report.id}_${report.answers.indexOf(answer)}.jpg';
-            final photoUrl = await PhotoUploadService.uploadPhoto(
-              answer.photoPath!,
-              fileName,
-            );
+          photoTasks2[i] = [answer.photoPath!, 'recount_${report.id}_$i.jpg'];
+        }
+      }
+      final uploadResults2 = await PhotoUploadService.uploadInBatches(photoTasks2);
 
-            if (photoUrl != null) {
-              answersWithPhotos.add(RecountAnswer(
-                question: answer.question,
-                grade: answer.grade,
-                answer: answer.answer,
-                quantity: answer.quantity,
-                programBalance: answer.programBalance,
-                actualBalance: answer.actualBalance,
-                difference: answer.difference,
-                photoPath: answer.photoPath,
-                photoUrl: photoUrl,
-                photoRequired: answer.photoRequired,
-              ));
-            } else {
-              answersWithPhotos.add(answer);
-            }
-          } catch (e) {
-            Logger.error('⚠️ Ошибка загрузки фото', e);
+      final List<RecountAnswer> answersWithPhotos = [];
+      for (var i = 0; i < report.answers.length; i++) {
+        final answer = report.answers[i];
+        if (uploadResults2.containsKey(i)) {
+          final photoUrl = uploadResults2[i];
+          if (photoUrl != null) {
+            answersWithPhotos.add(RecountAnswer(
+              question: answer.question,
+              grade: answer.grade,
+              answer: answer.answer,
+              quantity: answer.quantity,
+              programBalance: answer.programBalance,
+              actualBalance: answer.actualBalance,
+              difference: answer.difference,
+              photoPath: answer.photoPath,
+              photoUrl: photoUrl,
+              photoRequired: answer.photoRequired,
+            ));
+          } else {
             answersWithPhotos.add(answer);
           }
         } else {

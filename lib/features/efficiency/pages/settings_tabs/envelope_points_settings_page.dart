@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring envelope points settings (Конверт)
 class EnvelopePointsSettingsPage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _EnvelopePointsSettingsPageState
   String _eveningEndTime = '12:00';
 
   // Gradient colors for this page (deep orange theme)
-  static const _gradientColors = [Color(0xFFff6a00), Color(0xFFee0979)];
+  static final _gradientColors = [Color(0xFFff6a00), Color(0xFFee0979)];
 
   @override
   void initState() {
@@ -83,7 +84,7 @@ class _EnvelopePointsSettingsPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -92,7 +93,7 @@ class _EnvelopePointsSettingsPageState
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -115,9 +116,9 @@ class _EnvelopePointsSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за конверт'),
+        title: Text('Баллы за конверт'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -135,7 +136,7 @@ class _EnvelopePointsSettingsPageState
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -152,7 +153,7 @@ class _EnvelopePointsSettingsPageState
                           accentColor: Colors.green,
                           icon: Icons.check_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Not submitted points slider
                         SettingsSliderWidget(
@@ -167,26 +168,26 @@ class _EnvelopePointsSettingsPageState
                           accentColor: Colors.red,
                           icon: Icons.cancel_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Time windows section
                         SettingsSectionTitle(
                           title: 'Временные окна для сдачи конверта',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 8),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                           child: Text(
                             'Укажите временное окно на следующий день, в течение которого должен быть сдан конверт',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Color(0xFF607D8B),
                               height: 1.4,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TimeWindowsSection(
                           windows: [
                             TimeWindowPickerWidget(
@@ -215,14 +216,14 @@ class _EnvelopePointsSettingsPageState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         BinaryPreviewWidget(
                           positiveLabel: 'Сдан',
                           negativeLabel: 'Не сдан',
@@ -231,7 +232,7 @@ class _EnvelopePointsSettingsPageState
                           gradientColors: _gradientColors,
                           valueColumnTitle: 'Статус',
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -239,7 +240,7 @@ class _EnvelopePointsSettingsPageState
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

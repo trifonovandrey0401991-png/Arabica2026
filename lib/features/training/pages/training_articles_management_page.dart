@@ -4,6 +4,7 @@ import '../models/training_model.dart';
 import '../services/training_article_service.dart';
 import 'training_article_view_page.dart';
 import 'training_article_editor_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления статьями обучения
 class TrainingArticlesManagementPage extends StatefulWidget {
@@ -15,10 +16,10 @@ class TrainingArticlesManagementPage extends StatefulWidget {
 
 class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagementPage> {
   // Dark Emerald цвета
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   List<TrainingArticle> _articles = [];
   List<TrainingArticle> _filteredArticles = [];
@@ -114,7 +115,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
       if (cleanUrl.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ссылка не указана'),
               backgroundColor: Colors.orange,
             ),
@@ -154,7 +155,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
 
         if (!launched && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Не удалось открыть ссылку. Проверьте, установлен ли браузер.'),
               backgroundColor: Colors.orange,
             ),
@@ -186,7 +187,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
     final result = await Navigator.push<TrainingArticle>(
       context,
       MaterialPageRoute(
-        builder: (context) => const TrainingArticleEditorPage(),
+        builder: (context) => TrainingArticleEditorPage(),
       ),
     );
 
@@ -195,7 +196,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
@@ -204,8 +205,8 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
             ),
             backgroundColor: Colors.green[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -225,7 +226,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
@@ -234,8 +235,8 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
             ),
             backgroundColor: Colors.green[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -248,10 +249,10 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
             color: _emeraldDark,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20.r),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
           child: Column(
@@ -260,38 +261,38 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               // Иконка предупреждения
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: 24.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.red[400]!, Colors.red[600]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20.r),
+                    topRight: Radius.circular(20.r),
                   ),
                 ),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.delete_forever_rounded,
                         color: Colors.white,
                         size: 36,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: 12),
+                    Text(
                       'Удалить статью?',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -300,31 +301,31 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               ),
               // Контент
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(14.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: Colors.white.withOpacity(0.08)),
                       ),
                       child: Text(
                         article.title,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.8),
                           height: 1.4,
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(
                       'Это действие невозможно отменить',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.white.withOpacity(0.5),
                       ),
                     ),
@@ -333,46 +334,46 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               ),
               // Кнопки
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context, false),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           side: BorderSide(color: Colors.white.withOpacity(0.2)),
                         ),
                         child: Text(
                           'Отмена',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.w600,
                             color: Colors.white.withOpacity(0.7),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context, true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red[500],
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Удалить',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -394,7 +395,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 12),
@@ -403,8 +404,8 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               ),
               backgroundColor: Colors.green[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -412,7 +413,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.error_outline, color: Colors.white),
                   SizedBox(width: 12),
@@ -421,8 +422,8 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               ),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -446,7 +447,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -469,7 +470,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
       ),
       floatingActionButton: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: _gold.withOpacity(0.4)),
           color: _gold.withOpacity(0.2),
         ),
@@ -478,8 +479,8 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
           backgroundColor: Colors.transparent,
           elevation: 0,
           highlightElevation: 0,
-          icon: const Icon(Icons.add_rounded, color: _gold),
-          label: const Text(
+          icon: Icon(Icons.add_rounded, color: _gold),
+          label: Text(
             'Добавить',
             style: TextStyle(
               color: _gold,
@@ -493,7 +494,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
 
   Widget _buildCustomAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0.h),
       child: Column(
         children: [
           Row(
@@ -502,25 +503,25 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: Colors.white.withOpacity(0.06)),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                  icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // Заголовок
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Статьи обучения',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -528,7 +529,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                       '${_articles.length} ${_getArticleEnding(_articles.length)}',
                       style: TextStyle(
                         color: _gold.withOpacity(0.8),
-                        fontSize: 13,
+                        fontSize: 13.sp,
                       ),
                     ),
                   ],
@@ -542,18 +543,18 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Поле поиска
           Container(
             height: 50,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: TextStyle(color: Colors.white, fontSize: 15.sp),
               decoration: InputDecoration(
                 hintText: 'Поиск по статьям...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
@@ -571,7 +572,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               cursorColor: _gold,
               onChanged: (value) {
@@ -582,10 +583,10 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               },
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Статистика по группам
           _buildGroupStatsRow(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -599,14 +600,14 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: IconButton(
         icon: Icon(icon, color: Colors.white, size: 20),
         onPressed: onPressed,
         tooltip: tooltip,
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        constraints: BoxConstraints(minWidth: 44, minHeight: 44),
       ),
     );
   }
@@ -615,7 +616,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
     final grouped = _groupArticles();
     final groups = grouped.keys.toList()..sort();
 
-    if (groups.isEmpty) return const SizedBox.shrink();
+    if (groups.isEmpty) return SizedBox.shrink();
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -628,12 +629,12 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
             count: _articles.length,
             isSelected: _selectedGroupFilter == null,
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Чипы групп
           ...groups.map((group) {
             final count = grouped[group]!.length;
             return Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(right: 8.w),
               child: _buildGroupChip(
                 group: group,
                 label: group,
@@ -661,11 +662,11 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
         });
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         decoration: BoxDecoration(
           color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: isSelected ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.08),
             width: isSelected ? 1.5 : 1,
@@ -679,11 +680,11 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               size: 16,
               color: isSelected ? _gold : Colors.white.withOpacity(0.6),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(
               '$count',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
                 color: isSelected ? _gold : Colors.white.withOpacity(0.7),
               ),
@@ -712,23 +713,23 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(_gold),
                 strokeWidth: 3,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Загрузка статей...',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.6),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -753,7 +754,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(28),
+            padding: EdgeInsets.all(28.w),
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.1),
               shape: BoxShape.circle,
@@ -765,22 +766,22 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               color: _gold.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 24),
+          Text(
             'Нет статей',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 22.sp,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
+            padding: EdgeInsets.symmetric(horizontal: 48.w),
             child: Text(
               'Нажмите кнопку "Добавить"\nчтобы создать первую статью',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 15.sp,
                 color: Colors.white.withOpacity(0.5),
                 height: 1.5,
               ),
@@ -798,7 +799,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
@@ -810,24 +811,24 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             'Ничего не найдено',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.8),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Попробуйте изменить параметры поиска',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           TextButton.icon(
             onPressed: () {
               _searchController.clear();
@@ -837,8 +838,8 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                 _applyFilters();
               });
             },
-            icon: const Icon(Icons.refresh, color: _gold),
-            label: const Text('Сбросить фильтры'),
+            icon: Icon(Icons.refresh, color: _gold),
+            label: Text('Сбросить фильтры'),
             style: TextButton.styleFrom(
               foregroundColor: _gold,
             ),
@@ -864,7 +865,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
     final groups = grouped.keys.toList()..sort();
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 100.h),
       itemCount: groups.length,
       itemBuilder: (context, groupIndex) {
         final group = groups[groupIndex];
@@ -875,15 +876,15 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
           children: [
             // Заголовок группы
             Container(
-              margin: EdgeInsets.only(bottom: 8, top: groupIndex > 0 ? 16 : 0),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: EdgeInsets.only(bottom: 8.h, top: groupIndex > 0 ? 16 : 0),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_gold.withOpacity(0.15), _gold.withOpacity(0.05)],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(color: _gold.withOpacity(0.1)),
               ),
               child: Row(
@@ -893,28 +894,28 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                     color: _gold,
                     size: 18,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       group,
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                         color: _gold,
                       ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                     decoration: BoxDecoration(
                       color: _gold.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Text(
                       '${groupArticles.length}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _gold,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -938,10 +939,10 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
     final isManagersOnly = article.visibility == 'managers';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: isManagersOnly
               ? Colors.orange.withOpacity(0.3)
@@ -951,13 +952,13 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           onTap: () => _openArticle(article),
           splashColor: _gold.withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             child: Row(
               children: [
                 // Иконка статьи
@@ -968,7 +969,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                     color: isManagersOnly
                         ? Colors.orange.withOpacity(0.15)
                         : _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     border: Border.all(
                       color: isManagersOnly
                           ? Colors.orange.withOpacity(0.3)
@@ -983,7 +984,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Контент
                 Expanded(
                   child: Column(
@@ -992,7 +993,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                       Text(
                         article.title,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
                           color: Colors.white.withOpacity(0.9),
                         ),
@@ -1001,18 +1002,18 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                       ),
                       if (isManagersOnly)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: EdgeInsets.only(top: 4.h),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                             decoration: BoxDecoration(
                               color: Colors.orange.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(4.r),
                               border: Border.all(color: Colors.orange.withOpacity(0.3)),
                             ),
                             child: Text(
                               'Только заведующие',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 10.sp,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.orange[300],
                               ),
@@ -1022,7 +1023,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Кнопки действий
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1032,13 +1033,13 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                       color: Colors.blue[300]!,
                       onTap: () => _openArticle(article),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     _buildCardActionButton(
                       icon: Icons.edit_rounded,
                       color: _gold,
                       onTap: () => _showEditArticleDialog(article),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     _buildCardActionButton(
                       icon: Icons.delete_outline_rounded,
                       color: Colors.red[300]!,
@@ -1061,12 +1062,12 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(6.r),
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: EdgeInsets.all(6.w),
         decoration: BoxDecoration(
           color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(6.r),
         ),
         child: Icon(icon, size: 16, color: color),
       ),
@@ -1087,10 +1088,10 @@ class TrainingArticleFormDialog extends StatefulWidget {
 
 class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
   // Dark Emerald цвета
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
@@ -1169,7 +1170,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.error_outline, color: Colors.white),
                   SizedBox(width: 12),
@@ -1178,8 +1179,8 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
               ),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -1190,15 +1191,15 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
                 Expanded(child: Text('Ошибка: $e')),
               ],
             ),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -1218,10 +1219,10 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+        constraints: BoxConstraints(maxWidth: 500, maxHeight: 700),
         decoration: BoxDecoration(
           color: _emeraldDark,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(24.r),
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Column(
@@ -1230,25 +1231,25 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
             // Заголовок с градиентом
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+              padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 24.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_emerald, _emeraldDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24.r),
+                  topRight: Radius.circular(24.r),
                 ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
                       color: _gold.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: _gold.withOpacity(0.3)),
                     ),
                     child: Icon(
@@ -1257,15 +1258,15 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         isEditing ? 'Редактировать статью' : 'Добавить статью',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1273,7 +1274,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                         isEditing ? 'Измените данные статьи' : 'Заполните данные новой статьи',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.6),
-                          fontSize: 13,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ],
@@ -1284,7 +1285,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
             // Форма
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(24.w),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -1304,7 +1305,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Поле группы
                       _buildTextField(
                         controller: _groupController,
@@ -1318,10 +1319,10 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Поле контента статьи
                       _buildContentField(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Чекбокс для внешней ссылки
                       InkWell(
                         onTap: () {
@@ -1332,12 +1333,12 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                             }
                           });
                         },
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                           decoration: BoxDecoration(
                             color: _showUrlField ? _gold.withOpacity(0.1) : Colors.white.withOpacity(0.04),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(10.r),
                             border: Border.all(
                               color: _showUrlField ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.08),
                             ),
@@ -1349,7 +1350,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                                 color: _showUrlField ? _gold : Colors.white.withOpacity(0.4),
                                 size: 22,
                               ),
-                              const SizedBox(width: 10),
+                              SizedBox(width: 10),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1357,7 +1358,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                                     Text(
                                       'Добавить внешнюю ссылку',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 14.sp,
                                         fontWeight: FontWeight.w500,
                                         color: _showUrlField ? _gold : Colors.white.withOpacity(0.7),
                                       ),
@@ -1365,7 +1366,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                                     Text(
                                       'Опционально: ссылка на дополнительный источник',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 11.sp,
                                         color: Colors.white.withOpacity(0.4),
                                       ),
                                     ),
@@ -1378,7 +1379,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                       ),
                       // Поле ссылки (показывается если включён чекбокс)
                       if (_showUrlField) ...[
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _buildTextField(
                           controller: _urlController,
                           label: 'Ссылка на источник',
@@ -1394,12 +1395,12 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                         ),
                       ],
                       // Подсказки
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(12.w),
                         decoration: BoxDecoration(
                           color: _emerald.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: _gold.withOpacity(0.15)),
                         ),
                         child: Row(
@@ -1409,12 +1410,12 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                               size: 18,
                               color: _gold.withOpacity(0.7),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Контент статьи будет отображаться прямо в приложении',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.white.withOpacity(0.6),
                                   height: 1.4,
                                 ),
@@ -1430,12 +1431,12 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
             ),
             // Кнопки
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 color: _night,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(24.r),
+                  bottomRight: Radius.circular(24.r),
                 ),
               ),
               child: Row(
@@ -1444,36 +1445,36 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                     child: OutlinedButton(
                       onPressed: _isSaving ? null : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         side: BorderSide(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Text(
                         'Отмена',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.7),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _isSaving ? null : _saveArticle,
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         side: BorderSide(color: _gold.withOpacity(0.4)),
                         backgroundColor: _gold.withOpacity(0.15),
                       ),
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(
@@ -1489,11 +1490,11 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                                   size: 18,
                                   color: _gold,
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Text(
                                   isEditing ? 'Сохранить' : 'Добавить',
-                                  style: const TextStyle(
-                                    fontSize: 15,
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
                                     fontWeight: FontWeight.w600,
                                     color: _gold,
                                   ),
@@ -1518,49 +1519,49 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
         Row(
           children: [
             Icon(Icons.article_rounded, color: _gold, size: 20),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               'Контент статьи',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         TextFormField(
           controller: _contentController,
           maxLines: 8,
           minLines: 5,
-          style: TextStyle(fontSize: 14, height: 1.5, color: Colors.white.withOpacity(0.9)),
+          style: TextStyle(fontSize: 14.sp, height: 1.5, color: Colors.white.withOpacity(0.9)),
           decoration: InputDecoration(
             hintText: 'Введите текст статьи...\n\nМожно использовать несколько абзацев для удобного чтения.',
             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), height: 1.5),
             filled: true,
             fillColor: Colors.white.withOpacity(0.06),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: Colors.red[300]!),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: Colors.red[400]!, width: 2),
             ),
-            contentPadding: const EdgeInsets.all(16),
+            contentPadding: EdgeInsets.all(16.w),
             errorStyle: TextStyle(color: Colors.red[300]),
           ),
           cursorColor: _gold,
@@ -1586,40 +1587,40 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.9)),
+      style: TextStyle(fontSize: 15.sp, color: Colors.white.withOpacity(0.9)),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
         hintText: hint,
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
         prefixIcon: Container(
-          margin: const EdgeInsets.only(left: 12, right: 8),
+          margin: EdgeInsets.only(left: 12.w, right: 8.w),
           child: Icon(icon, color: _gold, size: 22),
         ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
         filled: true,
         fillColor: Colors.white.withOpacity(0.06),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.red[300]!),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.red[400]!, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
         errorStyle: TextStyle(color: Colors.red[300]),
       ),
       cursorColor: _gold,

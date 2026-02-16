@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import '../models/task_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Общие константы и виджеты для модуля задач
 class TaskStyles {
   // Основные цвета — Dark Emerald Theme
-  static const primaryColor = Color(0xFF1A4D4D);
-  static const accentColor = Color(0xFFD4AF37);
+  static final primaryColor = Color(0xFF1A4D4D);
+  static final accentColor = Color(0xFFD4AF37);
 
   // Градиенты для статусов
-  static const orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
-  static const greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
-  static const redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
-  static const blueGradient = [Color(0xFF2196F3), Color(0xFF64B5F6)];
-  static const greyGradient = [Color(0xFF757575), Color(0xFF9E9E9E)];
+  static final orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
+  static final greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
+  static final redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
+  static final blueGradient = [Color(0xFF2196F3), Color(0xFF64B5F6)];
+  static final greyGradient = [Color(0xFF757575), Color(0xFF9E9E9E)];
 
   /// Получить градиент для статуса задачи
   static List<Color> getStatusGradient(TaskStatus status) {
@@ -115,7 +116,7 @@ class TaskUtils {
 
   /// Получить название месяца
   static String getMonthName(int month, int year) {
-    const months = [
+    final months = [
       'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
     ];
@@ -161,10 +162,10 @@ class TaskStatusBadge extends StatelessWidget {
     final icon = TaskStyles.getStatusIcon(status);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: gradient.map((c) => c.withOpacity(0.15)).toList()),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         border: Border.all(color: gradient[0].withOpacity(0.25), width: 0.5),
       ),
       child: Row(
@@ -172,7 +173,7 @@ class TaskStatusBadge extends StatelessWidget {
         children: [
           if (showIcon) ...[
             Icon(icon, size: 14, color: gradient[0]),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
           ],
           Text(
             status.displayName,
@@ -209,12 +210,12 @@ class TaskStatusIconBox extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: gradient.map((c) => c.withOpacity(0.85)).toList()),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: gradient[0].withOpacity(0.25),
             blurRadius: 8,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -245,10 +246,10 @@ class TaskPointsBadge extends StatelessWidget {
     final text = isPositive ? '+${points.toStringAsFixed(0)}' : points.toStringAsFixed(0);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         border: Border.all(color: color.withOpacity(0.3), width: 0.5),
       ),
       child: Text(
@@ -288,7 +289,7 @@ class TaskEmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
@@ -299,21 +300,21 @@ class TaskEmptyState extends StatelessWidget {
               color: colors[0].withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             message,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.bold,
               color: Colors.white.withOpacity(0.8),
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               subtitle!,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white.withOpacity(0.5),
               ),
             ),
@@ -340,44 +341,44 @@ class TaskSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: TaskStyles.primaryColor.withOpacity(0.25),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: TaskStyles.accentColor.withOpacity(0.15), width: 0.5),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(6.w),
             decoration: BoxDecoration(
               color: TaskStyles.primaryColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(icon, size: 16, color: TaskStyles.accentColor),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Text(
             title,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w600,
               color: TaskStyles.accentColor,
             ),
           ),
-          const Spacer(),
+          Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
             decoration: BoxDecoration(
               color: TaskStyles.accentColor,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Text(
               count.toString(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Color(0xFF051515),
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -414,25 +415,25 @@ class TaskTabWithBadge extends StatelessWidget {
             ),
           ),
           if (count > 0) ...[
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: gradientColors.map((c) => c.withOpacity(0.85)).toList()),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 boxShadow: [
                   BoxShadow(
                     color: gradientColors[0].withOpacity(0.2),
                     blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
               child: Text(
                 count.toString(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 11,
+                  fontSize: 11.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),

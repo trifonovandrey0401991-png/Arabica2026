@@ -9,6 +9,14 @@ import '../services/recurring_task_service.dart';
 import '../widgets/task_common_widgets.dart';
 import 'task_response_page.dart';
 import 'recurring_task_response_page.dart';
+import '../../shifts/models/shift_report_model.dart';
+import '../../shifts/services/shift_report_service.dart';
+import '../../shifts/pages/shift_report_view_page.dart';
+import '../../recount/models/recount_report_model.dart';
+import '../../recount/services/recount_service.dart';
+import '../../recount/pages/recount_report_view_page.dart';
+import '../../employees/services/user_role_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница "Мои Задачи" для работника с вкладками
 class MyTasksPage extends StatefulWidget {
@@ -27,17 +35,20 @@ class MyTasksPage extends StatefulWidget {
 
 class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStateMixin {
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
-  static const _orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
-  static const _greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
-  static const _redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
-  static const _blueGradient = [Color(0xFF2196F3), Color(0xFF64B5F6)];
+  static final _orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
+  static final _greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
+  static final _redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
+  static final _blueGradient = [Color(0xFF2196F3), Color(0xFF64B5F6)];
+  static final _purpleGradient = [Color(0xFF7B1FA2), Color(0xFFBA68C8)];
 
   List<TaskAssignment> _assignments = [];
+  List<ShiftReport> _shiftReviewReports = [];
+  List<RecountReport> _recountReviewReports = [];
   List<RecurringTaskInstance> _recurringInstances = [];
   bool _isLoading = true;
   String? _userPhone;
@@ -82,32 +93,78 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         return;
       }
 
-      // Используем кэшированный метод
-      final assignments = await TaskService.getMyAssignmentsCached(
-        assigneeId: _employeeId!,
-        year: _selectedYear,
-        month: _selectedMonth,
-        forceRefresh: forceRefresh,
-      );
-      assignments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
+      List<TaskAssignment> assignments = [];
       List<RecurringTaskInstance> recurringInstances = [];
-      if (_userPhone != null && _userPhone!.isNotEmpty) {
-        try {
-          final yearMonth = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
-          recurringInstances = await RecurringTaskService.getInstancesForAssignee(
-            assigneePhone: _userPhone!,
-            yearMonth: yearMonth,
-          );
-          recurringInstances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        } catch (e) {
-          Logger.warning('Ошибка загрузки циклических задач: $e');
-        }
-      }
+      List<ShiftReport> shiftReviews = [];
+      List<RecountReport> recountReviews = [];
+
+      await Future.wait([
+        // Обычные задачи
+        () async {
+          try {
+            assignments = await TaskService.getMyAssignmentsCached(
+              assigneeId: _employeeId!,
+              year: _selectedYear,
+              month: _selectedMonth,
+              forceRefresh: forceRefresh,
+            );
+            assignments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          } catch (e) {
+            Logger.warning('Ошибка загрузки задач: $e');
+          }
+        }(),
+        // Циклические задачи
+        () async {
+          if (_userPhone != null && _userPhone!.isNotEmpty) {
+            try {
+              final yearMonth = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
+              recurringInstances = await RecurringTaskService.getInstancesForAssignee(
+                assigneePhone: _userPhone!,
+                yearMonth: yearMonth,
+              );
+              recurringInstances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            } catch (e) {
+              Logger.warning('Ошибка загрузки циклических задач: $e');
+            }
+          }
+        }(),
+        // Отчёты пересменки на проверке (только для управляющей/developer)
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final allReports = await ShiftReportService.getReportsForCurrentUser();
+              shiftReviews = allReports
+                  .where((r) => r.status == 'review')
+                  .toList();
+              shiftReviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            }
+          } catch (e) {
+            Logger.warning('Ошибка загрузки отчётов пересменки: $e');
+          }
+        }(),
+        // Отчёты пересчёта на проверке (только для управляющей/developer)
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final allReports = await RecountService.getReportsForCurrentUser();
+              recountReviews = allReports
+                  .where((r) => r.status == 'review')
+                  .toList();
+              recountReviews.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+            }
+          } catch (e) {
+            Logger.warning('Ошибка загрузки отчётов пересчёта: $e');
+          }
+        }(),
+      ]);
 
       setState(() {
         _assignments = assignments;
         _recurringInstances = recurringInstances;
+        _shiftReviewReports = shiftReviews;
+        _recountReviewReports = recountReviews;
         _isLoading = false;
       });
     } catch (e) {
@@ -177,14 +234,14 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _activeAssignments.length + _activeRecurring.length;
+    final activeCount = _activeAssignments.length + _activeRecurring.length + _shiftReviewReports.length + _recountReviewReports.length;
     final completedCount = _completedAssignments.length + _completedRecurring.length;
     final expiredCount = _expiredAssignments.length + _expiredRecurring.length;
 
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -203,7 +260,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     : TabBarView(
                         controller: _tabController,
                         children: [
-                          _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true),
+                          _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true, shiftReviews: _shiftReviewReports, recountReviews: _recountReviewReports),
                           _buildTaskList(_completedAssignments, _completedRecurring, 'Нет выполненных задач', isCompleted: true),
                           _buildTaskList(_expiredAssignments, _expiredRecurring, 'Нет просроченных задач', isExpired: true),
                         ],
@@ -218,13 +275,13 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -232,27 +289,27 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Мои Задачи',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 3),
+                  padding: EdgeInsets.only(top: 3.h),
                   child: Text(
                     TaskUtils.getMonthName(_selectedMonth, _selectedYear),
                     style: TextStyle(
                       color: _gold.withOpacity(0.7),
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -264,14 +321,14 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: PopupMenuButton<Map<String, dynamic>>(
               icon: Icon(Icons.calendar_month, color: Colors.white.withOpacity(0.8), size: 20),
               tooltip: 'Выбрать месяц',
               color: _emeraldDark,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               onSelected: (monthData) {
                 setState(() {
                   _selectedYear = monthData['year'] as int;
@@ -290,8 +347,8 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                         if (isSelected)
                           Icon(Icons.check, size: 18, color: _gold)
                         else
-                          const SizedBox(width: 18),
-                        const SizedBox(width: 8),
+                          SizedBox(width: 18),
+                        SizedBox(width: 8),
                         Text(
                           m['name'] as String,
                           style: TextStyle(
@@ -306,11 +363,11 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
               },
             ),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -326,10 +383,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
   Widget _buildTabBar(int activeCount, int completedCount, int expiredCount) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      margin: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 4.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: TabBar(
@@ -337,15 +394,15 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
           color: _gold.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: _gold.withOpacity(0.4)),
         ),
         dividerColor: Colors.transparent,
         labelColor: _gold,
         unselectedLabelColor: Colors.white.withOpacity(0.5),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400, fontSize: 12.sp),
+        labelPadding: EdgeInsets.symmetric(horizontal: 4.w),
         tabs: [
           _buildModernTab('Активные', activeCount, _orangeGradient),
           _buildModernTab('Выполнено', completedCount, _greenGradient),
@@ -368,12 +425,12 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
               color: _gold.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Загрузка задач...',
             style: TextStyle(
               color: Colors.white.withOpacity(0.5),
-              fontSize: 14,
+              fontSize: 14.sp,
             ),
           ),
         ],
@@ -393,18 +450,18 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             ),
           ),
           if (count > 0) ...[
-            const SizedBox(width: 5),
+            SizedBox(width: 5),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: gradientColors),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Text(
                 count.toString(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -422,8 +479,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     bool isActive = false,
     bool isCompleted = false,
     bool isExpired = false,
+    List<ShiftReport> shiftReviews = const [],
+    List<RecountReport> recountReviews = const [],
   }) {
-    if (assignments.isEmpty && recurring.isEmpty) {
+    if (assignments.isEmpty && recurring.isEmpty && shiftReviews.isEmpty && recountReviews.isEmpty) {
       return _buildEmptyState(emptyMessage, isActive: isActive, isCompleted: isCompleted, isExpired: isExpired);
     }
 
@@ -432,17 +491,29 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 24.h),
         children: [
-          // Циклические задачи (показываем первыми)
+          // Пересменка на проверке (показываем первыми — срочные)
+          if (shiftReviews.isNotEmpty) ...[
+            _buildModernSectionHeader('Пересменка на проверке', Icons.rate_review, shiftReviews.length),
+            ...shiftReviews.map((report) => _buildShiftReviewCard(report)),
+            SizedBox(height: 16),
+          ],
+          // Пересчёт на проверке
+          if (recountReviews.isNotEmpty) ...[
+            _buildModernSectionHeader('Пересчёт на проверке', Icons.inventory, recountReviews.length),
+            ...recountReviews.map((report) => _buildRecountReviewCard(report)),
+            SizedBox(height: 16),
+          ],
+          // Циклические задачи
           if (recurring.isNotEmpty) ...[
             _buildModernSectionHeader('Циклические задачи', Icons.repeat, recurring.length),
             ...recurring.map((instance) => _buildModernRecurringCard(instance)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
           // Обычные задачи
           if (assignments.isNotEmpty) ...[
-            if (recurring.isNotEmpty)
+            if (recurring.isNotEmpty || shiftReviews.isNotEmpty || recountReviews.isNotEmpty)
               _buildModernSectionHeader('Разовые задачи', Icons.assignment, assignments.length),
             ...assignments.map((assignment) => _buildModernAssignmentCard(assignment)),
           ],
@@ -453,45 +524,45 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
   Widget _buildModernSectionHeader(String title, IconData icon, int count) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: _gold.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: _gold.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(6.w),
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               border: Border.all(color: _gold.withOpacity(0.3)),
             ),
             child: Icon(icon, size: 16, color: _gold),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Text(
             title,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w600,
               color: _gold,
             ),
           ),
-          const Spacer(),
+          Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Text(
               count.toString(),
               style: TextStyle(
                 color: _gold,
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -521,7 +592,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: gradientColors.map((c) => c.withOpacity(0.12)).toList()),
               shape: BoxShape.circle,
@@ -533,22 +604,22 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
               color: gradientColors[0].withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             message,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.bold,
               color: Colors.white.withOpacity(0.8),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             isActive ? 'Новые задачи появятся здесь' :
             isCompleted ? 'Выполненные задачи появятся здесь' :
             'Просроченные задачи появятся здесь',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.4),
             ),
           ),
@@ -581,32 +652,32 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10.h),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openRecurringTaskDetail(instance),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
                 // Status icon
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: statusGradient),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
                       BoxShadow(
                         color: statusGradient[0].withOpacity(0.3),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -616,7 +687,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Content
                 Expanded(
                   child: Column(
@@ -625,55 +696,55 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                       Text(
                         instance.title,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(Icons.access_time, size: 14, color: Colors.white.withOpacity(0.4)),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             isCompleted ? 'Выполнено' : 'До: ${dateFormat.format(instance.deadline)}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: isExpired ? Colors.red[300] : Colors.white.withOpacity(0.5),
                             ),
                           ),
-                          const Spacer(),
+                          Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(colors: statusGradient.map((c) => c.withOpacity(0.2)).toList()),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                               border: Border.all(color: statusGradient[0].withOpacity(0.3)),
                             ),
                             child: Text(
                               statusText,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: statusGradient[0],
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                           if (isExpired) ...[
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
                                 border: Border.all(color: Colors.red.withOpacity(0.3)),
                               ),
                               child: Text(
                                 '-3',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                   color: Colors.red[300],
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -685,7 +756,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
               ],
             ),
@@ -716,17 +787,17 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                       assignment.status == TaskStatus.declined;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10.h),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openTaskDetail(assignment),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(
                 color: isOverdue ? Colors.red.withOpacity(0.4) : Colors.white.withOpacity(0.1),
                 width: isOverdue ? 1.5 : 1,
@@ -736,15 +807,15 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
               children: [
                 // Status icon
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: statusGradient),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
                       BoxShadow(
                         color: statusGradient[0].withOpacity(0.3),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -754,7 +825,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Content
                 Expanded(
                   child: Column(
@@ -763,56 +834,56 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                       Text(
                         assignment.taskTitle,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(Icons.access_time, size: 14, color: isOverdue ? Colors.red[300] : Colors.white.withOpacity(0.4)),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'До: ${dateFormat.format(assignment.deadline)}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: isOverdue ? Colors.red[300] : Colors.white.withOpacity(0.5),
                               fontWeight: isOverdue ? FontWeight.w500 : FontWeight.normal,
                             ),
                           ),
-                          const Spacer(),
+                          Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(colors: statusGradient.map((c) => c.withOpacity(0.2)).toList()),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                               border: Border.all(color: statusGradient[0].withOpacity(0.3)),
                             ),
                             child: Text(
                               assignment.status.displayName,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: statusGradient[0],
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                           if (isExpiredStatus) ...[
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
                                 border: Border.all(color: Colors.red.withOpacity(0.3)),
                               ),
                               child: Text(
                                 '-3',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                   color: Colors.red[300],
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -824,7 +895,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
               ],
             ),
@@ -832,6 +903,223 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         ),
       ),
     );
+  }
+
+  Widget _buildShiftReviewCard(ShiftReport report) {
+    final dateFormat = DateFormat('dd.MM HH:mm');
+    final shopDisplay = report.shopName ?? report.shopAddress;
+    final shiftLabel = report.shiftType == 'morning' ? 'утро' : 'вечер';
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openShiftReviewDetail(report),
+          borderRadius: BorderRadius.circular(14.r),
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: _purpleGradient[0].withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: _purpleGradient),
+                    borderRadius: BorderRadius.circular(12.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _purpleGradient[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.rate_review, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        shopDisplay,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 14, color: Colors.white.withOpacity(0.4)),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${report.employeeName} · $shiftLabel · ${dateFormat.format(report.createdAt)}',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: _purpleGradient.map((c) => c.withOpacity(0.2)).toList()),
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(color: _purpleGradient[0].withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              'На проверке',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: _purpleGradient[1],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openShiftReviewDetail(ShiftReport report) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShiftReportViewPage(report: report),
+      ),
+    );
+    _loadAssignments();
+  }
+
+  Widget _buildRecountReviewCard(RecountReport report) {
+    final dateFormat = DateFormat('dd.MM HH:mm');
+    final tealGradient = [Color(0xFF00897B), Color(0xFF4DB6AC)];
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openRecountReviewDetail(report),
+          borderRadius: BorderRadius.circular(14.r),
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: tealGradient[0].withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: tealGradient),
+                    borderRadius: BorderRadius.circular(12.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: tealGradient[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.inventory, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.shopAddress,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 14, color: Colors.white.withOpacity(0.4)),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${report.employeeName} · ${dateFormat.format(report.completedAt)}',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: tealGradient.map((c) => c.withOpacity(0.2)).toList()),
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(color: tealGradient[0].withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              'На проверке',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: tealGradient[1],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openRecountReviewDetail(RecountReport report) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecountReportViewPage(report: report),
+      ),
+    );
+    _loadAssignments();
   }
 
   void _openTaskDetail(TaskAssignment assignment) {

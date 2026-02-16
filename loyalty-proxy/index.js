@@ -290,6 +290,7 @@ app.use(sessionMiddleware);
 // Все POST/PUT/DELETE/PATCH требуют авторизованную сессию
 // (кроме public endpoints: auth, shop-products sync)
 const PUBLIC_WRITE_PATHS = [
+  '/',                   // Loyalty API proxy (регистрация клиентов, баллы — вызывается до авторизации)
   '/api/auth',           // Регистрация, вход, сброс PIN
   '/api/shop-products',  // Синхронизация товаров (своя авторизация по x-sync-key)
   '/api/fcm-tokens',     // Регистрация FCM push-токенов (вызывается до/после логина)
@@ -305,6 +306,18 @@ const PUBLIC_WRITE_PATHS = [
   '/api/test-settings',         // Настройки тестирования (длительность)
   '/api/clients',               // Сообщения клиентам + рассылка
   '/api/client-dialogs',        // Диалоги с руководством + сетевые сообщения
+  '/api/shift-handover-reports', // Отчёты пересменки (отправка сотрудниками)
+  '/api/shift-reports',          // Отчёты смен (отправка сотрудниками)
+  '/api/recount-reports',        // Отчёты пересчёта (отправка сотрудниками)
+  '/api/envelope-reports',       // Отчёты конвертов (отправка сотрудниками)
+  '/api/test-results',           // Результаты тестирования (отправка сотрудниками)
+  '/api/report-notifications',   // Уведомления об отчётах
+  '/upload-photo',               // Загрузка фото отчётов
+  '/api/attendance',             // Отметки посещаемости
+  '/api/rko',                    // РКО отчёты
+  '/api/shift-handover-questions', // CRUD вопросов сдачи смены
+  '/api/recount-questions',      // CRUD вопросов пересчёта
+  '/api/envelope-questions',     // CRUD вопросов конвертов
 ];
 
 app.use((req, res, next) => {

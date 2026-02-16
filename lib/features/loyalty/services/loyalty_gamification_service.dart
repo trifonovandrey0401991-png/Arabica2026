@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
@@ -184,6 +185,11 @@ class LoyaltyGamificationService {
       if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
       }
+
+      // Передаём телефон админа для проверки прав на сервере
+      final prefs = await SharedPreferences.getInstance();
+      final adminPhone = prefs.getString('user_phone') ?? '';
+      request.fields['employeePhone'] = adminPhone.replaceAll(RegExp(r'[\s\+]'), '');
 
       request.files.add(
         http.MultipartFile.fromBytes(

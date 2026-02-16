@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/shift_report_model.dart';
 import '../../../core/services/photo_upload_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница галереи фото из отчетов
 class ShiftPhotoGalleryPage extends StatefulWidget {
@@ -21,8 +22,8 @@ class ShiftPhotoGalleryPage extends StatefulWidget {
 }
 
 class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late PageController _pageController;
   late int _currentIndex;
@@ -44,10 +45,11 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
     final List<String> paths = [];
     for (var report in widget.reports) {
       for (var answer in report.answers) {
-        if (answer.photoPath != null) {
-          paths.add(answer.photoPath!);
-        } else if (answer.photoDriveId != null) {
+        // Приоритет: серверный URL (photoDriveId) > локальный путь (photoPath)
+        if (answer.photoDriveId != null) {
           paths.add(answer.photoDriveId!);
+        } else if (answer.photoPath != null) {
+          paths.add(answer.photoPath!);
         }
       }
     }
@@ -56,13 +58,13 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
 
   Widget _buildAppBar(BuildContext context, {required String title}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -70,11 +72,11 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -84,14 +86,14 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
 
   Widget _buildPageIndicator(int total) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: 12.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(total, (index) {
           final isActive = index == _currentIndex;
           return AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            duration: Duration(milliseconds: 250),
+            margin: EdgeInsets.symmetric(horizontal: 4.w),
             width: isActive ? 10 : 8,
             height: isActive ? 10 : 8,
             decoration: BoxDecoration(
@@ -116,11 +118,11 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
           child: Column(
             children: [
               _buildAppBar(context, title: 'Фотографии'),
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Text(
                     'Фотографии не найдены',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    style: TextStyle(color: Colors.white70, fontSize: 16.sp),
                   ),
                 ),
               ),
@@ -175,7 +177,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                       },
                                     );
                                   }
-                                  return const Center(
+                                  return Center(
                                     child: CircularProgressIndicator(color: _gold),
                                   );
                                 },
@@ -209,7 +211,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                           },
                                         );
                                       }
-                                      return const Center(
+                                      return Center(
                                         child: CircularProgressIndicator(color: _gold),
                                       );
                                     },

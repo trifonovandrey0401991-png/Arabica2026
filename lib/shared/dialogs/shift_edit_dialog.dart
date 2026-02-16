@@ -5,6 +5,7 @@ import '../../features/shops/models/shop_model.dart';
 import '../../features/shops/models/shop_settings_model.dart';
 import '../../features/shops/services/shop_service.dart';
 import '../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог редактирования смены с двумя вкладками
 class ShiftEditDialog extends StatefulWidget {
@@ -103,13 +104,13 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
           Expanded(
             child: Text(
               '${widget.employee.name} - ${widget.date.day}.${widget.date.month}.${widget.date.year}',
-              style: const TextStyle(fontSize: 18),
+              style: TextStyle(fontSize: 18.sp),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -121,8 +122,8 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
           children: [
             TabBar(
               controller: _tabController,
-              labelColor: const Color(0xFF004D40),
-              tabs: const [
+              labelColor: Color(0xFF004D40),
+              tabs: [
                 Tab(text: 'Редактировать'),
                 Tab(text: 'Свободные сотрудники'),
               ],
@@ -145,22 +146,22 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
   /// Вкладка редактирования
   Widget _buildEditTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Сотрудник:',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DropdownButtonFormField<Employee>(
             value: _selectedEmployee,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: OutlineInputBorder(),
             ),
             isExpanded: true,
@@ -179,30 +180,30 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               });
             },
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           Row(
             children: [
-              const Text(
+              Text(
                 'Тип смены:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
               ),
               if (widget.requiredShiftType != null) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.lock, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                const Text(
+                SizedBox(width: 8),
+                Icon(Icons.lock, size: 16, color: Colors.grey),
+                SizedBox(width: 4),
+                Text(
                   '(заблокировано)',
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey, fontStyle: FontStyle.italic),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DropdownButtonFormField<ShiftType>(
             value: _selectedShiftType,
             decoration: InputDecoration(
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
               filled: widget.requiredShiftType != null,
               fillColor: widget.requiredShiftType != null ? Colors.grey[200] : null,
             ),
@@ -225,30 +226,30 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               });
             },
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           Row(
             children: [
-              const Text(
+              Text(
                 'Магазин:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
               ),
               if (widget.requiredShop != null) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.lock, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                const Text(
+                SizedBox(width: 8),
+                Icon(Icons.lock, size: 16, color: Colors.grey),
+                SizedBox(width: 4),
+                Text(
                   '(заблокировано)',
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey, fontStyle: FontStyle.italic),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DropdownButtonFormField<Shop>(
             value: _selectedShop,
             decoration: InputDecoration(
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
               filled: widget.requiredShop != null,
               fillColor: widget.requiredShop != null ? Colors.grey[200] : null,
             ),
@@ -292,7 +293,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               });
             },
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           // Кнопки действий
           Wrap(
@@ -303,24 +304,24 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               if (widget.existingEntry != null)
                 TextButton.icon(
                   onPressed: _deleteShift,
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                  label: const Text('Удалить смену', style: TextStyle(color: Colors.red, fontSize: 13)),
+                  icon: Icon(Icons.delete, color: Colors.red, size: 18),
+                  label: Text('Удалить смену', style: TextStyle(color: Colors.red, fontSize: 13.sp)),
                 ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Отмена'),
+                    child: Text('Отмена'),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: _saveShift,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
+                      backgroundColor: Color(0xFF004D40),
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Сохранить'),
+                    child: Text('Сохранить'),
                   ),
                 ],
               ),
@@ -336,20 +337,20 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
     final availableEmployees = _getAvailableEmployees();
 
     if (availableEmployees.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(16.0.w),
           child: Text(
             'Нет свободных сотрудников на эту дату.\nВсе сотрудники уже имеют смены.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16.sp),
           ),
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: EdgeInsets.all(8.w),
       itemCount: availableEmployees.length,
       itemBuilder: (context, index) {
         final emp = availableEmployees[index];
@@ -358,7 +359,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
         return Card(
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: Color(0xFF004D40),
               foregroundColor: Colors.white,
               child: Text(
                 emp.name.length >= 2
@@ -368,7 +369,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
             ),
             title: Text(
               emp.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
               yesterdayStatus,
@@ -378,7 +379,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
                   : Colors.green,
               ),
             ),
-            trailing: const Icon(Icons.arrow_forward),
+            trailing: Icon(Icons.arrow_forward),
             onTap: () => _replaceEmployeeAndSave(emp),
           ),
         );
@@ -423,9 +424,9 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
 
   /// Рассчитать приоритет сотрудника (чем больше - тем лучше подходит)
   int _getEmployeePriorityScore(Employee emp) {
-    final yesterday = widget.date.subtract(const Duration(days: 1));
+    final yesterday = widget.date.subtract(Duration(days: 1));
     final today = widget.date;
-    final tomorrow = widget.date.add(const Duration(days: 1));
+    final tomorrow = widget.date.add(Duration(days: 1));
 
     // Проверяем вчера
     final hadYesterday = widget.schedule.entries.any((e) =>
@@ -472,7 +473,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
   /// Получить статус вчерашнего/завтрашнего дня для сотрудника
   String _getYesterdayStatus(Employee emp) {
     // Проверяем вчерашний день
-    final yesterday = widget.date.subtract(const Duration(days: 1));
+    final yesterday = widget.date.subtract(Duration(days: 1));
     final yesterdayEntry = widget.schedule.entries.firstWhere(
       (e) =>
         e.employeeId == emp.id &&
@@ -490,7 +491,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
     );
 
     // Проверяем завтрашний день
-    final tomorrow = widget.date.add(const Duration(days: 1));
+    final tomorrow = widget.date.add(Duration(days: 1));
     final tomorrowEntry = widget.schedule.entries.firstWhere(
       (e) =>
         e.employeeId == emp.id &&
@@ -529,7 +530,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
   Future<void> _replaceEmployeeAndSave(Employee newEmployee) async {
     if (_selectedShiftType == null || _selectedShop == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Ошибка: не выбран тип смены или магазин'),
           backgroundColor: Colors.red,
         ),
@@ -560,7 +561,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
   void _saveShift() {
     if (_selectedEmployee == null || _selectedShiftType == null || _selectedShop == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Заполните все поля'),
           backgroundColor: Colors.red,
         ),
@@ -591,7 +592,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
       Logger.error('Попытка удаления несуществующей смены (existingEntry == null)', null);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка: Смена не найдена'),
             backgroundColor: Colors.red,
           ),
@@ -606,7 +607,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
       Logger.error('ID смены пустой (empty string)', null);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка: ID смены не найден (пустая строка)'),
             backgroundColor: Colors.red,
           ),
@@ -621,7 +622,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Подтверждение'),
+        title: Text('Подтверждение'),
         content: Text(
           'Удалить смену сотрудника ${widget.existingEntry!.employeeName}?\n'
           'Дата: ${widget.date.day}.${widget.date.month}.${widget.date.year}\n'
@@ -634,7 +635,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               Logger.debug('Удаление отменено пользователем');
               Navigator.of(context).pop(false);
             },
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -645,7 +646,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),

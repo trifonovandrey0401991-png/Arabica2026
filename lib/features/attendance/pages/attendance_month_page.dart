@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/shop_attendance_summary.dart';
 import 'attendance_day_details_dialog.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница с днями месяца (Уровень 3)
 class AttendanceMonthPage extends StatelessWidget {
@@ -18,10 +19,10 @@ class AttendanceMonthPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('${monthSummary.displayName} ${monthSummary.year}'),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -32,16 +33,16 @@ class AttendanceMonthPage extends StatelessWidget {
           children: [
             // Заголовок с общей статистикой
             Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
+              margin: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
@@ -49,15 +50,15 @@ class AttendanceMonthPage extends StatelessWidget {
                 children: [
                   Text(
                     shopAddress,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -84,7 +85,7 @@ class AttendanceMonthPage extends StatelessWidget {
 
             // Легенда
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -95,12 +96,12 @@ class AttendanceMonthPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Список дней
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
                 itemCount: monthSummary.days.length,
                 itemBuilder: (context, index) {
                   // Показываем в обратном порядке (сначала последние дни)
@@ -125,14 +126,14 @@ class AttendanceMonthPage extends StatelessWidget {
     final dayOfWeek = _getDayOfWeek(day.date.weekday);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
         leading: Container(
           width: 44,
           height: 44,
           decoration: BoxDecoration(
             color: statusColor.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
             border: Border.all(color: statusColor, width: 2),
           ),
           child: Center(
@@ -141,7 +142,7 @@ class AttendanceMonthPage extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: statusColor,
-                fontSize: 16,
+                fontSize: 16.sp,
               ),
             ),
           ),
@@ -150,7 +151,7 @@ class AttendanceMonthPage extends StatelessWidget {
           children: [
             Text(
               '$dayOfWeek - ',
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500),
             ),
             Text(
               '${day.attendanceCount} ${_getEnding(day.attendanceCount)}',
@@ -162,20 +163,20 @@ class AttendanceMonthPage extends StatelessWidget {
           ],
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: EdgeInsets.only(top: 4.h),
           child: Row(
             children: [
               _buildShiftChip('Утро', day.hasMorning),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildShiftChip('День', day.hasDay, isOptional: true),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildShiftChip('Ночь', day.hasNight),
             ],
           ),
         ),
         trailing: day.attendanceCount > 0
-            ? const Icon(Icons.chevron_right)
-            : const Icon(Icons.remove, color: Colors.grey),
+            ? Icon(Icons.chevron_right)
+            : Icon(Icons.remove, color: Colors.grey),
         onTap: day.attendanceCount > 0
             ? () {
                 showDialog(
@@ -199,10 +200,10 @@ class AttendanceMonthPage extends StatelessWidget {
             : Colors.red;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4.r),
         border: Border.all(color: color.withOpacity(0.5)),
       ),
       child: Row(
@@ -213,11 +214,11 @@ class AttendanceMonthPage extends StatelessWidget {
             size: 12,
             color: color,
           ),
-          const SizedBox(width: 2),
+          SizedBox(width: 2),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 11.sp,
               color: color,
               fontWeight: FontWeight.w500,
             ),
@@ -233,14 +234,14 @@ class AttendanceMonthPage extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 24.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: TextStyle(fontSize: 12.sp, color: Colors.grey),
         ),
       ],
     );
@@ -258,10 +259,10 @@ class AttendanceMonthPage extends StatelessWidget {
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Text(
           text,
-          style: const TextStyle(fontSize: 11, color: Colors.white),
+          style: TextStyle(fontSize: 11.sp, color: Colors.white),
         ),
       ],
     );
@@ -279,7 +280,7 @@ class AttendanceMonthPage extends StatelessWidget {
   }
 
   String _getDayOfWeek(int weekday) {
-    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return days[weekday - 1];
   }
 

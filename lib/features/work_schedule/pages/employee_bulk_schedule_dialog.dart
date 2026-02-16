@@ -3,6 +3,7 @@ import '../models/work_schedule_model.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог массового редактирования смен сотрудника
 /// Строки = магазины, столбцы = дни (каждый день делится на 2 клетки: утро и вечер)
@@ -35,9 +36,9 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
   final Map<String, WorkScheduleEntry> _pendingEntries = {};
 
   // Цвета для смен
-  static const Color _morningColor = Color(0xFFB9F6CA); // салатовый
-  static const Color _dayColor = Color(0xFFFFF59D); // светло-жёлтый
-  static const Color _eveningColor = Color(0xFFE0E0E0); // светло-серый
+  static final Color _morningColor = Color(0xFFB9F6CA); // салатовый
+  static final Color _dayColor = Color(0xFFFFF59D); // светло-жёлтый
+  static final Color _eveningColor = Color(0xFFE0E0E0); // светло-серый
 
   @override
   void initState() {
@@ -147,7 +148,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
   }
 
   String _getMonthName(int month) {
-    const months = [
+    final months = [
       'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
       'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
     ];
@@ -155,7 +156,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
   }
 
   String _getWeekdayName(int weekday) {
-    const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
   }
 
@@ -164,7 +165,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
     final days = _getDaysInPeriod();
 
     return Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: EdgeInsets.all(16.w),
       child: Container(
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.95,
@@ -177,12 +178,12 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
             _buildHeader(),
             // Панель выбора смены
             _buildShiftSelector(),
-            const Divider(height: 1),
+            Divider(height: 1),
             // Таблица
             Expanded(
               child: _buildScheduleTable(days),
             ),
-            const Divider(height: 1),
+            Divider(height: 1),
             // Кнопки
             _buildActions(),
           ],
@@ -193,12 +194,12 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
         color: Color(0xFF004D40),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(4),
-          topRight: Radius.circular(4),
+          topLeft: Radius.circular(4.r),
+          topRight: Radius.circular(4.r),
         ),
       ),
       child: Row(
@@ -209,27 +210,27 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
               children: [
                 Text(
                   'График смен: ${widget.employee.name}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   'Период: ${widget.startDay} - ${widget.endDay} ${_getMonthName(widget.selectedMonth.month)} ${widget.selectedMonth.year}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.8),
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: Icon(Icons.close, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -239,31 +240,31 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
 
   Widget _buildShiftSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
       color: Colors.grey[100],
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               'Смена: ',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             ...ShiftType.values.map((type) {
               final isSelected = type == _selectedShiftType;
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
+                padding: EdgeInsets.symmetric(horizontal: 2.w),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isSelected ? _getCellColor(type) : Colors.white,
                     foregroundColor: Colors.black,
                     elevation: isSelected ? 4 : 1,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: const Size(60, 32),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                    minimumSize: Size(60, 32),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(6.r),
                       side: BorderSide(
                         color: isSelected ? type.color : Colors.grey[300]!,
                         width: isSelected ? 2 : 1,
@@ -274,7 +275,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
                   child: Text(
                     type.label,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -311,15 +312,15 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
         Container(
           width: 150,
           height: 60,
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
             color: Colors.grey[300],
             border: Border.all(color: Colors.grey[400]!),
           ),
           alignment: Alignment.center,
-          child: const Text(
+          child: Text(
             'Магазин',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp),
           ),
         ),
         // Колонки дней
@@ -339,39 +340,39 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
                   '${day.day}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     color: isWeekend ? Colors.orange[800] : Colors.black,
                   ),
                 ),
                 Text(
                   _getWeekdayName(day.weekday),
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 10.sp,
                     color: isWeekend ? Colors.orange[600] : Colors.grey[600],
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 // Подзаголовки У и В
                 Row(
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 1),
+                        padding: EdgeInsets.symmetric(vertical: 1.h),
                         decoration: BoxDecoration(
                           color: _morningColor.withOpacity(0.5),
                           border: Border(right: BorderSide(color: Colors.grey[400]!)),
                         ),
-                        child: const Center(
-                          child: Text('У', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                        child: Center(
+                          child: Text('У', style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ),
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 1),
+                        padding: EdgeInsets.symmetric(vertical: 1.h),
                         color: _eveningColor.withOpacity(0.5),
-                        child: const Center(
-                          child: Text('В', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                        child: Center(
+                          child: Text('В', style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ),
@@ -392,7 +393,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
         Container(
           width: 150,
           height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: EdgeInsets.symmetric(horizontal: 8.w),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: Colors.grey[300]!),
@@ -400,7 +401,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
           alignment: Alignment.centerLeft,
           child: Text(
             shop.address,
-            style: const TextStyle(fontSize: 11),
+            style: TextStyle(fontSize: 11.sp),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -440,8 +441,8 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
                   child: isMorningOrDay
                     ? Text(
                         _getAbbreviation(entry),
-                        style: const TextStyle(
-                          fontSize: 8,
+                        style: TextStyle(
+                          fontSize: 8.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
@@ -485,8 +486,8 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
                   child: isEvening
                     ? Text(
                         _getAbbreviation(entry),
-                        style: const TextStyle(
-                          fontSize: 8,
+                        style: TextStyle(
+                          fontSize: 8.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
@@ -505,25 +506,25 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
 
   Widget _buildActions() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: Color(0xFF004D40),
               foregroundColor: Colors.white,
             ),
             onPressed: () {
               // Возвращаем список записей
               Navigator.of(context).pop(_pendingEntries.values.toList());
             },
-            child: const Text('Сохранить'),
+            child: Text('Сохранить'),
           ),
         ],
       ),

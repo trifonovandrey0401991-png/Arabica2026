@@ -4,6 +4,7 @@ import '../services/recipe_service.dart';
 import 'recipe_form_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class RecipeListEditPage extends StatefulWidget {
   const RecipeListEditPage({super.key});
@@ -13,8 +14,8 @@ class RecipeListEditPage extends StatefulWidget {
 }
 
 class _RecipeListEditPageState extends State<RecipeListEditPage> {
-  static const _primaryColor = Color(0xFF004D40);
-  static const _primaryColorLight = Color(0xFF00695C);
+  static final _primaryColor = Color(0xFF004D40);
+  static final _primaryColorLight = Color(0xFF00695C);
 
   List<Recipe> _recipes = [];
   bool _isLoading = true;
@@ -66,19 +67,19 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Удалить рецепт?'),
+          title: Text('Удалить рецепт?'),
           content: Text('Вы уверены, что хотите удалить рецепт "${recipe.name}"?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text('Отмена'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,
               ),
-              child: const Text('Удалить'),
+              child: Text('Удалить'),
             ),
           ],
         );
@@ -91,7 +92,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
         if (success) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Рецепт успешно удален'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
@@ -102,7 +103,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Ошибка удаления рецепта'),
                 backgroundColor: Colors.red,
               ),
@@ -171,7 +172,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const RecipeFormPage(),
+        builder: (context) => RecipeFormPage(),
       ),
     );
     if (result != null) {
@@ -179,7 +180,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
       _loadRecipes();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Новый рецепт создан'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
@@ -204,7 +205,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
         children: [
           // Красивая кнопка "Добавить новый рецепт"
           Container(
-            margin: const EdgeInsets.all(16),
+            margin: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -214,12 +215,12 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.2),
                   blurRadius: 12,
-                  offset: const Offset(0, 6),
+                  offset: Offset(0, 6),
                 ),
               ],
             ),
@@ -227,9 +228,9 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
               color: Colors.transparent,
               child: InkWell(
                 onTap: _addNewRecipe,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                  padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 24.w),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -242,22 +243,22 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14.r),
                           boxShadow: [
                             BoxShadow(
                               color: _primaryColor.withOpacity(0.3),
                               blurRadius: 8,
-                              offset: const Offset(0, 3),
+                              offset: Offset(0, 3),
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add_rounded,
                           color: Colors.white,
                           size: 28,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,16 +266,16 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                             Text(
                               'Добавить новый рецепт',
                               style: TextStyle(
-                                fontSize: 17,
+                                fontSize: 17.sp,
                                 fontWeight: FontWeight.bold,
                                 color: _primaryColor,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            SizedBox(height: 2),
                             Text(
                               'Создайте новый рецепт напитка',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 13.sp,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -294,11 +295,11 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
           ),
           // Поиск и фильтр
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(16),
+            margin: EdgeInsets.symmetric(horizontal: 16.w),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
             ),
             child: Column(
               children: [
@@ -306,12 +307,12 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.08),
                         blurRadius: 6,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
@@ -323,10 +324,10 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                     ),
                     onChanged: (value) {
                       setState(() {
@@ -335,17 +336,17 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                     },
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 // Фильтр категорий
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.08),
                         blurRadius: 6,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
@@ -358,14 +359,14 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                     ),
                     dropdownColor: Colors.white,
                     items: [
-                      const DropdownMenuItem<String>(
+                      DropdownMenuItem<String>(
                         value: null,
                         child: Text('Все категории'),
                       ),
@@ -384,25 +385,25 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Счетчик рецептов
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
             child: Row(
               children: [
                 Icon(Icons.menu_book_outlined, color: Colors.white70, size: 18),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   'Всего рецептов: ${_filteredRecipes.length}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           // Список рецептов
           Expanded(
             child: _isLoading
@@ -413,10 +414,10 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                         CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
+                        SizedBox(height: 16),
+                        Text(
                           'Загрузка рецептов...',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          style: TextStyle(color: Colors.white70, fontSize: 16.sp),
                         ),
                       ],
                     ),
@@ -427,16 +428,16 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.search_off_rounded, size: 64, color: Colors.white54),
-                            const SizedBox(height: 16),
-                            const Text(
+                            SizedBox(height: 16),
+                            Text(
                               'Рецепты не найдены',
-                              style: TextStyle(color: Colors.white, fontSize: 18),
+                              style: TextStyle(color: Colors.white, fontSize: 18.sp),
                             ),
                           ],
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         itemCount: _filteredRecipes.length,
                         itemBuilder: (context, index) {
                           final recipe = _filteredRecipes[index];
@@ -452,20 +453,20 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
   /// Карточка рецепта для редактирования
   Widget _buildEditRecipeCard(Recipe recipe) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.12),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         child: Row(
           children: [
             // Фото рецепта
@@ -473,21 +474,21 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 boxShadow: [
                   BoxShadow(
                     color: _primaryColor.withOpacity(0.15),
                     blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 child: _buildRecipeImage(recipe),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             // Информация
             Expanded(
               child: Column(
@@ -495,24 +496,24 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                 children: [
                   Text(
                     recipe.name,
-                    style: const TextStyle(
-                      fontSize: 15,
+                    style: TextStyle(
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2D2D2D),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.category_outlined, size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           recipe.category,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.grey[600],
                           ),
                           maxLines: 1,
@@ -522,11 +523,11 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                     ],
                   ),
                   if (recipe.price != null && recipe.price!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       '${recipe.price} руб.',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                         color: _primaryColor,
                       ),
@@ -541,12 +542,12 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                 // Редактировать
                 Material(
                   color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   child: InkWell(
                     onTap: () => _editRecipe(recipe),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     child: Padding(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(10.w),
                       child: Icon(
                         Icons.edit_rounded,
                         color: Colors.blue[700],
@@ -555,16 +556,16 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 // Удалить
                 Material(
                   color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   child: InkWell(
                     onTap: () => _deleteRecipe(recipe),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     child: Padding(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(10.w),
                       child: Icon(
                         Icons.delete_rounded,
                         color: Colors.red[700],

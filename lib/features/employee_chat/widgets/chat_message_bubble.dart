@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/employee_chat_message_model.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Доступные реакции
-const List<String> availableReactions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+List<String> availableReactions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 /// Виджет пузыря сообщения — dark emerald стиль
 class ChatMessageBubble extends StatelessWidget {
@@ -16,9 +17,9 @@ class ChatMessageBubble extends StatelessWidget {
   final VoidCallback? onForwardTap;
   final VoidCallback? onLongPress;
 
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   const ChatMessageBubble({
     super.key,
@@ -34,11 +35,11 @@ class ChatMessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (isMe) const Spacer(flex: 1),
+          if (isMe) Spacer(flex: 1),
           Flexible(
             flex: 4,
             child: GestureDetector(
@@ -47,10 +48,10 @@ class ChatMessageBubble extends StatelessWidget {
                 crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       gradient: isMe
-                          ? const LinearGradient(
+                          ? LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [_emerald, _emeraldDark],
@@ -58,10 +59,10 @@ class ChatMessageBubble extends StatelessWidget {
                           : null,
                       color: isMe ? null : Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(18),
-                        topRight: const Radius.circular(18),
-                        bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
-                        bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
+                        topLeft: Radius.circular(18.r),
+                        topRight: Radius.circular(18.r),
+                        bottomLeft: isMe ? Radius.circular(18.r) : Radius.circular(4.r),
+                        bottomRight: isMe ? Radius.circular(4.r) : Radius.circular(18.r),
                       ),
                       border: Border.all(
                         color: isMe
@@ -77,15 +78,15 @@ class ChatMessageBubble extends StatelessWidget {
                         // Имя отправителя
                         if (showSenderName)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
+                            padding: EdgeInsets.only(bottom: 6.h),
                             child: Text(
                               message.senderName,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 fontWeight: FontWeight.w600,
                                 color: isMe
                                     ? Colors.white.withOpacity(0.7)
-                                    : const Color(0xFF4DB6AC),
+                                    : Color(0xFF4DB6AC),
                               ),
                             ),
                           ),
@@ -94,9 +95,9 @@ class ChatMessageBubble extends StatelessWidget {
                           GestureDetector(
                             onTap: () => _showFullImage(context),
                             child: Container(
-                              margin: const EdgeInsets.only(bottom: 6),
+                              margin: EdgeInsets.only(bottom: 6.h),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                                 child: AppCachedImage(
                                   imageUrl: message.imageUrl!,
                                   width: 220,
@@ -108,7 +109,7 @@ class ChatMessageBubble extends StatelessWidget {
                                       height: 220,
                                       decoration: BoxDecoration(
                                         color: Colors.white.withOpacity(0.06),
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12.r),
                                       ),
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
@@ -118,12 +119,12 @@ class ChatMessageBubble extends StatelessWidget {
                                             size: 48,
                                             color: Colors.white.withOpacity(0.3),
                                           ),
-                                          const SizedBox(height: 8),
+                                          SizedBox(height: 8),
                                           Text(
                                             'Не удалось загрузить',
                                             style: TextStyle(
                                               color: Colors.white.withOpacity(0.4),
-                                              fontSize: 12,
+                                              fontSize: 12.sp,
                                             ),
                                           ),
                                         ],
@@ -140,11 +141,11 @@ class ChatMessageBubble extends StatelessWidget {
                             message.text,
                             style: TextStyle(
                               color: Colors.white.withOpacity(isMe ? 0.95 : 0.85),
-                              fontSize: 15,
+                              fontSize: 15.sp,
                               height: 1.4,
                             ),
                           ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         // Время и статус
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -152,12 +153,12 @@ class ChatMessageBubble extends StatelessWidget {
                             Text(
                               message.formattedTime,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: Colors.white.withOpacity(isMe ? 0.5 : 0.35),
                               ),
                             ),
                             if (isMe) ...[
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Icon(
                                 message.readBy.length > 1 ? Icons.done_all_rounded : Icons.done_rounded,
                                 size: 15,
@@ -177,7 +178,7 @@ class ChatMessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (!isMe) const Spacer(flex: 1),
+          if (!isMe) Spacer(flex: 1),
         ],
       ),
     );
@@ -186,14 +187,14 @@ class ChatMessageBubble extends StatelessWidget {
   /// Заголовок пересланного сообщения
   Widget _buildForwardedHeader() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(6.r),
         border: Border(
           left: BorderSide(
-            color: isMe ? Colors.white.withOpacity(0.5) : const Color(0xFF4DB6AC),
+            color: isMe ? Colors.white.withOpacity(0.5) : Color(0xFF4DB6AC),
             width: 3,
           ),
         ),
@@ -204,14 +205,14 @@ class ChatMessageBubble extends StatelessWidget {
           Icon(
             Icons.reply_rounded,
             size: 14,
-            color: isMe ? Colors.white.withOpacity(0.7) : const Color(0xFF4DB6AC),
+            color: isMe ? Colors.white.withOpacity(0.7) : Color(0xFF4DB6AC),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Flexible(
             child: Text(
               'Переслано от ${message.forwardedFrom!.originalSenderName}',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 11.sp,
                 fontStyle: FontStyle.italic,
                 color: Colors.white.withOpacity(isMe ? 0.7 : 0.5),
               ),
@@ -226,7 +227,7 @@ class ChatMessageBubble extends StatelessWidget {
   /// Виджет реакций
   Widget _buildReactions() {
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: EdgeInsets.only(top: 6.h),
       child: Wrap(
         spacing: 4,
         runSpacing: 4,
@@ -244,13 +245,13 @@ class ChatMessageBubble extends StatelessWidget {
               }
             },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              duration: Duration(milliseconds: 200),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: hasMyReaction
                     ? _emerald.withOpacity(0.4)
                     : Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: hasMyReaction
                     ? Border.all(color: _emerald.withOpacity(0.7), width: 1.5)
                     : Border.all(color: Colors.white.withOpacity(0.1)),
@@ -258,13 +259,13 @@ class ChatMessageBubble extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(reaction, style: const TextStyle(fontSize: 14)),
+                  Text(reaction, style: TextStyle(fontSize: 14.sp)),
                   if (count > 1) ...[
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       count.toString(),
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: hasMyReaction
                             ? Colors.white.withOpacity(0.9)
                             : Colors.white.withOpacity(0.5),
@@ -296,7 +297,7 @@ class ChatMessageBubble extends StatelessWidget {
       builder: (context) => Container(
         decoration: BoxDecoration(
           color: _night.withOpacity(0.98),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
           border: Border(
             top: BorderSide(color: Colors.white.withOpacity(0.1)),
           ),
@@ -309,16 +310,16 @@ class ChatMessageBubble extends StatelessWidget {
               Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
+                margin: EdgeInsets.symmetric(vertical: 12.h),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
               // Реакции
               if (onReactionTap != null) ...[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: availableReactions.map((reaction) {
@@ -331,20 +332,20 @@ class ChatMessageBubble extends StatelessWidget {
                           onReactionTap!(reaction);
                         },
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(10),
+                          duration: Duration(milliseconds: 200),
+                          padding: EdgeInsets.all(10.w),
                           decoration: BoxDecoration(
                             color: hasMyReaction
                                 ? _emerald.withOpacity(0.4)
                                 : Colors.white.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: hasMyReaction
                                 ? Border.all(color: _emerald.withOpacity(0.7))
                                 : Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
                           child: Text(
                             reaction,
-                            style: const TextStyle(fontSize: 28),
+                            style: TextStyle(fontSize: 28.sp),
                           ),
                         ),
                       );
@@ -357,10 +358,10 @@ class ChatMessageBubble extends StatelessWidget {
               if (onForwardTap != null)
                 ListTile(
                   leading: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: _emerald.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(Icons.forward_rounded, color: Colors.white.withOpacity(0.8)),
                   ),
@@ -377,10 +378,10 @@ class ChatMessageBubble extends StatelessWidget {
               if (message.text.isNotEmpty)
                 ListTile(
                   leading: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
                       color: Colors.blue.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(Icons.copy_rounded, color: Colors.blue[300]),
                   ),
@@ -393,16 +394,16 @@ class ChatMessageBubble extends StatelessWidget {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: const Text('Текст скопирован'),
+                        content: Text('Текст скопирован'),
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                         backgroundColor: _emerald,
-                        duration: const Duration(seconds: 2),
+                        duration: Duration(seconds: 2),
                       ),
                     );
                   },
                 ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
             ],
           ),
         ),
@@ -434,7 +435,7 @@ class ChatMessageBubble extends StatelessWidget {
                           imageUrl: message.imageUrl!,
                           fit: BoxFit.contain,
                           errorWidget: (context, error, stackTrace) {
-                            return const Center(
+                            return Center(
                               child: Icon(
                                 Icons.broken_image_rounded,
                                 size: 64,
@@ -449,14 +450,14 @@ class ChatMessageBubble extends StatelessWidget {
                 ),
                 Positioned(
                   top: MediaQuery.of(context).padding.top + 10,
-                  right: 10,
+                  right: 10.w,
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(24.r),
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                      icon: Icon(Icons.close_rounded, color: Colors.white, size: 28),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),

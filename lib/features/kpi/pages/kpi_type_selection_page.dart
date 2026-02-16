@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'kpi_shop_calendar_page.dart';
 import 'kpi_employees_list_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора типа KPI: Сотрудники / Магазины
 class KPITypeSelectionPage extends StatelessWidget {
   const KPITypeSelectionPage({super.key});
 
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -28,7 +29,7 @@ class KPITypeSelectionPage extends StatelessWidget {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -38,18 +39,18 @@ class KPITypeSelectionPage extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Text(
+                    SizedBox(width: 16),
+                    Text(
                       'KPI',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -60,19 +61,19 @@ class KPITypeSelectionPage extends StatelessWidget {
               Expanded(
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: EdgeInsets.all(24.0.w),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           'Выберите тип отчета',
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 24.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 48),
+                        SizedBox(height: 48),
                         SizedBox(
                           width: double.infinity,
                           height: 80,
@@ -81,14 +82,14 @@ class KPITypeSelectionPage extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const KPIEmployeesListPage(),
+                                  builder: (context) => KPIEmployeesListPage(),
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.person, size: 32),
-                            label: const Text(
+                            icon: Icon(Icons.person, size: 32),
+                            label: Text(
                               'Сотрудники',
-                              style: TextStyle(fontSize: 20),
+                              style: TextStyle(fontSize: 20.sp),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _emerald,
@@ -96,7 +97,7 @@ class KPITypeSelectionPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 80,
@@ -105,14 +106,14 @@ class KPITypeSelectionPage extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const KPIShopCalendarPage(),
+                                  builder: (context) => KPIShopCalendarPage(),
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.store, size: 32),
-                            label: const Text(
+                            icon: Icon(Icons.store, size: 32),
+                            label: Text(
                               'Магазины',
-                              style: TextStyle(fontSize: 20),
+                              style: TextStyle(fontSize: 20.sp),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _emerald,

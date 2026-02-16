@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/photo_template.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// CustomPainter для отрисовки overlay-схемы поверх камеры
 class TemplateOverlayPainter extends CustomPainter {
@@ -70,11 +71,11 @@ class TemplateOverlayPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       fillPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       paint,
     );
 
@@ -98,11 +99,11 @@ class TemplateOverlayPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       fillPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       paint,
     );
 
@@ -130,11 +131,11 @@ class TemplateOverlayPainter extends CustomPainter {
       );
 
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+        RRect.fromRectAndRadius(rect, Radius.circular(6.r)),
         fillPaint,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+        RRect.fromRectAndRadius(rect, Radius.circular(6.r)),
         paint,
       );
     }
@@ -158,11 +159,11 @@ class TemplateOverlayPainter extends CustomPainter {
       );
 
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+        RRect.fromRectAndRadius(rect, Radius.circular(4.r)),
         fillPaint,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+        RRect.fromRectAndRadius(rect, Radius.circular(4.r)),
         paint,
       );
     }
@@ -222,11 +223,11 @@ class TemplateOverlayPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       fillPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       paint,
     );
   }
@@ -258,11 +259,11 @@ class TemplateOverlayPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       fillPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect, Radius.circular(8.r)),
       paint,
     );
   }
@@ -279,11 +280,11 @@ class TemplateOverlayPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      RRect.fromRectAndRadius(rect, Radius.circular(4.r)),
       fillPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      RRect.fromRectAndRadius(rect, Radius.circular(4.r)),
       paint,
     );
 
@@ -303,11 +304,11 @@ class TemplateOverlayPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(12)),
+      RRect.fromRectAndRadius(rect, Radius.circular(12.r)),
       fillPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(12)),
+      RRect.fromRectAndRadius(rect, Radius.circular(12.r)),
       paint,
     );
 
@@ -327,11 +328,11 @@ class TemplateOverlayPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+      RRect.fromRectAndRadius(rect, Radius.circular(6.r)),
       fillPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+      RRect.fromRectAndRadius(rect, Radius.circular(6.r)),
       paint,
     );
 
@@ -346,7 +347,7 @@ class TemplateOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
-    const crossSize = 20.0;
+    final crossSize = 20.0;
     canvas.drawLine(
       Offset(center.dx - crossSize, center.dy),
       Offset(center.dx + crossSize, center.dy),
@@ -379,8 +380,8 @@ class TemplateOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    const arrowLength = 30.0;
-    const offset = 60.0;
+    final arrowLength = 30.0;
+    final offset = 60.0;
 
     // 4 стрелки к центру
     final directions = [
@@ -417,8 +418,8 @@ class TemplateOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    const arrowLength = 30.0;
-    const offset = 80.0;
+    final arrowLength = 30.0;
+    final offset = 80.0;
 
     // 4 стрелки от центра
     final directions = [
@@ -472,7 +473,7 @@ class TemplateOverlayWidget extends StatelessWidget {
         template: template,
         overlayColor: color,
       ),
-      child: const SizedBox.expand(),
+      child: SizedBox.expand(),
     );
   }
 }

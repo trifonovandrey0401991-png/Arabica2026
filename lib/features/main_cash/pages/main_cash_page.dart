@@ -14,6 +14,7 @@ import 'shop_balance_details_page.dart';
 import 'withdrawal_shop_selection_page.dart';
 import 'revenue_analytics_page.dart';
 import 'store_managers_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Главная страница отчета по кассе
 class MainCashPage extends StatefulWidget {
@@ -24,10 +25,10 @@ class MainCashPage extends StatefulWidget {
 }
 
 class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   List<ShopCashBalance> _balances = [];
@@ -198,8 +199,8 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           title: Row(
             children: [
               Icon(Icons.add_circle, color: Colors.green[700]),
-              const SizedBox(width: 8),
-              const Text('Внесение денег'),
+              SizedBox(width: 8),
+              Text('Внесение денег'),
             ],
           ),
           content: SingleChildScrollView(
@@ -211,7 +212,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 DropdownButtonFormField<String>(
                   value: selectedShop,
                   isExpanded: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Магазин *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.store),
@@ -224,16 +225,16 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     setDialogState(() => selectedShop = value);
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Выбор типа (ООО/ИП)
                 DropdownButtonFormField<String>(
                   value: selectedType,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Куда вносить *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.account_balance),
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(value: 'ooo', child: Text('ООО')),
                     DropdownMenuItem(value: 'ip', child: Text('ИП')),
                   ],
@@ -241,12 +242,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     setDialogState(() => selectedType = value);
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Выбор сотрудника
                 DropdownButtonFormField<String>(
                   value: selectedEmployeeId,
                   isExpanded: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Кто вносит *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.person),
@@ -262,11 +263,11 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     });
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Сумма
                 TextField(
                   controller: amountController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Сумма *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.attach_money),
@@ -274,11 +275,11 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   ),
                   keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Комментарий (обязательный)
                 TextField(
                   controller: commentController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Комментарий *',
                     hintText: 'Укажите причину внесения',
                     border: OutlineInputBorder(),
@@ -292,46 +293,46 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text('Отмена'),
             ),
             ElevatedButton(
               onPressed: () {
                 // Валидация
                 if (selectedShop == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Выберите магазин'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Выберите магазин'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 if (selectedType == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Выберите куда вносить (ООО/ИП)'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Выберите куда вносить (ООО/ИП)'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 if (selectedEmployeeId == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Выберите сотрудника'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Выберите сотрудника'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 final amount = double.tryParse(amountController.text);
                 if (amount == null || amount <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Введите корректную сумму'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Введите корректную сумму'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 if (commentController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Комментарий обязателен'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Комментарий обязателен'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 Navigator.pop(context, true);
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700]),
-              child: const Text('Внести', style: TextStyle(color: Colors.white)),
+              child: Text('Внести', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -368,7 +369,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         if (created != null) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Внесение создано и ожидает подтверждения'),
               backgroundColor: Colors.green,
             ),
@@ -377,7 +378,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         } else {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ошибка создания внесения'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Ошибка создания внесения'), backgroundColor: Colors.red),
           );
           setState(() => _isLoading = false);
         }
@@ -407,8 +408,8 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           title: Row(
             children: [
               Icon(Icons.swap_horiz, color: Colors.blue[700]),
-              const SizedBox(width: 8),
-              const Text('Перенос денег'),
+              SizedBox(width: 8),
+              Text('Перенос денег'),
             ],
           ),
           content: SingleChildScrollView(
@@ -420,7 +421,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 DropdownButtonFormField<String>(
                   value: selectedShop,
                   isExpanded: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Магазин *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.store),
@@ -433,13 +434,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     setDialogState(() => selectedShop = value);
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Выбор направления
-                const Text(
+                Text(
                   'Направление переноса:',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -448,12 +449,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           setDialogState(() => transferDirection = 'ooo_to_ip');
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                          padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 12.w),
                           decoration: BoxDecoration(
                             color: transferDirection == 'ooo_to_ip'
                                 ? Colors.blue.withOpacity(0.1)
                                 : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: Border.all(
                               color: transferDirection == 'ooo_to_ip'
                                   ? Colors.blue
@@ -469,7 +470,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                                     ? Colors.blue
                                     : Colors.grey,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 'ООО → ИП',
                                 style: TextStyle(
@@ -484,19 +485,19 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: InkWell(
                         onTap: () {
                           setDialogState(() => transferDirection = 'ip_to_ooo');
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                          padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 12.w),
                           decoration: BoxDecoration(
                             color: transferDirection == 'ip_to_ooo'
                                 ? Colors.orange.withOpacity(0.1)
                                 : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: Border.all(
                               color: transferDirection == 'ip_to_ooo'
                                   ? Colors.orange
@@ -512,7 +513,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                                     ? Colors.orange
                                     : Colors.grey,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 'ИП → ООО',
                                 style: TextStyle(
@@ -529,11 +530,11 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Сумма
                 TextField(
                   controller: amountController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Сумма *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.attach_money),
@@ -547,34 +548,34 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text('Отмена'),
             ),
             ElevatedButton(
               onPressed: () {
                 // Валидация
                 if (selectedShop == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Выберите магазин'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Выберите магазин'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 if (transferDirection == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Выберите направление переноса'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Выберите направление переноса'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 final amount = double.tryParse(amountController.text);
                 if (amount == null || amount <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Введите корректную сумму'), backgroundColor: Colors.orange),
+                    SnackBar(content: Text('Введите корректную сумму'), backgroundColor: Colors.orange),
                   );
                   return;
                 }
                 Navigator.pop(context, true);
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700]),
-              child: const Text('Перенести', style: TextStyle(color: Colors.white)),
+              child: Text('Перенести', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -616,7 +617,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         if (created != null) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Перенос создан и ожидает подтверждения'),
               backgroundColor: Colors.blue,
             ),
@@ -625,7 +626,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         } else {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ошибка создания переноса'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Ошибка создания переноса'), backgroundColor: Colors.red),
           );
           setState(() => _isLoading = false);
         }
@@ -665,7 +666,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -678,7 +679,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -688,19 +689,19 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Главная Касса',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -711,7 +712,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const StoreManagersPage(),
+                              builder: (context) => StoreManagersPage(),
                             ),
                           );
                         },
@@ -720,13 +721,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           height: 40,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
-                          child: const Icon(Icons.people, color: Colors.white, size: 20),
+                          child: Icon(Icons.people, color: Colors.white, size: 20),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                     ],
                     GestureDetector(
                       onTap: _loadData,
@@ -735,10 +736,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -747,10 +748,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
 
               // TabBar
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+                margin: EdgeInsets.symmetric(horizontal: 16.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
                 child: TabBar(
@@ -759,12 +760,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   indicatorWeight: 3,
                   labelColor: _gold,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
-                  labelStyle: const TextStyle(
-                    fontSize: 13,
+                  labelStyle: TextStyle(
+                    fontSize: 13.sp,
                     fontWeight: FontWeight.bold,
                   ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontSize: 13,
+                  unselectedLabelStyle: TextStyle(
+                    fontSize: 13.sp,
                     fontWeight: FontWeight.w500,
                   ),
                   indicatorSize: TabBarIndicatorSize.tab,
@@ -773,7 +774,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     Tab(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(Icons.account_balance_wallet, size: 18),
                           SizedBox(width: 6),
                           Text('Касса'),
@@ -783,7 +784,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     Tab(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(Icons.upload, size: 18),
                           SizedBox(width: 6),
                           Text('Выемки'),
@@ -793,7 +794,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     Tab(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(Icons.bar_chart, size: 18),
                           SizedBox(width: 6),
                           Text('Аналитика'),
@@ -803,7 +804,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // Body
               Expanded(
@@ -814,7 +815,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         children: [
                           _buildCashTab(),
                           _buildWithdrawalsTab(),
-                          const RevenueAnalyticsPage(),
+                          RevenueAnalyticsPage(),
                         ],
                       ),
               ),
@@ -840,15 +841,15 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               ),
               child: Icon(Icons.inbox, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Нет данных о кассе',
-              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
+              style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5)),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Данные появятся после сдачи смен',
-              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.3)),
+              style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.3)),
             ),
           ],
         ),
@@ -859,7 +860,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       children: [
         // Заголовок таблицы
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
           decoration: BoxDecoration(
             color: _emerald.withOpacity(0.5),
             border: Border(
@@ -871,14 +872,14 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               Expanded(
                 child: Text(
                   'Магазин',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.7)),
                 ),
               ),
               SizedBox(
                 width: 60,
                 child: Text(
                   'ООО',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.7)),
                   textAlign: TextAlign.right,
                 ),
               ),
@@ -886,7 +887,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 width: 60,
                 child: Text(
                   'ИП',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.7)),
                   textAlign: TextAlign.right,
                 ),
               ),
@@ -894,11 +895,11 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 width: 80,
                 child: Text(
                   'Итого',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.7)),
                   textAlign: TextAlign.right,
                 ),
               ),
-              const SizedBox(width: 28), // место для стрелки
+              SizedBox(width: 28), // место для стрелки
             ],
           ),
         ),
@@ -915,7 +916,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         // Кнопки действий
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           decoration: BoxDecoration(
             color: _emerald.withOpacity(0.6),
             border: Border(
@@ -929,62 +930,62 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 child: GestureDetector(
                   onTap: _navigateToWithdrawal,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
                     decoration: BoxDecoration(
                       color: _emeraldDark,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.remove_circle_outline, color: Colors.white, size: 16),
-                        const SizedBox(width: 4),
-                        const Text('Выемка', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        Icon(Icons.remove_circle_outline, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text('Выемка', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
                       ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               // Кнопка Внести
               Expanded(
                 child: GestureDetector(
                   onTap: _showDepositDialog,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
                     decoration: BoxDecoration(
                       color: Colors.green[700],
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.add_circle_outline, color: Colors.white, size: 16),
-                        const SizedBox(width: 4),
-                        const Text('Внести', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        Icon(Icons.add_circle_outline, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text('Внести', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
                       ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               // Кнопка Перенести
               Expanded(
                 child: GestureDetector(
                   onTap: _showTransferDialog,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
                     decoration: BoxDecoration(
                       color: Colors.blue[700],
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.swap_horiz, color: Colors.white, size: 16),
-                        const SizedBox(width: 4),
-                        const Text('Перенос', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        Icon(Icons.swap_horiz, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text('Перенос', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
                       ],
                     ),
                   ),
@@ -995,7 +996,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         ),
         // Итого по всем магазинам
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
             color: _emeraldDark,
             border: Border(
@@ -1010,7 +1011,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: _gold,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ),
@@ -1018,10 +1019,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 width: 60,
                 child: Text(
                   _formatAmount(_balances.fold(0.0, (sum, b) => sum + b.oooBalance)),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                   ),
                   textAlign: TextAlign.right,
                 ),
@@ -1030,10 +1031,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 width: 60,
                 child: Text(
                   _formatAmount(_balances.fold(0.0, (sum, b) => sum + b.ipBalance)),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                   ),
                   textAlign: TextAlign.right,
                 ),
@@ -1045,12 +1046,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: _gold,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                   textAlign: TextAlign.right,
                 ),
               ),
-              const SizedBox(width: 28), // для выравнивания со стрелкой
+              SizedBox(width: 28), // для выравнивания со стрелкой
             ],
           ),
         ),
@@ -1073,7 +1074,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           ).then((_) => _loadData());
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.04),
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06))),
@@ -1083,7 +1084,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               Expanded(
                 child: Text(
                   balance.shopAddress,
-                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: Colors.white.withOpacity(0.8)),
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12.sp, color: Colors.white.withOpacity(0.8)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1094,7 +1095,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   _formatAmount(balance.oooBalance),
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w500,
                     color: balance.oooBalance < 0 ? Colors.red[300] : Colors.white.withOpacity(0.7),
                   ),
@@ -1106,7 +1107,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   _formatAmount(balance.ipBalance),
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w500,
                     color: balance.ipBalance < 0 ? Colors.red[300] : Colors.white.withOpacity(0.7),
                   ),
@@ -1118,13 +1119,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   _formatAmount(balance.totalBalance),
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
                     color: balance.totalBalance < 0 ? Colors.red[300] : _gold,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Icon(Icons.chevron_right, size: 20, color: Colors.white.withOpacity(0.3)),
             ],
           ),
@@ -1138,10 +1139,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       children: [
         // Подвкладки: Все / Подтвержденные
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Row(
@@ -1150,12 +1151,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 child: GestureDetector(
                   onTap: () => setState(() => _withdrawalTabIndex = 0),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
                     decoration: BoxDecoration(
                       color: _withdrawalTabIndex == 0 ? _gold.withOpacity(0.2) : Colors.transparent,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(11),
-                        bottomLeft: Radius.circular(11),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(11.r),
+                        bottomLeft: Radius.circular(11.r),
                       ),
                       border: _withdrawalTabIndex == 0
                           ? Border.all(color: _gold.withOpacity(0.3))
@@ -1169,12 +1170,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           size: 18,
                           color: _withdrawalTabIndex == 0 ? _gold : Colors.white.withOpacity(0.4),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text(
                           'Все',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             fontWeight: _withdrawalTabIndex == 0 ? FontWeight.bold : FontWeight.w500,
                             color: _withdrawalTabIndex == 0 ? _gold : Colors.white.withOpacity(0.4),
                           ),
@@ -1188,12 +1189,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 child: GestureDetector(
                   onTap: () => setState(() => _withdrawalTabIndex = 1),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
                     decoration: BoxDecoration(
                       color: _withdrawalTabIndex == 1 ? _gold.withOpacity(0.2) : Colors.transparent,
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(11),
-                        bottomRight: Radius.circular(11),
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(11.r),
+                        bottomRight: Radius.circular(11.r),
                       ),
                       border: _withdrawalTabIndex == 1
                           ? Border.all(color: _gold.withOpacity(0.3))
@@ -1207,12 +1208,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           size: 18,
                           color: _withdrawalTabIndex == 1 ? _gold : Colors.white.withOpacity(0.4),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text(
                           'Подтверждённые',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             fontWeight: _withdrawalTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
                             color: _withdrawalTabIndex == 1 ? _gold : Colors.white.withOpacity(0.4),
                           ),
@@ -1227,12 +1228,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         ),
         // Фильтр по магазину
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 8.h),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: DropdownButtonHideUnderline(
@@ -1244,8 +1245,8 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 hint: Row(
                   children: [
                     Icon(Icons.store, size: 18, color: _gold),
-                    const SizedBox(width: 8),
-                    Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)),
+                    SizedBox(width: 8),
+                    Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp)),
                   ],
                 ),
                 items: [
@@ -1261,7 +1262,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 onChanged: (value) {
                   setState(() => _selectedShopFilter = value);
                 },
-                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
               ),
             ),
           ),
@@ -1284,21 +1285,21 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                             ),
                             child: Icon(Icons.upload, size: 40, color: Colors.white.withOpacity(0.3)),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
                             'Выемок пока нет',
-                            style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5)),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             'Всего загружено: ${_withdrawals.length}',
-                            style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.3)),
+                            style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.3)),
                           ),
                         ],
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
                       itemCount: _filteredWithdrawals.length,
                       itemBuilder: (context, index) {
                         final withdrawal = _filteredWithdrawals[index];
@@ -1345,10 +1346,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     final categoryIcon = getCategoryIcon();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
           color: isCancelled ? Colors.red.withOpacity(0.3) : Colors.white.withOpacity(0.1),
           width: isCancelled ? 2 : 1,
@@ -1363,16 +1364,16 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           ),
         ),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          tilePadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+          childrenPadding: EdgeInsets.fromLTRB(12.w, 0.h, 12.w, 12.h),
           title: Row(
             children: [
               // Левая часть: иконка типа (или иконка отмены)
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: categoryColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
                   categoryIcon,
@@ -1380,7 +1381,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   color: categoryColor,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // Средняя часть: информация
               Expanded(
                 child: Column(
@@ -1397,22 +1398,22 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                             style: TextStyle(
                               color: Colors.red[300],
                               fontWeight: FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 10.sp,
                             ),
                           ),
                         // Показываем категорию операции
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: categoryColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Text(
                             withdrawal.categoryDisplayName,
                             style: TextStyle(
                               color: isCancelled ? Colors.white.withOpacity(0.3) : categoryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 8,
+                              fontSize: 8.sp,
                               decoration: isCancelled ? TextDecoration.lineThrough : null,
                             ),
                           ),
@@ -1426,7 +1427,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                                   ? Colors.white.withOpacity(0.3)
                                   : (withdrawal.type == 'ooo' ? Colors.blue[300] : Colors.orange[300]),
                               fontWeight: FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               decoration: isCancelled ? TextDecoration.lineThrough : null,
                             ),
                           ),
@@ -1434,7 +1435,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           withdrawal.formattedDateTime,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.3),
-                            fontSize: 9,
+                            fontSize: 9.sp,
                           ),
                         ),
                         if (withdrawal.confirmed && !isCancelled)
@@ -1445,23 +1446,23 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       withdrawal.shopAddress,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.white.withOpacity(0.8),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 1),
+                    SizedBox(height: 1),
                     Text(
                       '${withdrawal.employeeName} • ${withdrawal.expenses.length} расход${_getExpenseEnding(withdrawal.expenses.length)}',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.4),
-                        fontSize: 11,
+                        fontSize: 11.sp,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1476,7 +1477,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   Text(
                     '${withdrawal.totalAmount.toStringAsFixed(0)} руб',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                       color: _gold,
                     ),
@@ -1490,28 +1491,28 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Divider(height: 1, color: Colors.white.withOpacity(0.1)),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
                   child: Text(
                     'Детализация расходов:',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.7),
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ...withdrawal.expenses.asMap().entries.map((entry) {
                   final index = entry.key;
                   final expense = entry.value;
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.all(10),
+                    margin: EdgeInsets.only(bottom: 6.h),
+                    padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.04),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.white.withOpacity(0.06)),
                     ),
                     child: Row(
@@ -1522,20 +1523,20 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           height: 24,
                           decoration: BoxDecoration(
                             color: _emerald.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Center(
                             child: Text(
                               '${index + 1}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: Colors.white.withOpacity(0.7),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         // Информация
                         Expanded(
                           child: Column(
@@ -1545,17 +1546,17 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                                 expense.displayName,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.white.withOpacity(0.8),
                                 ),
                               ),
                               if (expense.comment.isNotEmpty) ...[
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(
                                   expense.comment,
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.4),
-                                    fontSize: 10,
+                                    fontSize: 10.sp,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -1569,7 +1570,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           '${expense.amount.toStringAsFixed(0)} руб',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: _gold,
                           ),
                         ),
@@ -1578,13 +1579,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   );
                 }),
                 if (withdrawal.adminName != null && withdrawal.adminName!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 4.w),
                     child: Text(
                       'Создал: ${withdrawal.adminName}',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 10.sp,
                         color: Colors.white.withOpacity(0.3),
                         fontStyle: FontStyle.italic,
                       ),
@@ -1593,24 +1594,24 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 ],
                 // Кнопка подтверждения
                 if (!withdrawal.confirmed) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Divider(height: 1, color: Colors.white.withOpacity(0.1)),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     height: 44,
                     child: ElevatedButton.icon(
                       onPressed: () => _confirmWithdrawal(withdrawal),
-                      icon: const Icon(Icons.check_circle_outline, size: 18),
-                      label: const Text(
+                      icon: Icon(Icons.check_circle_outline, size: 18),
+                      label: Text(
                         'Подтвердить выемку',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green[700],
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
                         elevation: 0,
                       ),
@@ -1619,22 +1620,22 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 ],
                 // Кнопка отмены (для активных выемок)
                 if (withdrawal.isActive) ...[
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     height: 40,
                     child: OutlinedButton.icon(
                       onPressed: () => _cancelWithdrawal(withdrawal),
-                      icon: const Icon(Icons.cancel_outlined, size: 16),
-                      label: const Text(
+                      icon: Icon(Icons.cancel_outlined, size: 16),
+                      label: Text(
                         'Отменить выемку',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500),
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red[300],
                         side: BorderSide(color: Colors.red[300]!),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
                       ),
                     ),
@@ -1642,12 +1643,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 ],
                 // Показать статус отмены
                 if (withdrawal.isCancelled) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.red.withOpacity(0.3)),
                     ),
                     child: Column(
@@ -1656,45 +1657,45 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         Row(
                           children: [
                             Icon(Icons.cancel, color: Colors.red[300], size: 18),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(
                               'ВЫЕМКА ОТМЕНЕНА',
                               style: TextStyle(
                                 color: Colors.red[300],
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: 12.sp,
                               ),
                             ),
                           ],
                         ),
                         if (withdrawal.cancelReason != null) ...[
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           Text(
                             'Причина: ${withdrawal.cancelReason}',
                             style: TextStyle(
                               color: Colors.red[200],
-                              fontSize: 11,
+                              fontSize: 11.sp,
                             ),
                           ),
                         ],
                         if (withdrawal.cancelledBy != null) ...[
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             'Отменил: ${withdrawal.cancelledBy}',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.4),
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
                         ],
                         if (withdrawal.cancelledAt != null) ...[
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             'Дата отмены: ${_formatDate(withdrawal.cancelledAt!)}',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.4),
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -1703,7 +1704,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     ),
                   ),
                 ],
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
               ],
             ),
           ],
@@ -1717,37 +1718,37 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Подтверждение выемки'),
+        title: Text('Подтверждение выемки'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Вы уверены, что хотите подтвердить эту выемку?'),
-            const SizedBox(height: 16),
+            Text('Вы уверены, что хотите подтвердить эту выемку?'),
+            SizedBox(height: 16),
             Text(
               'Магазин: ${withdrawal.shopAddress}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey),
             ),
             Text(
               'Сумма: ${withdrawal.totalAmount.toStringAsFixed(0)} руб',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'После подтверждения выемка переместится в раздел "Подтвержденные".',
-              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+              style: TextStyle(fontSize: 11.sp, fontStyle: FontStyle.italic),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Подтвердить', style: TextStyle(color: Colors.white)),
+            child: Text('Подтвердить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1763,7 +1764,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         if (success) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Выемка подтверждена'),
               backgroundColor: Colors.green,
             ),
@@ -1772,7 +1773,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         } else {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка подтверждения выемки'),
               backgroundColor: Colors.red,
             ),
@@ -1800,25 +1801,25 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Отмена выемки'),
+        title: Text('Отмена выемки'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Вы уверены, что хотите отменить эту выемку?'),
-            const SizedBox(height: 16),
+            Text('Вы уверены, что хотите отменить эту выемку?'),
+            SizedBox(height: 16),
             Text(
               'Магазин: ${withdrawal.shopAddress}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey),
             ),
             Text(
               'Сумма: ${withdrawal.totalAmount.toStringAsFixed(0)} руб',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
               controller: reasonController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Причина отмены',
                 hintText: 'Укажите причину (необязательно)',
                 border: OutlineInputBorder(),
@@ -1826,22 +1827,22 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'После отмены выемка не будет учитываться в балансе.',
-              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+              style: TextStyle(fontSize: 11.sp, fontStyle: FontStyle.italic),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Назад'),
+            child: Text('Назад'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Отменить выемку', style: TextStyle(color: Colors.white)),
+            child: Text('Отменить выемку', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1865,7 +1866,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         if (result != null) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Выемка отменена'),
               backgroundColor: Colors.orange,
             ),
@@ -1874,7 +1875,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         } else {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка отмены выемки'),
               backgroundColor: Colors.red,
             ),

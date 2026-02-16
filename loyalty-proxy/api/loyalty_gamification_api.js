@@ -378,14 +378,14 @@ function setupLoyaltyGamificationAPI(app) {
     try {
       console.log('POST /api/loyalty-gamification/upload-badge');
 
-      // H-05 fix: проверка admin прав ПЕРЕД обработкой файла
-      if (!req.user || !req.user.isAdmin) {
+      // Проверка admin прав через employeePhone (как в settings endpoint)
+      const employeePhone = sanitizePhone(req.body.employeePhone || req.headers['x-employee-phone'] || '');
+      if (!isAdminPhone(employeePhone)) {
         // Удаляем уже загруженный файл если не админ
         if (req.file && req.file.path) {
-          const fsp = require('fs').promises;
           await fsp.unlink(req.file.path).catch(() => {});
         }
-        console.warn(`⚠️ Non-admin badge upload attempt: ${maskPhone(req.user?.phone || 'anonymous')}`);
+        console.warn(`⚠️ Non-admin badge upload attempt: ${maskPhone(employeePhone)}`);
         return res.status(403).json({ success: false, error: 'Только администратор может загружать бейджи' });
       }
 

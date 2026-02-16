@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/fortune_wheel_model.dart';
 import '../services/fortune_wheel_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница настроек секторов Колеса Удачи (для админа)
 class WheelSettingsPage extends StatefulWidget {
@@ -68,7 +69,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
     // Валидация topEmployeesCount
     if (_topEmployeesCount < 1 || _topEmployeesCount > 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Количество должно быть от 1 до 10'),
           backgroundColor: Colors.red,
         ),
@@ -115,24 +116,24 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Настройка Колеса Удачи'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Настройка Колеса Удачи'),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save),
+            icon: Icon(Icons.save),
             onPressed: _isSaving ? null : _saveSettings,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Настройка количества топ-сотрудников
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    color: Color(0xFF004D40).withOpacity(0.1),
                     border: Border(
                       bottom: BorderSide(color: Colors.grey.shade300),
                     ),
@@ -143,19 +144,19 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                       // Заголовок
                       Row(
                         children: [
-                          const Icon(Icons.emoji_events, color: Color(0xFF004D40), size: 24),
-                          const SizedBox(width: 12),
-                          const Text(
+                          Icon(Icons.emoji_events, color: Color(0xFF004D40), size: 24),
+                          SizedBox(width: 12),
+                          Text(
                             'Количество призовых мест',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF004D40),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Кнопки выбора количества
                       Wrap(
@@ -175,26 +176,26 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                 height: 40,
                                 decoration: BoxDecoration(
                                   gradient: _topEmployeesCount == i
-                                      ? const LinearGradient(
+                                      ? LinearGradient(
                                           colors: [Color(0xFF00695C), Color(0xFF004D40)],
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
                                         )
                                       : null,
                                   color: _topEmployeesCount == i ? null : Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(10.r),
                                   border: Border.all(
                                     color: _topEmployeesCount == i
-                                        ? const Color(0xFF004D40)
+                                        ? Color(0xFF004D40)
                                         : Colors.grey.shade300,
                                     width: _topEmployeesCount == i ? 2.5 : 1.5,
                                   ),
                                   boxShadow: [
                                     if (_topEmployeesCount == i)
                                       BoxShadow(
-                                        color: const Color(0xFF004D40).withOpacity(0.3),
+                                        color: Color(0xFF004D40).withOpacity(0.3),
                                         blurRadius: 6,
-                                        offset: const Offset(0, 3),
+                                        offset: Offset(0, 3),
                                       ),
                                   ],
                                 ),
@@ -202,7 +203,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                   child: Text(
                                     '$i',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 16.sp,
                                       fontWeight: FontWeight.bold,
                                       color: _topEmployeesCount == i
                                           ? Colors.white
@@ -215,14 +216,14 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                         ],
                       ),
 
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
 
                       // Предпросмотр распределения
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(12.w),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
                         child: Column(
@@ -231,12 +232,12 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                             Text(
                               'Распределение прокруток:',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.grey[700],
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -244,40 +245,40 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                               children: [
                                 for (int i = 0; i < _topEmployeesCount; i++)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: i == 0
-                                            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Золото
+                                            ? [Color(0xFFFFD700), Color(0xFFFFA500)] // Золото
                                             : i == 1
-                                                ? [const Color(0xFFE8E8E8), const Color(0xFFC0C0C0)] // Серебро
+                                                ? [Color(0xFFE8E8E8), Color(0xFFC0C0C0)] // Серебро
                                                 : i == 2
-                                                    ? [const Color(0xFFCD7F32), const Color(0xFF8B4513)] // Бронза
-                                                    : [const Color(0xFF64B5F6), const Color(0xFF42A5F5)], // Синий
+                                                    ? [Color(0xFFCD7F32), Color(0xFF8B4513)] // Бронза
+                                                    : [Color(0xFF64B5F6), Color(0xFF42A5F5)], // Синий
                                       ),
-                                      borderRadius: BorderRadius.circular(18),
+                                      borderRadius: BorderRadius.circular(18.r),
                                       border: Border.all(
                                         color: i == 0
-                                            ? const Color(0xFFFFD700)
+                                            ? Color(0xFFFFD700)
                                             : i == 1
-                                                ? const Color(0xFFC0C0C0)
+                                                ? Color(0xFFC0C0C0)
                                                 : i == 2
-                                                    ? const Color(0xFFCD7F32)
-                                                    : const Color(0xFF1976D2),
+                                                    ? Color(0xFFCD7F32)
+                                                    : Color(0xFF1976D2),
                                         width: 2,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
                                           color: (i == 0
-                                                  ? const Color(0xFFFFD700)
+                                                  ? Color(0xFFFFD700)
                                                   : i == 1
-                                                      ? const Color(0xFFC0C0C0)
+                                                      ? Color(0xFFC0C0C0)
                                                       : i == 2
-                                                          ? const Color(0xFFCD7F32)
-                                                          : const Color(0xFF1976D2))
+                                                          ? Color(0xFFCD7F32)
+                                                          : Color(0xFF1976D2))
                                               .withOpacity(0.3),
                                           blurRadius: 4,
-                                          offset: const Offset(0, 2),
+                                          offset: Offset(0, 2),
                                         ),
                                       ],
                                     ),
@@ -286,19 +287,19 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                       children: [
                                         Text(
                                           i == 0 ? '🥇' : i == 1 ? '🥈' : i == 2 ? '🥉' : '${i + 1}',
-                                          style: const TextStyle(fontSize: 14),
+                                          style: TextStyle(fontSize: 14.sp),
                                         ),
-                                        const SizedBox(width: 5),
+                                        SizedBox(width: 5),
                                         Text(
                                           '${i == 0 ? 2 : 1} спин${i == 0 ? 'а' : ''}',
                                           style: TextStyle(
-                                            fontSize: 11,
+                                            fontSize: 11.sp,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
                                             shadows: [
                                               Shadow(
                                                 color: Colors.black.withOpacity(0.25),
-                                                offset: const Offset(0, 1),
+                                                offset: Offset(0, 1),
                                                 blurRadius: 1,
                                               ),
                                             ],
@@ -318,12 +319,12 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
 
                 // Инфо
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   color: Colors.amber[50],
                   child: Row(
                     children: [
                       Icon(Icons.info_outline, color: Colors.amber[800]),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Сумма вероятностей должна быть 100%.\n'
@@ -338,7 +339,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                 // Список секторов
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemCount: _sectors.length,
                     itemBuilder: (context, index) {
                       return _buildSectorCard(index);
@@ -348,22 +349,22 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
 
                 // Кнопка сохранения
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveSettings,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
+                        backgroundColor: Color(0xFF004D40),
                         foregroundColor: Colors.white,
                         elevation: 2,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                       ),
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(
@@ -371,10 +372,10 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Сохранить',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -390,9 +391,9 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
     final sector = _sectors[index];
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -414,28 +415,28 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Text(
                   'Сектор ${index + 1}',
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Текст приза
             TextField(
               controller: _textControllers[index],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Текст приза',
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Вероятность
             Row(
@@ -444,7 +445,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                   child: TextField(
                     controller: _probControllers[index],
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Вероятность (%)',
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -452,10 +453,10 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Быстрые кнопки
                 IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
+                  icon: Icon(Icons.remove_circle_outline),
                   color: Colors.red,
                   onPressed: () {
                     final current = double.tryParse(_probControllers[index].text) ?? 0;
@@ -466,7 +467,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
+                  icon: Icon(Icons.add_circle_outline),
                   color: Colors.green,
                   onPressed: () {
                     final current = double.tryParse(_probControllers[index].text) ?? 0;

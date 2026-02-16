@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/envelope_question_model.dart';
 import '../services/envelope_question_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления вопросами формирования конверта
 class EnvelopeQuestionsManagementPage extends StatefulWidget {
@@ -64,7 +65,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка обновления'),
             backgroundColor: Colors.red,
           ),
@@ -96,43 +97,43 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Название *',
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextField(
                   controller: descriptionController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Описание',
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 2,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Тип вопроса
-                const Text('Тип:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                Text('Тип:', style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: [
                     ChoiceChip(
-                      label: const Text('Фото'),
+                      label: Text('Фото'),
                       selected: selectedType == 'photo',
                       onSelected: (selected) {
                         if (selected) setDialogState(() => selectedType = 'photo');
                       },
                     ),
                     ChoiceChip(
-                      label: const Text('Числа'),
+                      label: Text('Числа'),
                       selected: selectedType == 'numbers',
                       onSelected: (selected) {
                         if (selected) setDialogState(() => selectedType = 'numbers');
                       },
                     ),
                     ChoiceChip(
-                      label: const Text('Расходы'),
+                      label: Text('Расходы'),
                       selected: selectedType == 'expenses',
                       onSelected: (selected) {
                         if (selected) setDialogState(() => selectedType = 'expenses');
@@ -140,29 +141,29 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Секция
-                const Text('Секция:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                Text('Секция:', style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: [
                     ChoiceChip(
-                      label: const Text('ООО'),
+                      label: Text('ООО'),
                       selected: selectedSection == 'ooo',
                       onSelected: (selected) {
                         if (selected) setDialogState(() => selectedSection = 'ooo');
                       },
                     ),
                     ChoiceChip(
-                      label: const Text('ИП'),
+                      label: Text('ИП'),
                       selected: selectedSection == 'ip',
                       onSelected: (selected) {
                         if (selected) setDialogState(() => selectedSection = 'ip');
                       },
                     ),
                     ChoiceChip(
-                      label: const Text('Общее'),
+                      label: Text('Общее'),
                       selected: selectedSection == 'general',
                       onSelected: (selected) {
                         if (selected) setDialogState(() => selectedSection = 'general');
@@ -170,27 +171,27 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Порядок
                 Row(
                   children: [
-                    const Text('Порядок:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 16),
+                    Text('Порядок:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(width: 16),
                     IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
+                      icon: Icon(Icons.remove_circle_outline),
                       onPressed: order > 1 ? () => setDialogState(() => order--) : null,
                     ),
-                    Text('$order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('$order', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
+                      icon: Icon(Icons.add_circle_outline),
                       onPressed: () => setDialogState(() => order++),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 // Обязательный
                 SwitchListTile(
-                  title: const Text('Обязательный'),
+                  title: Text('Обязательный'),
                   value: isRequired,
                   onChanged: (value) => setDialogState(() => isRequired = value),
                   contentPadding: EdgeInsets.zero,
@@ -201,13 +202,13 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
+              child: Text('Отмена'),
             ),
             ElevatedButton(
               onPressed: () {
                 if (titleController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text('Введите название'),
                       backgroundColor: Colors.orange,
                     ),
@@ -217,7 +218,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                 Navigator.pop(context, true);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF004D40),
+                backgroundColor: Color(0xFF004D40),
                 foregroundColor: Colors.white,
               ),
               child: Text(isEdit ? 'Сохранить' : 'Создать'),
@@ -275,17 +276,17 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить вопрос?'),
+        title: Text('Удалить вопрос?'),
         content: Text('Вопрос "${question.title}" будет удален безвозвратно.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -297,7 +298,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
         await _loadQuestions();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Вопрос удален'),
               backgroundColor: Colors.green,
             ),
@@ -306,7 +307,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка удаления'),
               backgroundColor: Colors.red,
             ),
@@ -329,7 +330,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
       // Показываем индикатор загрузки
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
                 SizedBox(
@@ -370,7 +371,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Эталонное фото загружено'),
               backgroundColor: Colors.green,
             ),
@@ -380,7 +381,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка загрузки фото'),
               backgroundColor: Colors.red,
             ),
@@ -404,17 +405,17 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить эталонное фото?'),
-        content: const Text('Это действие нельзя отменить.'),
+        title: Text('Удалить эталонное фото?'),
+        content: Text('Это действие нельзя отменить.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -438,7 +439,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
         await _loadQuestions();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Эталонное фото удалено'),
               backgroundColor: Colors.green,
             ),
@@ -462,7 +463,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
               automaticallyImplyLeading: false,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -472,7 +473,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                 imageUrl: question.referencePhotoUrl!,
                 fit: BoxFit.contain,
                 errorWidget: (context, error, stackTrace) {
-                  return const SizedBox(
+                  return SizedBox(
                     height: 200,
                     child: Center(
                       child: Icon(Icons.error, size: 64, color: Colors.red),
@@ -521,11 +522,11 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Вопросы (Конверт)'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Вопросы (Конверт)'),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadQuestions,
             tooltip: 'Обновить',
           ),
@@ -533,29 +534,29 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditDialog(),
-        backgroundColor: const Color(0xFF004D40),
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: Color(0xFF004D40),
+        child: Icon(Icons.add, color: Colors.white),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _questions.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.mail_outline, size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      const Text(
+                      Icon(Icons.mail_outline, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
                         'Нет вопросов',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                        style: TextStyle(fontSize: 18.sp, color: Colors.grey),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: () => _showAddEditDialog(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Добавить вопрос'),
+                        icon: Icon(Icons.add),
+                        label: Text('Добавить вопрос'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF004D40),
+                          backgroundColor: Color(0xFF004D40),
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -563,7 +564,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   itemCount: _questions.length,
                   itemBuilder: (context, index) {
                     final question = _questions[index];
@@ -571,7 +572,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                               question.referencePhotoUrl!.isNotEmpty;
 
                     return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: EdgeInsets.only(bottom: 12.h),
                       elevation: question.isActive ? 2 : 0,
                       color: question.isActive ? null : Colors.grey[200],
                       child: Column(
@@ -608,42 +609,42 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                         : Colors.grey,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4),
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8.w,
+                                        vertical: 2.h,
                                       ),
                                       decoration: BoxDecoration(
                                         color: _getSectionColor(question.section)
                                             .withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: BorderRadius.circular(4.r),
                                       ),
                                       child: Text(
                                         question.sectionText,
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 12.sp,
                                           color: _getSectionColor(question.section),
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8.w,
+                                        vertical: 2.h,
                                       ),
                                       decoration: BoxDecoration(
                                         color: Colors.grey.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: BorderRadius.circular(4.r),
                                       ),
                                       child: Text(
                                         question.typeText,
-                                        style: const TextStyle(
-                                          fontSize: 12,
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
                                           color: Colors.grey,
                                         ),
                                       ),
@@ -656,13 +657,13 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.edit, size: 20),
+                                  icon: Icon(Icons.edit, size: 20),
                                   onPressed: () => _showAddEditDialog(question: question),
                                   tooltip: 'Редактировать',
                                   color: Colors.blue,
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete, size: 20),
+                                  icon: Icon(Icons.delete, size: 20),
                                   onPressed: () => _deleteQuestion(question),
                                   tooltip: 'Удалить',
                                   color: Colors.red,
@@ -670,16 +671,16 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                 Switch(
                                   value: question.isActive,
                                   onChanged: (_) => _toggleQuestion(question),
-                                  activeColor: const Color(0xFF004D40),
+                                  activeColor: Color(0xFF004D40),
                                 ),
                               ],
                             ),
                           ),
                           // Секция эталонного фото для типа photo
                           if (question.type == 'photo') ...[
-                            const Divider(height: 1),
+                            Divider(height: 1),
                             Padding(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(12.w),
                               child: Row(
                                 children: [
                                   if (hasReferencePhoto) ...[
@@ -689,15 +690,15 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                         width: 60,
                                         height: 60,
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(8.r),
                                           border: Border.all(color: Colors.grey[300]!),
                                         ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(8.r),
                                           child: AppCachedImage(
                                             imageUrl: question.referencePhotoUrl!,
                                             fit: BoxFit.cover,
-                                            errorWidget: (_, __, ___) => const Icon(
+                                            errorWidget: (_, __, ___) => Icon(
                                               Icons.broken_image,
                                               color: Colors.grey,
                                             ),
@@ -705,38 +706,38 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
+                                          Text(
                                             'Эталонное фото',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 12,
+                                              fontSize: 12.sp,
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
+                                          SizedBox(height: 4),
                                           Row(
                                             children: [
                                               TextButton.icon(
                                                 onPressed: () => _uploadReferencePhoto(question),
-                                                icon: const Icon(Icons.refresh, size: 16),
-                                                label: const Text('Заменить'),
+                                                icon: Icon(Icons.refresh, size: 16),
+                                                label: Text('Заменить'),
                                                 style: TextButton.styleFrom(
                                                   padding: EdgeInsets.zero,
-                                                  minimumSize: const Size(0, 30),
+                                                  minimumSize: Size(0, 30),
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
+                                              SizedBox(width: 8),
                                               TextButton.icon(
                                                 onPressed: () => _removeReferencePhoto(question),
-                                                icon: const Icon(Icons.delete, size: 16),
-                                                label: const Text('Удалить'),
+                                                icon: Icon(Icons.delete, size: 16),
+                                                label: Text('Удалить'),
                                                 style: TextButton.styleFrom(
                                                   padding: EdgeInsets.zero,
-                                                  minimumSize: const Size(0, 30),
+                                                  minimumSize: Size(0, 30),
                                                   foregroundColor: Colors.red,
                                                 ),
                                               ),
@@ -751,7 +752,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                       height: 60,
                                       decoration: BoxDecoration(
                                         color: Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(8.r),
                                         border: Border.all(
                                           color: Colors.grey[300]!,
                                           style: BorderStyle.solid,
@@ -763,7 +764,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                         size: 30,
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -772,20 +773,20 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                             'Нет эталонного фото',
                                             style: TextStyle(
                                               color: Colors.grey[600],
-                                              fontSize: 12,
+                                              fontSize: 12.sp,
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
+                                          SizedBox(height: 4),
                                           ElevatedButton.icon(
                                             onPressed: () => _uploadReferencePhoto(question),
-                                            icon: const Icon(Icons.add_photo_alternate, size: 16),
-                                            label: const Text('Добавить эталон'),
+                                            icon: Icon(Icons.add_photo_alternate, size: 16),
+                                            label: Text('Добавить эталон'),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF004D40),
+                                              backgroundColor: Color(0xFF004D40),
                                               foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 8,
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12.w,
+                                                vertical: 8.h,
                                               ),
                                             ),
                                           ),

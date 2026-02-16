@@ -80,7 +80,7 @@ async function checkAttendance(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(attendanceDir, file), 'utf8'));
-        if (data.employeeName === employeeName && data.shopAddress === shopAddress) {
+        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           // Проверяем дату
           const ts = data.timestamp || data.date;
           if (ts && ts.startsWith(date)) return true;
@@ -107,7 +107,7 @@ async function checkTesting(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(testsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
+        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.completedAt || data.date;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -132,7 +132,7 @@ async function checkShift(employeeName, shopAddress, date) {
     if (await fileExists(dayFile)) {
       const reports = JSON.parse(await fsp.readFile(dayFile, 'utf8'));
       if (Array.isArray(reports)) {
-        return reports.some(r => r.employeeName === employeeName);
+        return reports.some(r => r.employeeName === employeeName && (!shopAddress || r.shopAddress === shopAddress));
       }
     }
 
@@ -144,13 +144,14 @@ async function checkShift(employeeName, shopAddress, date) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
         // Индивидуальный отчёт
-        if (data.employeeName === employeeName) {
+        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.createdAt || data.date || data.timestamp;
           if (ts && ts.startsWith(date)) return true;
         }
         // Массив отчётов
         if (Array.isArray(data)) {
           if (data.some(r => r.employeeName === employeeName &&
+              (!shopAddress || r.shopAddress === shopAddress) &&
               (r.createdAt || r.date || '').startsWith(date))) return true;
         }
       } catch { /* skip */ }
@@ -175,7 +176,7 @@ async function checkRecount(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
+        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.createdAt || data.date;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -201,7 +202,7 @@ async function checkShiftHandover(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
+        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.createdAt || data.date;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -227,7 +228,7 @@ async function checkCoffeeMachine(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
+        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.date || data.createdAt;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -253,7 +254,7 @@ async function checkEnvelope(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
+        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.createdAt || data.date;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -279,6 +280,7 @@ async function checkRko(employeeName, shopAddress, date) {
 
     return entries.some(entry => {
       if (entry.employeeName !== employeeName) return false;
+      if (shopAddress && entry.shopAddress !== shopAddress) return false;
       const ts = entry.date || entry.createdAt;
       return ts && ts.startsWith(date);
     });

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/providers/order_provider.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница "Мои заказы" (Dark Emerald тема)
 class OrdersPage extends StatefulWidget {
@@ -12,10 +13,10 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   late AnimationController _animationController;
@@ -25,7 +26,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: Duration(milliseconds: 800),
     );
     _loadOrders();
   }
@@ -127,7 +128,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -140,7 +141,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -150,21 +151,21 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Icon(Icons.receipt_long_rounded, color: _gold, size: 24),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         'Мои заказы',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -179,10 +180,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -197,7 +198,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(20),
+                              padding: EdgeInsets.all(20.w),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.06),
                                 shape: BoxShape.circle,
@@ -207,12 +208,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                                 strokeWidth: 3,
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                             Text(
                               'Загрузка заказов...',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.5),
-                                fontSize: 16,
+                                fontSize: 16.sp,
                               ),
                             ),
                           ],
@@ -232,7 +233,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                             color: _gold,
                             backgroundColor: _emeraldDark,
                             child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
                               itemCount: orderProvider.orders.length,
                               itemBuilder: (context, index) {
                                 final order = orderProvider.orders[index];
@@ -271,7 +272,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(32.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
@@ -282,43 +283,43 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               color: Colors.white.withOpacity(0.3),
             ),
           ),
-          const SizedBox(height: 28),
-          const Text(
+          SizedBox(height: 28),
+          Text(
             'У вас пока нет заказов',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 22.sp,
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             'Ваши заказы появятся здесь',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 15.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.15)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.arrow_back_rounded, color: _gold, size: 18),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
                     'Вернуться в меню',
                     style: TextStyle(
                       color: _gold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -341,16 +342,16 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         : null;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          tilePadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           childrenPadding: EdgeInsets.zero,
           iconColor: Colors.white.withOpacity(0.4),
           collapsedIconColor: Colors.white.withOpacity(0.4),
@@ -394,10 +395,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         child: firstItemPhotoId != null && firstItemPhotoId.isNotEmpty
             ? Image.asset(
                 'assets/images/$firstItemPhotoId.jpg',
@@ -433,7 +434,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           : 'Заказ ${order.id.substring(order.id.length - 6)}',
       style: TextStyle(
         fontWeight: FontWeight.bold,
-        fontSize: 16,
+        fontSize: 16.sp,
         color: Colors.white.withOpacity(0.9),
       ),
     );
@@ -443,7 +444,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Row(
           children: [
             Icon(
@@ -451,34 +452,34 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               size: 13,
               color: Colors.white.withOpacity(0.4),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Text(
               '${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year} в ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: Colors.white.withOpacity(0.4),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         // Статус бейдж
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
           decoration: BoxDecoration(
             color: statusColor.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
             border: Border.all(color: statusColor.withOpacity(0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(_getStatusIcon(order.status), size: 12, color: statusColor),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Text(
                 _getStatusText(order.status),
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.sp,
                   color: statusColor,
                   fontWeight: FontWeight.bold,
                 ),
@@ -488,12 +489,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         ),
         // Информация об отказе
         if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(color: Colors.red.withOpacity(0.3)),
             ),
             child: Column(
@@ -501,17 +502,17 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.person_off_rounded,
                       size: 14,
                       color: Colors.red,
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         'Отказал: ${order.rejectedBy}',
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: 12.sp,
                           color: Colors.red,
                           fontWeight: FontWeight.w500,
                         ),
@@ -522,11 +523,11 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   ],
                 ),
                 if (order.rejectionReason != null && order.rejectionReason!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Причина: ${order.rejectionReason}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.red[300],
                     ),
                     maxLines: 10,
@@ -543,16 +544,16 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
 
   Widget _buildOrderPrice(Order order) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: _gold.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: _gold.withOpacity(0.3)),
       ),
       child: Text(
         '${order.totalPrice.toStringAsFixed(0)} р.',
         style: TextStyle(
-          fontSize: 15,
+          fontSize: 15.sp,
           fontWeight: FontWeight.bold,
           color: _gold,
         ),
@@ -562,11 +563,11 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
 
   Widget _buildOrderDetails(BuildContext context, Order order, OrderProvider orderProvider) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
@@ -576,10 +577,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(6.w),
                 decoration: BoxDecoration(
                   color: _gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
                   Icons.shopping_basket_rounded,
@@ -587,25 +588,25 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   size: 18,
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 'Товары в заказе',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   color: Colors.white.withOpacity(0.9),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Список товаров
           ...(order.itemsData ?? []).map((item) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(10),
+                margin: EdgeInsets.only(bottom: 8.h),
+                padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   border: Border.all(color: Colors.white.withOpacity(0.06)),
                 ),
                 child: Row(
@@ -615,25 +616,25 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       height: 36,
                       decoration: BoxDecoration(
                         color: _emerald,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Center(
                         child: Text(
                           '×${item['quantity'] ?? 1}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         item['name'] ?? 'Товар',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
                           color: Colors.white.withOpacity(0.8),
                         ),
@@ -642,7 +643,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                     Text(
                       '${_formatPrice(item['total'] ?? item['price'] ?? 0)} руб.',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.bold,
                         color: _gold,
                       ),
@@ -650,9 +651,9 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   ],
                 ),
               )),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Divider(height: 1, color: Colors.white.withOpacity(0.1)),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Комментарий
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -660,10 +661,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: EdgeInsets.all(6.w),
                     decoration: BoxDecoration(
                       color: Colors.amber.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Icon(
                       Icons.comment_rounded,
@@ -671,12 +672,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       size: 18,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Text(
                     'Комментарий',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                   ),
@@ -687,12 +688,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   _showCommentDialog(context, order, orderProvider);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
                     color: order.comment != null && order.comment!.isNotEmpty
                         ? Colors.amber.withOpacity(0.15)
                         : _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     border: Border.all(
                       color: order.comment != null && order.comment!.isNotEmpty
                           ? Colors.amber.withOpacity(0.3)
@@ -711,7 +712,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                             ? Colors.amber
                             : _gold,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         order.comment != null && order.comment!.isNotEmpty
                             ? 'Изменить'
@@ -720,7 +721,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                           color: order.comment != null && order.comment!.isNotEmpty
                               ? Colors.amber
                               : _gold,
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -730,16 +731,16 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           // Блок комментария
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
               color: order.comment != null && order.comment!.isNotEmpty
                   ? Colors.amber.withOpacity(0.08)
                   : Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(
                 color: order.comment != null && order.comment!.isNotEmpty
                     ? Colors.amber.withOpacity(0.2)
@@ -751,7 +752,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   ? order.comment!
                   : 'Комментарий не добавлен',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: order.comment != null && order.comment!.isNotEmpty
                     ? Colors.white.withOpacity(0.7)
                     : Colors.white.withOpacity(0.3),
@@ -778,16 +779,16 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
         ),
         backgroundColor: _emeraldDark,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 Icons.comment_rounded,
@@ -795,12 +796,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                 size: 24,
               ),
             ),
-            const SizedBox(width: 12),
-            const Text(
+            SizedBox(width: 12),
+            Text(
               'Комментарий',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 20.sp,
                 color: Colors.white,
               ),
             ),
@@ -817,15 +818,15 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             filled: true,
             fillColor: Colors.white.withOpacity(0.06),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               borderSide: BorderSide(color: _gold, width: 2),
             ),
           ),
@@ -834,7 +835,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
             ),
             child: Text(
               'Отмена',
@@ -861,7 +862,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                         color: Colors.white,
                         size: 20,
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Text(
                         comment.isEmpty
                             ? 'Комментарий удален'
@@ -872,22 +873,22 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   backgroundColor: _emerald,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                  margin: const EdgeInsets.all(16),
-                  duration: const Duration(seconds: 2),
+                  margin: EdgeInsets.all(16.w),
+                  duration: Duration(seconds: 2),
                 ),
               );
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_gold.withOpacity(0.9), _gold],
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Text(
+              child: Text(
                 'Сохранить',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,

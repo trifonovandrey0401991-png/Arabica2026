@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/models/user_role_model.dart';
 import '../../features/employees/services/user_role_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Тестовая страница для переключения ролей
 class RoleTestPage extends StatefulWidget {
@@ -38,7 +39,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
   Future<void> _applyRole() async {
     if (_selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Выберите роль'),
           backgroundColor: Colors.orange,
         ),
@@ -110,12 +111,12 @@ class _RoleTestPageState extends State<RoleTestPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Тест ролей'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Тест ролей'),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -123,7 +124,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -132,24 +133,24 @@ class _RoleTestPageState extends State<RoleTestPage> {
                 Card(
                   color: Colors.white.withOpacity(0.95),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Текущая роль:',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF004D40),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.all(12.w),
                           decoration: BoxDecoration(
                             color: _getRoleColor(_currentRole!.role).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: Border.all(
                               color: _getRoleColor(_currentRole!.role),
                               width: 2,
@@ -161,11 +162,11 @@ class _RoleTestPageState extends State<RoleTestPage> {
                                 Icons.person,
                                 color: _getRoleColor(_currentRole!.role),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Text(
                                 _getRoleName(_currentRole!.role),
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                   fontWeight: FontWeight.bold,
                                   color: _getRoleColor(_currentRole!.role),
                                 ),
@@ -173,7 +174,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text('Имя: ${_currentRole!.displayName}'),
                         if (_currentRole!.employeeName != null)
                           Text('Имя сотрудника (G): ${_currentRole!.employeeName}'),
@@ -182,24 +183,24 @@ class _RoleTestPageState extends State<RoleTestPage> {
                     ),
                   ),
                 ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               // Выбор роли
               Card(
                 color: Colors.white.withOpacity(0.95),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Выберите роль для тестирования:',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF004D40),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Админ
                       RadioListTile<UserRole>(
                         title: Row(
@@ -212,11 +213,11 @@ class _RoleTestPageState extends State<RoleTestPage> {
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Text('Админ'),
+                            SizedBox(width: 8),
+                            Text('Админ'),
                           ],
                         ),
-                        subtitle: const Text('Видит весь функционал'),
+                        subtitle: Text('Видит весь функционал'),
                         value: UserRole.admin,
                         groupValue: _selectedRole,
                         onChanged: (value) {
@@ -239,11 +240,11 @@ class _RoleTestPageState extends State<RoleTestPage> {
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Text('Сотрудник'),
+                            SizedBox(width: 8),
+                            Text('Сотрудник'),
                           ],
                         ),
-                        subtitle: const Text('Видит функционал для сотрудников'),
+                        subtitle: Text('Видит функционал для сотрудников'),
                         value: UserRole.employee,
                         groupValue: _selectedRole,
                         onChanged: (value) {
@@ -266,11 +267,11 @@ class _RoleTestPageState extends State<RoleTestPage> {
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Text('Клиент'),
+                            SizedBox(width: 8),
+                            Text('Клиент'),
                           ],
                         ),
-                        subtitle: const Text('Видит базовый функционал'),
+                        subtitle: Text('Видит базовый функционал'),
                         value: UserRole.client,
                         groupValue: _selectedRole,
                         onChanged: (value) {
@@ -285,27 +286,27 @@ class _RoleTestPageState extends State<RoleTestPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               // Поля для тестового имени
               if (_selectedRole != null)
                 Card(
                   color: Colors.white.withOpacity(0.95),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Тестовые данные:',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF004D40),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TextField(
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Имя для отображения',
                             border: OutlineInputBorder(),
                             hintText: 'Введите имя',
@@ -317,9 +318,9 @@ class _RoleTestPageState extends State<RoleTestPage> {
                           },
                         ),
                         if (_selectedRole == UserRole.admin || _selectedRole == UserRole.employee) ...[
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           TextField(
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Имя сотрудника (столбец G)',
                               border: OutlineInputBorder(),
                               hintText: 'Введите имя сотрудника',
@@ -335,40 +336,40 @@ class _RoleTestPageState extends State<RoleTestPage> {
                     ),
                   ),
                 ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               // Кнопка применения
               ElevatedButton(
                 onPressed: _applyRole,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Color(0xFF004D40),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
-                child: const Text(
+                child: Text(
                   'Применить роль',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               // Информация о функционале
               Card(
                 color: Colors.white.withOpacity(0.95),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Функционал по ролям:',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF004D40),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       _buildRoleInfo('Админ', Colors.red, 'Весь функционал'),
                       _buildRoleInfo('Сотрудник', Colors.blue, 'Меню, Корзина, Заказы, Лояльность, Списать бонусы, Отзывы, Диалоги, Наличие, Обучение, Тестирование, Пересменка, Пересчет, Рецепты'),
                       _buildRoleInfo('Клиент', Colors.green, 'Меню, Корзина, Заказы, Лояльность, Отзывы, Наличие'),
@@ -385,14 +386,14 @@ class _RoleTestPageState extends State<RoleTestPage> {
 
   Widget _buildRoleInfo(String role, Color color, String features) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: 8.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 12,
             height: 12,
-            margin: const EdgeInsets.only(top: 6, right: 8),
+            margin: EdgeInsets.only(top: 6.h, right: 8.w),
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
@@ -411,7 +412,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                 ),
                 Text(
                   features,
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(fontSize: 12.sp),
                 ),
               ],
             ),

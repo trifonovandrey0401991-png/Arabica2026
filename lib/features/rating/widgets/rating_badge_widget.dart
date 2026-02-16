@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/employee_rating_model.dart';
 import '../services/rating_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет бейджа рейтинга для главного меню
 class RatingBadgeWidget extends StatefulWidget {
@@ -38,7 +39,7 @@ class _RatingBadgeWidgetState extends State<RatingBadgeWidget> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const SizedBox(
+      return SizedBox(
         height: 24,
         width: 60,
         child: Center(
@@ -52,21 +53,21 @@ class _RatingBadgeWidgetState extends State<RatingBadgeWidget> {
     }
 
     if (_rating == null || _rating!.position == 0) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     final rating = _rating!;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: _getBadgeColor(rating.position),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: _getBadgeColor(rating.position).withOpacity(0.3),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -75,14 +76,14 @@ class _RatingBadgeWidgetState extends State<RatingBadgeWidget> {
         children: [
           Text(
             rating.positionIcon,
-            style: const TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16.sp),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text(
             rating.positionString,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -94,13 +95,13 @@ class _RatingBadgeWidgetState extends State<RatingBadgeWidget> {
   Color _getBadgeColor(int position) {
     switch (position) {
       case 1:
-        return const Color(0xFFFFD700); // Золото
+        return Color(0xFFFFD700); // Золото
       case 2:
-        return const Color(0xFFC0C0C0); // Серебро
+        return Color(0xFFC0C0C0); // Серебро
       case 3:
-        return const Color(0xFFCD7F32); // Бронза
+        return Color(0xFFCD7F32); // Бронза
       default:
-        return const Color(0xFF004D40); // Тёмно-зелёный
+        return Color(0xFF004D40); // Тёмно-зелёный
     }
   }
 }
@@ -118,20 +119,20 @@ class RatingBadgeInline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (position == 0) return const SizedBox.shrink();
+    if (position == 0) return SizedBox.shrink();
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           _getPositionIcon(),
-          style: const TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 16.sp),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Text(
           '$position/$totalEmployees',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.bold,
             color: _getPositionColor(),
           ),
@@ -156,13 +157,13 @@ class RatingBadgeInline extends StatelessWidget {
   Color _getPositionColor() {
     switch (position) {
       case 1:
-        return const Color(0xFFFFD700);
+        return Color(0xFFFFD700);
       case 2:
-        return const Color(0xFF808080);
+        return Color(0xFFC0C0C0);
       case 3:
-        return const Color(0xFFCD7F32);
+        return Color(0xFFCD7F32);
       default:
-        return const Color(0xFF004D40);
+        return Color(0xFFD4AF37);
     }
   }
 }

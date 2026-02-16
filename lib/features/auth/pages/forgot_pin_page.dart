@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../widgets/otp_input_widget.dart';
 import 'pin_setup_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница сброса PIN-кода через Telegram
 ///
@@ -38,9 +39,9 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   final TextEditingController _phoneController = TextEditingController();
 
   // Брендовые цвета Arabica
-  static const Color _primaryColor = Color(0xFF1A4D4D);
-  static const Color _primaryDark = Color(0xFF0D3333);
-  static const Color _accentGold = Color(0xFFD4AF37);
+  static final Color _primaryColor = Color(0xFF1A4D4D);
+  static final Color _primaryDark = Color(0xFF0D3333);
+  static final Color _accentGold = Color(0xFFD4AF37);
 
   // Шаги: 0 = ввод телефона, 1 = ожидание кода, 2 = ввод кода
   int _step = 0;
@@ -169,7 +170,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -188,25 +189,25 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                 children: [
                   // Верхняя панель с кнопкой назад
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                     child: Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          icon: Icon(Icons.arrow_back, color: Colors.white),
                           onPressed: () => Navigator.of(context).pop(),
                         ),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Сброс PIN-кода',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.w600,
                             ),
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        const SizedBox(width: 48),
+                        SizedBox(width: 48),
                       ],
                     ),
                   ),
@@ -221,12 +222,12 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                   color: Colors.black45,
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(24.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
-                      child: const CircularProgressIndicator(
+                      child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(_accentGold),
                       ),
                     ),
@@ -255,54 +256,54 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   /// Шаг 0: Ввод телефона
   Widget _buildPhoneStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(24.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(50),
+              borderRadius: BorderRadius.circular(50.r),
               color: Colors.white.withOpacity(0.1),
               border: Border.all(
                 color: _accentGold.withOpacity(0.4),
                 width: 2,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.lock_reset,
               size: 60,
               color: _accentGold,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
-          const Text(
+          Text(
             'Сброс PIN-кода',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 22.sp,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           Text(
             'Введите номер телефона, на который зарегистрирован аккаунт',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.7),
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               color: Colors.white.withOpacity(0.95),
             ),
             child: TextField(
@@ -313,13 +314,13 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                 prefixIcon: Icon(Icons.phone_outlined, color: _primaryColor),
                 prefixText: '+7 ',
                 prefixStyle: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: _primaryColor,
                 ),
                 labelStyle: TextStyle(color: _primaryColor.withOpacity(0.8)),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
@@ -334,22 +335,22 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
               }),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           ElevatedButton(
             onPressed: _isPhoneValid ? _requestCode : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _accentGold,
               foregroundColor: Colors.black87,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               disabledBackgroundColor: _accentGold.withOpacity(0.3),
             ),
-            child: const Text(
+            child: Text(
               'Получить код',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -360,71 +361,71 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   /// Шаг 1: Инструкция открыть Telegram
   Widget _buildTelegramStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(24.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(50),
+              borderRadius: BorderRadius.circular(50.r),
               color: Colors.white.withOpacity(0.1),
               border: Border.all(
                 color: Colors.blue.withOpacity(0.4),
                 width: 2,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.telegram,
               size: 60,
               color: Colors.blue,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
-          const Text(
+          Text(
             'Откройте Telegram',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 22.sp,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           Text(
             'Нажмите кнопку ниже, чтобы открыть бота и получить код подтверждения',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.7),
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           ElevatedButton.icon(
             onPressed: _openTelegram,
-            icon: const Icon(Icons.telegram),
-            label: const Text('Открыть Telegram'),
+            icon: Icon(Icons.telegram),
+            label: Text('Открыть Telegram'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue[600],
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: _accentGold.withOpacity(0.4)),
             ),
             child: Column(
@@ -433,7 +434,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                 Row(
                   children: [
                     Icon(Icons.info_outline, color: _accentGold),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(
                       'Инструкция',
                       style: TextStyle(
@@ -443,14 +444,14 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   '1. Откройте бота @ArabicaAuthBot26_bot\n'
                   '2. Нажмите "Получить код"\n'
                   '3. Поделитесь номером телефона\n'
                   '4. Скопируйте полученный код',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     color: Colors.white.withOpacity(0.8),
                     height: 1.5,
                   ),
@@ -466,11 +467,11 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   /// Шаг 2: Ввод OTP кода
   Widget _buildOtpStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(24.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           OtpInputWidget(
             title: 'Введите код',
@@ -484,33 +485,33 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
             accentColor: _accentGold,
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           OutlinedButton.icon(
             onPressed: () async {
               final link = _telegramBotLink ?? 'https://t.me/ArabicaAuthBot26_bot';
               await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
             },
-            icon: const Icon(Icons.telegram, color: Colors.blue),
-            label: const Text('Открыть Telegram'),
+            icon: Icon(Icons.telegram, color: Colors.blue),
+            label: Text('Открыть Telegram'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
               side: BorderSide(color: Colors.blue.withOpacity(0.6)),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(vertical: 12.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
             ),
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Инструкция по получению кода
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: _accentGold.withOpacity(0.3)),
             ),
             child: Column(
@@ -519,18 +520,18 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                 Row(
                   children: [
                     Icon(Icons.lightbulb_outline, color: _accentGold, size: 20),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(
                       'Как получить код?',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: _accentGold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   '🔄 Восстанавливаете повторно?\n'
                   '     Введите /start и нажмите\n'
@@ -539,7 +540,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                   '     Просто нажмите кнопку\n'
                   '     "Поделиться номером"',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     color: Colors.white.withOpacity(0.85),
                     height: 1.4,
                   ),

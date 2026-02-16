@@ -388,23 +388,29 @@ class CigaretteVisionService {
     String? shopAddress,
     bool isAiActive = false,
     int? employeeAnswer,
+    Map<String, double>? selectedRegion,
   }) async {
     try {
       // Сжимаем изображение
       final compressedImage = await compressImage(imageBytes);
       final base64Image = base64Encode(compressedImage);
 
+      final bodyMap = <String, dynamic>{
+        'imageBase64': base64Image,
+        'productId': productId,
+        'productName': productName,
+        'shopAddress': shopAddress,
+        'isAiActive': isAiActive,
+        'employeeAnswer': employeeAnswer,
+      };
+      if (selectedRegion != null) {
+        bodyMap['selectedRegion'] = selectedRegion;
+      }
+
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/count-with-training'),
         headers: ApiConstants.jsonHeaders,
-        body: jsonEncode({
-          'imageBase64': base64Image,
-          'productId': productId,
-          'productName': productName,
-          'shopAddress': shopAddress,
-          'isAiActive': isAiActive,
-          'employeeAnswer': employeeAnswer,
-        }),
+        body: jsonEncode(bodyMap),
       ).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
@@ -617,6 +623,25 @@ class CigaretteVisionService {
     } catch (e) {
       Logger.error('Ошибка отправки report-error', e);
       return AiErrorReport.error('Ошибка связи: $e');
+    }
+  }
+
+  /// Проверить обучена ли модель ИИ
+  static Future<bool> isModelTrained() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/model-status'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['isTrained'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка проверки статуса модели ИИ', e);
+      return false;
     }
   }
 

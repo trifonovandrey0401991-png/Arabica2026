@@ -3,6 +3,7 @@ import '../services/kpi_service.dart';
 import '../models/kpi_employee_month_stats.dart';
 import 'kpi_employee_detail_page.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка всех сотрудников для KPI
 class KPIEmployeesListPage extends StatefulWidget {
@@ -13,10 +14,10 @@ class KPIEmployeesListPage extends StatefulWidget {
 }
 
 class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   List<String> _employees = [];
   bool _isLoading = true;
@@ -49,10 +50,11 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
           _isLoading = false;
         });
 
-        // Ленивая загрузка: предзагружаем только первые 3 видимых сотрудника
-        final preloadCount = employees.length > 3 ? 3 : employees.length;
-        for (var i = 0; i < preloadCount; i++) {
-          _loadMonthlyStats(employees[i]);
+        // Загружаем статистику сотрудников ПОСЛЕДОВАТЕЛЬНО (по одному)
+        // чтобы не перегружать сервер (каждый сотрудник = 6-9 API вызовов)
+        for (var i = 0; i < employees.length; i++) {
+          if (!mounted) break;
+          await _loadMonthlyStats(employees[i]);
         }
       }
     } catch (e) {
@@ -99,38 +101,38 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
           // Индикатор графика (если есть данные из графика)
           if (stats.hasScheduleData) ...[
             _buildScheduleBadge(stats),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
           ],
           _buildIndicatorWithFraction(
             Icons.access_time,
             stats.attendanceFraction,
             stats.attendancePercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.handshake,
             stats.shiftsFraction,
             stats.shiftsPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.calculate,
             stats.recountsFraction,
             stats.recountsPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.description,
             stats.rkosFraction,
             stats.rkosPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.mail,
             stats.envelopesFraction,
             stats.envelopesPercentage,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           _buildIndicatorWithFraction(
             Icons.payments,
             stats.shiftHandoversFraction,
@@ -146,10 +148,10 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     final hasProblems = stats.lateArrivals > 0 || stats.missedDays > 0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
       decoration: BoxDecoration(
         color: hasProblems ? Colors.red.withOpacity(0.15) : Colors.green.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4.r),
         border: Border.all(
           color: hasProblems ? Colors.red.withOpacity(0.3) : Colors.green.withOpacity(0.3),
         ),
@@ -160,20 +162,20 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
           // Опоздания
           if (stats.lateArrivals > 0) ...[
             Icon(Icons.schedule, size: 10, color: Colors.orange.shade700),
-            const SizedBox(width: 2),
+            SizedBox(width: 2),
             Text(
               '${stats.lateArrivals}',
-              style: TextStyle(fontSize: 8, color: Colors.orange.shade700, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 8.sp, color: Colors.orange.shade700, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
           ],
           // Пропуски
           if (stats.missedDays > 0) ...[
             Icon(Icons.event_busy, size: 10, color: Colors.red.shade700),
-            const SizedBox(width: 2),
+            SizedBox(width: 2),
             Text(
               '${stats.missedDays}',
-              style: TextStyle(fontSize: 8, color: Colors.red.shade700, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 8.sp, color: Colors.red.shade700, fontWeight: FontWeight.bold),
             ),
           ],
           // Если нет проблем - показываем галочку
@@ -195,16 +197,16 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: EdgeInsets.symmetric(horizontal: 2.w),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: Colors.white.withOpacity(0.5)),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             fraction,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 9.sp,
               color: fractionColor,
               fontWeight: FontWeight.bold,
             ),
@@ -216,10 +218,10 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
 
   Widget _buildMonthRow(String employeeName, KPIEmployeeMonthStats stats, String label) {
     return Container(
-      margin: const EdgeInsets.only(left: 40, right: 8, top: 2, bottom: 2),
+      margin: EdgeInsets.only(left: 40.w, right: 8.w, top: 2.h, bottom: 2.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: InkWell(
@@ -235,18 +237,18 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.7)),
+                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.7)),
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               _buildMonthIndicators(stats),
             ],
           ),
@@ -260,7 +262,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -273,7 +275,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -283,19 +285,19 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
+                    SizedBox(width: 16),
+                    Expanded(
                       child: Text(
                         'KPI - Сотрудники',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -310,10 +312,10 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -321,9 +323,9 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
               ),
               // Search
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                padding: EdgeInsets.symmetric(horizontal: 12.0.w),
                 child: TextField(
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                   cursorColor: _gold,
                   decoration: InputDecoration(
                     hintText: 'Поиск сотрудника...',
@@ -332,7 +334,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.08),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       borderSide: BorderSide.none,
                     ),
                   ),
@@ -341,7 +343,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                   },
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               // Content
               _isLoading
                   ? Expanded(
@@ -354,33 +356,27 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                               _searchQuery.isEmpty
                                   ? 'Нет сотрудников'
                                   : 'Сотрудники не найдены',
-                              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
+                              style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5)),
                             ),
                           ),
                         )
                       : Expanded(
                           child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w),
                             itemCount: _filteredEmployees.length,
                             itemBuilder: (context, index) {
                               final employee = _filteredEmployees[index];
                               final isExpanded = _expandedEmployees.contains(employee);
                               final monthlyStats = _monthlyStatsCache[employee];
 
-                              // Ленивая загрузка: загружаем статистику когда элемент становится видимым
-                              if (monthlyStats == null && !_loadingEmployees.contains(employee)) {
-                                _loadingEmployees.add(employee);
-                                _loadMonthlyStats(employee);
-                              }
-
                               return Column(
                                 children: [
                                   // Главная строка сотрудника
                                   Container(
-                                    margin: const EdgeInsets.symmetric(vertical: 2),
+                                    margin: EdgeInsets.symmetric(vertical: 2.h),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.06),
-                                      borderRadius: BorderRadius.circular(14),
+                                      borderRadius: BorderRadius.circular(14.r),
                                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                                     ),
                                     child: InkWell(
@@ -396,9 +392,9 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                                           }
                                         });
                                       },
-                                      borderRadius: BorderRadius.circular(14),
+                                      borderRadius: BorderRadius.circular(14.r),
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                                         child: Row(
                                           children: [
                                             // Аватар
@@ -409,14 +405,14 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                                                 employee.isNotEmpty
                                                     ? employee[0].toUpperCase()
                                                     : '?',
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   color: Colors.white,
                                                   fontWeight: FontWeight.bold,
-                                                  fontSize: 12,
+                                                  fontSize: 12.sp,
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
+                                            SizedBox(width: 8),
                                             // ФИО и показатели
                                             Expanded(
                                               child: Column(
@@ -428,13 +424,13 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                                                     employee,
                                                     style: TextStyle(
                                                       fontWeight: FontWeight.w600,
-                                                      fontSize: 13,
+                                                      fontSize: 13.sp,
                                                       color: Colors.white.withOpacity(0.9),
                                                     ),
                                                     maxLines: 1,
                                                     overflow: TextOverflow.ellipsis,
                                                   ),
-                                                  const SizedBox(height: 4),
+                                                  SizedBox(height: 4),
                                                   // Показатели под ФИО
                                                   monthlyStats != null && monthlyStats.isNotEmpty
                                                       ? _buildMonthIndicators(monthlyStats[0])

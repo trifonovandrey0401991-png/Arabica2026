@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог для отображения предупреждений валидации графика работы
 class ScheduleValidationDialog extends StatelessWidget {
@@ -15,8 +16,8 @@ class ScheduleValidationDialog extends StatelessWidget {
       title: Row(
         children: [
           Icon(Icons.warning, color: Colors.orange[700], size: 28),
-          const SizedBox(width: 8),
-          const Text('Предупреждение'),
+          SizedBox(width: 8),
+          Text('Предупреждение'),
         ],
       ),
       content: SizedBox(
@@ -25,16 +26,16 @@ class ScheduleValidationDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Обнаружены следующие предупреждения:',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ...warnings.map((warning) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: EdgeInsets.only(bottom: 12.h),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -43,32 +44,32 @@ class ScheduleValidationDialog extends StatelessWidget {
                         color: Colors.orange[700],
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           warning,
-                          style: const TextStyle(fontSize: 13),
+                          style: TextStyle(fontSize: 13.sp),
                         ),
                       ),
                     ],
                   ),
                 )),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.orange[50],
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(color: Colors.orange[200]!),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.help_outline, color: Colors.orange, size: 20),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Вы можете сохранить смену, но это может привести к переутомлению сотрудника.',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 12.sp),
                     ),
                   ),
                 ],
@@ -80,7 +81,7 @@ class ScheduleValidationDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Отмена'),
+          child: Text('Отмена'),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(true),
@@ -88,7 +89,7 @@ class ScheduleValidationDialog extends StatelessWidget {
             backgroundColor: Colors.orange[700],
             foregroundColor: Colors.white,
           ),
-          child: const Text('Сохранить несмотря на предупреждения'),
+          child: Text('Сохранить несмотря на предупреждения'),
         ),
       ],
     );

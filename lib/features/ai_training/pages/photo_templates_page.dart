@@ -5,6 +5,7 @@ import '../models/cigarette_training_model.dart';
 import '../widgets/template_overlay_painter.dart';
 import 'template_camera_page.dart';
 import 'cigarette_annotation_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница со списком 10 шаблонов для фотографирования
 class PhotoTemplatesPage extends StatefulWidget {
@@ -44,25 +45,25 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Крупный план',
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16.sp),
             ),
             Text(
               widget.product.productName,
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
+              style: TextStyle(fontSize: 12.sp, color: Colors.white70),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Column(
         children: [
           // Прогресс сверху
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             color: completedCount == 10 ? Colors.green.shade50 : Colors.blue.shade50,
             child: Row(
               children: [
@@ -70,7 +71,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                   completedCount == 10 ? Icons.check_circle : Icons.camera_alt,
                   color: completedCount == 10 ? Colors.green : Colors.blue,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,7 +85,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                           color: completedCount == 10 ? Colors.green : Colors.blue,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       LinearProgressIndicator(
                         value: completedCount / 10,
                         backgroundColor: Colors.grey.shade300,
@@ -95,11 +96,11 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Text(
                   '$completedCount/10',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                     color: completedCount == 10 ? Colors.green : Colors.blue,
                   ),
@@ -111,7 +112,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
           // Список шаблонов
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               itemCount: templates.length,
               itemBuilder: (context, index) {
                 final template = templates[index];
@@ -125,7 +126,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
           // Кнопка готово
           if (completedCount == 10)
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: SafeArea(
                 child: SizedBox(
                   width: double.infinity,
@@ -133,11 +134,11 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Готово',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
+                      style: TextStyle(fontSize: 16.sp, color: Colors.white),
                     ),
                   ),
                 ),
@@ -150,12 +151,12 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
 
   Widget _buildTemplateCard(PhotoTemplate template, bool isCompleted) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       child: InkWell(
         onTap: () => _openTemplate(template),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           child: Row(
             children: [
               // Превью схемы
@@ -164,7 +165,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                 height: 80,
                 decoration: BoxDecoration(
                   color: isCompleted ? Colors.green.shade50 : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(
                     color: isCompleted ? Colors.green : Colors.grey.shade300,
                     width: isCompleted ? 2 : 1,
@@ -179,20 +180,20 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                         overlayColor: isCompleted ? Colors.green : Colors.grey,
                         strokeWidth: 1.5,
                       ),
-                      child: const SizedBox.expand(),
+                      child: SizedBox.expand(),
                     ),
                     // Галочка если выполнено
                     if (isCompleted)
                       Positioned(
-                        right: 2,
-                        top: 2,
+                        right: 2.w,
+                        top: 2.h,
                         child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(
+                          padding: EdgeInsets.all(2.w),
+                          decoration: BoxDecoration(
                             color: Colors.green,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.check,
                             color: Colors.white,
                             size: 12,
@@ -202,7 +203,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
 
               // Информация
               Expanded(
@@ -212,21 +213,21 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: isCompleted ? Colors.green : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           child: Text(
                             '#${template.id}',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.bold,
                               color: isCompleted ? Colors.white : Colors.grey.shade700,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             template.name,
@@ -238,19 +239,19 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       template.description,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.grey.shade600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       template.hint,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 11.sp,
                         color: Colors.grey.shade500,
                         fontStyle: FontStyle.italic,
                       ),

@@ -4,6 +4,7 @@ import '../services/efficiency_data_service.dart';
 import '../widgets/efficiency_common_widgets.dart';
 import '../utils/efficiency_utils.dart';
 import 'shop_efficiency_detail_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка эффективности по магазинам
 class EfficiencyByShopPage extends StatefulWidget {
@@ -15,10 +16,10 @@ class EfficiencyByShopPage extends StatefulWidget {
 
 class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
   // --- palette ---
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   EfficiencyData? _data;
@@ -62,7 +63,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -75,19 +76,19 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
             children: [
               // --- custom app bar ---
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'По магазинам',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -117,7 +118,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const EfficiencyLoadingState();
+      return EfficiencyLoadingState();
     }
 
     if (_error != null) {
@@ -139,7 +140,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
       backgroundColor: _emerald,
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _data!.byShop.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -159,10 +160,10 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     final isPositive = summary.totalPoints >= 0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: _emeraldDark,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: _emerald.withOpacity(0.3)),
       ),
       child: Material(
@@ -179,9 +180,9 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -190,61 +191,61 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
                     Expanded(
                       child: Text(
                         summary.entityName,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: isPositive
                             ? Colors.green.withOpacity(0.15)
                             : Colors.red.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Text(
                         summary.formattedTotal,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: isPositive
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFEF5350),
+                              ? Color(0xFF4CAF50)
+                              : Color(0xFFEF5350),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   children: [
                     Text(
                       '+${summary.earnedPoints.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 14.sp,
                         color: Color(0xFF4CAF50),
                       ),
                     ),
                     Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3))),
                     Text(
                       '-${summary.lostPoints.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 14.sp,
                         color: Color(0xFFEF5350),
                       ),
                     ),
-                    const Spacer(),
+                    Spacer(),
                     Text(
                       '${summary.recordsCount} записей',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.white.withOpacity(0.4),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Icon(
                       Icons.chevron_right,
                       color: Colors.white.withOpacity(0.3),
@@ -252,7 +253,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 EfficiencyProgressBar(summary: summary),
               ],
             ),

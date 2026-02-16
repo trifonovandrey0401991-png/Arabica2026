@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/referral_service.dart';
 import '../models/referral_stats_model.dart';
 import 'employee_referrals_detail_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчёта по приглашениям
 class ReferralsReportPage extends StatefulWidget {
@@ -12,10 +13,10 @@ class ReferralsReportPage extends StatefulWidget {
 }
 
 class _ReferralsReportPageState extends State<ReferralsReportPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   int _totalClients = 0;
@@ -72,7 +73,7 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -85,7 +86,7 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -95,19 +96,19 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Отчет по приглашениям',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -119,10 +120,10 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -139,16 +140,16 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(_error!, style: TextStyle(color: Colors.white.withOpacity(0.7))),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 ElevatedButton(
                                   onPressed: _loadData,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: _emerald,
                                     foregroundColor: Colors.white,
                                   ),
-                                  child: const Text('Повторить'),
+                                  child: Text('Повторить'),
                                 ),
                               ],
                             ),
@@ -158,42 +159,42 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                             color: _gold,
                             backgroundColor: _emeraldDark,
                             child: ListView(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16.w),
                               children: [
                                 // Общее количество клиентов — hero card
                                 Container(
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
+                                    gradient: LinearGradient(
                                       colors: [_emerald, _emeraldDark],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                     border: Border.all(color: _gold.withOpacity(0.3)),
                                   ),
-                                  padding: const EdgeInsets.all(20),
+                                  padding: EdgeInsets.all(20.w),
                                   child: Column(
                                     children: [
                                       Text(
                                         'Всего клиентов',
                                         style: TextStyle(
                                           color: Colors.white.withOpacity(0.5),
-                                          fontSize: 16,
+                                          fontSize: 16.sp,
                                         ),
                                       ),
-                                      const SizedBox(height: 8),
+                                      SizedBox(height: 8),
                                       Text(
                                         '$_totalClients',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 48,
+                                          fontSize: 48.sp,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
 
                                 // Заголовок списка
                                 Row(
@@ -201,28 +202,28 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                                     Text(
                                       'Сотрудники',
                                       style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 18.sp,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white.withOpacity(0.9),
                                       ),
                                     ),
-                                    const Spacer(),
+                                    Spacer(),
                                     Text(
                                       'сегодня/месяц/прош./всего',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         color: Colors.white.withOpacity(0.4),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
 
                                 // Список сотрудников
                                 if (_employeeStats.isEmpty)
                                   Center(
                                     child: Padding(
-                                      padding: const EdgeInsets.all(32),
+                                      padding: EdgeInsets.all(32.w),
                                       child: Text(
                                         'Нет данных о приглашениях',
                                         style: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -232,21 +233,21 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                                 else
                                   ..._employeeStats.map((stats) => _buildEmployeeCard(stats)),
 
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
 
                                 // Неучтённые клиенты
                                 Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.04),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                     border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   ),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: EdgeInsets.all(16.w),
                                     child: Row(
                                       children: [
                                         Icon(Icons.person_off, color: Colors.white.withOpacity(0.3)),
-                                        const SizedBox(width: 12),
+                                        SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
                                             'Не учтённые клиенты',
@@ -257,15 +258,15 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                                           ),
                                         ),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                                           decoration: BoxDecoration(
                                             color: Colors.white.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(12.r),
                                           ),
                                           child: Text(
                                             '$_unassignedCount',
                                             style: TextStyle(
-                                              fontSize: 16,
+                                              fontSize: 16.sp,
                                               fontWeight: FontWeight.bold,
                                               color: Colors.white.withOpacity(0.7),
                                             ),
@@ -290,10 +291,10 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
     final unviewedCount = _unviewedByEmployee[stats.employeeId] ?? 0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
@@ -311,9 +312,9 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: Row(
               children: [
                 Container(
@@ -321,20 +322,20 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: _emerald,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: _gold.withOpacity(0.3)),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     '#${stats.referralCode}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,12 +347,12 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         stats.statsString,
                         style: TextStyle(
                           fontFamily: 'monospace',
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: _gold,
                         ),
@@ -361,21 +362,21 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                 ),
                 if (unviewedCount > 0) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Text(
                       '$unviewedCount',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                 ],
                 Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
               ],

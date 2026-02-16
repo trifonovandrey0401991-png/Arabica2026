@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../services/product_question_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ProductQuestionInputPage extends StatefulWidget {
   final String shopAddress;
@@ -24,9 +25,9 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   bool _isSending = false;
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   Future<void> _pickImage() async {
     try {
@@ -49,7 +50,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
             content: Text('Ошибка выбора фото: $e'),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -77,7 +78,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
             content: Text('Ошибка съемки фото: $e'),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -89,48 +90,48 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: _emeraldDark,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2.r),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Добавить фото',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w500,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ListTile(
               leading: Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(Icons.photo_library_rounded, color: Colors.white.withOpacity(0.8)),
               ),
               title: Text('Выбрать из галереи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               subtitle: Text(
                 'Выберите готовое фото',
-                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
               ),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
@@ -140,18 +141,18 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
                 height: 44,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(Icons.camera_alt_rounded, color: Colors.white.withOpacity(0.8)),
               ),
               title: Text('Сделать фото', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               subtitle: Text(
                 'Сфотографируйте товар',
-                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
               ),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),
@@ -170,10 +171,10 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
     if (_questionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Введите вопрос'),
+          content: Text('Введите вопрос'),
           backgroundColor: Colors.orange.shade700,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
       return;
@@ -216,11 +217,11 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Вопрос отправлен! Ответ придёт в "Мои диалоги"'),
-            backgroundColor: const Color(0xFF4CAF50),
+            content: Text('Вопрос отправлен! Ответ придёт в "Мои диалоги"'),
+            backgroundColor: Color(0xFF4CAF50),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 3),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            duration: Duration(seconds: 3),
           ),
         );
       } else {
@@ -233,7 +234,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -258,7 +259,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -272,20 +273,20 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
               _buildAppBar(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildShopCard(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildQuestionInput(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       if (_selectedImage != null) ...[
                         _buildImagePreview(),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                       _buildActionButtons(),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       _buildHint(),
                     ],
                   ),
@@ -300,7 +301,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -311,19 +312,19 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Вопрос о товаре',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -333,9 +334,9 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
     final isAllNetwork = widget.shopAddress == 'Вся сеть';
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: Row(
@@ -345,7 +346,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
             height: 40,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Icon(
               isAllNetwork ? Icons.store_mall_directory_rounded : Icons.store_rounded,
@@ -353,7 +354,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
               size: 22,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,15 +363,15 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
                   isAllNetwork ? 'Вся сеть магазинов' : 'Магазин',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.4),
-                    fontSize: 11,
+                    fontSize: 11.sp,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   isAllNetwork ? 'Вопрос получат все' : widget.shopAddress,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,
@@ -387,7 +388,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   Widget _buildQuestionInput() {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
         color: Colors.white.withOpacity(0.05),
       ),
@@ -395,7 +396,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         controller: _questionController,
         focusNode: _focusNode,
         style: TextStyle(
-          fontSize: 15,
+          fontSize: 15.sp,
           color: Colors.white.withOpacity(0.9),
           height: 1.5,
         ),
@@ -404,7 +405,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
           hintText: 'Опишите товар, который вы ищете...',
           hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(16),
+          contentPadding: EdgeInsets.all(16.w),
         ),
         maxLines: 5,
         minLines: 3,
@@ -416,13 +417,13 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   Widget _buildImagePreview() {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: Stack(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             child: Image.file(
               _selectedImage!,
               width: double.infinity,
@@ -432,13 +433,13 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
           ),
           // Затемнение сверху
           Positioned(
-            top: 0, left: 0, right: 0,
+            top: 0.h, left: 0.w, right: 0.w,
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(14),
-                  topRight: Radius.circular(14),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(14.r),
+                  topRight: Radius.circular(14.r),
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -453,38 +454,38 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
           ),
           // Кнопка удаления
           Positioned(
-            top: 8,
-            right: 8,
+            top: 8.h,
+            right: 8.w,
             child: GestureDetector(
               onTap: () => setState(() => _selectedImage = null),
               child: Container(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(6.w),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.5),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, color: Colors.white, size: 18),
+                child: Icon(Icons.close, color: Colors.white, size: 18),
               ),
             ),
           ),
           // Метка
           Positioned(
-            top: 10,
-            left: 10,
+            top: 10.h,
+            left: 10.w,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(6.r),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.photo_rounded, color: Colors.white, size: 12),
                   SizedBox(width: 4),
                   Text(
                     'Фото товара',
-                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                    style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -503,9 +504,9 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
           child: GestureDetector(
             onTap: _isSending ? null : _showImageSourceDialog,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14.h),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
               child: Row(
@@ -516,13 +517,13 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
                     color: Colors.white.withOpacity(0.7),
                     size: 20,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
                     _selectedImage != null ? 'Изменить' : 'Фото',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
                       fontWeight: FontWeight.w500,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                     ),
                   ),
                 ],
@@ -530,23 +531,23 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         // Кнопка отправить
         Expanded(
           flex: 2,
           child: GestureDetector(
             onTap: _isSending ? null : _sendQuestion,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14.h),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 gradient: LinearGradient(
                   colors: [_emerald, _emerald.withOpacity(0.8)],
                 ),
               ),
               child: Center(
                 child: _isSending
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
@@ -557,14 +558,14 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
+                          Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 8),
                           Text(
                             'Отправить',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.95),
                               fontWeight: FontWeight.w600,
-                              fontSize: 15,
+                              fontSize: 15.sp,
                             ),
                           ),
                         ],
@@ -579,9 +580,9 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
 
   Widget _buildHint() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
         color: Colors.white.withOpacity(0.04),
       ),
@@ -593,7 +594,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
             color: Colors.amber.withOpacity(0.7),
             size: 20,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,15 +604,15 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
                   style: TextStyle(
                     color: Colors.amber.withOpacity(0.8),
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   'Добавьте фото товара для более точного ответа. Ответ придёт в раздел "Мои диалоги".',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.45),
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     height: 1.4,
                   ),
                 ),

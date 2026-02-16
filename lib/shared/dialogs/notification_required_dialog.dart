@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app_settings/app_settings.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог с просьбой включить уведомления
 class NotificationRequiredDialog extends StatelessWidget {
@@ -27,15 +28,15 @@ class NotificationRequiredDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(24.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
               blurRadius: 20,
-              offset: const Offset(0, 10),
+              offset: Offset(0, 10),
             ),
           ],
         ),
@@ -57,41 +58,41 @@ class NotificationRequiredDialog extends StatelessWidget {
                   BoxShadow(
                     color: Colors.orange.withOpacity(0.4),
                     blurRadius: 12,
-                    offset: const Offset(0, 6),
+                    offset: Offset(0, 6),
                   ),
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications_off_rounded,
                 color: Colors.white,
                 size: 40,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Заголовок
-            const Text(
+            Text(
               'Включите уведомления',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 22.sp,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF333333),
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Текст
             Text(
               'Пожалуйста, включите уведомления. Без них вы не сможете видеть Новинки и не сможете пользоваться Программой лояльности',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 15.sp,
                 color: Colors.grey[700],
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: 28),
 
             // Кнопки
             Row(
@@ -103,18 +104,18 @@ class NotificationRequiredDialog extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey[700],
                         side: BorderSide(color: Colors.grey[300]!),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Назад',
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                 ],
                 Expanded(
                   flex: showBackButton ? 1 : 1,
@@ -124,15 +125,15 @@ class NotificationRequiredDialog extends StatelessWidget {
                       Navigator.pop(context, true);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
+                      backgroundColor: Color(0xFF004D40),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       elevation: 2,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.settings_rounded, size: 20),

@@ -7,6 +7,7 @@ import '../models/shop_settings_model.dart';
 import '../services/shop_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../../core/utils/cache_manager.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления магазинами для РКО с улучшенным дизайном
 class ShopsManagementPage extends StatefulWidget {
@@ -28,7 +29,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: Duration(milliseconds: 800),
     );
     _loadShops();
   }
@@ -82,15 +83,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_rounded, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.error_rounded, color: Colors.white),
+                SizedBox(width: 12),
                 Expanded(child: Text('Ошибка загрузки магазинов: $e')),
               ],
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -135,22 +136,22 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF004D40).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Color(0xFF004D40).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(Icons.add_business_rounded, color: Color(0xFF004D40)),
+                child: Icon(Icons.add_business_rounded, color: Color(0xFF004D40)),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: Text(
                   'Новый магазин',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -162,43 +163,43 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               children: [
                 // Основные данные магазина
                 _buildSectionHeader('Основные данные', Icons.business_rounded),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildStyledTextField(
                   controller: nameController,
                   label: 'Название магазина *',
                   hint: 'Например: Арабика Лермонтов',
                   icon: Icons.store_rounded,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _buildStyledTextField(
                   controller: addressController,
                   label: 'Адрес магазина *',
                   hint: 'Лермонтов, ул. Ленина 10',
                   icon: Icons.location_on_rounded,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _buildStyledTextField(
                   controller: innController,
                   label: 'ИНН',
                   icon: Icons.numbers_rounded,
                   keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _buildStyledTextField(
                   controller: directorController,
                   label: 'Руководитель организации',
                   hint: 'Например: ИП Горовой Р. В.',
                   icon: Icons.person_rounded,
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 // Интервалы времени для смен
                 _buildSectionHeader('Интервалы для отметки', Icons.schedule_rounded),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Если интервал не заполнен, смена не учитывается',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Утренняя смена
                 _buildShiftTimeSection(
                   context,
@@ -215,7 +216,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   },
                   morningAbbreviationController,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Дневная смена
                 _buildShiftTimeSection(
                   context,
@@ -232,7 +233,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   },
                   dayAbbreviationController,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Ночная смена
                 _buildShiftTimeSection(
                   context,
@@ -249,33 +250,33 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   },
                   nightAbbreviationController,
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 // Геолокация
                 _buildSectionHeader('Геолокация', Icons.my_location_rounded),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Координаты нужны для отметки прихода сотрудников',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 // Показываем текущие координаты если они установлены
                 if (latitude != null && longitude != null)
                   Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.all(12.w),
+                    margin: EdgeInsets.only(bottom: 12.h),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: Colors.green.withOpacity(0.3)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
-                        const SizedBox(width: 8),
+                        Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'GPS: ${latitude!.toStringAsFixed(6)}, ${longitude!.toStringAsFixed(6)}',
-                            style: const TextStyle(fontSize: 13, color: Colors.green, fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 13.sp, color: Colors.green, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
@@ -284,15 +285,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 // Кнопка установки геолокации
                 Container(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Colors.blue, Color(0xFF1E88E5)],
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.blue.withOpacity(0.3),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -303,7 +304,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                         setState(() => isGettingLocation = true);
                         try {
                           final position = await AttendanceService.getCurrentLocation()
-                              .timeout(const Duration(seconds: 15), onTimeout: () {
+                              .timeout(Duration(seconds: 15), onTimeout: () {
                             throw Exception('Таймаут получения геолокации');
                           });
                           setState(() {
@@ -314,7 +315,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Row(
+                                content: Row(
                                   children: [
                                     Icon(Icons.check_circle_rounded, color: Colors.white),
                                     SizedBox(width: 12),
@@ -323,7 +324,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                                 ),
                                 backgroundColor: Colors.green,
                                 behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                               ),
                             );
                           }
@@ -334,40 +335,40 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                               SnackBar(
                                 content: Row(
                                   children: [
-                                    const Icon(Icons.error_rounded, color: Colors.white),
-                                    const SizedBox(width: 12),
+                                    Icon(Icons.error_rounded, color: Colors.white),
+                                    SizedBox(width: 12),
                                     Expanded(child: Text('Ошибка: $e')),
                                   ],
                                 ),
                                 backgroundColor: Colors.red,
                                 behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                               ),
                             );
                           }
                         }
                       },
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             if (isGettingLocation)
-                              const SizedBox(
+                              SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                               )
                             else
-                              const Icon(Icons.my_location_rounded, color: Colors.white),
-                            const SizedBox(width: 10),
+                              Icon(Icons.my_location_rounded, color: Colors.white),
+                            SizedBox(width: 10),
                             Text(
                               isGettingLocation ? 'Получение...' : 'Установить текущую геолокацию',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                fontSize: 15.sp,
                               ),
                             ),
                           ],
@@ -386,10 +387,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             ),
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [Color(0xFF004D40), Color(0xFF00695C)],
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Material(
                 color: Colors.transparent,
@@ -398,7 +399,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     // Валидация
                     if (nameController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text('Введите название магазина'),
                           backgroundColor: Colors.orange,
                         ),
@@ -407,7 +408,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     }
                     if (addressController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text('Введите адрес магазина'),
                           backgroundColor: Colors.orange,
                         ),
@@ -432,9 +433,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                       'nightAbbreviation': nightAbbreviationController.text.trim(),
                     });
                   },
-                  borderRadius: BorderRadius.circular(12),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                     child: Text(
                       'Создать',
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
@@ -493,14 +494,14 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: 12),
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                  SizedBox(width: 12),
                   Expanded(child: Text('Магазин "${newShop.name}" создан')),
                 ],
               ),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
           await _loadShops();
@@ -512,14 +513,14 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.error_rounded, color: Colors.white),
-                  const SizedBox(width: 12),
+                  Icon(Icons.error_rounded, color: Colors.white),
+                  SizedBox(width: 12),
                   Expanded(child: Text('Ошибка: $e')),
                 ],
               ),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -579,22 +580,22 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF004D40).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Color(0xFF004D40).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(Icons.settings_rounded, color: Color(0xFF004D40)),
+                child: Icon(Icons.settings_rounded, color: Color(0xFF004D40)),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   shop.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -608,41 +609,41 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               children: [
                 // ID магазина (для синхронизации DBF)
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                     border: Border.all(color: Colors.grey[300]!),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.tag, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         'ID: ',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.grey[600],
                         ),
                       ),
                       Expanded(
                         child: SelectableText(
                           shop.id,
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style: TextStyle(
+                            fontSize: 12.sp,
                             fontFamily: 'monospace',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.copy, size: 16),
+                        icon: Icon(Icons.copy, size: 16),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                        constraints: BoxConstraints(),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: shop.id));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Text('ID скопирован'),
                               duration: Duration(seconds: 1),
                             ),
@@ -652,38 +653,38 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Основные настройки
                 _buildSectionHeader('Основные данные', Icons.business_rounded),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildStyledTextField(
                   controller: addressController,
                   label: 'Фактический адрес для РКО',
                   icon: Icons.location_on_rounded,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _buildStyledTextField(
                   controller: innController,
                   label: 'ИНН',
                   icon: Icons.numbers_rounded,
                   keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _buildStyledTextField(
                   controller: directorController,
                   label: 'Руководитель организации',
                   hint: 'Например: ИП Горовой Р. В.',
                   icon: Icons.person_rounded,
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 // Интервалы времени для смен
                 _buildSectionHeader('Интервалы для отметки', Icons.schedule_rounded),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Если интервал не заполнен, смена не учитывается',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Утренняя смена
                 _buildShiftTimeSection(
                   context,
@@ -700,7 +701,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   },
                   morningAbbreviationController,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Дневная смена
                 _buildShiftTimeSection(
                   context,
@@ -717,7 +718,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   },
                   dayAbbreviationController,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Ночная смена
                 _buildShiftTimeSection(
                   context,
@@ -734,21 +735,21 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   },
                   nightAbbreviationController,
                 ),
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 16),
+                SizedBox(height: 24),
+                Divider(),
+                SizedBox(height: 16),
                 // Кнопка обновления геолокации
                 Container(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Colors.blue, Color(0xFF1E88E5)],
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.blue.withOpacity(0.3),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -756,20 +757,20 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () => _updateShopLocation(context, shop),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.my_location_rounded, color: Colors.white),
-                            const SizedBox(width: 10),
-                            const Text(
+                            Icon(Icons.my_location_rounded, color: Colors.white),
+                            SizedBox(width: 10),
+                            Text(
                               'Обновить геолокацию',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                fontSize: 15.sp,
                               ),
                             ),
                           ],
@@ -788,10 +789,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             ),
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [Color(0xFF004D40), Color(0xFF00695C)],
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Material(
                 color: Colors.transparent,
@@ -812,9 +813,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                       'nightAbbreviation': nightAbbreviationController.text.trim(),
                     });
                   },
-                  borderRadius: BorderRadius.circular(12),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                     child: Text(
                       'Сохранить',
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
@@ -861,16 +862,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.check_circle_rounded, color: Colors.white),
-                    const SizedBox(width: 12),
-                    const Text('Настройки успешно сохранены'),
+                    Icon(Icons.check_circle_rounded, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('Настройки успешно сохранены'),
                   ],
                 ),
                 backgroundColor: Colors.green,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                margin: const EdgeInsets.all(16),
-                duration: const Duration(seconds: 2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                margin: EdgeInsets.all(16.w),
+                duration: Duration(seconds: 2),
               ),
             );
             await _loadShops();
@@ -879,16 +880,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.error_rounded, color: Colors.white),
-                    const SizedBox(width: 12),
-                    const Expanded(child: Text('Ошибка сохранения настроек')),
+                    Icon(Icons.error_rounded, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(child: Text('Ошибка сохранения настроек')),
                   ],
                 ),
                 backgroundColor: Colors.red,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                margin: const EdgeInsets.all(16),
-                duration: const Duration(seconds: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                margin: EdgeInsets.all(16.w),
+                duration: Duration(seconds: 4),
               ),
             );
           }
@@ -901,9 +902,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               content: Text('Ошибка: $e'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.all(16),
-              duration: const Duration(seconds: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              margin: EdgeInsets.all(16.w),
+              duration: Duration(seconds: 4),
             ),
           );
         }
@@ -915,17 +916,17 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
-            color: const Color(0xFF004D40).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+            color: Color(0xFF004D40).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Icon(icon, color: const Color(0xFF004D40), size: 20),
+          child: Icon(icon, color: Color(0xFF004D40), size: 20),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
         ),
       ],
     );
@@ -944,20 +945,20 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFF004D40)),
+        prefixIcon: Icon(icon, color: Color(0xFF004D40)),
         filled: true,
         fillColor: Colors.grey[50],
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF004D40), width: 2),
+          borderRadius: BorderRadius.circular(14.r),
+          borderSide: BorderSide(color: Color(0xFF004D40), width: 2),
         ),
       ),
     );
@@ -973,22 +974,22 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       barrierDismissible: false,
       useRootNavigator: true,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         content: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.blue.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 color: Colors.blue,
                 strokeWidth: 3,
               ),
             ),
-            const SizedBox(width: 20),
-            const Text('Получение геолокации...'),
+            SizedBox(width: 20),
+            Text('Получение геолокации...'),
           ],
         ),
       ),
@@ -997,7 +998,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     try {
       Logger.debug('🗺️ Запрос геолокации...');
       final position = await AttendanceService.getCurrentLocation()
-          .timeout(const Duration(seconds: 15), onTimeout: () {
+          .timeout(Duration(seconds: 15), onTimeout: () {
         throw Exception('Таймаут получения геолокации. Убедитесь что GPS включен.');
       });
       Logger.debug('🗺️ Геолокация получена: ${position.latitude}, ${position.longitude}');
@@ -1011,19 +1012,19 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         context: context,
         useRootNavigator: true,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
                   color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(Icons.location_on_rounded, color: Colors.blue),
+                child: Icon(Icons.location_on_rounded, color: Colors.blue),
               ),
-              const SizedBox(width: 12),
-              const Text('Обновить геолокацию?'),
+              SizedBox(width: 12),
+              Text('Обновить геолокацию?'),
             ],
           ),
           content: Column(
@@ -1031,36 +1032,36 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Магазин: ${shop.name}',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      style: TextStyle(fontWeight: FontWeight.w500),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    const Divider(height: 1),
-                    const SizedBox(height: 8),
-                    const Text('Новые координаты:', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 8),
+                    Divider(height: 1),
+                    SizedBox(height: 8),
+                    Text('Новые координаты:', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500)),
                     Text('Широта: ${position.latitude.toStringAsFixed(6)}'),
                     Text('Долгота: ${position.longitude.toStringAsFixed(6)}'),
                   ],
                 ),
               ),
               if (shop.latitude != null && shop.longitude != null) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1081,16 +1082,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             ),
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Colors.blue, Color(0xFF1E88E5)]),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(colors: [Colors.blue, Color(0xFF1E88E5)]),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () => Navigator.pop(ctx, true),
-                  borderRadius: BorderRadius.circular(12),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                     child: Text('Обновить', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                   ),
                 ),
@@ -1117,15 +1118,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.check_circle_rounded, color: Colors.white),
-                    const SizedBox(width: 12),
-                    const Text('Геолокация магазина обновлена'),
+                    Icon(Icons.check_circle_rounded, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('Геолокация магазина обновлена'),
                   ],
                 ),
                 backgroundColor: Colors.green,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                margin: EdgeInsets.all(16.w),
               ),
             );
             await _loadShops();
@@ -1135,15 +1136,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.error_rounded, color: Colors.white),
-                    const SizedBox(width: 12),
-                    const Text('Ошибка обновления геолокации'),
+                    Icon(Icons.error_rounded, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('Ошибка обновления геолокации'),
                   ],
                 ),
                 backgroundColor: Colors.red,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                margin: EdgeInsets.all(16.w),
               ),
             );
           }
@@ -1161,8 +1162,8 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -1180,10 +1181,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     TextEditingController abbreviationController,
   ) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
@@ -1192,14 +1193,14 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           Row(
             children: [
               Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 title,
                 style: TextStyle(fontWeight: FontWeight.w600, color: color),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -1210,7 +1211,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   () async {
                     final time = await showTimePicker(
                       context: context,
-                      initialTime: startTime ?? const TimeOfDay(hour: 8, minute: 0),
+                      initialTime: startTime ?? TimeOfDay(hour: 8, minute: 0),
                       builder: (context, child) {
                         return MediaQuery(
                           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
@@ -1225,7 +1226,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
                 child: Text('—', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
               ),
               Expanded(
@@ -1236,7 +1237,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   () async {
                     final time = await showTimePicker(
                       context: context,
-                      initialTime: endTime ?? const TimeOfDay(hour: 18, minute: 0),
+                      initialTime: endTime ?? TimeOfDay(hour: 18, minute: 0),
                       builder: (context, child) {
                         return MediaQuery(
                           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
@@ -1252,7 +1253,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: abbreviationController,
             decoration: InputDecoration(
@@ -1262,18 +1263,18 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: color.withOpacity(0.3)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: color.withOpacity(0.3)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: color, width: 2),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
             ),
           ),
         ],
@@ -1284,12 +1285,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
   Widget _buildTimePickerButton(BuildContext context, TimeOfDay? time, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 14.h),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
@@ -1307,7 +1308,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Icon(Icons.access_time_rounded, size: 18, color: color),
           ],
         ),
@@ -1318,36 +1319,36 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF004D40),
+      backgroundColor: Color(0xFF004D40),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Управление магазинами',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         elevation: 0,
         actions: [
           // Кнопка добавления магазина
           Container(
-            margin: const EdgeInsets.only(right: 4),
+            margin: EdgeInsets.only(right: 4.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: IconButton(
-              icon: const Icon(Icons.add_business_rounded),
+              icon: Icon(Icons.add_business_rounded),
               onPressed: _showAddShopDialog,
               tooltip: 'Добавить магазин',
             ),
           ),
           Container(
-            margin: const EdgeInsets.only(right: 8),
+            margin: EdgeInsets.only(right: 8.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: IconButton(
-              icon: const Icon(Icons.refresh_rounded),
+              icon: Icon(Icons.refresh_rounded),
               onPressed: _loadShops,
               tooltip: 'Обновить',
             ),
@@ -1360,9 +1361,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color(0xFF004D40),
-              const Color(0xFF00695C),
-              const Color(0xFF00796B),
+              Color(0xFF004D40),
+              Color(0xFF00695C),
+              Color(0xFF00796B),
             ],
           ),
         ),
@@ -1370,16 +1371,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           children: [
             // Поиск
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.15),
                       blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
@@ -1391,10 +1392,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -1424,22 +1425,22 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const CircularProgressIndicator(
+            child: CircularProgressIndicator(
               color: Colors.white,
               strokeWidth: 3,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(
             'Загрузка магазинов...',
             style: TextStyle(
               color: Colors.white.withOpacity(0.9),
-              fontSize: 16,
+              fontSize: 16.sp,
             ),
           ),
         ],
@@ -1453,7 +1454,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(32.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               shape: BoxShape.circle,
@@ -1464,20 +1465,20 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               color: Colors.white.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 24),
+          Text(
             'Магазины не найдены',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 22.sp,
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             'Попробуйте изменить поисковый запрос',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
@@ -1500,10 +1501,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
 
     return RefreshIndicator(
       onRefresh: _loadShops,
-      color: const Color(0xFF004D40),
+      color: Color(0xFF004D40),
       backgroundColor: Colors.white,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
         itemCount: filteredShops.length,
         itemBuilder: (context, index) {
           final shop = filteredShops[index];
@@ -1537,25 +1538,25 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     final hasLocation = shop.latitude != null && shop.longitude != null;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 12,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         child: InkWell(
           onTap: () => _editShopSettings(shop),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Иконка магазина
@@ -1563,18 +1564,18 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF004D40).withOpacity(0.3),
+                        color: Color(0xFF004D40).withOpacity(0.3),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: const ShopIcon(size: 64),
+                  child: ShopIcon(size: 64),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 // Информация о магазине
                 Expanded(
                   child: Column(
@@ -1582,23 +1583,23 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     children: [
                       Text(
                         shop.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         shop.address,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.grey[600],
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       // Статусы
                       Wrap(
                         spacing: 8,
@@ -1624,12 +1625,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF004D40).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(14),
+                        color: Color(0xFF004D40).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.edit_rounded,
                         color: Color(0xFF004D40),
                         size: 22,
@@ -1637,16 +1638,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     ),
                     // Показываем кнопку удаления только если у магазина есть ID
                     if (shop.id.isNotEmpty) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       GestureDetector(
                         onTap: () => _confirmDeleteShop(shop),
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.all(12.w),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(14.r),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.delete_outline_rounded,
                             color: Colors.red,
                             size: 22,
@@ -1669,7 +1670,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     // Защита от удаления магазинов с пустым ID
     if (shop.id.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Невозможно удалить магазин с пустым ID'),
           backgroundColor: Colors.red,
         ),
@@ -1680,7 +1681,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить магазин?'),
+        title: Text('Удалить магазин?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1688,16 +1689,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             Text(
               'Вы действительно хотите удалить магазин?',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.grey[700],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(color: Colors.red.withOpacity(0.2)),
               ),
               child: Column(
@@ -1705,46 +1706,46 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.store, color: Color(0xFF004D40), size: 20),
-                      const SizedBox(width: 8),
+                      Icon(Icons.store, color: Color(0xFF004D40), size: 20),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           shop.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     shop.address,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey[600],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
                 color: Colors.amber.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Row(
                 children: [
                   Icon(Icons.warning_amber_rounded, color: Colors.amber[800], size: 20),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Это действие нельзя отменить',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.amber[900],
                         fontWeight: FontWeight.w500,
                       ),
@@ -1758,7 +1759,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -1766,7 +1767,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -1783,7 +1784,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(),
       ),
     );
@@ -1802,8 +1803,8 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text('Магазин "${shop.name}" успешно удален'),
                 ),
@@ -1812,7 +1813,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
           ),
         );
@@ -1825,9 +1826,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                const Expanded(
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
                   child: Text('Не удалось удалить магазин'),
                 ),
               ],
@@ -1835,7 +1836,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
           ),
         );
@@ -1851,8 +1852,8 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.white),
-              const SizedBox(width: 12),
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
               Expanded(
                 child: Text('Ошибка: $e'),
               ),
@@ -1861,7 +1862,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
         ),
       );
@@ -1870,22 +1871,22 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
 
   Widget _buildStatusBadge(String text, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 14),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
               color: color,
-              fontSize: 11,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/order_service.dart';
 import 'employee_order_detail_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница заказов клиентов для сотрудников
 /// Показывает только ожидающие заказы (pending)
@@ -72,7 +73,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
         : null;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       child: InkWell(
         onTap: () async {
           final result = await Navigator.push(
@@ -89,7 +90,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Row(
             children: [
               // Фото первого товара или иконка
@@ -100,10 +101,10 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                     ? AssetImage('assets/images/$firstItemPhotoId.jpg')
                     : null,
                 child: firstItemPhotoId == null || firstItemPhotoId.isEmpty
-                    ? const Icon(Icons.receipt, color: Colors.grey, size: 32)
+                    ? Icon(Icons.receipt, color: Colors.grey, size: 32)
                     : null,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // Информация о заказе
               Expanded(
                 child: Column(
@@ -116,65 +117,65 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                           orderNumber != null
                               ? 'Заказ $orderNumber'
                               : 'Заказ ${order['id'].toString().substring(0, 6)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 18.sp,
                           ),
                         ),
                         Text(
                           '${_formatPrice(totalPrice)} руб.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 18.sp,
                             color: Colors.green,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.store, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
+                        Icon(Icons.store, size: 16, color: Colors.grey),
+                        SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             shopAddress,
-                            style: const TextStyle(fontSize: 14),
+                            style: TextStyle(fontSize: 14.sp),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.person, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
+                        Icon(Icons.person, size: 16, color: Colors.grey),
+                        SizedBox(width: 4),
                         Text(
                           clientName,
-                          style: const TextStyle(fontSize: 14),
+                          style: TextStyle(fontSize: 14.sp),
                         ),
                       ],
                     ),
                     // Показываем комментарий с временем получения
                     if (comment != null && comment.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                         decoration: BoxDecoration(
                           color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(4.r),
                           border: Border.all(color: Colors.blue[200]!),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.timer, size: 14, color: Colors.blue),
-                            const SizedBox(width: 4),
+                            Icon(Icons.timer, size: 14, color: Colors.blue),
+                            SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 comment,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.blue[800],
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -186,11 +187,11 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       _getItemsPreview(items),
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 14.sp,
                         color: Colors.black87,
                       ),
                       maxLines: 2,
@@ -200,7 +201,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                 ),
               ),
               // Стрелка для перехода
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
         ),
@@ -213,18 +214,18 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Заказы клиентов (${_pendingOrders.length})'),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadOrders,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _pendingOrders.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -232,7 +233,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                       SizedBox(height: 16),
                       Text(
                         'Нет ожидающих заказов',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                        style: TextStyle(fontSize: 18.sp, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -240,7 +241,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
               : RefreshIndicator(
                   onRefresh: _loadOrders,
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     itemCount: _pendingOrders.length,
                     itemBuilder: (context, index) {
                       return _buildOrderCard(_pendingOrders[index]);

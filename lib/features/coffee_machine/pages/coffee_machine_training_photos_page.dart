@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница просмотра и удаления обучающих фото для шаблона кофемашины
 class CoffeeMachineTrainingPhotosPage extends StatefulWidget {
@@ -20,10 +21,10 @@ class CoffeeMachineTrainingPhotosPage extends StatefulWidget {
 }
 
 class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingPhotosPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   List<Map<String, dynamic>> _samples = [];
@@ -61,12 +62,12 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Удалить фото?', style: TextStyle(color: Colors.white)),
-        content: const Text(
+        backgroundColor: Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text('Удалить фото?', style: TextStyle(color: Colors.white)),
+        content: Text(
           'Это фото будет удалено из обучения.\nСистема перестанет использовать его для распознавания.',
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+          style: TextStyle(color: Colors.white70, fontSize: 14.sp),
         ),
         actions: [
           TextButton(
@@ -76,7 +77,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить', style: TextStyle(color: Colors.white)),
+            child: Text('Удалить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -93,7 +94,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
           });
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Фото удалено'), backgroundColor: Colors.green),
+              SnackBar(content: Text('Фото удалено'), backgroundColor: Colors.green),
             );
           }
         }
@@ -117,7 +118,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -130,89 +131,89 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: Icon(Icons.arrow_back, color: Colors.white),
                     ),
-                    const Icon(Icons.school, color: _gold, size: 22),
-                    const SizedBox(width: 8),
+                    Icon(Icons.school, color: _gold, size: 22),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             widget.machineName,
-                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             'Обучающие фото',
-                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
                       onPressed: _loadSamples,
-                      icon: const Icon(Icons.refresh, color: Colors.white70),
+                      icon: Icon(Icons.refresh, color: Colors.white70),
                     ),
                   ],
                 ),
               ),
               // Count badge
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     border: Border.all(color: _gold.withOpacity(0.2)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.photo_library, color: _gold, size: 18),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         '${_samples.length} / 200 фото',
-                        style: TextStyle(color: _gold, fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: _gold, fontSize: 14.sp, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               // Content
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: _gold))
                     : _samples.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.photo_camera, size: 48, color: Colors.white.withOpacity(0.2)),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 Text(
                                   'Нет обучающих фото',
                                   style: TextStyle(color: Colors.white.withOpacity(0.4)),
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4),
                                 Text(
                                   'Фото появятся после нажатия "Обучить ИИ"\nв просмотре отчёта',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+                                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12.sp),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             itemCount: _samples.length,
                             itemBuilder: (_, i) => _buildSampleCard(_samples[i]),
                           ),
@@ -242,10 +243,10 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -253,7 +254,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
         children: [
           // Фото с красным квадратом
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(14.r)),
             child: SizedBox(
               height: 180,
               width: double.infinity,
@@ -267,14 +268,14 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
                     errorWidget: (_, __, ___) => Container(
                       height: 180,
                       color: Colors.white.withOpacity(0.04),
-                      child: const Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 40)),
+                      child: Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 40)),
                     ),
                   ),
                   if (region != null)
                     LayoutBuilder(
                       builder: (ctx, constraints) {
                         final w = constraints.maxWidth;
-                        const h = 180.0;
+                        final h = 180.0;
                         return Positioned(
                           left: ((region['x'] as num?)?.toDouble() ?? 0) * w,
                           top: ((region['y'] as num?)?.toDouble() ?? 0) * h,
@@ -295,7 +296,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
           ),
           // Информация
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: Row(
               children: [
                 Expanded(
@@ -306,25 +307,25 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
                         children: [
                           Text(
                             'Число: $correctNumber',
-                            style: TextStyle(color: _gold, fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
                           ),
                           if (region != null) ...[
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.blue.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(4.r),
                               ),
-                              child: const Text('Region', style: TextStyle(color: Colors.blue, fontSize: 10)),
+                              child: Text('Region', style: TextStyle(color: Colors.blue, fontSize: 10.sp)),
                             ),
                           ],
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         '$dateStr  •  $trainedBy',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
                       ),
                     ],
                   ),
@@ -332,7 +333,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
                 // Кнопка удалить
                 IconButton(
                   onPressed: () => _deleteSample(id),
-                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
+                  icon: Icon(Icons.delete_outline, color: Colors.red, size: 22),
                   tooltip: 'Удалить',
                 ),
               ],

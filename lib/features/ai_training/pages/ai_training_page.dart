@@ -6,6 +6,7 @@ import 'training_settings_page.dart';
 import '../../coffee_machine/pages/coffee_machine_template_management_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Главная страница обучения ИИ - Премиум версия
 class AITrainingPage extends StatefulWidget {
@@ -26,7 +27,7 @@ class _AITrainingPageState extends State<AITrainingPage>
     super.initState();
     _checkAdminRole();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -54,7 +55,7 @@ class _AITrainingPageState extends State<AITrainingPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -74,44 +75,44 @@ class _AITrainingPageState extends State<AITrainingPage>
               // Контент
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20.w),
                   child: Column(
                     children: [
                       // Анимированная иконка
                       _buildAnimatedHeader(),
 
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
 
                       // Карточки обучения
                       _buildTrainingCard(
                         title: 'Z-отчёт',
                         description: 'Обучение распознаванию кассовых Z-отчётов',
                         icon: Icons.receipt_long,
-                        gradient: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                        gradient: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                         stats: '3 шаблона',
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ZReportTrainingPage(),
+                              builder: (context) => ZReportTrainingPage(),
                             ),
                           );
                         },
                       ),
 
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       _buildTrainingCard(
                         title: 'Подсчёт сигарет',
                         description: 'Распознавание и подсчёт пачек сигарет на витрине',
                         icon: Icons.grid_view_rounded,
-                        gradient: const [Color(0xFF10B981), Color(0xFF34D399)],
+                        gradient: [Color(0xFF10B981), Color(0xFF34D399)],
                         stats: 'Обучение',
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const CigaretteTrainingPage(),
+                              builder: (context) => CigaretteTrainingPage(),
                             ),
                           );
                         },
@@ -119,49 +120,49 @@ class _AITrainingPageState extends State<AITrainingPage>
 
                       // Пересменка - только для админов
                       if (_isAdmin) ...[
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         _buildTrainingCard(
                           title: 'Пересменка',
                           description: 'ИИ проверка наличия товаров на полках при пересменке',
                           icon: Icons.swap_horiz_rounded,
-                          gradient: const [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+                          gradient: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
                           stats: 'Товары',
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ShiftTrainingPage(),
+                                builder: (context) => ShiftTrainingPage(),
                               ),
                             );
                           },
                         ),
 
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         _buildTrainingCard(
                           title: 'Кофемашины',
                           description: 'Шаблоны счётчиков для разных типов кофемашин',
                           icon: Icons.coffee_outlined,
-                          gradient: const [Color(0xFFD4AF37), Color(0xFFF0C850)],
+                          gradient: [Color(0xFFD4AF37), Color(0xFFF0C850)],
                           stats: 'Шаблоны',
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const CoffeeMachineTemplateManagementPage(),
+                                builder: (context) => CoffeeMachineTemplateManagementPage(),
                               ),
                             );
                           },
                         ),
                       ],
 
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
 
                       // Информационные карточки
                       _buildInfoSection(),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Кнопка настроек - только для админов
                       if (_isAdmin) _buildSettingsButton(),
@@ -178,36 +179,36 @@ class _AITrainingPageState extends State<AITrainingPage>
 
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Обучение ИИ',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -227,20 +228,20 @@ class _AITrainingPageState extends State<AITrainingPage>
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.4),
+                      color: Color(0xFF6366F1).withOpacity(0.4),
                       blurRadius: 30,
                       spreadRadius: 5,
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.psychology,
                   size: 50,
                   color: Colors.white,
@@ -250,17 +251,17 @@ class _AITrainingPageState extends State<AITrainingPage>
           },
         ),
 
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // Заголовок
         ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
+          shaderCallback: (bounds) => LinearGradient(
             colors: [Color(0xFF6366F1), Color(0xFFA78BFA), Color(0xFF8B5CF6)],
           ).createShader(bounds),
-          child: const Text(
+          child: Text(
             'Машинное зрение',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 28.sp,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: 1,
@@ -268,12 +269,12 @@ class _AITrainingPageState extends State<AITrainingPage>
           ),
         ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         Text(
           'Обучайте ИИ распознавать документы',
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 15.sp,
             color: Colors.white.withOpacity(0.6),
           ),
         ),
@@ -292,7 +293,7 @@ class _AITrainingPageState extends State<AITrainingPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -302,9 +303,9 @@ class _AITrainingPageState extends State<AITrainingPage>
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: Row(
               children: [
                 // Иконка с градиентом
@@ -317,19 +318,19 @@ class _AITrainingPageState extends State<AITrainingPage>
                       end: Alignment.bottomRight,
                       colors: gradient,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
                         color: gradient[0].withOpacity(0.4),
                         blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Icon(icon, color: Colors.white, size: 32),
                 ),
 
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
 
                 // Текст
                 Expanded(
@@ -338,35 +339,35 @@ class _AITrainingPageState extends State<AITrainingPage>
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         description,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.white.withOpacity(0.6),
                           height: 1.3,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 4.h,
                         ),
                         decoration: BoxDecoration(
                           color: gradient[0].withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
                           stats,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             fontWeight: FontWeight.w600,
                             color: gradient[1],
                           ),
@@ -382,7 +383,7 @@ class _AITrainingPageState extends State<AITrainingPage>
                   height: 40,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios,
@@ -406,15 +407,15 @@ class _AITrainingPageState extends State<AITrainingPage>
           title: 'Как это работает?',
           description:
               'Загружайте фото документов, проверяйте распознанные данные и обучайте ИИ на своих примерах.',
-          gradient: const [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+          gradient: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildInfoCard(
           icon: Icons.trending_up,
           title: 'Улучшение точности',
           description:
               'С каждым новым образцом система становится умнее и точнее распознаёт ваши документы.',
-          gradient: const [Color(0xFF10B981), Color(0xFF34D399)],
+          gradient: [Color(0xFF10B981), Color(0xFF34D399)],
         ),
       ],
     );
@@ -427,10 +428,10 @@ class _AITrainingPageState extends State<AITrainingPage>
     required List<Color> gradient,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.05),
           width: 1,
@@ -447,28 +448,28 @@ class _AITrainingPageState extends State<AITrainingPage>
                 end: Alignment.bottomRight,
                 colors: gradient,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Icon(icon, color: Colors.white, size: 22),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.white.withOpacity(0.5),
                     height: 1.3,
                   ),
@@ -486,7 +487,7 @@ class _AITrainingPageState extends State<AITrainingPage>
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -499,16 +500,16 @@ class _AITrainingPageState extends State<AITrainingPage>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const TrainingSettingsPage(
+                builder: (context) => TrainingSettingsPage(
                   products: null,
                   onSettingsChanged: null,
                 ),
               ),
             );
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 Container(
@@ -516,7 +517,7 @@ class _AITrainingPageState extends State<AITrainingPage>
                   height: 44,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.settings,
@@ -524,15 +525,15 @@ class _AITrainingPageState extends State<AITrainingPage>
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Настройки обучения',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
@@ -540,7 +541,7 @@ class _AITrainingPageState extends State<AITrainingPage>
                       Text(
                         'Паттерны распознавания и параметры',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),

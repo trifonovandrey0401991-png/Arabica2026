@@ -121,6 +121,32 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         throw writeError;
       }
 
+      // Обновляем/удаляем соответствующий pending отчёт (созданный scheduler)
+      try {
+        const shopAddress = req.body.shopAddress;
+        const reportShiftType = req.body.shiftType;
+        if (shopAddress) {
+          const pendingFiles = (await fsp.readdir(reportsDir)).filter(f => f.startsWith('pending_recount_') && f.endsWith('.json'));
+          for (const pf of pendingFiles) {
+            try {
+              const pfPath = path.join(reportsDir, pf);
+              const pfContent = JSON.parse(await fsp.readFile(pfPath, 'utf8'));
+              if (pfContent.status === 'pending' && pfContent.shopAddress === shopAddress &&
+                  (!reportShiftType || pfContent.shiftType === reportShiftType)) {
+                // Удаляем pending — он заменён реальным отчётом
+                await fsp.unlink(pfPath);
+                console.log(`🗑️ Pending отчёт удалён: ${pf}`);
+                break;
+              }
+            } catch (e) {
+              // Пропускаем ошибки чтения отдельных файлов
+            }
+          }
+        }
+      } catch (e) {
+        console.log('[Recount] Ошибка обновления pending отчёта (некритично):', e.message);
+      }
+
       // Пытаемся также отправить в Google Apps Script (опционально)
       try {
         const response = await fetch(SCRIPT_URL, {

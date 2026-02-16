@@ -424,12 +424,23 @@ function setupClientsAPI(app) {
   app.post('/api/client-dialogs/:phone/management/read-by-client', async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
+      const msgType = req.query.type; // 'broadcast' | 'personal' | undefined (all)
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
         const content = await fsp.readFile(filePath, 'utf8');
         const dialog = JSON.parse(content);
-        dialog.messages.forEach(m => { if (m.senderType === 'manager') m.isReadByClient = true; });
+        dialog.messages.forEach(m => {
+          if (m.senderType === 'manager') {
+            if (!msgType) {
+              m.isReadByClient = true;
+            } else if (msgType === 'broadcast' && m.isBroadcast) {
+              m.isReadByClient = true;
+            } else if (msgType === 'personal' && !m.isBroadcast) {
+              m.isReadByClient = true;
+            }
+          }
+        });
         await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       }
 
@@ -678,7 +689,7 @@ function setupClientsAPI(app) {
               normalizedPhone,
               '📢 Рассылка',
               msgText.substring(0, 50) + (msgText.length > 50 ? '...' : ''),
-              { type: 'management_message', clientPhone: normalizedPhone }
+              { type: 'management_message', clientPhone: normalizedPhone, isBroadcast: 'true' }
             );
           } catch (pushErr) { /* ignore individual push errors */ }
 
@@ -753,6 +764,77 @@ function setupClientsAPI(app) {
       res.json({ success: true, dialogs, totalUnread });
     } catch (error) {
       console.error('Error getting management dialogs:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== FREE DRINKS COUNTER (Геймификация) ==========
+
+  // POST /api/clients/:phone/free-drink - увеличить счётчик бесплатных напитков
+  app.post('/api/clients/:phone/free-drink', async (req, res) => {
+    try {
+      const phone = sanitizePhone(req.params.phone);
+      const count = parseInt(req.body.count) || 1;
+
+      if (!phone) {
+        return res.status(400).json({ success: false, error: 'Телефон обязателен' });
+      }
+
+      const clientFile = path.join(CLIENTS_DIR, `${phone}.json`);
+
+      try {
+        await fsp.access(clientFile);
+      } catch {
+        return res.status(404).json({ success: false, error: 'Клиент не найден' });
+      }
+
+      const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
+      client.freeDrinksGiven = (client.freeDrinksGiven || 0) + count;
+      client.updatedAt = new Date().toISOString();
+
+      await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
+
+      console.log(`🍹 Выдан бесплатный напиток клиенту ${client.name || maskPhone(phone)}. Всего: ${client.freeDrinksGiven}`);
+      res.json({ success: true, freeDrinksGiven: client.freeDrinksGiven });
+    } catch (error) {
+      console.error('Ошибка обновления счётчика напитков:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/clients/:phone/sync-free-drinks - синхронизировать счётчик из внешнего API
+  app.post('/api/clients/:phone/sync-free-drinks', async (req, res) => {
+    try {
+      const phone = sanitizePhone(req.params.phone);
+      const { freeDrinksGiven } = req.body;
+
+      if (!phone) {
+        return res.status(400).json({ success: false, error: 'Телефон обязателен' });
+      }
+
+      if (freeDrinksGiven == null || isNaN(freeDrinksGiven)) {
+        return res.status(400).json({ success: false, error: 'freeDrinksGiven обязателен' });
+      }
+
+      const clientFile = path.join(CLIENTS_DIR, `${phone}.json`);
+
+      try {
+        await fsp.access(clientFile);
+      } catch {
+        return res.status(404).json({ success: false, error: 'Клиент не найден' });
+      }
+
+      const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
+      const oldValue = client.freeDrinksGiven || 0;
+      client.freeDrinksGiven = parseInt(freeDrinksGiven);
+      client.updatedAt = new Date().toISOString();
+
+      await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
+
+      console.log(`🔄 Синхронизация freeDrinksGiven для ${maskPhone(phone)}: ${oldValue} → ${client.freeDrinksGiven}`);
+      res.json({ success: true, freeDrinksGiven: client.freeDrinksGiven });
+    } catch (error) {
+      console.error('Ошибка синхронизации freeDrinksGiven:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

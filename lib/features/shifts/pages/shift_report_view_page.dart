@@ -8,6 +8,7 @@ import '../../../core/services/photo_upload_service.dart';
 import 'shift_photo_gallery_page.dart';
 import '../../../core/utils/logger.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница просмотра отчета пересменки
 class ShiftReportViewPage extends StatefulWidget {
@@ -25,10 +26,10 @@ class ShiftReportViewPage extends StatefulWidget {
 }
 
 class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late ShiftReport _currentReport;
 
@@ -92,7 +93,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
             return AlertDialog(
               backgroundColor: _emeraldDark,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 side: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
               title: Text(
@@ -104,26 +105,26 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                 children: [
                   Text(
                     'Выберите оценку от 1 до 10:',
-                    style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.7)),
+                    style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.7)),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   // Отображение выбранной оценки
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     decoration: BoxDecoration(
                       color: _getRatingColor(selectedRating).withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
                       '$selectedRating',
-                      style: const TextStyle(
-                        fontSize: 48,
+                      style: TextStyle(
+                        fontSize: 48.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   // Кнопки выбора оценки
                   Wrap(
                     spacing: 8,
@@ -145,7 +146,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                             color: isSelected
                                 ? _getRatingColor(rating).withOpacity(0.85)
                                 : Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: isSelected
                                 ? Border.all(color: _gold, width: 2)
                                 : Border.all(color: Colors.white.withOpacity(0.1)),
@@ -154,7 +155,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                             child: Text(
                               '$rating',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
                               ),
@@ -177,10 +178,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                     backgroundColor: _gold,
                     foregroundColor: _night,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Подтвердить',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
@@ -200,15 +201,76 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
     return Colors.green;
   }
 
+  /// Отображение фото сотрудника с приоритетом серверного URL
+  Widget _buildEmployeePhoto(dynamic answer) {
+    // Приоритет 1: photoDriveId — серверный URL (работает на любом устройстве)
+    if (answer.photoDriveId != null) {
+      final photoUrl = answer.photoDriveId!.startsWith('http')
+          ? answer.photoDriveId!
+          : PhotoUploadService.getPhotoUrl(answer.photoDriveId!);
+      return AppCachedImage(
+        imageUrl: photoUrl,
+        fit: BoxFit.cover,
+        errorWidget: (context, error, stackTrace) {
+          Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error, size: 48, color: Colors.red.withOpacity(0.7)),
+                SizedBox(height: 8),
+                Text(
+                  'Ошибка загрузки фото',
+                  style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    // Приоритет 2: photoPath — HTTP URL или data URL
+    if (answer.photoPath != null) {
+      if (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http')) {
+        return AppCachedImage(
+          imageUrl: answer.photoPath!,
+          fit: BoxFit.cover,
+          errorWidget: (context, error, stackTrace) {
+            return Center(child: Icon(Icons.error, color: Colors.red.withOpacity(0.7)));
+          },
+        );
+      }
+      // Приоритет 3: photoPath — локальный файл (только на том же устройстве)
+      return Image.file(File(answer.photoPath!), fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image, size: 48, color: Colors.white.withOpacity(0.3)),
+                SizedBox(height: 8),
+                Text('Фото на другом устройстве',
+                  style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.4))),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    return Center(child: Icon(Icons.image, color: Colors.white.withOpacity(0.3)));
+  }
+
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -216,11 +278,11 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               'Отчет пересменки',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -232,32 +294,35 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Магазин: ${_currentReport.shopAddress}',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white.withOpacity(0.95),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Сотрудник: ${_currentReport.employeeName}',
               style: TextStyle(color: Colors.white.withOpacity(0.7)),
             ),
-            Text(
-              'Дата: ${_currentReport.createdAt.day}.${_currentReport.createdAt.month}.${_currentReport.createdAt.year} '
-              '${_currentReport.createdAt.hour}:${_currentReport.createdAt.minute.toString().padLeft(2, '0')}',
-              style: TextStyle(color: Colors.white.withOpacity(0.7)),
-            ),
+            Builder(builder: (_) {
+              final lc = _currentReport.createdAt.toLocal();
+              return Text(
+                'Дата: ${lc.day}.${lc.month}.${lc.year} '
+                '${lc.hour}:${lc.minute.toString().padLeft(2, '0')}',
+                style: TextStyle(color: Colors.white.withOpacity(0.7)),
+              );
+            }),
           ],
         ),
       ),
@@ -266,26 +331,26 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
 
   Widget _buildAnswerCard(int index, dynamic answer) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Вопрос ${index + 1}: ${answer.question}',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white.withOpacity(0.95),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             if (answer.textAnswer != null)
               Text(
                 'Ответ: ${answer.textAnswer}',
@@ -297,7 +362,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                 style: TextStyle(color: Colors.white.withOpacity(0.7)),
               ),
             if (answer.photoPath != null || answer.photoDriveId != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               // Если есть эталонное фото, показываем две фото рядом
               Builder(
                 builder: (context) {
@@ -317,20 +382,20 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                               Text(
                                 'Эталон',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
                                   color: _gold.withOpacity(0.8),
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Container(
                                 height: 200,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   border: Border.all(color: Colors.white.withOpacity(0.15)),
                                 ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   child: AppCachedImage(
                                     imageUrl: answer.referencePhotoUrl!,
                                     fit: BoxFit.cover,
@@ -341,11 +406,11 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             Icon(Icons.error, size: 48, color: Colors.red.withOpacity(0.7)),
-                                            const SizedBox(height: 8),
+                                            SizedBox(height: 8),
                                             Text(
                                               'Ошибка загрузки\nэталонного фото',
                                               textAlign: TextAlign.center,
-                                              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+                                              style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
                                             ),
                                           ],
                                         ),
@@ -357,7 +422,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,12 +430,12 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                               Text(
                                 'Сделано сотрудником',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
                                   color: _gold.withOpacity(0.8),
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               GestureDetector(
                                 onTap: () {
                                   Navigator.push(
@@ -386,62 +451,12 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                 child: Container(
                                   height: 200,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12.r),
                                     border: Border.all(color: Colors.white.withOpacity(0.15)),
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: answer.photoPath != null
-                                        ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                            ? AppCachedImage(
-                                                imageUrl: answer.photoPath!,
-                                                fit: BoxFit.cover,
-                                                errorWidget: (context, error, stackTrace) {
-                                                  return Center(
-                                                    child: Icon(Icons.error, color: Colors.red.withOpacity(0.7)),
-                                                  );
-                                                },
-                                              )
-                                            : Image.file(
-                                                File(answer.photoPath!),
-                                                fit: BoxFit.cover,
-                                              )
-                                        : answer.photoDriveId != null
-                                            ? FutureBuilder<String>(
-                                                future: Future.value(PhotoUploadService.getPhotoUrl(answer.photoDriveId!)),
-                                                builder: (context, snapshot) {
-                                                  if (snapshot.hasData) {
-                                                    final photoUrl = snapshot.data!;
-                                                    Logger.debug('Загрузка фото сотрудника из: $photoUrl');
-                                                    return AppCachedImage(
-                                                      imageUrl: photoUrl,
-                                                      fit: BoxFit.cover,
-                                                      errorWidget: (context, error, stackTrace) {
-                                                        Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
-                                                        return Center(
-                                                          child: Column(
-                                                            mainAxisAlignment: MainAxisAlignment.center,
-                                                            children: [
-                                                              Icon(Icons.error, size: 48, color: Colors.red.withOpacity(0.7)),
-                                                              const SizedBox(height: 8),
-                                                              Text(
-                                                                'Ошибка загрузки фото',
-                                                                style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        );
-                                                      },
-                                                    );
-                                                  }
-                                                  return Center(
-                                                    child: CircularProgressIndicator(color: _gold),
-                                                  );
-                                                },
-                                              )
-                                            : Center(
-                                                child: Icon(Icons.image, color: Colors.white.withOpacity(0.3)),
-                                              ),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    child: _buildEmployeePhoto(answer),
                                   ),
                                 ),
                               ),
@@ -452,7 +467,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                     );
                   } else {
                     Logger.debug('   Нет эталонного фото в ответе');
-                    return const SizedBox.shrink();
+                    return SizedBox.shrink();
                   }
                 },
               ),
@@ -473,62 +488,12 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                   child: Container(
                     height: 200,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: Colors.white.withOpacity(0.15)),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: answer.photoPath != null
-                          ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                              ? AppCachedImage(
-                                  imageUrl: answer.photoPath!,
-                                  fit: BoxFit.cover,
-                                  errorWidget: (context, error, stackTrace) {
-                                    return Center(
-                                      child: Icon(Icons.error, color: Colors.red.withOpacity(0.7)),
-                                    );
-                                  },
-                                )
-                              : Image.file(
-                                  File(answer.photoPath!),
-                                  fit: BoxFit.cover,
-                                )
-                          : answer.photoDriveId != null
-                              ? FutureBuilder<String>(
-                                  future: Future.value(PhotoUploadService.getPhotoUrl(answer.photoDriveId!)),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.hasData) {
-                                      final photoUrl = snapshot.data!;
-                                      Logger.debug('Загрузка фото сотрудника из: $photoUrl');
-                                      return AppCachedImage(
-                                        imageUrl: photoUrl,
-                                        fit: BoxFit.cover,
-                                        errorWidget: (context, error, stackTrace) {
-                                          Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
-                                          return Center(
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.error, size: 48, color: Colors.red.withOpacity(0.7)),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  'Ошибка загрузки фото',
-                                                  style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      );
-                                    }
-                                    return Center(
-                                      child: CircularProgressIndicator(color: _gold),
-                                    );
-                                  },
-                                )
-                              : Center(
-                                  child: Icon(Icons.image, color: Colors.white.withOpacity(0.3)),
-                                ),
+                      borderRadius: BorderRadius.circular(12.r),
+                      child: _buildEmployeePhoto(answer),
                     ),
                   ),
                 ),
@@ -541,7 +506,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
 
   Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: _emeraldDark.withOpacity(0.8),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
@@ -549,10 +514,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
       child: SafeArea(
         child: _currentReport.isExpired
             ? Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Column(
@@ -562,33 +527,33 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.cancel, color: Colors.red.withOpacity(0.9)),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Отчет просрочен',
                           style: TextStyle(
                             color: Colors.red.withOpacity(0.9),
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                     if (_currentReport.expiredAt != null) ...[
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Просрочен: ${_currentReport.expiredAt!.day}.${_currentReport.expiredAt!.month}.${_currentReport.expiredAt!.year}',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.5),
-                          fontSize: 14,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'Подтверждение невозможно',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.4),
-                        fontSize: 12,
+                        fontSize: 12.sp,
                       ),
                     ),
                   ],
@@ -596,10 +561,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
               )
             : widget.isReadOnly
             ? Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(color: Colors.orange.withOpacity(0.3)),
                 ),
                 child: Column(
@@ -609,31 +574,31 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.access_time, color: Colors.orange.withOpacity(0.9)),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Отчет не подтвержден вовремя',
                           style: TextStyle(
                             color: Colors.orange.withOpacity(0.9),
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Ожидает более 5 часов',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.5),
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'Только для просмотра',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.4),
-                        fontSize: 12,
+                        fontSize: 12.sp,
                       ),
                     ),
                   ],
@@ -641,10 +606,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
               )
             : _currentReport.isConfirmed
             ? Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.green.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(color: Colors.green.withOpacity(0.3)),
                 ),
                 child: Column(
@@ -654,19 +619,19 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.check_circle, color: Colors.green.withOpacity(0.9)),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Отчет подтвержден',
                           style: TextStyle(
                             color: Colors.green.withOpacity(0.9),
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                     if (_currentReport.rating != null) ...[
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -674,24 +639,24 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                             'Оценка: ',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.5),
-                              fontSize: 14,
+                              fontSize: 14.sp,
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 4.h,
                             ),
                             decoration: BoxDecoration(
                               color: _getRatingColor(_currentReport.rating!).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               border: Border.all(color: _getRatingColor(_currentReport.rating!).withOpacity(0.4)),
                             ),
                             child: Text(
                               '${_currentReport.rating}',
                               style: TextStyle(
                                 color: _getRatingColor(_currentReport.rating!),
-                                fontSize: 18,
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -700,12 +665,12 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                       ),
                     ],
                     if (_currentReport.confirmedByAdmin != null) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Проверил: ${_currentReport.confirmedByAdmin}',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],
@@ -716,17 +681,17 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: _confirmReport,
-                  icon: const Icon(Icons.check_circle, size: 24),
-                  label: const Text(
+                  icon: Icon(Icons.check_circle, size: 24),
+                  label: Text(
                     'Подтвердить',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _gold,
                     foregroundColor: _night,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                   ),
                 ),
@@ -740,7 +705,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -755,11 +720,11 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
               _buildAppBar(context),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   children: [
                     // Информация об отчете
                     _buildInfoCard(),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
 
                     // Ответы на вопросы
                     ..._currentReport.answers.asMap().entries.map((entry) {

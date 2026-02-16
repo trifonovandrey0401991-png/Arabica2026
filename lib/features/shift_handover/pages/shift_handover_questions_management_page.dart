@@ -9,6 +9,7 @@ import '../../shops/models/shop_model.dart';
 import '../../envelope/models/envelope_question_model.dart';
 import '../../envelope/services/envelope_question_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления вопросами сдачи смены
 class ShiftHandoverQuestionsManagementPage extends StatefulWidget {
@@ -23,10 +24,10 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   late TabController _tabController;
 
   // Цвета для тёмного изумрудного дизайна
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   // Вопросы сдачи смены
   List<ShiftHandoverQuestion> _questions = [];
@@ -111,7 +112,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   Future<void> _showAddQuestionDialog() async {
     final result = await showDialog<ShiftHandoverQuestion>(
       context: context,
-      builder: (context) => const ShiftHandoverQuestionFormDialog(),
+      builder: (context) => ShiftHandoverQuestionFormDialog(),
     );
 
     if (result != null) {
@@ -119,7 +120,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
@@ -128,8 +129,8 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
             ),
             backgroundColor: Colors.green[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -147,7 +148,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
@@ -156,8 +157,8 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
             ),
             backgroundColor: Colors.green[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -170,15 +171,15 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
             color: _emeraldDark,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20.r),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.3),
                 blurRadius: 30,
-                offset: const Offset(0, 10),
+                offset: Offset(0, 10),
               ),
             ],
           ),
@@ -188,38 +189,38 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               // Иконка предупреждения
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: 24.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.red[400]!, Colors.red[600]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20.r),
+                    topRight: Radius.circular(20.r),
                   ),
                 ),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.delete_forever_rounded,
                         color: Colors.white,
                         size: 36,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: 12),
+                    Text(
                       'Удалить вопрос?',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -228,31 +229,31 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               ),
               // Контент
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(14.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: Text(
                         question.question,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.7),
                           height: 1.4,
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(
                       'Это действие невозможно отменить',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.white.withOpacity(0.4),
                       ),
                     ),
@@ -261,46 +262,46 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               ),
               // Кнопки
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context, false),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           side: BorderSide(color: Colors.white.withOpacity(0.2)),
                         ),
                         child: Text(
                           'Отмена',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.w600,
                             color: Colors.white.withOpacity(0.7),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context, true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red[500],
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Удалить',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -322,7 +323,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 12),
@@ -331,8 +332,8 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               ),
               backgroundColor: Colors.green[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -340,7 +341,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.error_outline, color: Colors.white),
                   SizedBox(width: 12),
@@ -349,8 +350,8 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               ),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -384,7 +385,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
       await _loadEnvelopeQuestions();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Вопрос успешно обновлен'),
             backgroundColor: Colors.green,
           ),
@@ -402,7 +403,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка обновления вопроса'),
             backgroundColor: Colors.red,
           ),
@@ -415,7 +416,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -433,9 +434,9 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               // Контент
               Expanded(
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24.r),
+                    topRight: Radius.circular(24.r),
                   ),
                   child: TabBarView(
                     controller: _tabController,
@@ -458,8 +459,8 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               onPressed: _showAddQuestionDialog,
               backgroundColor: _gold,
               elevation: 4,
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: const Text(
+              icon: Icon(Icons.add_rounded, color: Colors.white),
+              label: Text(
                 'Добавить',
                 style: TextStyle(
                   color: Colors.white,
@@ -468,7 +469,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               ),
             );
           }
-          return const SizedBox.shrink();
+          return SizedBox.shrink();
         },
       ),
     );
@@ -476,32 +477,32 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
 
   Widget _buildCustomAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0.h),
       child: Row(
         children: [
           // Кнопка назад
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Заголовок
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Вопросы (Сдать Смену)',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -514,7 +515,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                           : '${_envelopeQuestions.length} вопросов',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
-                        fontSize: 13,
+                        fontSize: 13.sp,
                       ),
                     );
                   },
@@ -526,17 +527,17 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+              icon: Icon(Icons.refresh, color: Colors.white, size: 20),
               onPressed: () {
                 _loadQuestions();
                 _loadEnvelopeQuestions();
               },
               tooltip: 'Обновить',
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              constraints: BoxConstraints(minWidth: 44, minHeight: 44),
             ),
           ),
         ],
@@ -546,33 +547,33 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
 
   Widget _buildCustomTabBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 16.h),
       child: Container(
         height: 56,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: TabBar(
           controller: _tabController,
           indicator: BoxDecoration(
             color: _gold.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           indicatorSize: TabBarIndicatorSize.tab,
-          indicatorPadding: const EdgeInsets.all(4),
+          indicatorPadding: EdgeInsets.all(4.w),
           dividerColor: Colors.transparent,
           labelColor: _gold,
           unselectedLabelColor: Colors.white.withOpacity(0.6),
-          labelStyle: const TextStyle(
+          labelStyle: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 13,
+            fontSize: 13.sp,
           ),
-          unselectedLabelStyle: const TextStyle(
+          unselectedLabelStyle: TextStyle(
             fontWeight: FontWeight.w500,
-            fontSize: 13,
+            fontSize: 13.sp,
           ),
-          tabs: const [
+          tabs: [
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -606,22 +607,22 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
               ),
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(_gold),
                 strokeWidth: 3,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Загрузка вопросов...',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -635,7 +636,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(28),
+              padding: EdgeInsets.all(28.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
                 shape: BoxShape.circle,
@@ -646,22 +647,22 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 color: Colors.white.withOpacity(0.3),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               'Нет вопросов',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 22.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
+              padding: EdgeInsets.symmetric(horizontal: 48.w),
               child: Text(
                 'Нажмите кнопку "Добавить"\nчтобы создать первый вопрос',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   color: Colors.white.withOpacity(0.5),
                   height: 1.5,
                 ),
@@ -674,7 +675,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 100.h),
       itemCount: _questions.length,
       itemBuilder: (context, index) {
         final question = _questions[index];
@@ -689,24 +690,24 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     final IconData targetRoleIcon = _getTargetRoleIcon(question.targetRole);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           onTap: () => _showEditQuestionDialog(question),
           splashColor: typeColor.withOpacity(0.08),
           child: Column(
             children: [
               // Верхняя часть карточки
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
+                padding: EdgeInsets.fromLTRB(16.w, 14.h, 12.w, 12.h),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -720,27 +721,27 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         boxShadow: [
                           BoxShadow(
                             color: typeColor.withOpacity(0.3),
                             blurRadius: 8,
-                            offset: const Offset(0, 3),
+                            offset: Offset(0, 3),
                           ),
                         ],
                       ),
                       child: Center(
                         child: Text(
                           '${index + 1}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 16.sp,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Контент
                     Expanded(
                       child: Column(
@@ -753,10 +754,10 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                             children: [
                               // Тип ответа
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                                 decoration: BoxDecoration(
                                   color: typeColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(20.r),
                                   border: Border.all(
                                     color: typeColor.withOpacity(0.3),
                                   ),
@@ -769,11 +770,11 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                                       size: 14,
                                       color: typeColor,
                                     ),
-                                    const SizedBox(width: 6),
+                                    SizedBox(width: 6),
                                     Text(
                                       _getAnswerTypeLabel(question),
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         fontWeight: FontWeight.w600,
                                         color: typeColor,
                                       ),
@@ -783,10 +784,10 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                               ),
                               // Целевая роль
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                                 decoration: BoxDecoration(
                                   color: Colors.blueGrey.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(20.r),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -796,11 +797,11 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                                       size: 14,
                                       color: Colors.blueGrey[300],
                                     ),
-                                    const SizedBox(width: 4),
+                                    SizedBox(width: 4),
                                     Text(
                                       targetRoleLabel,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         fontWeight: FontWeight.w500,
                                         color: Colors.blueGrey[300],
                                       ),
@@ -810,12 +811,12 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           // Текст вопроса
                           Text(
                             question.question,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 15.sp,
                               fontWeight: FontWeight.w500,
                               color: Colors.white.withOpacity(0.9),
                               height: 1.4,
@@ -824,7 +825,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     // Кнопки действий
                     Column(
                       children: [
@@ -833,7 +834,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                           color: _gold,
                           onTap: () => _showEditQuestionDialog(question),
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         _buildCardActionButton(
                           icon: Icons.delete_outline_rounded,
                           color: Colors.red[400]!,
@@ -848,12 +849,12 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
               if ((question.shops != null && question.shops!.isNotEmpty) ||
                   (question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty))
                 Container(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                  padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 12.h),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.04),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(16.r),
+                      bottomRight: Radius.circular(16.r),
                     ),
                   ),
                   child: Row(
@@ -868,7 +869,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                         ),
                       if (question.shops != null && question.shops!.isNotEmpty &&
                           question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                       // Эталонные фото
                       if (question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
                         _buildMetadataBadge(
@@ -894,12 +895,12 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(8.r),
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.all(8.w),
         decoration: BoxDecoration(
           color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
         ),
         child: Icon(icon, size: 18, color: color),
       ),
@@ -913,10 +914,10 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     required Color bgColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(
           color: color.withOpacity(0.2),
         ),
@@ -925,11 +926,11 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text(
             text,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               color: color,
               fontWeight: FontWeight.w600,
             ),
@@ -952,10 +953,10 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   }
 
   Color _getAnswerTypeColor(ShiftHandoverQuestion question) {
-    if (question.isPhotoOnly) return const Color(0xFF7B1FA2); // Purple
-    if (question.isYesNo) return const Color(0xFF0288D1); // Blue
-    if (question.isNumberOnly) return const Color(0xFFE65100); // Orange
-    return const Color(0xFF2E7D32); // Green for text
+    if (question.isPhotoOnly) return Color(0xFF7B1FA2); // Purple
+    if (question.isYesNo) return Color(0xFF0288D1); // Blue
+    if (question.isNumberOnly) return Color(0xFFE65100); // Orange
+    return Color(0xFF2E7D32); // Green for text
   }
 
   String _getTargetRoleLabel(String? targetRole) {
@@ -989,22 +990,22 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
               ),
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(_gold),
                 strokeWidth: 3,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Загрузка вопросов конверта...',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -1018,7 +1019,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(28),
+              padding: EdgeInsets.all(28.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
                 shape: BoxShape.circle,
@@ -1029,20 +1030,20 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 color: Colors.white.withOpacity(0.3),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               'Нет вопросов',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 22.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Вопросы конверта не загружены',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 15.sp,
                 color: Colors.white.withOpacity(0.5),
               ),
             ),
@@ -1052,7 +1053,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 16.h),
       itemCount: _envelopeQuestions.length,
       itemBuilder: (context, index) {
         final question = _envelopeQuestions[index];
@@ -1065,20 +1066,20 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     final sectionColor = _getSectionColor(question.section);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           onTap: () => _showEditEnvelopeQuestionDialog(question),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1094,20 +1095,20 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Center(
                     child: Text(
                       '${question.order}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Контент
                 Expanded(
                   child: Column(
@@ -1117,26 +1118,26 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                             decoration: BoxDecoration(
                               color: sectionColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
                             child: Text(
                               question.sectionText,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: sectionColor,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1146,11 +1147,11 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                                   size: 12,
                                   color: Colors.white.withOpacity(0.5),
                                 ),
-                                const SizedBox(width: 4),
+                                SizedBox(width: 4),
                                 Text(
                                   question.typeText,
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 11.sp,
                                     color: Colors.white.withOpacity(0.5),
                                   ),
                                 ),
@@ -1159,22 +1160,22 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       // Заголовок
                       Text(
                         question.title,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: question.isActive ? Colors.white.withOpacity(0.9) : Colors.white.withOpacity(0.4),
                         ),
                       ),
                       if (question.description.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           question.description,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                           maxLines: 2,
@@ -1184,7 +1185,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Переключатель и кнопка редактирования
                 Column(
                   children: [
@@ -1268,9 +1269,9 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
   bool _isUploadingPhotos = false;
 
   // Цвета для тёмного изумрудного дизайна
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -1390,7 +1391,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         setState(() => _isUploadingPhotos = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка загрузки эталонного фото'),
               backgroundColor: Colors.red,
             ),
@@ -1520,7 +1521,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка сохранения вопроса'),
               backgroundColor: Colors.red,
             ),
@@ -1551,7 +1552,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
       child: Container(
         constraints: BoxConstraints(
           maxWidth: 600,
@@ -1559,12 +1560,12 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         ),
         decoration: BoxDecoration(
           color: _emeraldDark,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(24.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
               blurRadius: 30,
-              offset: const Offset(0, 10),
+              offset: Offset(0, 10),
             ),
           ],
         ),
@@ -1573,16 +1574,16 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
           children: [
             // Красивый заголовок
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_emerald, _emeraldDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                  topLeft: Radius.circular(24.r),
+                  topRight: Radius.circular(24.r),
                 ),
               ),
               child: Row(
@@ -1592,7 +1593,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                     child: Icon(
                       isEditing ? Icons.edit_note : Icons.add_circle_outline,
@@ -1600,24 +1601,24 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       size: 28,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           isEditing ? 'Редактировать вопрос' : 'Новый вопрос',
-                          style: const TextStyle(
-                            fontSize: 22,
+                          style: TextStyle(
+                            fontSize: 22.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           isEditing ? 'Измените параметры вопроса' : 'Заполните все поля',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             color: Colors.white.withOpacity(0.85),
                           ),
                         ),
@@ -1625,7 +1626,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, color: Colors.white),
                     onPressed: () => Navigator.pop(context),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white.withOpacity(0.15),
@@ -1636,7 +1637,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -1649,7 +1650,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                 title: 'Текст вопроса',
                 color: _gold,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextFormField(
                 controller: _questionController,
                 decoration: InputDecoration(
@@ -1658,29 +1659,29 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.06),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: _gold, width: 2),
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: BorderSide(color: _gold, width: 2),
                   ),
                   errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Colors.red, width: 1),
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: BorderSide(color: Colors.red, width: 1),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: BorderSide(color: Colors.red, width: 2),
                   ),
-                  contentPadding: const EdgeInsets.all(16),
+                  contentPadding: EdgeInsets.all(16.w),
                 ),
                 maxLines: 3,
-                style: TextStyle(fontSize: 16, height: 1.4, color: Colors.white.withOpacity(0.9)),
+                style: TextStyle(fontSize: 16.sp, height: 1.4, color: Colors.white.withOpacity(0.9)),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Пожалуйста, введите текст вопроса';
@@ -1688,14 +1689,14 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   return null;
                 },
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               // Секция: Кому задавать
               _buildSectionHeader(
                 icon: Icons.people_alt_outlined,
                 title: 'Кому задавать вопрос',
-                color: const Color(0xFF42A5F5),
+                color: Color(0xFF42A5F5),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -1705,7 +1706,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       value: 'manager',
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: _buildTargetRoleOption(
                       icon: Icons.person,
@@ -1713,7 +1714,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       value: 'employee',
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: _buildTargetRoleOption(
                       icon: Icons.groups,
@@ -1723,14 +1724,14 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               // Секция: Тип ответа
               _buildSectionHeader(
                 icon: Icons.format_list_bulleted,
                 title: 'Тип ответа',
-                color: const Color(0xFFCE93D8),
+                color: Color(0xFFCE93D8),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -1738,21 +1739,21 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.camera_alt_outlined,
                       label: 'Фото',
                       value: 'photo',
-                      color: const Color(0xFF7B1FA2),
+                      color: Color(0xFF7B1FA2),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: _buildAnswerTypeOption(
                       icon: Icons.check_circle_outline,
                       label: 'Да/Нет',
                       value: 'yesno',
-                      color: const Color(0xFF0288D1),
+                      color: Color(0xFF0288D1),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -1760,21 +1761,21 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.tag,
                       label: 'Число',
                       value: 'number',
-                      color: const Color(0xFFE65100),
+                      color: Color(0xFFE65100),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: _buildAnswerTypeOption(
                       icon: Icons.text_fields,
                       label: 'Текст',
                       value: 'text',
-                      color: const Color(0xFF2E7D32),
+                      color: Color(0xFF2E7D32),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -1782,27 +1783,27 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.screenshot,
                       label: 'Скриншот',
                       value: 'screenshot',
-                      color: const Color(0xFF5E35B1),
+                      color: Color(0xFF5E35B1),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Expanded(child: SizedBox()), // Пустое место для выравнивания
+                  SizedBox(width: 10),
+                  Expanded(child: SizedBox()), // Пустое место для выравнивания
                 ],
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               // Секция: Магазины
               _buildSectionHeader(
                 icon: Icons.store_mall_directory_outlined,
                 title: 'Магазины',
-                color: const Color(0xFFFFB74D),
+                color: Color(0xFFFFB74D),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               if (_isLoadingShops)
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20.w),
                     child: CircularProgressIndicator(
-                      valueColor: const AlwaysStoppedAnimation<Color>(_gold),
+                      valueColor: AlwaysStoppedAnimation<Color>(_gold),
                     ),
                   ),
                 )
@@ -1811,7 +1812,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                 Container(
                   decoration: BoxDecoration(
                     color: _isForAllShops ? _gold.withOpacity(0.12) : Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                     border: Border.all(
                       color: _isForAllShops ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
                     ),
@@ -1823,7 +1824,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     ),
                     subtitle: Text(
                       'Вопрос будет задан на всех точках',
-                      style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
+                      style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
                     ),
                     value: _isForAllShops,
                     onChanged: (value) {
@@ -1838,20 +1839,20 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     activeColor: _gold,
                     checkColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                   ),
                 ),
                 if (!_isForAllShops) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
-                    constraints: const BoxConstraints(maxHeight: 200),
+                    constraints: BoxConstraints(maxHeight: 200),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       child: SingleChildScrollView(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -1874,7 +1875,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                                 ),
                                 subtitle: Text(
                                   shop.address,
-                                  style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+                                  style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
                                 ),
                                 value: isSelected,
                                 onChanged: (value) {
@@ -1901,11 +1902,11 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   ),
                   if (_selectedShopAddresses.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: EdgeInsets.only(top: 8.h),
                       child: Text(
                         'Выбрано: ${_selectedShopAddresses.length} магазин(ов)',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.white.withOpacity(0.5),
                           fontWeight: FontWeight.w500,
                         ),
@@ -1913,20 +1914,20 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     ),
                 ],
                 if (_selectedAnswerType == 'photo') ...[
-                  const SizedBox(height: 28),
+                  SizedBox(height: 28),
                   _buildSectionHeader(
                     icon: Icons.photo_library_outlined,
                     title: 'Эталонные фото',
-                    color: const Color(0xFF66BB6A),
+                    color: Color(0xFF66BB6A),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'Добавьте образцы, чтобы сотрудники знали, как должно выглядеть фото',
-                    style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
+                    style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Container(
-                    constraints: const BoxConstraints(maxHeight: 300),
+                    constraints: BoxConstraints(maxHeight: 300),
                     child: SingleChildScrollView(
                       child: Column(
                         children: _isForAllShops
@@ -1955,12 +1956,12 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
             ),
             // Красивые кнопки действий
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 color: _emeraldDark,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(24.r),
+                  bottomRight: Radius.circular(24.r),
                 ),
                 border: Border(
                   top: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -1972,23 +1973,23 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     child: OutlinedButton(
                       onPressed: _isSaving ? null : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         side: BorderSide(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Text(
                         'Отмена',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.7),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -1996,14 +1997,14 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _gold,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         elevation: 2,
                       ),
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 22,
                               width: 22,
                               child: CircularProgressIndicator(
@@ -2018,11 +2019,11 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                                   isEditing ? Icons.save : Icons.add_circle,
                                   size: 20,
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Text(
                                   isEditing ? 'Сохранить' : 'Добавить',
-                                  style: const TextStyle(
-                                    fontSize: 16,
+                                  style: TextStyle(
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -2047,18 +2048,18 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
             color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, size: 20, color: color),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Text(
           title,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 16.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -2083,21 +2084,21 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         });
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 12.w),
         decoration: BoxDecoration(
           color: isSelected ? cardColor.withOpacity(0.2) : Colors.white.withOpacity(0.06),
           border: Border.all(
             color: isSelected ? cardColor : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           boxShadow: isSelected
               ? [
                   BoxShadow(
                     color: cardColor.withOpacity(0.2),
                     blurRadius: 8,
-                    offset: const Offset(0, 3),
+                    offset: Offset(0, 3),
                   ),
                 ]
               : null,
@@ -2105,8 +2106,8 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         child: Column(
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(10),
+              duration: Duration(milliseconds: 200),
+              padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
                 color: isSelected ? cardColor.withOpacity(0.25) : Colors.white.withOpacity(0.06),
                 shape: BoxShape.circle,
@@ -2117,24 +2118,24 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                 size: 28,
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? cardColor : Colors.white.withOpacity(0.6),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 13,
+                fontSize: 13.sp,
               ),
             ),
             if (isSelected)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: EdgeInsets.only(top: 6.h),
                 child: Container(
                   width: 20,
                   height: 3,
                   decoration: BoxDecoration(
                     color: cardColor,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
               ),
@@ -2153,14 +2154,14 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     final photoUrl = _referencePhotoUrls[shopAddress];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2168,40 +2169,40 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(Icons.store, size: 18, color: Colors.orange[700]),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     shopName,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                 ),
                 if (hasPhoto)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           'Загружено',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             fontWeight: FontWeight.w600,
                             color: Colors.green[700],
                           ),
@@ -2211,7 +2212,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             // Превью фото или кнопка добавления
             if (hasPhoto) ...[
               Stack(
@@ -2220,11 +2221,11 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     height: 120,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       child: photoBytes != null
                           ? Image.memory(
                               photoBytes,
@@ -2255,8 +2256,8 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   ),
                   // Кнопки поверх фото
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 8.h,
+                    right: 8.w,
                     child: Row(
                       children: [
                         _buildPhotoActionButton(
@@ -2264,7 +2265,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                           onPressed: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
                           tooltip: 'Заменить',
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         _buildPhotoActionButton(
                           icon: Icons.delete_outline,
                           onPressed: () {
@@ -2286,13 +2287,13 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
               // Зона добавления фото
               InkWell(
                 onTap: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 child: Container(
                   height: 100,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.1),
                       style: BorderStyle.solid,
@@ -2306,11 +2307,11 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                         size: 36,
                         color: Colors.white.withOpacity(0.3),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Добавить эталонное фото',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.white.withOpacity(0.5),
                           fontWeight: FontWeight.w500,
                         ),
@@ -2334,19 +2335,19 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
   }) {
     return Material(
       color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : _emeraldDark,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(8.r),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         child: Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
                 blurRadius: 4,
-                offset: const Offset(0, 2),
+                offset: Offset(0, 2),
               ),
             ],
           ),
@@ -2366,7 +2367,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     required String value,
   }) {
     final isSelected = _selectedTargetRole == value;
-    final cardColor = const Color(0xFF42A5F5);
+    final cardColor = Color(0xFF42A5F5);
 
     return GestureDetector(
       onTap: () {
@@ -2375,21 +2376,21 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         });
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 10.w),
         decoration: BoxDecoration(
           color: isSelected ? cardColor.withOpacity(0.2) : Colors.white.withOpacity(0.06),
           border: Border.all(
             color: isSelected ? cardColor : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           boxShadow: isSelected
               ? [
                   BoxShadow(
                     color: cardColor.withOpacity(0.2),
                     blurRadius: 8,
-                    offset: const Offset(0, 3),
+                    offset: Offset(0, 3),
                   ),
                 ]
               : null,
@@ -2397,8 +2398,8 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         child: Column(
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(8),
+              duration: Duration(milliseconds: 200),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: isSelected ? cardColor.withOpacity(0.25) : Colors.white.withOpacity(0.06),
                 shape: BoxShape.circle,
@@ -2409,19 +2410,19 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                 size: 24,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? cardColor : Colors.white.withOpacity(0.6),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 12,
+                fontSize: 12.sp,
               ),
               textAlign: TextAlign.center,
             ),
             if (isSelected)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: EdgeInsets.only(top: 6.h),
                 child: Icon(
                   Icons.check_circle,
                   color: cardColor,
@@ -2479,9 +2480,9 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
   Uint8List? _selectedPhotoBytes;
 
   // Цвета для тёмного изумрудного дизайна
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -2559,7 +2560,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка загрузки фото'),
               backgroundColor: Colors.red,
             ),
@@ -2615,7 +2616,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка сохранения вопроса'),
               backgroundColor: Colors.red,
             ),
@@ -2654,19 +2655,19 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
         ),
         decoration: BoxDecoration(
           color: _emeraldDark,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: _emerald,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16.r),
+                  topRight: Radius.circular(16.r),
                 ),
               ),
               child: Row(
@@ -2676,12 +2677,12 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                     color: _gold,
                     size: 28,
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Редактирование шага',
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: TextStyle(
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -2694,7 +2695,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
             // Content
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -2704,31 +2705,31 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                             decoration: BoxDecoration(
                               color: _getSectionColor(widget.question.section).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Text(
                               widget.question.sectionText,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: _getSectionColor(widget.question.section),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Text(
                               widget.question.typeText,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: Colors.white.withOpacity(0.5),
                                 fontWeight: FontWeight.bold,
                               ),
@@ -2736,7 +2737,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       TextFormField(
                         controller: _titleController,
                         decoration: InputDecoration(
@@ -2745,16 +2746,16 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                           filled: true,
                           fillColor: Colors.white.withOpacity(0.06),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: _gold, width: 2),
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: _gold, width: 2),
                           ),
                           hintText: 'Введите название',
                           hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -2767,7 +2768,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       TextFormField(
                         controller: _descriptionController,
                         decoration: InputDecoration(
@@ -2776,16 +2777,16 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                           filled: true,
                           fillColor: Colors.white.withOpacity(0.06),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: _gold, width: 2),
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: _gold, width: 2),
                           ),
                           hintText: 'Введите описание для сотрудника',
                           hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -2795,36 +2796,36 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                       ),
                       // Эталонное фото (только для типа photo)
                       if (isPhotoType) ...[
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                         Text(
                           'Эталонное фото:',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white.withOpacity(0.9),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           'Сотрудник увидит это фото как образец',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         if (hasPhoto)
                           Container(
                             height: 150,
                             width: double.infinity,
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.white.withOpacity(0.1)),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
                             child: Stack(
                               children: [
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   child: _selectedPhotoBytes != null
                                       ? Image.memory(
                                           _selectedPhotoBytes!,
@@ -2838,24 +2839,24 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
-                                              errorWidget: (_, __, ___) => const Center(
+                                              errorWidget: (_, __, ___) => Center(
                                                 child: Icon(Icons.error, size: 48, color: Colors.red),
                                               ),
                                             )
-                                          : const SizedBox(),
+                                          : SizedBox(),
                                 ),
                                 if (_isUploadingPhoto)
                                   Container(
                                     color: Colors.black.withOpacity(0.5),
-                                    child: const Center(
+                                    child: Center(
                                       child: CircularProgressIndicator(color: Colors.white),
                                     ),
                                   ),
                                 Positioned(
-                                  top: 8,
-                                  right: 8,
+                                  top: 8.h,
+                                  right: 8.w,
                                   child: IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    icon: Icon(Icons.delete, color: Colors.red),
                                     onPressed: _isUploadingPhoto ? null : _removePhoto,
                                     style: IconButton.styleFrom(
                                       backgroundColor: _emeraldDark,
@@ -2871,17 +2872,17 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                             width: double.infinity,
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.white.withOpacity(0.1), style: BorderStyle.solid),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               color: Colors.white.withOpacity(0.04),
                             ),
                             child: InkWell(
                               onTap: _isUploadingPhoto ? null : _pickReferencePhoto,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.add_photo_alternate, size: 40, color: Colors.white.withOpacity(0.3)),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   Text(
                                     'Добавить эталонное фото',
                                     style: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -2892,11 +2893,11 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                           ),
                         if (hasPhoto)
                           Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: EdgeInsets.only(top: 8.h),
                             child: ElevatedButton.icon(
                               onPressed: _isUploadingPhoto ? null : _pickReferencePhoto,
-                              icon: const Icon(Icons.photo_camera, size: 18),
-                              label: const Text('Изменить фото'),
+                              icon: Icon(Icons.photo_camera, size: 18),
+                              label: Text('Изменить фото'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _gold,
                                 foregroundColor: Colors.white,
@@ -2912,7 +2913,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
             Divider(height: 1, color: Colors.white.withOpacity(0.1)),
             // Actions
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -2923,7 +2924,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                       style: TextStyle(color: Colors.white.withOpacity(0.6)),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: (_isSaving || _isUploadingPhoto) ? null : _saveQuestion,
                     style: ElevatedButton.styleFrom(
@@ -2931,7 +2932,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                       foregroundColor: Colors.white,
                     ),
                     child: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
@@ -2939,7 +2940,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text('Сохранить'),
+                        : Text('Сохранить'),
                   ),
                 ],
               ),

@@ -11,19 +11,25 @@ import '../../app/pages/my_dialogs_page.dart';
 import '../../features/reviews/pages/review_detail_page.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/models/review_model.dart';
-import '../../features/product_questions/pages/product_question_dialog_page.dart';
 import '../../features/product_questions/pages/product_question_answer_page.dart';
+import '../../features/product_questions/pages/product_question_personal_dialog_page.dart';
+import '../../features/product_questions/pages/product_question_employee_dialog_page.dart';
+import '../../features/product_questions/pages/product_question_client_dialog_page.dart';
+import '../../features/product_questions/pages/product_question_dialog_page.dart';
+import '../../features/product_questions/pages/product_questions_management_page.dart';
 import '../../features/orders/pages/employee_orders_page.dart';
 import '../../features/orders/pages/orders_page.dart';
 import '../../features/work_schedule/pages/my_schedule_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/tasks/pages/my_tasks_page.dart';
 import '../../features/employee_chat/pages/employee_chats_list_page.dart';
+import '../../features/employees/services/user_role_service.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
 class FirebaseService {
@@ -35,7 +41,7 @@ class FirebaseService {
   static BuildContext? _globalContext;
 
   /// Цвет уведомлений (основной цвет бренда Арабика)
-  static const Color _notificationColor = Color(0xFF004D40);
+  static final Color _notificationColor = Color(0xFF004D40);
 
   /// Флаг для предотвращения повторного показа диалога блокировки
   static bool _verificationRevokedDialogShown = false;
@@ -102,7 +108,7 @@ class FirebaseService {
       } catch (e) {
         Logger.error('Ошибка получения FirebaseMessaging, повторная попытка...', e);
         // Небольшая задержка только при ошибке
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future.delayed(Duration(milliseconds: 500));
         messaging = _getMessaging();
       }
       
@@ -120,7 +126,7 @@ class FirebaseService {
         // Если ошибка связана с отсутствием Firebase App, ждем еще
         if (e.toString().contains('no-app') || e.toString().contains('Firebase App')) {
           Logger.debug('Ожидание инициализации Firebase App...');
-          await Future.delayed(const Duration(milliseconds: 500)); // Уменьшено с 2000 до 500
+          await Future.delayed(Duration(milliseconds: 500)); // Уменьшено с 2000 до 500
           // Повторная попытка
           try {
             settings = await messaging.requestPermission(
@@ -194,14 +200,14 @@ class FirebaseService {
     
     Logger.debug('Начало инициализации локальных уведомлений...');
     // Инициализация локальных уведомлений
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
+    final androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    final iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const initSettings = InitializationSettings(
+    final initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
@@ -286,8 +292,8 @@ class FirebaseService {
     Logger.debug('Начало получения FCM токена с повторными попытками...');
     String? token;
     int attempts = 0;
-    const maxAttempts = 3; // Уменьшено с 5 до 3
-    const delaySeconds = 2; // Уменьшено с 3 до 2
+    final maxAttempts = 3; // Уменьшено с 5 до 3
+    final delaySeconds = 2; // Уменьшено с 3 до 2
 
     while (token == null && attempts < maxAttempts) {
       try {
@@ -445,7 +451,7 @@ class FirebaseService {
         showWhen: true,
         icon: '@drawable/ic_launcher_foreground',
         color: _notificationColor,
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else if (type != null && type.startsWith('shift_transfer')) {
       // Канал для замен смены
@@ -458,7 +464,7 @@ class FirebaseService {
         showWhen: true,
         icon: '@drawable/ic_launcher_foreground',
         color: _notificationColor,
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else if (type == 'product_question_created' || type == 'product_question_answered') {
       // Канал для вопросов о товаре
@@ -471,7 +477,7 @@ class FirebaseService {
         showWhen: true,
         icon: '@drawable/ic_launcher_foreground',
         color: _notificationColor,
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else if (type != null && (type.startsWith('new_task') ||
                type.startsWith('task_') ||
@@ -487,7 +493,7 @@ class FirebaseService {
         showWhen: true,
         icon: '@drawable/ic_launcher_foreground',
         color: _notificationColor,
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else if (type == 'employee_chat') {
       androidDetails = AndroidNotificationDetails(
@@ -499,7 +505,7 @@ class FirebaseService {
         showWhen: true,
         icon: '@drawable/ic_launcher_foreground',
         color: _notificationColor,
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     } else {
       androidDetails = AndroidNotificationDetails(
@@ -511,11 +517,11 @@ class FirebaseService {
         showWhen: true,
         icon: '@drawable/ic_launcher_foreground',
         color: _notificationColor,
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
     }
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
@@ -568,18 +574,18 @@ class FirebaseService {
         canPop: false,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.warning_amber_rounded,
             color: Colors.orange,
             size: 48,
           ),
-          title: const Text(
+          title: Text(
             'Верификация отозвана',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          content: const Text(
+          content: Text(
             'Ваша верификация была отозвана администратором.\n\n'
             'Для продолжения работы необходимо перезапустить приложение.',
             textAlign: TextAlign.center,
@@ -593,14 +599,14 @@ class FirebaseService {
                   // SystemNavigator.pop() корректно закрывает приложение
                   SystemNavigator.pop();
                 },
-                icon: const Icon(Icons.restart_alt),
-                label: const Text('Перезапустить приложение'),
+                icon: Icon(Icons.restart_alt),
+                label: Text('Перезапустить приложение'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
+                  backgroundColor: Color(0xFF004D40),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
               ),
@@ -611,8 +617,13 @@ class FirebaseService {
     );
   }
 
+  /// Публичный метод для обработки навигации из других сервисов (NotificationService)
+  static void navigateFromNotificationData(Map<String, dynamic> data) {
+    _handleNotificationNavigation(data);
+  }
+
   /// Навигация к диалогу при открытии уведомления
-  static void _handleNotificationNavigation(Map<String, dynamic> data) {
+  static void _handleNotificationNavigation(Map<String, dynamic> data) async {
     if (_globalContext == null) return;
 
     final type = data['type'] as String?;
@@ -623,65 +634,116 @@ class FirebaseService {
       return;
     }
 
-    // Обработка уведомлений о новом заказе (для сотрудников)
-    if (type == 'new_order') {
-      Navigator.of(_globalContext!).push(
-        MaterialPageRoute(
-          builder: (context) => const EmployeeOrdersPage(),
-        ),
-      );
-      return;
-    }
+    // Обработка уведомлений о заказах — проверяем роль пользователя
+    if (type == 'new_order' || type == 'order_status' || type == 'order_rejected') {
+      final userRole = await UserRoleService.loadUserRole();
+      final isStaff = userRole != null && userRole.isEmployeeOrAdmin;
 
-    // Обработка уведомлений о статусе заказа (для клиентов)
-    if (type == 'order_status') {
-      Navigator.of(_globalContext!).push(
-        MaterialPageRoute(
-          builder: (context) => const OrdersPage(),
-        ),
-      );
+      if (type == 'new_order' && isStaff) {
+        // Сотрудник/админ → страница управления заказами
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => EmployeeOrdersPage(),
+          ),
+        );
+      } else {
+        // Клиент (или статус заказа) → страница "Мои заказы"
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => OrdersPage(),
+          ),
+        );
+      }
       return;
     }
 
     // Обработка уведомлений о вопросах о товаре
     if (type == 'product_question') {
       final questionId = data['questionId'] as String?;
+      final shopAddress = data['shopAddress'] as String?;
       if (questionId != null) {
-        Navigator.of(_globalContext!).push(
-          MaterialPageRoute(
-            builder: (context) => ProductQuestionAnswerPage(
-              questionId: questionId,
+        // Для сетевых вопросов → страница управления (выбор магазина)
+        if (shopAddress == 'Вся сеть' || shopAddress == null || shopAddress.isEmpty) {
+          Navigator.of(_globalContext!).push(
+            MaterialPageRoute(
+              builder: (context) => const ProductQuestionsManagementPage(),
             ),
-          ),
-        );
+          );
+        } else {
+          Navigator.of(_globalContext!).push(
+            MaterialPageRoute(
+              builder: (context) => ProductQuestionAnswerPage(
+                questionId: questionId,
+                shopAddress: shopAddress,
+              ),
+            ),
+          );
+        }
         return;
       }
     }
-    
+
     // Обработка уведомлений о новом вопросе о товаре (для сотрудников)
     if (type == 'product_question_created') {
       final questionId = data['questionId'] as String?;
+      final shopAddress = data['shopAddress'] as String?;
       if (questionId != null) {
-        Navigator.of(_globalContext!).push(
-          MaterialPageRoute(
-            builder: (context) => ProductQuestionAnswerPage(
-              questionId: questionId,
+        // Для сетевых вопросов → страница управления (выбор магазина)
+        if (shopAddress == 'Вся сеть' || shopAddress == null || shopAddress.isEmpty) {
+          Navigator.of(_globalContext!).push(
+            MaterialPageRoute(
+              builder: (context) => const ProductQuestionsManagementPage(),
             ),
-          ),
-        );
+          );
+        } else {
+          Navigator.of(_globalContext!).push(
+            MaterialPageRoute(
+              builder: (context) => ProductQuestionAnswerPage(
+                questionId: questionId,
+                shopAddress: shopAddress,
+              ),
+            ),
+          );
+        }
       }
       return;
     }
 
     // Обработка уведомлений об ответе на вопрос о товаре (для клиентов)
-    if (type == 'product_question_answered') {
+    // Открываем конкретный вопрос с ответом сотрудника + поле ввода для ответа
+    if (type == 'product_question_answered' || type == 'product_answer') {
       final questionId = data['questionId'] as String?;
 
-      if (questionId != null) {
+      if (questionId != null && questionId.isNotEmpty && _globalContext != null) {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionDialogPage(
               questionId: questionId,
+            ),
+          ),
+        );
+      } else if (_globalContext != null) {
+        // Fallback: общий клиентский чат
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const ProductQuestionClientDialogPage(),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Обработка уведомлений о персональных диалогах (поиск товара)
+    if (type == 'personal_dialog_employee_message') {
+      // Клиент получил ответ сотрудника → открываем персональный чат клиента
+      final dialogId = data['dialogId'] as String?;
+      final shopAddress = data['shopAddress'] as String?;
+      if (dialogId != null && shopAddress != null) {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => ProductQuestionPersonalDialogPage(
+              dialogId: dialogId,
+              shopAddress: shopAddress,
             ),
           ),
         );
@@ -689,19 +751,22 @@ class FirebaseService {
       return;
     }
 
-    // Обработка уведомлений об ответах на вопросы о товаре (старая логика)
-    if (type == 'product_answer') {
-      final questionId = data['questionId'] as String?;
-      if (questionId != null) {
+    if (type == 'personal_dialog_client_message') {
+      // Сотрудник получил сообщение клиента → открываем чат сотрудника
+      final dialogId = data['dialogId'] as String?;
+      final shopAddress = data['shopAddress'] as String?;
+      if (dialogId != null && shopAddress != null) {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
-            builder: (context) => ProductQuestionDialogPage(
-              questionId: questionId,
+            builder: (context) => ProductQuestionEmployeeDialogPage(
+              dialogId: dialogId,
+              shopAddress: shopAddress,
+              clientName: '', // Загрузится из API
             ),
           ),
         );
-        return;
       }
+      return;
     }
 
     // Обработка уведомлений о задачах (обычных и циклических)
@@ -710,7 +775,7 @@ class FirebaseService {
         type == 'task_reminder') {
       Navigator.of(_globalContext!).push(
         MaterialPageRoute(
-          builder: (context) => const MyTasksPage(),
+          builder: (context) => MyTasksPage(),
         ),
       );
       return;
@@ -721,7 +786,7 @@ class FirebaseService {
       // Админ тоже переходит на страницу задач (или можно сделать отдельную страницу отчётов)
       Navigator.of(_globalContext!).push(
         MaterialPageRoute(
-          builder: (context) => const MyTasksPage(), // Note: можно добавить TaskReportsPage для админов
+          builder: (context) => MyTasksPage(), // Note: можно добавить TaskReportsPage для админов
         ),
       );
       return;
@@ -731,7 +796,17 @@ class FirebaseService {
     if (type == 'employee_chat') {
       Navigator.of(_globalContext!).push(
         MaterialPageRoute(
-          builder: (context) => const EmployeeChatsListPage(),
+          builder: (context) => EmployeeChatsListPage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомлений от руководства (рассылка и личные сообщения)
+    if (type == 'management_message') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => MyDialogsPage(),
         ),
       );
       return;
@@ -745,7 +820,7 @@ class FirebaseService {
       if (action == 'admin_review') {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
-            builder: (context) => const WorkSchedulePage(),
+            builder: (context) => WorkSchedulePage(),
           ),
         );
         return;
@@ -755,7 +830,7 @@ class FirebaseService {
       if (action == 'view_request') {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
-            builder: (context) => const MySchedulePage(),
+            builder: (context) => MySchedulePage(),
           ),
         );
         return;
@@ -765,7 +840,7 @@ class FirebaseService {
       if (action == 'view_schedule') {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
-            builder: (context) => const MySchedulePage(),
+            builder: (context) => MySchedulePage(),
           ),
         );
         return;
@@ -782,7 +857,7 @@ class FirebaseService {
             future: ReviewService.getReviewById(reviewId),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
+                return Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
               }
@@ -795,7 +870,7 @@ class FirebaseService {
               }
 
               // Если отзыв не найден, переходим к списку диалогов
-              return const MyDialogsPage();
+              return MyDialogsPage();
             },
           ),
         ),

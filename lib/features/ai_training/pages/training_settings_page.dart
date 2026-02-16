@@ -3,6 +3,7 @@ import '../models/cigarette_training_model.dart';
 import '../services/cigarette_vision_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница настроек обучения ИИ
 /// Позволяет изменять количество требуемых фото и удалять некачественные фото
@@ -65,7 +66,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
       if (updated != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Настройки сохранены'),
             backgroundColor: Colors.green,
           ),
@@ -73,7 +74,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
         widget.onSettingsChanged?.call();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка сохранения настроек'),
             backgroundColor: Colors.red,
           ),
@@ -88,17 +89,17 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final content = _isLoading
-        ? const Center(child: CircularProgressIndicator())
+        ? Center(child: CircularProgressIndicator())
         : ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             children: [
               // Секция источника каталога
               _buildCatalogSourceSection(),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Секция настроек количества фото
               _buildSettingsSection(),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Секция управления фото по товарам
               _buildPhotosManagementSection(),
@@ -109,10 +110,10 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
     if (_isStandalonePage) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Настройки обучения'),
-          backgroundColor: const Color(0xFF004D40),
+          title: Text('Настройки обучения'),
+          backgroundColor: Color(0xFF004D40),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -126,32 +127,32 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
   Widget _buildCatalogSourceSection() {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.folder_copy, color: Color(0xFF004D40)),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.folder_copy, color: Color(0xFF004D40)),
+                SizedBox(width: 8),
+                Text(
                   'Источник каталога товаров',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Выберите откуда брать список товаров для обучения',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Опция: Вопросы пересчёта (текущий)
             _buildCatalogSourceOption(
@@ -161,7 +162,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               icon: Icons.quiz,
               iconColor: Colors.blue,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Опция: Мастер-каталог (новый)
             _buildCatalogSourceOption(
@@ -194,19 +195,19 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
           : () {
               setState(() => _catalogSource = value);
             },
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(8.r),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF004D40)
+                ? Color(0xFF004D40)
                 : (isDisabled ? Colors.grey[300]! : Colors.grey[400]!),
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
           color: isSelected
-              ? const Color(0xFF004D40).withOpacity(0.05)
+              ? Color(0xFF004D40).withOpacity(0.05)
               : (isDisabled ? Colors.grey[100] : null),
         ),
         child: Row(
@@ -220,7 +221,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                   : (val) {
                       if (val != null) setState(() => _catalogSource = val);
                     },
-              activeColor: const Color(0xFF004D40),
+              activeColor: Color(0xFF004D40),
             ),
 
             // Icon
@@ -229,7 +230,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               color: isDisabled ? Colors.grey : iconColor,
               size: 28,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
 
             // Title and subtitle
             Expanded(
@@ -246,20 +247,20 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                         ),
                       ),
                       if (isDisabled) ...[
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 2.h,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.orange[100],
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Text(
                             'Скоро',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               color: Colors.orange[800],
                               fontWeight: FontWeight.bold,
                             ),
@@ -268,11 +269,11 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: isDisabled ? Colors.grey[400] : Colors.grey[600],
                     ),
                   ),
@@ -282,7 +283,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
             // Checkmark for selected
             if (isSelected)
-              const Icon(
+              Icon(
                 Icons.check_circle,
                 color: Color(0xFF004D40),
               ),
@@ -295,32 +296,32 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
   Widget _buildSettingsSection() {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.settings, color: Color(0xFF004D40)),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.settings, color: Color(0xFF004D40)),
+                SizedBox(width: 8),
+                Text(
                   'Количество фото для обучения',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Если распознавание работает неточно, увеличьте количество требуемых фото',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Крупный план
             _buildSettingRow(
@@ -335,7 +336,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                 setState(() => _requiredRecountPhotos = value);
               },
             ),
-            const Divider(),
+            Divider(),
 
             // Выкладка (на магазин)
             _buildSettingRow(
@@ -350,7 +351,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                 setState(() => _requiredDisplayPhotosPerShop = value);
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Кнопка сохранения
             SizedBox(
@@ -358,7 +359,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               child: ElevatedButton.icon(
                 onPressed: _isSaving ? null : _saveSettings,
                 icon: _isSaving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
@@ -366,11 +367,11 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.save),
+                    : Icon(Icons.save),
                 label: Text(_isSaving ? 'Сохранение...' : 'Сохранить настройки'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: Color(0xFF004D40),
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
                 ),
               ),
             ),
@@ -391,22 +392,22 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
     required ValueChanged<int> onChanged,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Row(
         children: [
           Icon(icon, color: iconColor, size: 32),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -418,7 +419,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                 onPressed: value > min
                     ? () => onChanged(value - 1)
                     : null,
-                icon: const Icon(Icons.remove_circle_outline),
+                icon: Icon(Icons.remove_circle_outline),
                 color: Colors.red,
               ),
               Container(
@@ -426,8 +427,8 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                 alignment: Alignment.center,
                 child: Text(
                   '$value',
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -436,7 +437,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                 onPressed: value < max
                     ? () => onChanged(value + 1)
                     : null,
-                icon: const Icon(Icons.add_circle_outline),
+                icon: Icon(Icons.add_circle_outline),
                 color: Colors.green,
               ),
             ],
@@ -455,42 +456,42 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.photo_library, color: Color(0xFF004D40)),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.photo_library, color: Color(0xFF004D40)),
+                SizedBox(width: 8),
+                Text(
                   'Управление фотографиями',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Нажмите на товар чтобы просмотреть и удалить некачественные фото',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             if (productsWithPhotos.isEmpty)
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(24.w),
                   child: Column(
                     children: [
                       Icon(Icons.photo_library_outlined,
                           size: 48, color: Colors.grey[400]),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Нет загруженных фото',
                         style: TextStyle(color: Colors.grey[600]),
@@ -509,13 +510,13 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
   Widget _buildProductPhotoCard(CigaretteProduct product) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       color: Colors.grey[50],
       child: InkWell(
         onTap: () => _openProductSamples(product),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4.r),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           child: Row(
             children: [
               // Иконка
@@ -524,11 +525,11 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Icon(Icons.photo_camera, color: Colors.blue),
+                child: Icon(Icons.photo_camera, color: Colors.blue),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
 
               // Название и количество
               Expanded(
@@ -537,50 +538,50 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                   children: [
                     Text(
                       product.productName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Row(
                       children: [
                         Icon(Icons.crop_free, size: 14, color: Colors.blue[700]),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           '${product.recountPhotosCount}',
-                          style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                          style: TextStyle(fontSize: 12.sp, color: Colors.blue[700]),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Icon(Icons.grid_view, size: 14, color: Colors.orange[700]),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           '${product.displayPhotosCount}',
-                          style: TextStyle(fontSize: 12, color: Colors.orange[700]),
+                          style: TextStyle(fontSize: 12.sp, color: Colors.orange[700]),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Icon(Icons.calculate, size: 14, color: Colors.green[700]),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           '${product.countingPhotosCount}',
-                          style: TextStyle(fontSize: 12, color: Colors.green[700]),
+                          style: TextStyle(fontSize: 12.sp, color: Colors.green[700]),
                         ),
                         // Показываем pending фото если есть
                         if (product.pendingCountingPhotosCount > 0) ...[
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
                             decoration: BoxDecoration(
                               color: Colors.amber[100],
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(4.r),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.hourglass_empty, size: 10, color: Colors.amber[800]),
-                                const SizedBox(width: 2),
+                                SizedBox(width: 2),
                                 Text(
                                   '${product.pendingCountingPhotosCount}',
-                                  style: TextStyle(fontSize: 10, color: Colors.amber[800], fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontSize: 10.sp, color: Colors.amber[800], fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -588,14 +589,14 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                         ],
                         // Показываем % распознавания если есть данные
                         if (product.displayAccuracy != null) ...[
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                             decoration: BoxDecoration(
                               color: product.displayAccuracy! >= 80
                                   ? Colors.green.shade100
                                   : Colors.orange.shade100,
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(4.r),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -607,11 +608,11 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                                       ? Colors.green[700]
                                       : Colors.orange[700],
                                 ),
-                                const SizedBox(width: 2),
+                                SizedBox(width: 2),
                                 Text(
                                   '${product.displayAccuracy}%',
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 10.sp,
                                     fontWeight: FontWeight.bold,
                                     color: product.displayAccuracy! >= 80
                                         ? Colors.green[800]
@@ -622,11 +623,11 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                             ),
                           ),
                         ],
-                        const Spacer(),
+                        Spacer(),
                         Text(
                           'Всего: ${product.trainingPhotosCount + product.countingPhotosCount}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: Colors.grey[600],
                           ),
                         ),
@@ -637,7 +638,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               ),
 
               // Стрелка
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
         ),
@@ -663,7 +664,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 class _ProductSamplesPage extends StatefulWidget {
   final CigaretteProduct product;
 
-  const _ProductSamplesPage({required this.product});
+  _ProductSamplesPage({required this.product});
 
   @override
   State<_ProductSamplesPage> createState() => _ProductSamplesPageState();
@@ -711,20 +712,20 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить фото?'),
-        content: const Text(
+        title: Text('Удалить фото?'),
+        content: Text(
           'Это действие нельзя отменить. '
           'Фото будет удалено из обучающей выборки.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -741,14 +742,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           _hasChanges = true;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Фото удалено'),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка удаления'),
             backgroundColor: Colors.red,
           ),
@@ -762,19 +763,19 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Подтвердить фото?'),
-        content: const Text(
+        title: Text('Подтвердить фото?'),
+        content: Text(
           'Фото будет добавлено в обучающую выборку.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Подтвердить'),
+            child: Text('Подтвердить'),
           ),
         ],
       ),
@@ -791,14 +792,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           _hasChanges = true;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Фото добавлено в обучение'),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка подтверждения'),
             backgroundColor: Colors.red,
           ),
@@ -812,19 +813,19 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Отклонить фото?'),
-        content: const Text(
+        title: Text('Отклонить фото?'),
+        content: Text(
           'Фото будет удалено и не попадёт в обучение.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Отклонить'),
+            child: Text('Отклонить'),
           ),
         ],
       ),
@@ -841,14 +842,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           _hasChanges = true;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Фото отклонено'),
             backgroundColor: Colors.orange,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка отклонения'),
             backgroundColor: Colors.red,
           ),
@@ -868,16 +869,16 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         appBar: AppBar(
           title: Text(
             widget.product.productName,
-            style: const TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16.sp),
           ),
-          backgroundColor: const Color(0xFF004D40),
+          backgroundColor: Color(0xFF004D40),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context, _hasChanges),
           ),
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : _buildContent(),
       ),
     );
@@ -890,10 +891,10 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.photo_library_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Нет фото для этого товара',
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16.sp),
             ),
           ],
         ),
@@ -909,7 +910,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
       children: [
         // Фильтр по типу
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -951,8 +952,8 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           child: RefreshIndicator(
             onRefresh: _loadSamples,
             child: GridView.builder(
-              padding: const EdgeInsets.all(8),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              padding: EdgeInsets.all(8.w),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
@@ -971,7 +972,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
   Widget _buildTypeFilterChip(String? type, String label, IconData icon, {Color? badgeColor}) {
     final isSelected = _selectedType == type;
-    final chipColor = badgeColor ?? const Color(0xFF004D40);
+    final chipColor = badgeColor ?? Color(0xFF004D40);
 
     return FilterChip(
       selected: isSelected,
@@ -979,11 +980,11 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: badgeColor),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Flexible(
             child: Text(
               label,
-              style: TextStyle(fontSize: 11, color: badgeColor),
+              style: TextStyle(fontSize: 11.sp, color: badgeColor),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -1042,20 +1043,20 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
             errorWidget: (context, error, stackTrace) {
               return Container(
                 color: Colors.grey[200],
-                child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
               );
             },
           ),
 
           // Тип фото (badge)
           Positioned(
-            top: 8,
-            left: 8,
+            top: 8.h,
+            left: 8.w,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: badgeColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1065,12 +1066,12 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                     size: 14,
                     color: Colors.white,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Text(
                     badgeText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1082,8 +1083,8 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           // Номер шаблона (если есть)
           if (sample.templateId != null)
             Positioned(
-              top: 8,
-              right: 8,
+              top: 8.h,
+              right: 8.w,
               child: Container(
                 width: 24,
                 height: 24,
@@ -1094,9 +1095,9 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                 child: Center(
                   child: Text(
                     '${sample.templateId}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1107,19 +1108,19 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           // Количество аннотаций
           if (sample.annotationCount > 0)
             Positioned(
-              bottom: 40,
-              left: 8,
+              bottom: 40.h,
+              left: 8.w,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: Colors.green,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Text(
                   '${sample.annotationCount} пачек',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 10.sp,
                   ),
                 ),
               ),
@@ -1127,8 +1128,8 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
           // Кнопки действий (approve/reject для pending, delete для остальных)
           Positioned(
-            bottom: 8,
-            right: 8,
+            bottom: 8.h,
+            right: 8.w,
             child: isPending
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1136,26 +1137,26 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                       // Одобрить
                       Material(
                         color: Colors.green,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20.r),
                         child: InkWell(
                           onTap: () => _approvePendingSample(sample),
-                          borderRadius: BorderRadius.circular(20),
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
+                          borderRadius: BorderRadius.circular(20.r),
+                          child: Padding(
+                            padding: EdgeInsets.all(8.w),
                             child: Icon(Icons.check, color: Colors.white, size: 20),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       // Отклонить
                       Material(
                         color: Colors.red,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20.r),
                         child: InkWell(
                           onTap: () => _rejectPendingSample(sample),
-                          borderRadius: BorderRadius.circular(20),
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
+                          borderRadius: BorderRadius.circular(20.r),
+                          child: Padding(
+                            padding: EdgeInsets.all(8.w),
                             child: Icon(Icons.close, color: Colors.white, size: 20),
                           ),
                         ),
@@ -1164,12 +1165,12 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                   )
                 : Material(
                     color: Colors.red,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                     child: InkWell(
                       onTap: () => _deleteSample(sample),
-                      borderRadius: BorderRadius.circular(20),
-                      child: const Padding(
-                        padding: EdgeInsets.all(8),
+                      borderRadius: BorderRadius.circular(20.r),
+                      child: Padding(
+                        padding: EdgeInsets.all(8.w),
                         child: Icon(Icons.delete, color: Colors.white, size: 20),
                       ),
                     ),
@@ -1178,19 +1179,19 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
           // Дата внизу слева
           Positioned(
-            bottom: 8,
-            left: 8,
+            bottom: 8.h,
+            left: 8.w,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
                 color: Colors.black54,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(4.r),
               ),
               child: Text(
                 _formatDate(sample.createdAt),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 10,
+                  fontSize: 10.sp,
                 ),
               ),
             ),

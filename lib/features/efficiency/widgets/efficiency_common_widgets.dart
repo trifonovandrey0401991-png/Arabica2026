@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/efficiency_data_model.dart';
 import '../utils/efficiency_utils.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Кнопка выбора месяца с модальным окном
 class MonthPickerButton extends StatelessWidget {
@@ -22,21 +23,21 @@ class MonthPickerButton extends StatelessWidget {
     await showModalBottomSheet(
       context: context,
       builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.symmetric(vertical: 16.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: EdgeInsets.all(16.0.w),
               child: Text(
                 'Выберите месяц',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const Divider(),
+            Divider(),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -57,7 +58,7 @@ class MonthPickerButton extends StatelessWidget {
                       ),
                     ),
                     trailing: isSelected
-                        ? const Icon(Icons.check,
+                        ? Icon(Icons.check,
                             color: EfficiencyUtils.primaryColor)
                         : null,
                     onTap: () {
@@ -81,10 +82,10 @@ class MonthPickerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton.icon(
       onPressed: () => _showMonthPicker(context),
-      icon: const Icon(Icons.calendar_today, color: Colors.white, size: 18),
+      icon: Icon(Icons.calendar_today, color: Colors.white, size: 18),
       label: Text(
         EfficiencyUtils.getMonthName(selectedMonth, selectedYear),
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: Colors.white),
       ),
     );
   }
@@ -108,21 +109,21 @@ class EfficiencySummaryCard extends StatelessWidget {
     final total = totalEarned - totalLost;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16.h),
       color: EfficiencyUtils.secondaryColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Общая статистика',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                     color: EfficiencyUtils.primaryColor,
                   ),
@@ -131,13 +132,13 @@ class EfficiencySummaryCard extends StatelessWidget {
                   Text(
                     additionalInfo!,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.grey[600],
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -173,7 +174,7 @@ class _StatColumn extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StatColumn({
+  _StatColumn({
     required this.value,
     required this.label,
     required this.color,
@@ -186,7 +187,7 @@ class _StatColumn extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 20.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -194,7 +195,7 @@ class _StatColumn extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: Colors.grey[600],
           ),
         ),
@@ -215,12 +216,12 @@ class EfficiencyProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = summary.earnedPoints + summary.lostPoints;
-    if (total == 0) return const SizedBox.shrink();
+    if (total == 0) return SizedBox.shrink();
 
     final earnedPercent = summary.earnedPoints / total;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(4.r),
       child: Row(
         children: [
           Expanded(
@@ -249,7 +250,7 @@ class EfficiencyLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -280,12 +281,12 @@ class EfficiencyErrorState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(error, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ElevatedButton(
             onPressed: onRetry,
-            child: const Text('Повторить'),
+            child: Text('Повторить'),
           ),
         ],
       ),
@@ -313,19 +314,19 @@ class EfficiencyEmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Нет данных за $monthName',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               color: Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             message,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.grey[500],
             ),
           ),
@@ -353,35 +354,35 @@ class EfficiencyDetailTotalCard extends StatelessWidget {
     final isPositive = summary.totalPoints >= 0;
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           children: [
             Text(
               monthName,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               summary.formattedTotal,
               style: TextStyle(
-                fontSize: 48,
+                fontSize: 48.sp,
                 fontWeight: FontWeight.bold,
                 color: isPositive ? Colors.green[700] : Colors.red[700],
               ),
             ),
-            const Text(
+            Text(
               'баллов',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 color: Colors.grey,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -415,7 +416,7 @@ class _DetailStatItem extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _DetailStatItem({
+  _DetailStatItem({
     required this.value,
     required this.label,
     required this.color,
@@ -428,7 +429,7 @@ class _DetailStatItem extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 24.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -436,7 +437,7 @@ class _DetailStatItem extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 13.sp,
             color: Colors.grey[600],
           ),
         ),
@@ -460,25 +461,25 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
     final categories = summary.categorySummaries;
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'По категориям',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: EfficiencyUtils.primaryColor,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (categories.isEmpty)
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Text(
                     'Нет данных',
                     style: TextStyle(color: Colors.grey[500]),
@@ -504,7 +505,7 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
     final icon = EfficiencyUtils.getCategoryIcon(categoryData.baseCategory);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Row(
         children: [
           Container(
@@ -512,7 +513,7 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(
               icon,
@@ -520,17 +521,17 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
               color: color,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               categoryData.name,  // Используем настоящее имя категории
-              style: const TextStyle(fontSize: 15),
+              style: TextStyle(fontSize: 15.sp),
             ),
           ),
           Text(
             formattedPoints,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
               color: isPositive ? Colors.green[700] : Colors.red[700],
             ),
@@ -594,19 +595,19 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
     final filteredRecords = _filteredRecords;
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Записи',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                     color: EfficiencyUtils.primaryColor,
                   ),
@@ -616,7 +617,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                       ? '${filteredRecords.length} из ${widget.summary.recordsCount}'
                       : 'Всего: ${widget.summary.recordsCount}',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     color: Colors.grey[600],
                   ),
                 ),
@@ -624,16 +625,16 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
             ),
             // Фильтр по категориям (показываем только если > 1 категории)
             if (categories.length > 1) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
                     // Чип "Все"
                     Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.only(right: 8.w),
                       child: FilterChip(
-                        label: const Text('Все'),
+                        label: Text('Все'),
                         selected: _selectedCategory == null,
                         onSelected: (_) {
                           setState(() => _selectedCategory = null);
@@ -641,7 +642,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                         selectedColor: EfficiencyUtils.secondaryColor,
                         checkmarkColor: EfficiencyUtils.primaryColor,
                         labelStyle: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: _selectedCategory == null
                               ? EfficiencyUtils.primaryColor
                               : Colors.grey[700],
@@ -653,7 +654,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                       final isSelected = _selectedCategory == category;
                       final color = EfficiencyUtils.getCategoryColor(category);
                       return Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                        padding: EdgeInsets.only(right: 8.w),
                         child: FilterChip(
                           label: Text(category.displayName),
                           selected: isSelected,
@@ -670,7 +671,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                             color: color,
                           ),
                           labelStyle: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: isSelected ? color : Colors.grey[700],
                           ),
                         ),
@@ -680,11 +681,11 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (filteredRecords.isEmpty)
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Text(
                     _selectedCategory != null
                         ? 'Нет записей в категории "${_selectedCategory!.displayName}"'
@@ -720,7 +721,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: 6.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -729,19 +730,19 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
             child: Text(
               dateFormat.format(record.date),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.grey[600],
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   record.categoryName,
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 14.sp),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -749,7 +750,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                 Text(
                   record.formattedRawValue,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.grey[600],
                   ),
                   maxLines: 2,
@@ -759,7 +760,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                   Text(
                     secondaryInfo,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.grey[400],
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -767,11 +768,11 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             record.formattedPoints,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w600,
               color: isPositive ? Colors.green[700] : Colors.red[700],
             ),

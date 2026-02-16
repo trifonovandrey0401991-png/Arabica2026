@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Детальная страница сотрудника со списком магазинов и дат работы
 class KPIEmployeeDetailPage extends StatefulWidget {
@@ -74,10 +75,10 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
               ? '${widget.employeeName} - ${widget.month}.${widget.year}'
               : widget.employeeName,
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: () {
               KPIService.clearCache();
               _loadShopDaysData();
@@ -86,15 +87,15 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _shopDaysData.isEmpty
-              ? const Center(child: Text('Нет данных'))
+              ? Center(child: Text('Нет данных'))
               : Column(
                   children: [
                     // Статистика
                     Container(
-                      padding: const EdgeInsets.all(16.0),
-                      color: const Color(0xFF004D40).withOpacity(0.1),
+                      padding: EdgeInsets.all(16.0.w),
+                      color: Color(0xFF004D40).withOpacity(0.1),
                       child: Column(
                         children: [
                           Row(
@@ -117,7 +118,7 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
@@ -148,20 +149,20 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
                         itemBuilder: (context, index) {
                           final shopDay = _shopDaysData[index];
                           return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16.0,
-                              vertical: 8.0,
+                            margin: EdgeInsets.symmetric(
+                              horizontal: 16.0.w,
+                              vertical: 8.0.h,
                             ),
                             child: ListTile(
                               title: Text(
                                 shopDay.displayTitle,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               subtitle: shopDay.formattedAttendanceTime != null
                                   ? Text('Приход: ${shopDay.formattedAttendanceTime}')
-                                  : const Text('Приход: не отмечен'),
+                                  : Text('Приход: не отмечен'),
                               trailing: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: Row(
@@ -172,31 +173,31 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
                                     Icons.access_time,
                                     shopDay.attendanceTime != null,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   // Пересменка - рукопожатие
                                   _buildIndicator(
                                     Icons.handshake,
                                     shopDay.hasShift,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   // Пересчет - калькулятор
                                   _buildIndicator(
                                     Icons.calculate,
                                     shopDay.hasRecount,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   // РКО - документ
                                   _buildIndicator(
                                     Icons.description,
                                     shopDay.hasRKO,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   // Конверт - письмо
                                   _buildIndicator(
                                     Icons.mail,
                                     shopDay.hasEnvelope,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   // Сдача смены - деньги
                                   _buildIndicator(
                                     Icons.payments,
@@ -218,19 +219,19 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
   Widget _buildStatCard(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: const Color(0xFF004D40)),
-        const SizedBox(height: 4),
+        Icon(icon, color: Color(0xFF004D40)),
+        SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
+          style: TextStyle(
+            fontSize: 20.sp,
             fontWeight: FontWeight.bold,
             color: Color(0xFF004D40),
           ),
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 12),
+          style: TextStyle(fontSize: 12.sp),
           textAlign: TextAlign.center,
         ),
       ],
@@ -246,7 +247,7 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
           size: 14,
           color: Colors.grey[600],
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: 2),
         Icon(
           isCompleted ? Icons.check_circle : Icons.cancel,
           size: 18,

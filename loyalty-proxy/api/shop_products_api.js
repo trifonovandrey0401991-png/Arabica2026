@@ -10,7 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Импортируем функции мастер-каталога для детекции новых кодов и подстановки названий
-const { addPendingCode, isCodeInMasterCatalog, getMasterNameByBarcode } = require('./master_catalog_api');
+const { addPendingCode, loadProducts } = require('./master_catalog_api');
 const { notifyAdminsAboutNewCodes } = require('./master_catalog_notifications');
 
 // Директория для хранения товаров магазинов
@@ -145,9 +145,18 @@ async function saveShopProducts(shopId, products) {
  * Если товар найден в мастер-каталоге - используется название оттуда
  * Сохраняет оригинальное название в поле originalName
  */
-function enrichProductsWithMasterNames(products) {
+async function enrichProductsWithMasterNames(products) {
+  // Загружаем мастер-каталог один раз и строим Map для быстрого поиска
+  const masterProducts = await loadProducts();
+  const nameMap = new Map();
+  for (const mp of masterProducts) {
+    if (mp.barcode && mp.name) {
+      nameMap.set(mp.barcode, mp.name);
+    }
+  }
+
   return products.map((p) => {
-    const masterName = getMasterNameByBarcode(p.kod);
+    const masterName = nameMap.get(p.kod);
     if (masterName && masterName !== p.name) {
       return {
         ...p,
@@ -310,7 +319,7 @@ function setupShopProductsAPI(app) {
       }
 
       if (useMasterNames !== 'false') {
-        products = enrichProductsWithMasterNames(products);
+        products = await enrichProductsWithMasterNames(products);
       }
 
       res.json({
@@ -341,7 +350,7 @@ function setupShopProductsAPI(app) {
         products = products.filter((p) => p.group === group);
       }
 
-      products = enrichProductsWithMasterNames(products);
+      products = await enrichProductsWithMasterNames(products);
       products.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
       res.json({

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -5,6 +6,8 @@ import '../../shared/providers/order_provider.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'firebase_service.dart';
 
 /// Сервис для работы с уведомлениями
 class NotificationService {
@@ -17,14 +20,14 @@ class NotificationService {
   static Future<void> initialize() async {
     if (_initialized) return;
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
+    final androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    final iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const initSettings = InitializationSettings(
+    final initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
@@ -45,27 +48,51 @@ class NotificationService {
   }
 
   /// Обработка нажатия на уведомление
+  /// Сначала пробуем распарсить как JSON (структурированные уведомления от FirebaseService),
+  /// если не JSON — обрабатываем как orderId (уведомления о заказах)
   static void _onNotificationTapped(NotificationResponse response) async {
-    if (response.payload != null && _globalContext != null) {
-      final orderId = response.payload!;
-      final orderProvider = OrderProvider.of(_globalContext!);
+    if (response.payload == null) return;
 
-      // Безопасный поиск заказа (BUG-001 fix: проверка пустого списка)
-      if (orderProvider.orders.isEmpty) {
-        debugPrint('⚠️ Notification tapped but orders list is empty');
-        return;
-      }
+    // Попытка парсинга JSON (уведомления от FirebaseService: поиск товара, отзывы, задачи и т.д.)
+    try {
+      final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+      // Это структурированное уведомление — делегируем навигацию в FirebaseService
+      FirebaseService.navigateFromNotificationData(data);
+      return;
+    } catch (_) {
+      // Не JSON — обрабатываем как orderId (старая логика заказов)
+    }
 
-      final order = orderProvider.orders.firstWhere(
-        (o) => o.id == orderId,
-        orElse: () => orderProvider.orders.first,
-      );
+    if (_globalContext == null) return;
 
-      // Используем текущего пользователя (из роли или имени)
-      final employeeName = await _getCurrentEmployeeName();
-      if (_globalContext != null && _globalContext!.mounted) {
-        await showAcceptOrderDialog(_globalContext!, order, employeeName);
-      }
+    final orderId = response.payload!;
+
+    // Проверяем роль — только сотрудники могут принимать заказы
+    final userRole = await UserRoleService.loadUserRole();
+    final isStaff = userRole != null && userRole.isEmployeeOrAdmin;
+
+    if (!isStaff) {
+      debugPrint('⚠️ Клиент нажал на уведомление о заказе — диалог принятия не показываем');
+      return;
+    }
+
+    final orderProvider = OrderProvider.of(_globalContext!);
+
+    // Безопасный поиск заказа (BUG-001 fix: проверка пустого списка)
+    if (orderProvider.orders.isEmpty) {
+      debugPrint('⚠️ Notification tapped but orders list is empty');
+      return;
+    }
+
+    final order = orderProvider.orders.firstWhere(
+      (o) => o.id == orderId,
+      orElse: () => orderProvider.orders.first,
+    );
+
+    // Используем текущего пользователя (из роли или имени)
+    final employeeName = await _getCurrentEmployeeName();
+    if (_globalContext != null && _globalContext!.mounted) {
+      await showAcceptOrderDialog(_globalContext!, order, employeeName);
     }
   }
 
@@ -127,7 +154,7 @@ class NotificationService {
     BuildContext context,
     Order order,
   ) async {
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'orders_channel',
       'Заказы',
       channelDescription: 'Уведомления о новых заказах',
@@ -136,13 +163,13 @@ class NotificationService {
       showWhen: true,
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -175,22 +202,22 @@ class NotificationService {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(15.r),
         ),
-        title: const Text('Принять заказ?'),
+        title: Text('Принять заказ?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Заказ ${order.id.substring(order.id.length - 6)}'),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text('Сумма: ${order.totalPrice.toStringAsFixed(0)} руб'),
             if (order.comment != null && order.comment!.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text('Комментарий: ${order.comment}'),
             ],
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Вы принимаете этот заказ?',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
@@ -199,7 +226,7 @@ class NotificationService {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () {
@@ -209,7 +236,7 @@ class NotificationService {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Отказаться'),
+            child: Text('Отказаться'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -219,14 +246,14 @@ class NotificationService {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Заказ принят сотрудником $employeeName'),
-                  backgroundColor: const Color(0xFF004D40),
+                  backgroundColor: Color(0xFF004D40),
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: Color(0xFF004D40),
             ),
-            child: const Text('Принять заказ'),
+            child: Text('Принять заказ'),
           ),
         ],
       ),
@@ -246,27 +273,27 @@ class NotificationService {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(15.r),
         ),
-        title: const Text('Отказ от заказа'),
+        title: Text('Отказ от заказа'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Заказ ${order.id.substring(order.id.length - 6)}'),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Укажите причину отказа:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextField(
               controller: reasonController,
               maxLines: 4,
               decoration: InputDecoration(
                 hintText: 'Введите причину отказа...',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
               ),
             ),
@@ -275,14 +302,14 @@ class NotificationService {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text('Пожалуйста, укажите причину отказа'),
                     backgroundColor: Colors.red,
                   ),
@@ -307,7 +334,7 @@ class NotificationService {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: const Text('Отправить'),
+            child: Text('Отправить'),
           ),
         ],
       ),
@@ -325,7 +352,7 @@ class NotificationService {
   ) async {
     await initialize();
 
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'orders_channel',
       'Заказы',
       channelDescription: 'Уведомления о заказах',
@@ -334,13 +361,13 @@ class NotificationService {
       showWhen: true,
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/recount_points_model.dart';
 import '../models/recount_settings_model.dart';
 import '../../../core/services/base_http_service.dart';
@@ -9,6 +11,7 @@ class RecountPointsService {
   static const String _baseEndpoint = ApiConstants.recountPointsEndpoint;
   static const String _settingsEndpoint = ApiConstants.recountSettingsEndpoint;
   static const String _reportsEndpoint = ApiConstants.recountReportsEndpoint;
+  static const String _settingsCacheKey = 'recount_settings_cache';
 
   /// Получить баллы всех сотрудников
   static Future<List<RecountPoints>> getAllPoints() async {
@@ -99,7 +102,7 @@ class RecountPointsService {
     }
   }
 
-  /// Получить общие настройки пересчёта
+  /// Получить общие настройки пересчёта (с локальным кэшем)
   static Future<RecountSettings> getSettings() async {
     try {
       Logger.debug('Загружаем настройки пересчёта...');
@@ -110,11 +113,37 @@ class RecountPointsService {
         itemKey: 'settings',
       );
 
-      return result ?? RecountSettings();
+      if (result != null) {
+        // Сохраняем в локальный кэш
+        _cacheSettings(result);
+        return result;
+      }
+      return await _getCachedSettings() ?? RecountSettings();
     } catch (e) {
-      Logger.error('Ошибка загрузки настроек', e);
-      return RecountSettings();
+      Logger.error('Ошибка загрузки настроек, пробуем кэш', e);
+      return await _getCachedSettings() ?? RecountSettings();
     }
+  }
+
+  /// Сохранить настройки в локальный кэш
+  static Future<void> _cacheSettings(RecountSettings settings) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_settingsCacheKey, jsonEncode(settings.toJson()));
+    } catch (_) {}
+  }
+
+  /// Получить настройки из локального кэша
+  static Future<RecountSettings?> _getCachedSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_settingsCacheKey);
+      if (cached != null) {
+        Logger.debug('Используем кэшированные настройки пересчёта');
+        return RecountSettings.fromJson(jsonDecode(cached));
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Обновить общие настройки пересчёта

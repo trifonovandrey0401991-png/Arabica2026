@@ -6,6 +6,7 @@ import '../services/envelope_report_service.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 import 'envelope_report_view_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница со списком отчетов по конвертам
 class EnvelopeReportsListPage extends StatefulWidget {
@@ -17,10 +18,10 @@ class EnvelopeReportsListPage extends StatefulWidget {
 
 class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   String? _selectedShop;
@@ -164,7 +165,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 90)),
+      firstDate: DateTime.now().subtract(Duration(days: 90)),
       lastDate: DateTime.now(),
     );
     if (picked != null) {
@@ -179,7 +180,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -192,7 +193,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -202,19 +203,19 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Отчеты (Конверты)',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -226,10 +227,10 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -238,7 +239,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
 
               // Tab buttons (2 rows)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
                   border: Border(
@@ -256,7 +257,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         Expanded(child: _buildTabButton(2, 'Ожидают', _awaitingReports.length)),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     // Второй ряд
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -271,7 +272,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
 
               // Фильтры
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.04),
                   border: Border(
@@ -293,7 +294,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         setState(() => _selectedShop = value);
                       },
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     // Фильтр по сотруднику
                     _buildDarkDropdown<String>(
                       value: _selectedEmployee,
@@ -307,7 +308,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         setState(() => _selectedEmployee = value);
                       },
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     // Фильтр по дате + кнопка сброса
                     Row(
                       children: [
@@ -315,23 +316,23 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                           child: GestureDetector(
                             onTap: () => _selectDate(context),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(10.r),
                                 border: Border.all(color: Colors.white.withOpacity(0.1)),
                               ),
                               child: Row(
                                 children: [
                                   Icon(Icons.calendar_today, size: 18, color: _gold),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Text(
                                     _selectedDate == null
                                         ? 'Все даты'
                                         : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.7),
-                                      fontSize: 14,
+                                      fontSize: 14.sp,
                                     ),
                                   ),
                                 ],
@@ -340,7 +341,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                           ),
                         ),
                         if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null) ...[
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
                               setState(() {
@@ -350,13 +351,13 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                               });
                             },
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(12.w),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(10.r),
                                 border: Border.all(color: Colors.red.withOpacity(0.3)),
                               ),
-                              child: const Icon(Icons.clear, color: Colors.red, size: 18),
+                              child: Icon(Icons.clear, color: Colors.red, size: 18),
                             ),
                           ),
                         ],
@@ -396,10 +397,10 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     required ValueChanged<T?> onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: DropdownButtonHideUnderline(
@@ -411,18 +412,18 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
           hint: Row(
             children: [
               Icon(icon, size: 18, color: _gold),
-              const SizedBox(width: 8),
-              Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)),
+              SizedBox(width: 8),
+              Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp)),
             ],
           ),
           selectedItemBuilder: (context) => [
             ...items.map((item) => Row(
               children: [
                 Icon(icon, size: 18, color: _gold),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: DefaultTextStyle(
-                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
                     overflow: TextOverflow.ellipsis,
                     child: item.child,
                   ),
@@ -438,7 +439,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
             ...items,
           ],
           onChanged: onChanged,
-          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
         ),
       ),
     );
@@ -447,7 +448,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   Widget _buildTabButton(int index, String label, int count) {
     final isSelected = _tabController.index == index;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      padding: EdgeInsets.symmetric(horizontal: 3.w),
       child: GestureDetector(
         onTap: () {
           setState(() {
@@ -455,10 +456,10 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
           });
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
           decoration: BoxDecoration(
             color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             border: Border.all(
               color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             ),
@@ -472,7 +473,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                   label,
                   style: TextStyle(
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: isSelected ? _gold : Colors.white.withOpacity(0.6),
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -480,19 +481,19 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                 ),
               ),
               if (count > 0) ...[
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     color: isSelected ? _gold : Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
                       color: isSelected ? _night : Colors.white.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                      fontSize: 11.sp,
                     ),
                   ),
                 ),
@@ -519,10 +520,10 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
               ),
               child: Icon(Icons.mail_outline, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
             ),
           ],
         ),
@@ -534,7 +535,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: reports.length,
         itemBuilder: (context, index) {
           final report = reports[index];
@@ -549,16 +550,16 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     final isConfirmed = report.status == 'confirmed';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () {
             Navigator.push(
               context,
@@ -568,7 +569,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
             ).then((_) => _loadData());
           },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 Container(
@@ -580,7 +581,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         : isExpired
                             ? Colors.red.withOpacity(0.2)
                             : _emerald,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     isConfirmed ? Icons.check : Icons.mail,
@@ -592,7 +593,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,11 +605,11 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Сотрудник: ${report.employeeName}',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
@@ -617,11 +618,11 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')} '
                         '• ${report.shiftTypeText}',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.4),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Text(
@@ -629,22 +630,22 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: _gold,
-                              fontSize: 13,
+                              fontSize: 13.sp,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           if (isConfirmed)
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.check_circle, color: Colors.green, size: 14),
-                                const SizedBox(width: 4),
-                                const Text(
+                                Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                SizedBox(width: 4),
+                                Text(
                                   'Подтвержден',
                                   style: TextStyle(
                                     color: Colors.green,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 11,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                               ],
@@ -653,14 +654,14 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.warning, color: Colors.red, size: 14),
-                                const SizedBox(width: 4),
-                                const Text(
+                                Icon(Icons.warning, color: Colors.red, size: 14),
+                                SizedBox(width: 4),
+                                Text(
                                   'Просрочен',
                                   style: TextStyle(
                                     color: Colors.red,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 11,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                               ],
@@ -683,16 +684,16 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     final isFailed = report.status == 'failed';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
           color: isFailed ? Colors.red.withOpacity(0.3) : Colors.orange.withOpacity(0.3),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14.w),
         child: Row(
           children: [
             Container(
@@ -700,7 +701,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
               height: 44,
               decoration: BoxDecoration(
                 color: isFailed ? Colors.red.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 isFailed ? Icons.cancel : Icons.access_time,
@@ -708,7 +709,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                 size: 22,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -720,22 +721,22 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                       color: Colors.white.withOpacity(0.9),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Смена: ${report.shiftTypeText}',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.5),
                     ),
                   ),
                   Text(
                     'Дата: ${report.date} • Дедлайн: ${report.deadline}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.white.withOpacity(0.4),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(
@@ -743,13 +744,13 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         color: isFailed ? Colors.red : Colors.orange,
                         size: 14,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         report.statusText,
                         style: TextStyle(
                           color: isFailed ? Colors.red : Colors.orange,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],
@@ -778,10 +779,10 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
               ),
               child: Icon(Icons.mail_outline, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
             ),
           ],
         ),
@@ -793,7 +794,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: reports.length,
         itemBuilder: (context, index) {
           final report = reports[index];

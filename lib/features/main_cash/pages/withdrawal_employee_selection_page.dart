@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import 'withdrawal_form_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора сотрудника для выемки (только управляющие и администраторы)
 class WithdrawalEmployeeSelectionPage extends StatefulWidget {
@@ -21,10 +22,10 @@ class WithdrawalEmployeeSelectionPage extends StatefulWidget {
 
 class _WithdrawalEmployeeSelectionPageState
     extends State<WithdrawalEmployeeSelectionPage> {
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   List<Employee> _managerEmployees = [];
   bool _isLoading = true;
@@ -84,7 +85,7 @@ class _WithdrawalEmployeeSelectionPageState
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -97,7 +98,7 @@ class _WithdrawalEmployeeSelectionPageState
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -107,23 +108,23 @@ class _WithdrawalEmployeeSelectionPageState
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.1),
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Text(
+                    SizedBox(width: 16),
+                    Text(
                       'Выберите сотрудника',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -133,7 +134,7 @@ class _WithdrawalEmployeeSelectionPageState
               // Content
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: _gold),
                       )
                     : _errorMessage != null
@@ -144,20 +145,20 @@ class _WithdrawalEmployeeSelectionPageState
                                 Icon(Icons.error_outline,
                                     size: 64,
                                     color: Colors.white.withOpacity(0.5)),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Padding(
                                   padding:
-                                      const EdgeInsets.symmetric(horizontal: 32),
+                                      EdgeInsets.symmetric(horizontal: 32.w),
                                   child: Text(
                                     _errorMessage!,
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.9),
-                                      fontSize: 16,
+                                      fontSize: 16.sp,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 ElevatedButton(
                                   onPressed: () => Navigator.pop(context),
                                   style: ElevatedButton.styleFrom(
@@ -168,7 +169,7 @@ class _WithdrawalEmployeeSelectionPageState
                                       color: Colors.white.withOpacity(0.1),
                                     ),
                                   ),
-                                  child: const Text('Назад'),
+                                  child: Text('Назад'),
                                 ),
                               ],
                             ),
@@ -179,17 +180,17 @@ class _WithdrawalEmployeeSelectionPageState
                                   'Нет управляющих или администраторов',
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.5),
-                                    fontSize: 18,
+                                    fontSize: 18.sp,
                                   ),
                                 ),
                               )
                             : ListView.builder(
-                                padding: const EdgeInsets.all(16),
+                                padding: EdgeInsets.all(16.w),
                                 itemCount: _managerEmployees.length,
                                 itemBuilder: (context, index) {
                                   final employee = _managerEmployees[index];
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
+                                    padding: EdgeInsets.only(bottom: 12.h),
                                     child: GestureDetector(
                                       onTap: () {
                                         Navigator.push(
@@ -207,11 +208,11 @@ class _WithdrawalEmployeeSelectionPageState
                                         );
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.all(12),
+                                        padding: EdgeInsets.all(12.w),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.06),
                                           borderRadius:
-                                              BorderRadius.circular(14),
+                                              BorderRadius.circular(14.r),
                                           border: Border.all(
                                             color:
                                                 Colors.white.withOpacity(0.1),
@@ -227,14 +228,14 @@ class _WithdrawalEmployeeSelectionPageState
                                                     ? employee.name[0]
                                                         .toUpperCase()
                                                     : '?',
-                                                style: const TextStyle(
-                                                  fontSize: 24,
+                                                style: TextStyle(
+                                                  fontSize: 24.sp,
                                                   fontWeight: FontWeight.bold,
                                                   color: Colors.white,
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 16),
+                                            SizedBox(width: 16),
                                             Expanded(
                                               child: Column(
                                                 crossAxisAlignment:
@@ -243,31 +244,30 @@ class _WithdrawalEmployeeSelectionPageState
                                                   Text(
                                                     employee.name,
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 16.sp,
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       color: Colors.white
                                                           .withOpacity(0.9),
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 4),
+                                                  SizedBox(height: 4),
                                                   Container(
-                                                    padding: const EdgeInsets
+                                                    padding: EdgeInsets
                                                         .symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 2),
+                                                        horizontal: 8.w,
+                                                        vertical: 2.h),
                                                     decoration: BoxDecoration(
                                                       color:
                                                           _getRoleBadgeColor(
                                                               employee),
                                                       borderRadius:
-                                                          BorderRadius.circular(
-                                                              4),
+                                                          BorderRadius.circular(4.r),
                                                     ),
                                                     child: Text(
                                                       _getRoleBadge(employee),
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
+                                                      style: TextStyle(
+                                                        fontSize: 12.sp,
                                                         color: Colors.white,
                                                         fontWeight:
                                                             FontWeight.w500,

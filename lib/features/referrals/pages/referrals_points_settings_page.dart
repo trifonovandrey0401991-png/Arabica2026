@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/referral_stats_model.dart';
 import '../services/referral_service.dart';
 import '../../efficiency/widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница настроек баллов за приглашения с милестоунами
 class ReferralsPointsSettingsPage extends StatefulWidget {
@@ -23,7 +24,7 @@ class _ReferralsPointsSettingsPageState
   double _milestonePoints = 1;
 
   // Gradient colors (teal/green theme for referrals)
-  static const _gradientColors = [Color(0xFF00897B), Color(0xFF26A69A)];
+  static final _gradientColors = [Color(0xFF00897B), Color(0xFF26A69A)];
 
   @override
   void initState() {
@@ -74,7 +75,7 @@ class _ReferralsPointsSettingsPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -84,7 +85,7 @@ class _ReferralsPointsSettingsPageState
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -107,9 +108,9 @@ class _ReferralsPointsSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за приглашения'),
+        title: Text('Баллы за приглашения'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -128,7 +129,7 @@ class _ReferralsPointsSettingsPageState
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -146,7 +147,7 @@ class _ReferralsPointsSettingsPageState
                           accentColor: Colors.blue,
                           icon: Icons.star_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Milestone threshold slider
                         SettingsSliderWidget(
@@ -167,7 +168,7 @@ class _ReferralsPointsSettingsPageState
                           accentColor: Colors.orange,
                           icon: Icons.military_tech_outlined,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Milestone points slider
                         SettingsSliderWidget(
@@ -183,20 +184,20 @@ class _ReferralsPointsSettingsPageState
                           accentColor: Colors.green,
                           icon: Icons.emoji_events_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр расчета баллов',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _buildPreview(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Explanation section
                         _buildExplanationCard(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -204,7 +205,7 @@ class _ReferralsPointsSettingsPageState
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -226,16 +227,16 @@ class _ReferralsPointsSettingsPageState
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         children: [
           // Header
@@ -250,23 +251,23 @@ class _ReferralsPointsSettingsPageState
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.preview,
                   color: Colors.white,
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 14),
-              const Expanded(
+              SizedBox(width: 14),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Примеры расчета',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF2D3436),
                       ),
@@ -274,7 +275,7 @@ class _ReferralsPointsSettingsPageState
                     Text(
                       'Баллы за разное количество клиентов',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Color(0xFF636E72),
                       ),
                     ),
@@ -283,12 +284,12 @@ class _ReferralsPointsSettingsPageState
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           // Preview rows
           ...previewCounts.map((count) {
             final points = settings.calculatePoints(count);
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 12.h),
               child: Row(
                 children: [
                   Container(
@@ -296,55 +297,55 @@ class _ReferralsPointsSettingsPageState
                     height: 40,
                     decoration: BoxDecoration(
                       color: _gradientColors[0].withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Center(
                       child: Text(
                         '$count',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: _gradientColors[0],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: 12),
+                  Text(
                     'клиентов',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Color(0xFF636E72),
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: _gradientColors,
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           '$points',
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Text(
+                        SizedBox(width: 6),
+                        Text(
                           'баллов',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             color: Colors.white,
                           ),
                         ),
@@ -364,16 +365,16 @@ class _ReferralsPointsSettingsPageState
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -384,40 +385,40 @@ class _ReferralsPointsSettingsPageState
                 height: 44,
                 decoration: BoxDecoration(
                   color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.info_outline,
                   color: Colors.blue,
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 14),
-              const Text(
+              SizedBox(width: 14),
+              Text(
                 'Как работает расчет',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2D3436),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildExplanationPoint(
             '1',
             'Базовые баллы',
             'За каждого обычного клиента начисляются базовые баллы',
             Colors.blue,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildExplanationPoint(
             '2',
             'Милестоун (N-й клиент)',
             'Каждый N-й клиент получает бонусные баллы ВМЕСТО базовых',
             Colors.orange,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildExplanationPoint(
             '3',
             'Пример',
@@ -439,37 +440,37 @@ class _ReferralsPointsSettingsPageState
           height: 28,
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
           ),
           child: Center(
             child: Text(
               number,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2D3436),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 description,
-                style: const TextStyle(
-                  fontSize: 13,
+                style: TextStyle(
+                  fontSize: 13.sp,
                   color: Color(0xFF636E72),
                   height: 1.4,
                 ),

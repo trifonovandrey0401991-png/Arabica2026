@@ -6,6 +6,7 @@ import 'task_analytics_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/models/user_role_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчетов по задачам (для админа)
 /// 4 вкладки: Ожидают, Выполнено, Отказано, Не выполнено в срок
@@ -17,10 +18,10 @@ class TaskReportsPage extends StatefulWidget {
 }
 
 class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   List<TaskAssignment> _allAssignments = [];
@@ -124,7 +125,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -137,7 +138,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
             children: [
               // Custom AppBar Row
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     // Back button
@@ -148,20 +149,20 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Title
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Отчёты по задачам',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -171,7 +172,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const TaskAnalyticsPage(),
+                          builder: (context) => TaskAnalyticsPage(),
                         ),
                       ),
                       child: Container(
@@ -179,10 +180,10 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.analytics, color: Colors.white, size: 20),
+                        child: Icon(Icons.analytics, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -191,10 +192,10 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
 
               // TabBar in dark container
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+                margin: EdgeInsets.symmetric(horizontal: 16.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
                 child: TabBar(
@@ -207,30 +208,30 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                   dividerColor: Colors.transparent,
                   tabAlignment: TabAlignment.start,
                   indicatorSize: TabBarIndicatorSize.label,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
+                  labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp),
+                  unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400, fontSize: 14.sp),
                   tabs: [
-                    const Tab(text: 'Ожидают'),
-                    const Tab(text: 'Выполнено'),
-                    const Tab(text: 'Отказано'),
+                    Tab(text: 'Ожидают'),
+                    Tab(text: 'Выполнено'),
+                    Tab(text: 'Отказано'),
                     Tab(
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('Не в срок'),
+                          Text('Не в срок'),
                           if (_unviewedExpiredCount > 0) ...[
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(10.r),
                               ),
                               child: Text(
                                 '$_unviewedExpiredCount',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -243,7 +244,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                 ),
               ),
 
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // Body content
               Expanded(
@@ -258,14 +259,14 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                                   'Ошибка: $_error',
                                   style: TextStyle(color: Colors.white.withOpacity(0.9)),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 ElevatedButton(
                                   onPressed: _loadAssignments,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: _emerald,
                                     foregroundColor: Colors.white,
                                   ),
-                                  child: const Text('Повторить'),
+                                  child: Text('Повторить'),
                                 ),
                               ],
                             ),
@@ -318,10 +319,10 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
               ),
               child: Icon(Icons.inbox, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
             ),
           ],
         ),
@@ -333,7 +334,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: assignments.length,
         itemBuilder: (context, index) {
           final assignment = assignments[index];
@@ -348,10 +349,10 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
     final statusInfo = _getStatusInfo(assignment.status);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
@@ -368,9 +369,9 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
               _loadAssignments();
             }
           },
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -381,28 +382,28 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                       child: Text(
                         task?.title ?? 'Задача',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                       decoration: BoxDecoration(
                         color: statusInfo.color.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(statusInfo.icon, size: 14, color: statusInfo.color),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             statusInfo.label,
                             style: TextStyle(
                               color: statusInfo.color,
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -411,24 +412,24 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
 
                 // Divider
                 Divider(color: Colors.white.withOpacity(0.1), height: 1),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
 
                 // Исполнитель
                 Row(
                   children: [
                     Icon(Icons.person, size: 16, color: Colors.white.withOpacity(0.3)),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       assignment.assigneeName,
                       style: TextStyle(color: Colors.white.withOpacity(0.5)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
 
                 // Дедлайн
                 Row(
@@ -438,7 +439,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                       size: 16,
                       color: _isOverdue(assignment.deadline) ? Colors.red[300] : Colors.white.withOpacity(0.3),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       'До: ${_formatDateTime(assignment.deadline)}',
                       style: TextStyle(
@@ -450,7 +451,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
 
                 // Информация о типе ответа
                 if (task != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(
@@ -458,10 +459,10 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                         size: 16,
                         color: Colors.white.withOpacity(0.3),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         _getResponseTypeText(task.responseType),
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                       ),
                     ],
                   ),
@@ -469,14 +470,14 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
 
                 // Время ответа (если есть)
                 if (assignment.respondedAt != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.reply, size: 16, color: Colors.blue[300]),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         'Ответ: ${_formatDateTime(assignment.respondedAt!)}',
-                        style: TextStyle(color: Colors.blue[300], fontSize: 12),
+                        style: TextStyle(color: Colors.blue[300], fontSize: 12.sp),
                       ),
                     ],
                   ),
@@ -484,7 +485,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
 
                 // Время проверки (если есть)
                 if (assignment.reviewedAt != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(
@@ -492,12 +493,12 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                         size: 16,
                         color: assignment.status == TaskStatus.approved ? Colors.green[300] : Colors.red[300],
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         'Проверено: ${_formatDateTime(assignment.reviewedAt!)}',
                         style: TextStyle(
                           color: assignment.status == TaskStatus.approved ? Colors.green[300] : Colors.red[300],
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../services/loyalty_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class LoyaltyScannerPage extends StatefulWidget {
   const LoyaltyScannerPage({super.key});
@@ -18,11 +19,11 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
   String? _lastQr;
 
   // Градиенты и цвета
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00897B);
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00796B)];
-  static const _bonusGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
-  static const _successGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
+  static final _primaryColor = Color(0xFF004D40);
+  static final _accentColor = Color(0xFF00897B);
+  static final _gradientColors = [Color(0xFF004D40), Color(0xFF00796B)];
+  static final _bonusGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
+  static final _successGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
 
   @override
   void dispose() {
@@ -104,15 +105,15 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             content: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: const Icon(Icons.check_circle, color: Colors.white),
+                  child: Icon(Icons.check_circle, color: Colors.white),
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Баллы списаны, напиток выдан!',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
@@ -120,8 +121,8 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             ),
             backgroundColor: _successGradient[0],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -149,15 +150,15 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
                 Text(errorMessage),
               ],
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -184,19 +185,19 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _gradientColors),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(colors: _gradientColors),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
+              child: Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
             ),
-            const SizedBox(width: 12),
-            const Text('Ввод QR-кода'),
+            SizedBox(width: 12),
+            Text('Ввод QR-кода'),
           ],
         ),
         content: Column(
@@ -204,13 +205,13 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           children: [
             Text(
               'Введите QR-код клиента для тестирования:',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 14.sp, color: Colors.grey[600]),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
                 color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: _primaryColor.withOpacity(0.3)),
               ),
               child: TextField(
@@ -221,7 +222,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                   hintText: 'например: 2d3b4112-1366-4404-...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(16),
+                  contentPadding: EdgeInsets.all(16.w),
                   prefixIcon: Icon(Icons.qr_code, color: _primaryColor.withOpacity(0.5)),
                 ),
               ),
@@ -238,8 +239,8 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           ),
           Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: _gradientColors),
-              borderRadius: BorderRadius.circular(10),
+              gradient: LinearGradient(colors: _gradientColors),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: ElevatedButton(
               onPressed: () {
@@ -252,9 +253,9 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
               ),
-              child: const Text(
+              child: Text(
                 'Начислить балл',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
               ),
@@ -268,16 +269,16 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Бонусы'),
+        title: Text('Бонусы'),
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           // Кнопка ручного ввода QR (для тестирования)
           IconButton(
-            icon: const Icon(Icons.edit_note),
+            icon: Icon(Icons.edit_note),
             tooltip: 'Ввести QR вручную',
             onPressed: _showManualQrDialog,
           ),
@@ -293,7 +294,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.cameraswitch),
+            icon: Icon(Icons.cameraswitch),
             onPressed: () => _controller.switchCamera(),
           )
         ],
@@ -311,28 +312,28 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                   _primaryColor.withOpacity(0.8),
                 ],
               ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(32),
-                bottomRight: Radius.circular(32),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(32.r),
+                bottomRight: Radius.circular(32.r),
               ),
             ),
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
                   child: Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20.r),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
                           blurRadius: 20,
-                          offset: const Offset(0, 10),
+                          offset: Offset(0, 10),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20.r),
                       child: AspectRatio(
                         aspectRatio: 1,
                         child: Stack(
@@ -351,7 +352,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                                     color: Colors.white.withOpacity(0.5),
                                     width: 2,
                                   ),
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(16.r),
                                 ),
                               ),
                             ),
@@ -364,26 +365,26 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                                   children: [
                                     // Верхний левый
                                     Positioned(
-                                      top: 0,
-                                      left: 0,
+                                      top: 0.h,
+                                      left: 0.w,
                                       child: _buildCorner(true, true),
                                     ),
                                     // Верхний правый
                                     Positioned(
-                                      top: 0,
-                                      right: 0,
+                                      top: 0.h,
+                                      right: 0.w,
                                       child: _buildCorner(true, false),
                                     ),
                                     // Нижний левый
                                     Positioned(
-                                      bottom: 0,
-                                      left: 0,
+                                      bottom: 0.h,
+                                      left: 0.w,
                                       child: _buildCorner(false, true),
                                     ),
                                     // Нижний правый
                                     Positioned(
-                                      bottom: 0,
-                                      right: 0,
+                                      bottom: 0.h,
+                                      right: 0.w,
                                       child: _buildCorner(false, false),
                                     ),
                                   ],
@@ -398,12 +399,12 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                 ),
                 // Подсказка
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
+                  padding: EdgeInsets.only(bottom: 24.h),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20.r),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -413,12 +414,12 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                           color: Colors.white.withOpacity(0.9),
                           size: 20,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Наведите на QR-код клиента',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
-                            fontSize: 14,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ],
@@ -444,23 +445,23 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
       decoration: BoxDecoration(
         border: Border(
           top: isTop
-              ? const BorderSide(color: Colors.white, width: 4)
+              ? BorderSide(color: Colors.white, width: 4)
               : BorderSide.none,
           bottom: !isTop
-              ? const BorderSide(color: Colors.white, width: 4)
+              ? BorderSide(color: Colors.white, width: 4)
               : BorderSide.none,
           left: isLeft
-              ? const BorderSide(color: Colors.white, width: 4)
+              ? BorderSide(color: Colors.white, width: 4)
               : BorderSide.none,
           right: !isLeft
-              ? const BorderSide(color: Colors.white, width: 4)
+              ? BorderSide(color: Colors.white, width: 4)
               : BorderSide.none,
         ),
         borderRadius: BorderRadius.only(
-          topLeft: isTop && isLeft ? const Radius.circular(12) : Radius.zero,
-          topRight: isTop && !isLeft ? const Radius.circular(12) : Radius.zero,
-          bottomLeft: !isTop && isLeft ? const Radius.circular(12) : Radius.zero,
-          bottomRight: !isTop && !isLeft ? const Radius.circular(12) : Radius.zero,
+          topLeft: isTop && isLeft ? Radius.circular(12.r) : Radius.zero,
+          topRight: isTop && !isLeft ? Radius.circular(12.r) : Radius.zero,
+          bottomLeft: !isTop && isLeft ? Radius.circular(12.r) : Radius.zero,
+          bottomRight: !isTop && !isLeft ? Radius.circular(12.r) : Radius.zero,
         ),
       ),
     );
@@ -473,7 +474,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -481,7 +482,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                   BoxShadow(
                     color: _primaryColor.withOpacity(0.2),
                     blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    offset: Offset(0, 8),
                   ),
                 ],
               ),
@@ -490,12 +491,12 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                 strokeWidth: 3,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               'Обработка...',
               style: TextStyle(
                 color: Colors.grey[600],
-                fontSize: 16,
+                fontSize: 16.sp,
               ),
             ),
           ],
@@ -505,51 +506,51 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
 
     if (_errorMessage != null) {
       return Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
                 color: Colors.red[50],
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.error_outline, size: 56, color: Colors.red[400]),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 color: Colors.grey[700],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _gradientColors),
-                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(colors: _gradientColors),
+                borderRadius: BorderRadius.circular(14.r),
                 boxShadow: [
                   BoxShadow(
                     color: _primaryColor.withOpacity(0.4),
                     blurRadius: 12,
-                    offset: const Offset(0, 6),
+                    offset: Offset(0, 6),
                   ),
                 ],
               ),
               child: ElevatedButton.icon(
                 onPressed: _resetScan,
-                icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                label: const Text(
+                icon: Icon(Icons.qr_code_scanner, color: Colors.white),
+                label: Text(
                   'Сканировать снова',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                 ),
               ),
             ),
@@ -561,12 +562,12 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     final client = _client;
     if (client == null) {
       return Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -584,21 +585,21 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                 color: _primaryColor.withOpacity(0.5),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               'Сканируйте QR-код',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey[700],
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Наведите камеру на QR-код клиента,\nчтобы начислить балл',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.grey[500],
               ),
             ),
@@ -609,21 +610,21 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
 
     // Информация о клиенте
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Карточка клиента
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 15,
-                  offset: const Offset(0, 5),
+                  offset: Offset(0, 5),
                 ),
               ],
             ),
@@ -634,32 +635,32 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: _gradientColors,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
                         color: _primaryColor.withOpacity(0.3),
                         blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Center(
                     child: Text(
                       client.name.isNotEmpty ? client.name[0].toUpperCase() : '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 26,
+                        fontSize: 26.sp,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 // Имя и телефон
                 Expanded(
                   child: Column(
@@ -667,21 +668,21 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                     children: [
                       Text(
                         client.name,
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2D3436),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           Icon(Icons.phone, size: 16, color: Colors.grey[500]),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Text(
                             client.phone,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               color: Colors.grey[600],
                             ),
                           ),
@@ -692,10 +693,10 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                 ),
                 // Иконка проверки
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _successGradient[0].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.verified,
@@ -707,11 +708,11 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Карточка баллов
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -721,7 +722,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                   _accentColor.withOpacity(0.02),
                 ],
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
               border: Border.all(color: _primaryColor.withOpacity(0.1)),
             ),
             child: Column(
@@ -733,18 +734,18 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(10.w),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: _bonusGradient),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(colors: _bonusGradient),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
-                          child: const Icon(Icons.stars, color: Colors.white, size: 20),
+                          child: Icon(Icons.stars, color: Colors.white, size: 20),
                         ),
-                        const SizedBox(width: 12),
-                        const Text(
+                        SizedBox(width: 12),
+                        Text(
                           'Баллы',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF2D3436),
                           ),
@@ -752,22 +753,22 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: _bonusGradient),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(colors: _bonusGradient),
+                        borderRadius: BorderRadius.circular(12.r),
                         boxShadow: [
                           BoxShadow(
                             color: _bonusGradient[0].withOpacity(0.3),
                             blurRadius: 8,
-                            offset: const Offset(0, 4),
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Text(
                         '${client.points}/${client.pointsRequired}',
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -775,10 +776,10 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 // Прогресс-бар
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   child: LinearProgressIndicator(
                     value: (client.points.clamp(0, client.pointsRequired)) / client.pointsRequired,
                     backgroundColor: Colors.grey[200],
@@ -788,7 +789,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Бесплатные напитки и акция
                 Row(
                   children: [
@@ -800,7 +801,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                         color: _successGradient[0],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: _buildInfoChip(
                         icon: Icons.card_giftcard,
@@ -815,19 +816,19 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Кнопка действия
           if (client.readyForRedeem)
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _bonusGradient),
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(colors: _bonusGradient),
+                borderRadius: BorderRadius.circular(16.r),
                 boxShadow: [
                   BoxShadow(
                     color: _bonusGradient[0].withOpacity(0.4),
                     blurRadius: 15,
-                    offset: const Offset(0, 8),
+                    offset: Offset(0, 8),
                   ),
                 ],
               ),
@@ -836,22 +837,22 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: EdgeInsets.symmetric(vertical: 18.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.card_giftcard, color: Colors.white, size: 24),
-                    const SizedBox(width: 12),
+                    Icon(Icons.card_giftcard, color: Colors.white, size: 24),
+                    SizedBox(width: 12),
                     Text(
                       'Списать баллы и выдать ${client.drinksToGive} напиток${client.drinksToGive > 1 ? "а" : ""}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                     ),
                   ],
@@ -861,33 +862,33 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           else
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _gradientColors),
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(colors: _gradientColors),
+                borderRadius: BorderRadius.circular(16.r),
                 boxShadow: [
                   BoxShadow(
                     color: _primaryColor.withOpacity(0.4),
                     blurRadius: 15,
-                    offset: const Offset(0, 8),
+                    offset: Offset(0, 8),
                   ),
                 ],
               ),
               child: ElevatedButton.icon(
                 onPressed: _resetScan,
-                icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                label: const Text(
+                icon: Icon(Icons.qr_code_scanner, color: Colors.white),
+                label: Text(
                   'Сканировать следующий QR',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: EdgeInsets.symmetric(vertical: 18.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                   ),
                 ),
               ),
@@ -904,15 +905,15 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -922,22 +923,22 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 18, color: color),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               color: Colors.grey[500],
             ),
           ),

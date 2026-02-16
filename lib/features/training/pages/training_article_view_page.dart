@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/training_model.dart';
 import '../models/content_block.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница просмотра статьи обучения
 class TrainingArticleViewPage extends StatelessWidget {
@@ -11,10 +12,10 @@ class TrainingArticleViewPage extends StatelessWidget {
   const TrainingArticleViewPage({super.key, required this.article});
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   Future<void> _openUrl(BuildContext context, String url) async {
     try {
@@ -25,10 +26,10 @@ class TrainingArticleViewPage extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Не удалось открыть ссылку'),
+              content: Text('Не удалось открыть ссылку'),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -40,7 +41,7 @@ class TrainingArticleViewPage extends StatelessWidget {
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -52,7 +53,7 @@ class TrainingArticleViewPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -76,14 +77,14 @@ class TrainingArticleViewPage extends StatelessWidget {
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           // Кнопка назад
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -91,7 +92,7 @@ class TrainingArticleViewPage extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Заголовок
           Expanded(
             child: Column(
@@ -99,9 +100,9 @@ class TrainingArticleViewPage extends StatelessWidget {
               children: [
                 Text(
                   article.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 17,
+                    fontSize: 17.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
                   ),
@@ -110,12 +111,12 @@ class TrainingArticleViewPage extends StatelessWidget {
                 ),
                 if (article.group.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 3),
+                    padding: EdgeInsets.only(top: 3.h),
                     child: Text(
                       article.group,
                       style: TextStyle(
                         color: _gold.withOpacity(0.7),
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -126,10 +127,10 @@ class TrainingArticleViewPage extends StatelessWidget {
           // Кнопка внешней ссылки
           if (article.hasUrl)
             Container(
-              margin: const EdgeInsets.only(left: 8),
+              margin: EdgeInsets.only(left: 8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: IconButton(
@@ -149,13 +150,13 @@ class TrainingArticleViewPage extends StatelessWidget {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 32.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Заголовок-карточка статьи
           _buildArticleHeader(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Контент
           if (article.hasBlocks)
             ..._buildContentBlocks(context)
@@ -163,7 +164,7 @@ class TrainingArticleViewPage extends StatelessWidget {
             _buildSimpleContent(context),
           // Ссылка на источник
           if (article.hasUrl) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _buildSourceLink(context),
           ],
         ],
@@ -174,9 +175,9 @@ class TrainingArticleViewPage extends StatelessWidget {
   /// Карточка-заголовок статьи
   Widget _buildArticleHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -194,7 +195,7 @@ class TrainingArticleViewPage extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Icon(
               Icons.auto_stories_rounded,
@@ -202,15 +203,15 @@ class TrainingArticleViewPage extends StatelessWidget {
               size: 22,
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   article.title,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                     height: 1.3,
@@ -218,17 +219,17 @@ class TrainingArticleViewPage extends StatelessWidget {
                 ),
                 if (article.group.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: EdgeInsets.only(top: 6.h),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
                       decoration: BoxDecoration(
                         color: _emerald.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
                         article.group,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.sp,
                           fontWeight: FontWeight.w500,
                           color: Colors.white.withOpacity(0.7),
                         ),
@@ -247,17 +248,17 @@ class TrainingArticleViewPage extends StatelessWidget {
   Widget _buildSimpleContent(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: article.content.isNotEmpty
           ? SelectableText(
               article.content,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 height: 1.7,
                 color: Colors.white.withOpacity(0.85),
               ),
@@ -265,7 +266,7 @@ class TrainingArticleViewPage extends StatelessWidget {
           : Text(
               'Контент статьи не добавлен',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white.withOpacity(0.4),
                 fontStyle: FontStyle.italic,
               ),
@@ -286,21 +287,21 @@ class TrainingArticleViewPage extends StatelessWidget {
 
   /// Блок текста
   Widget _buildTextBlock(BuildContext context, ContentBlock block) {
-    if (block.content.trim().isEmpty) return const SizedBox.shrink();
+    if (block.content.trim().isEmpty) return SizedBox.shrink();
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(18),
+      margin: EdgeInsets.only(bottom: 10.h),
+      padding: EdgeInsets.all(18.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: SelectableText(
         block.content,
         style: TextStyle(
-          fontSize: 14,
+          fontSize: 14.sp,
           height: 1.7,
           color: Colors.white.withOpacity(0.85),
         ),
@@ -314,10 +315,10 @@ class TrainingArticleViewPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
@@ -327,18 +328,18 @@ class TrainingArticleViewPage extends StatelessWidget {
           if (hasCaption)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 10.h),
               decoration: BoxDecoration(
                 color: _emerald.withOpacity(0.3),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(14),
-                  topRight: Radius.circular(14),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(14.r),
+                  topRight: Radius.circular(14.r),
                 ),
               ),
               child: Text(
                 block.caption!,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   color: Colors.white.withOpacity(0.8),
                   fontWeight: FontWeight.w500,
                   height: 1.4,
@@ -348,11 +349,11 @@ class TrainingArticleViewPage extends StatelessWidget {
           // Изображение с кэшированием
           ClipRRect(
             borderRadius: hasCaption
-                ? const BorderRadius.only(
-                    bottomLeft: Radius.circular(14),
-                    bottomRight: Radius.circular(14),
+                ? BorderRadius.only(
+                    bottomLeft: Radius.circular(14.r),
+                    bottomRight: Radius.circular(14.r),
                   )
-                : BorderRadius.circular(14),
+                : BorderRadius.circular(14.r),
             child: GestureDetector(
               onTap: () => _showFullScreenImage(context, block.content),
               child: CachedNetworkImage(
@@ -383,10 +384,10 @@ class TrainingArticleViewPage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.broken_image_rounded, color: Colors.white.withOpacity(0.3), size: 40),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Ошибка загрузки',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
                       ),
                     ],
                   ),
@@ -408,7 +409,7 @@ class TrainingArticleViewPage extends StatelessWidget {
           backgroundColor: Colors.black,
           appBar: AppBar(
             backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
+            iconTheme: IconThemeData(color: Colors.white),
             elevation: 0,
           ),
           body: Center(
@@ -441,9 +442,9 @@ class TrainingArticleViewPage extends StatelessWidget {
     return GestureDetector(
       onTap: () => _openUrl(context, article.url!),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           color: Colors.white.withOpacity(0.04),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
@@ -454,11 +455,11 @@ class TrainingArticleViewPage extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: _emerald.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(Icons.link_rounded, color: Colors.white.withOpacity(0.7), size: 18),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,7 +467,7 @@ class TrainingArticleViewPage extends StatelessWidget {
                   Text(
                     'Внешний источник',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.7),
                     ),
@@ -474,7 +475,7 @@ class TrainingArticleViewPage extends StatelessWidget {
                   Text(
                     article.url!,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.white.withOpacity(0.4),
                     ),
                     maxLines: 1,
@@ -494,7 +495,7 @@ class TrainingArticleViewPage extends StatelessWidget {
   Widget _buildUrlOnlyState(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -512,36 +513,36 @@ class TrainingArticleViewPage extends StatelessWidget {
                 color: _gold.withOpacity(0.6),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               'Внешняя статья',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w600,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Эта статья содержит только ссылку\nна внешний источник',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white.withOpacity(0.5),
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => _openUrl(context, article.url!),
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Открыть источник'),
+              icon: Icon(Icons.open_in_new_rounded),
+              label: Text('Открыть источник'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _gold.withOpacity(0.2),
                 foregroundColor: _gold,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   side: BorderSide(color: _gold.withOpacity(0.4)),
                 ),
                 elevation: 0,

@@ -13,6 +13,7 @@ import '../../shared/dialogs/notification_required_dialog.dart';
 import '../../core/utils/logger.dart';
 import 'my_dialogs_page.dart';
 import '../services/my_dialogs_counter_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница клиентских функций для сотрудников
 class ClientFunctionsPage extends StatefulWidget {
@@ -23,9 +24,9 @@ class ClientFunctionsPage extends StatefulWidget {
 }
 
 class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   int _myDialogsUnreadCount = 0;
 
@@ -49,7 +50,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -63,7 +64,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
               _buildAppBar(),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
                   children: [
                     _buildRow(
                       icon: Icons.coffee_outlined,
@@ -82,21 +83,21 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                       icon: Icons.shopping_bag_outlined,
                       title: 'Корзина',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => CartPage()));
                       },
                     ),
                     _buildRow(
                       icon: Icons.receipt_long_outlined,
                       title: 'Заказы',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersPage()));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersPage()));
                       },
                     ),
                     _buildRow(
                       icon: Icons.place_outlined,
                       title: 'Кофейни',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopsOnMapPage()));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ShopsOnMapPage()));
                       },
                     ),
                     _buildRow(
@@ -107,22 +108,22 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                         if (!enabled && context.mounted) {
                           final result = await NotificationRequiredDialog.show(context);
                           if (result == true) {
-                            await Future.delayed(const Duration(milliseconds: 500));
+                            await Future.delayed(Duration(milliseconds: 500));
                             final ok = await FirebaseService.areNotificationsEnabled();
                             if (ok && context.mounted) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
                             }
                           }
                           return;
                         }
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
                       },
                     ),
                     _buildRow(
                       icon: Icons.star_outline_rounded,
                       title: 'Отзывы',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewTypeSelectionPage()));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ReviewTypeSelectionPage()));
                       },
                     ),
                     _buildRow(
@@ -130,7 +131,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                       title: 'Диалоги',
                       badge: _myDialogsUnreadCount,
                       onTap: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (_) => const MyDialogsPage()));
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => MyDialogsPage()));
                         _loadMyDialogsCount();
                       },
                     ),
@@ -138,7 +139,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                       icon: Icons.search_outlined,
                       title: 'Поиск товара',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchShopSelectionPage()));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ProductSearchShopSelectionPage()));
                       },
                     ),
                   ],
@@ -153,7 +154,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 24.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -164,19 +165,19 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Функции клиента',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -189,19 +190,19 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12.h),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           splashColor: Colors.white.withOpacity(0.1),
           highlightColor: Colors.white.withOpacity(0.05),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.15)),
             ),
             child: Row(
@@ -210,7 +211,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     color: Colors.white.withOpacity(0.1),
                   ),
                   child: Icon(
@@ -219,29 +220,29 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     title,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
                 if (badge != null && badge > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
                       badge > 99 ? '99+' : '$badge',
                       style: TextStyle(
                         color: _emerald,
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -270,8 +271,8 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
         isScrollControlled: true,
         useSafeArea: true,
         backgroundColor: _emeraldDark,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
         ),
         builder: (ctx) => DraggableScrollableSheet(
           initialChildSize: 0.9,
@@ -282,25 +283,25 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
             children: [
               // Ручка для перетаскивания
               Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
               // Заголовок
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Выберите кофейню',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -317,32 +318,32 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
               Expanded(
                 child: ListView.separated(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   itemCount: shops.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, __) => SizedBox(height: 8),
                   itemBuilder: (_, i) {
                     final shop = shops[i];
                     return Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         onTap: () => Navigator.pop(ctx, shop),
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
                           child: Row(
                             children: [
                               Icon(Icons.place_outlined, color: Colors.white.withOpacity(0.6), size: 22),
-                              const SizedBox(width: 14),
+                              SizedBox(width: 14),
                               Expanded(
                                 child: Text(
                                   shop.address,
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.85),
-                                    fontSize: 15,
+                                    fontSize: 15.sp,
                                   ),
                                 ),
                               ),

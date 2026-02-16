@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../work_schedule/models/work_schedule_model.dart';
 import '../../shops/models/shop_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ShiftEditDialog extends StatefulWidget {
   final String employeeId;
@@ -23,9 +24,9 @@ class ShiftEditDialog extends StatefulWidget {
 }
 
 class _ShiftEditDialogState extends State<ShiftEditDialog> {
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   String? _selectedShopAddress;
   ShiftType? _selectedShiftType;
@@ -44,10 +45,10 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: _emeraldDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       title: Text(
         'Смена: ${widget.employeeName}',
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       content: SingleChildScrollView(
         child: Column(
@@ -57,12 +58,12 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
             Text(
               'Дата: ${_formatDate(widget.date)}',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Магазин:',
               style: TextStyle(
@@ -70,7 +71,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Theme(
               data: Theme.of(context).copyWith(
                 canvasColor: _night,
@@ -78,20 +79,20 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
               child: DropdownButtonFormField<String>(
                 value: _selectedShopAddress,
                 dropdownColor: _night,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: Colors.white, fontSize: 14.sp),
                 iconEnabledColor: _gold,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _gold, width: 1.5),
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(color: _gold, width: 1.5),
                   ),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.06),
@@ -103,7 +104,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                     value: shop.address,
                     child: Text(
                       shop.address,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.white),
                     ),
                   );
                 }).toList(),
@@ -114,7 +115,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Тип смены:',
               style: TextStyle(
@@ -122,12 +123,12 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                 color: Colors.white.withOpacity(0.7),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             ...ShiftType.values.map((type) {
               return RadioListTile<ShiftType>(
                 title: Text(
                   '${type.label} (${type.timeRange})',
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: Colors.white, fontSize: 14.sp),
                 ),
                 value: type,
                 groupValue: _selectedShiftType,
@@ -141,7 +142,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
               );
             }),
             Divider(color: Colors.white.withOpacity(0.1)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -154,9 +155,9 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.white.withOpacity(0.2)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
                 ),
                 child: Text(
                   'Очистить (выходной)',
@@ -167,15 +168,15 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
           ],
         ),
       ),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actionsPadding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
           ),
           child: Text(
             'Отмена',
@@ -189,12 +190,12 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
             foregroundColor: _night,
             disabledBackgroundColor: _gold.withOpacity(0.4),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
           ),
           child: _isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -202,7 +203,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                     color: _night,
                   ),
                 )
-              : const Text(
+              : Text(
                   'Сохранить',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),

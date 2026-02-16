@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { withLock } = require('../utils/file_lock');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
@@ -122,7 +123,13 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       // Читаем из daily-файлов (формат scheduler'а: YYYY-MM-DD.json)
       if (await fileExists(SHIFT_REPORTS_DIR)) {
-        const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
+        let files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
+
+        // Оптимизация: если указана дата, читаем только соответствующий daily-файл
+        if (date) {
+          const targetFile = `${date}.json`;
+          files = files.filter(f => f === targetFile || !(/^\d{4}-\d{2}-\d{2}\.json$/.test(f)));
+        }
 
         for (const file of files) {
           try {
@@ -183,7 +190,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   app.post('/api/shift-reports', async (req, res) => {
     try {
       const { getShiftSettings, loadTodayReports, saveTodayReports } = require('./shift_automation_scheduler');
-      const settings = getShiftSettings();
+      const settings = await getShiftSettings();
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const shiftType = req.body.shiftType;
@@ -229,60 +236,65 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         });
       }
 
-      // Загружаем отчёты из daily-файла scheduler'а
-      let reports = loadTodayReports();
+      // Загружаем и обновляем отчёты под блокировкой файла (защита от гонки)
+      const todayFile = path.join(SHIFT_REPORTS_DIR, `${today}.json`);
+      const updatedReport = await withLock(todayFile, async () => {
+        let reports = await loadTodayReports();
 
-      // Ищем pending отчёт для этого магазина и типа смены
-      const pendingIndex = reports.findIndex(r =>
-        r.shopAddress === shopAddress &&
-        r.shiftType === shiftType &&
-        r.status === 'pending'
-      );
+        // Ищем pending отчёт для этого магазина и типа смены
+        const pendingIndex = reports.findIndex(r =>
+          r.shopAddress === shopAddress &&
+          r.shiftType === shiftType &&
+          r.status === 'pending'
+        );
 
-      let updatedReport;
+        let result;
 
-      if (pendingIndex !== -1) {
-        // Обновляем существующий pending отчёт
-        const reviewDeadline = new Date(now.getTime() + settings.adminReviewTimeout * 60 * 60 * 1000);
+        if (pendingIndex !== -1) {
+          // Обновляем существующий pending отчёт
+          const reviewDeadline = new Date(now.getTime() + settings.adminReviewTimeout * 60 * 60 * 1000);
 
-        reports[pendingIndex] = {
-          ...reports[pendingIndex],
-          employeeName: req.body.employeeName,
-          employeeId: req.body.employeeId,
-          answers: req.body.answers || [],
-          status: 'review',
-          submittedAt: now.toISOString(),
-          reviewDeadline: reviewDeadline.toISOString(),
-          timestamp: req.body.timestamp || now.toISOString(),
-          ...(req.body.shortages !== undefined && { shortages: req.body.shortages }),
-          ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
-        };
-        updatedReport = reports[pendingIndex];
-        saveTodayReports(reports);
-        console.log(`[ShiftReports] Pending отчёт обновлён до review: ${updatedReport.id}`);
-      } else {
-        // Нет pending отчёта - создаём новый (для обратной совместимости)
-        const report = {
-          id: req.body.id || `shift_report_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-          employeeName: req.body.employeeName,
-          employeeId: req.body.employeeId,
-          shopAddress: shopAddress,
-          shopName: req.body.shopName,
-          timestamp: req.body.timestamp || now.toISOString(),
-          createdAt: now.toISOString(),
-          answers: req.body.answers || [],
-          status: 'review',
-          shiftType: shiftType,
-          submittedAt: now.toISOString(),
-          reviewDeadline: new Date(now.getTime() + settings.adminReviewTimeout * 60 * 60 * 1000).toISOString(),
-          ...(req.body.shortages !== undefined && { shortages: req.body.shortages }),
-          ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
-        };
-        reports.push(report);
-        saveTodayReports(reports);
-        updatedReport = report;
-        console.log(`[ShiftReports] Новый отчёт создан (без pending): ${report.id}`);
-      }
+          reports[pendingIndex] = {
+            ...reports[pendingIndex],
+            employeeName: req.body.employeeName,
+            employeeId: req.body.employeeId,
+            answers: req.body.answers || [],
+            status: 'review',
+            submittedAt: now.toISOString(),
+            reviewDeadline: reviewDeadline.toISOString(),
+            timestamp: req.body.timestamp || now.toISOString(),
+            ...(req.body.shortages !== undefined && { shortages: req.body.shortages }),
+            ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
+          };
+          result = reports[pendingIndex];
+          await saveTodayReports(reports);
+          console.log(`[ShiftReports] Pending отчёт обновлён до review: ${result.id}`);
+        } else {
+          // Нет pending отчёта - создаём новый (для обратной совместимости)
+          const report = {
+            id: req.body.id || `shift_report_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            employeeName: req.body.employeeName,
+            employeeId: req.body.employeeId,
+            shopAddress: shopAddress,
+            shopName: req.body.shopName,
+            timestamp: req.body.timestamp || now.toISOString(),
+            createdAt: now.toISOString(),
+            answers: req.body.answers || [],
+            status: 'review',
+            shiftType: shiftType,
+            submittedAt: now.toISOString(),
+            reviewDeadline: new Date(now.getTime() + settings.adminReviewTimeout * 60 * 60 * 1000).toISOString(),
+            ...(req.body.shortages !== undefined && { shortages: req.body.shortages }),
+            ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
+          };
+          reports.push(report);
+          await saveTodayReports(reports);
+          result = report;
+          console.log(`[ShiftReports] Новый отчёт создан (без pending): ${report.id}`);
+        }
+
+        return result;
+      });
 
       res.json({ success: true, report: updatedReport });
     } catch (error) {
@@ -439,38 +451,42 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           }
 
           const penaltiesFile = path.join(efficiencyDir, `${monthKey}.json`);
-          let penalties = [];
-          if (await fileExists(penaltiesFile)) {
-            penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
-          }
-
-          // Проверяем дубликат
           const sourceId = `shift_rating_${reportId}`;
-          const exists = penalties.some(p => p.sourceId === sourceId);
-          if (!exists) {
-            const employeePhone = existingReport.employeePhone || existingReport.phone;
-            const penalty = {
-              id: `ep_${Date.now()}`,
-              type: 'employee',
-              entityId: employeePhone || existingReport.employeeId,
-              entityName: existingReport.employeeName,
-              shopAddress: existingReport.shopAddress || null,
-              employeeId: employeePhone || existingReport.employeeId,
-              employeeName: existingReport.employeeName,
-              category: 'shift',
-              categoryName: 'Пересменка',
-              date: today,
-              points: Math.round(efficiencyPoints * 100) / 100,
-              reason: `Оценка пересменки: ${rating}/10`,
-              sourceId: sourceId,
-              sourceType: 'shift_report',
-              createdAt: now.toISOString()
-            };
 
-            penalties.push(penalty);
-            await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
-            console.log(`✅ Баллы эффективности (пересменка) сохранены: ${efficiencyPoints} для ${existingReport.employeeName}`);
-          }
+          // Записываем баллы под блокировкой файла
+          await withLock(penaltiesFile, async () => {
+            let penalties = [];
+            if (await fileExists(penaltiesFile)) {
+              penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
+            }
+
+            // Проверяем дубликат
+            const exists = penalties.some(p => p.sourceId === sourceId);
+            if (!exists) {
+              const employeePhone = existingReport.employeePhone || existingReport.phone;
+              const penalty = {
+                id: `ep_${Date.now()}`,
+                type: 'employee',
+                entityId: employeePhone || existingReport.employeeId,
+                entityName: existingReport.employeeName,
+                shopAddress: existingReport.shopAddress || null,
+                employeeId: employeePhone || existingReport.employeeId,
+                employeeName: existingReport.employeeName,
+                category: 'shift',
+                categoryName: 'Пересменка',
+                date: today,
+                points: Math.round(efficiencyPoints * 100) / 100,
+                reason: `Оценка пересменки: ${rating}/10`,
+                sourceId: sourceId,
+                sourceType: 'shift_report',
+                createdAt: now.toISOString()
+              };
+
+              penalties.push(penalty);
+              await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+              console.log(`✅ Баллы эффективности (пересменка) сохранены: ${efficiencyPoints} для ${existingReport.employeeName}`);
+            }
+          });
         } catch (effError) {
           console.error('⚠️ Ошибка начисления баллов эффективности:', effError.message);
         }
@@ -488,10 +504,20 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       updatedReport.updatedAt = new Date().toISOString();
 
-      // Сохраняем в соответствующий формат
+      // Сохраняем в соответствующий формат (под блокировкой для daily файлов)
       if (reportSource === 'daily' && dailyReports && reportIndex !== -1) {
-        dailyReports[reportIndex] = updatedReport;
-        await fsp.writeFile(dailyFilePath, JSON.stringify(dailyReports, null, 2), 'utf8');
+        await withLock(dailyFilePath, async () => {
+          // Перечитываем файл под блокировкой для актуальности
+          const freshContent = await fsp.readFile(dailyFilePath, 'utf8');
+          const freshReports = JSON.parse(freshContent);
+          const freshIdx = freshReports.findIndex(r => r.id === reportId);
+          if (freshIdx !== -1) {
+            freshReports[freshIdx] = updatedReport;
+          } else {
+            freshReports.push(updatedReport);
+          }
+          await fsp.writeFile(dailyFilePath, JSON.stringify(freshReports, null, 2), 'utf8');
+        });
       } else {
         const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
         await fsp.writeFile(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
@@ -605,12 +631,12 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       // Отмечаем pending как выполненный
       if (markShiftHandoverPendingCompleted) {
-        markShiftHandoverPendingCompleted(report.shopAddress, shiftType, report.employeeName);
+        await markShiftHandoverPendingCompleted(report.shopAddress, shiftType, report.employeeName);
       }
 
       // Отправляем push-уведомление админу о новом отчёте
       if (sendShiftHandoverNewReportNotification) {
-        sendShiftHandoverNewReportNotification(report);
+        await sendShiftHandoverNewReportNotification(report);
       }
 
       res.json({ success: true, message: 'Отчет сохранен' });
@@ -715,7 +741,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   // GET /api/shift-handover/pending - получить pending отчёты (не сданные смены)
   app.get('/api/shift-handover/pending', async (req, res) => {
     try {
-      const pending = getPendingShiftHandoverReports ? getPendingShiftHandoverReports() : [];
+      const pending = getPendingShiftHandoverReports ? await getPendingShiftHandoverReports() : [];
       console.log(`GET /api/shift-handover/pending: found ${pending.length} pending`);
       res.json({
         success: true,
@@ -731,7 +757,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   // GET /api/shift-handover/failed - получить failed отчёты (не в срок)
   app.get('/api/shift-handover/failed', async (req, res) => {
     try {
-      const failed = getFailedShiftHandoverReports ? getFailedShiftHandoverReports() : [];
+      const failed = getFailedShiftHandoverReports ? await getFailedShiftHandoverReports() : [];
       console.log(`GET /api/shift-handover/failed: found ${failed.length} failed`);
       res.json({
         success: true,

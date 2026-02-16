@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет для отображения медиа в сообщениях (фото или видео)
 class MediaMessageWidget extends StatelessWidget {
@@ -27,7 +28,7 @@ class MediaMessageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (mediaUrl == null) return const SizedBox.shrink();
+    if (mediaUrl == null) return SizedBox.shrink();
 
     if (_isVideo) {
       return _VideoThumbnail(
@@ -39,7 +40,7 @@ class MediaMessageWidget extends StatelessWidget {
     return GestureDetector(
       onTap: () => _showFullScreenImage(context),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight ?? 200),
           child: AppCachedImage(
@@ -48,7 +49,7 @@ class MediaMessageWidget extends StatelessWidget {
             errorWidget: (context, error, stackTrace) => Container(
               height: 100,
               color: Colors.grey[300],
-              child: const Center(
+              child: Center(
                 child: Icon(Icons.broken_image, color: Colors.grey),
               ),
             ),
@@ -73,7 +74,7 @@ class _VideoThumbnail extends StatelessWidget {
   final String videoUrl;
   final double maxHeight;
 
-  const _VideoThumbnail({
+  _VideoThumbnail({
     required this.videoUrl,
     required this.maxHeight,
   });
@@ -86,9 +87,9 @@ class _VideoThumbnail extends StatelessWidget {
         height: maxHeight,
         decoration: BoxDecoration(
           color: Colors.black87,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -96,7 +97,7 @@ class _VideoThumbnail extends StatelessWidget {
               SizedBox(height: 8),
               Text(
                 'Нажмите для воспроизведения',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+                style: TextStyle(color: Colors.white70, fontSize: 12.sp),
               ),
             ],
           ),
@@ -119,7 +120,7 @@ class _VideoThumbnail extends StatelessWidget {
 class _FullScreenImagePage extends StatelessWidget {
   final String imageUrl;
 
-  const _FullScreenImagePage({required this.imageUrl});
+  _FullScreenImagePage({required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -127,14 +128,14 @@ class _FullScreenImagePage extends StatelessWidget {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: Center(
         child: InteractiveViewer(
           child: AppCachedImage(
             imageUrl: imageUrl,
             fit: BoxFit.contain,
-            errorWidget: (context, error, stackTrace) => const Center(
+            errorWidget: (context, error, stackTrace) => Center(
               child: Icon(Icons.broken_image, color: Colors.white, size: 64),
             ),
           ),
@@ -148,7 +149,7 @@ class _FullScreenImagePage extends StatelessWidget {
 class _VideoPlayerPage extends StatefulWidget {
   final String videoUrl;
 
-  const _VideoPlayerPage({required this.videoUrl});
+  _VideoPlayerPage({required this.videoUrl});
 
   @override
   State<_VideoPlayerPage> createState() => _VideoPlayerPageState();
@@ -186,8 +187,8 @@ class _VideoPlayerPageState extends State<_VideoPlayerPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error, color: Colors.red, size: 48),
-                const SizedBox(height: 16),
+                Icon(Icons.error, color: Colors.red, size: 48),
+                SizedBox(height: 16),
                 Text(
                   'Ошибка загрузки видео',
                   style: TextStyle(color: Colors.grey[600]),
@@ -226,28 +227,28 @@ class _VideoPlayerPageState extends State<_VideoPlayerPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('Видео', style: TextStyle(color: Colors.white)),
+        iconTheme: IconThemeData(color: Colors.white),
+        title: Text('Видео', style: TextStyle(color: Colors.white)),
       ),
       body: Center(
         child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
+            ? CircularProgressIndicator(color: Colors.white)
             : _error != null
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error, color: Colors.red, size: 48),
-                      const SizedBox(height: 16),
+                      Icon(Icons.error, color: Colors.red, size: 48),
+                      SizedBox(height: 16),
                       Text(
                         _error!,
-                        style: const TextStyle(color: Colors.white70),
+                        style: TextStyle(color: Colors.white70),
                         textAlign: TextAlign.center,
                       ),
                     ],
                   )
                 : _chewieController != null
                     ? Chewie(controller: _chewieController!)
-                    : const Text('Не удалось загрузить видео',
+                    : Text('Не удалось загрузить видео',
                         style: TextStyle(color: Colors.white70)),
       ),
     );

@@ -5,6 +5,7 @@ import 'dart:io';
 import '../models/coffee_machine_template_model.dart';
 import '../services/coffee_machine_template_service.dart';
 import '../../shops/services/shop_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Управление шаблонами кофемашин (только для developer)
 /// Вкладка 1: Шаблоны машин (CRUD)
@@ -18,10 +19,10 @@ class CoffeeMachineTemplateManagementPage extends StatefulWidget {
 
 class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTemplateManagementPage>
     with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   final _imagePicker = ImagePicker();
@@ -68,7 +69,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -85,14 +86,14 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                 indicatorColor: _gold,
                 labelColor: _gold,
                 unselectedLabelColor: Colors.white54,
-                tabs: const [
+                tabs: [
                   Tab(text: 'Шаблоны'),
                   Tab(text: 'Магазины'),
                 ],
               ),
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: _gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -108,30 +109,30 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
       floatingActionButton: FloatingActionButton(
         backgroundColor: _gold,
         onPressed: _addTemplate,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
-          const Icon(Icons.coffee_outlined, color: _gold, size: 22),
-          const SizedBox(width: 8),
-          const Text(
+          Icon(Icons.coffee_outlined, color: _gold, size: 22),
+          SizedBox(width: 8),
+          Text(
             'Кофемашины',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
           ),
-          const Spacer(),
+          Spacer(),
           IconButton(
             onPressed: _loadData,
-            icon: const Icon(Icons.refresh, color: Colors.white70),
+            icon: Icon(Icons.refresh, color: Colors.white70),
           ),
         ],
       ),
@@ -147,17 +148,17 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.coffee, size: 48, color: Colors.white.withOpacity(0.2)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text('Нет шаблонов', style: TextStyle(color: Colors.white.withOpacity(0.4))),
-            const SizedBox(height: 8),
-            Text('Нажмите + чтобы добавить', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
+            SizedBox(height: 8),
+            Text('Нажмите + чтобы добавить', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12.sp)),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: _templates.length,
       itemBuilder: (_, i) => _buildTemplateCard(_templates[i]),
     );
@@ -165,11 +166,11 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
 
   Widget _buildTemplateCard(CoffeeMachineTemplate template) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
@@ -179,32 +180,32 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
             height: 48,
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Icon(Icons.coffee, color: _gold, size: 24),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   template.name,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15.sp),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   CoffeeMachineTypes.getDisplayName(template.machineType),
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                 ),
                 Text(
                   OcrPresets.getDisplayName(template.ocrPreset),
-                  style: TextStyle(color: _gold.withOpacity(0.6), fontSize: 11),
+                  style: TextStyle(color: _gold.withOpacity(0.6), fontSize: 11.sp),
                 ),
                 if (template.counterRegion != null)
                   Text(
                     'Область настроена',
-                    style: TextStyle(color: Colors.green.withOpacity(0.7), fontSize: 11),
+                    style: TextStyle(color: Colors.green.withOpacity(0.7), fontSize: 11.sp),
                   ),
               ],
             ),
@@ -248,13 +249,13 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Удалить шаблон?'),
+        title: Text('Удалить шаблон?'),
         content: Text('Удалить "${template.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Отмена')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+            child: Text('Удалить', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -288,15 +289,15 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                 children: [
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Название',
                       hintText: 'WMF 1500S',
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: selectedType,
-                    decoration: const InputDecoration(labelText: 'Тип машины'),
+                    decoration: InputDecoration(labelText: 'Тип машины'),
                     items: CoffeeMachineTypes.all.map((type) => DropdownMenuItem(
                       value: type,
                       child: Text(CoffeeMachineTypes.getDisplayName(type)),
@@ -305,10 +306,10 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                       if (v != null) setDialogState(() => selectedType = v);
                     },
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: selectedPreset,
-                    decoration: const InputDecoration(labelText: 'Пресет OCR'),
+                    decoration: InputDecoration(labelText: 'Пресет OCR'),
                     items: OcrPresets.all.map((preset) => DropdownMenuItem(
                       value: preset,
                       child: Text(OcrPresets.getDisplayName(preset)),
@@ -318,13 +319,13 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                     },
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: EdgeInsets.only(top: 4.h),
                     child: Text(
                       OcrPresets.getDescription(selectedPreset),
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12.sp),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () async {
                       final picked = await _imagePicker.pickImage(
@@ -337,14 +338,14 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                         setDialogState(() => imageBytes = bytes);
                       }
                     },
-                    icon: const Icon(Icons.camera_alt),
+                    icon: Icon(Icons.camera_alt),
                     label: Text(imageBytes != null ? 'Фото загружено' : 'Эталонное фото'),
                   ),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text('Отмена')),
               ElevatedButton(
                 onPressed: () {
                   if (nameController.text.isEmpty) return;
@@ -360,7 +361,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                   );
                   Navigator.pop(context, {'template': template, 'image': imageBytes});
                 },
-                child: const Text('Сохранить'),
+                child: Text('Сохранить'),
               ),
             ],
           );
@@ -379,7 +380,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: _shopAddresses.length,
       itemBuilder: (_, i) {
         final address = _shopAddresses[i];
@@ -387,11 +388,11 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
         final assignedCount = config?.machineTemplateIds.length ?? 0;
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: EdgeInsets.only(bottom: 10.h),
           child: ListTile(
             tileColor: Colors.white.withOpacity(0.06),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               side: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             leading: Container(
@@ -399,7 +400,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
               height: 40,
               decoration: BoxDecoration(
                 color: assignedCount > 0 ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Icon(
                 Icons.store,
@@ -409,14 +410,14 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
             ),
             title: Text(
               address,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: Colors.white, fontSize: 13.sp),
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
               assignedCount > 0 ? 'Машин: $assignedCount' : 'Не настроено',
               style: TextStyle(
                 color: assignedCount > 0 ? _gold : Colors.white38,
-                fontSize: 11,
+                fontSize: 11.sp,
               ),
             ),
             trailing: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
@@ -435,11 +436,11 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: Text(shopAddress, style: const TextStyle(fontSize: 14)),
+            title: Text(shopAddress, style: TextStyle(fontSize: 14.sp)),
             content: SizedBox(
               width: double.maxFinite,
               child: _templates.isEmpty
-                  ? const Text('Сначала создайте шаблоны')
+                  ? Text('Сначала создайте шаблоны')
                   : ListView(
                       shrinkWrap: true,
                       children: _templates.map((t) {
@@ -463,10 +464,10 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                     ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text('Отмена')),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, selected),
-                child: const Text('Сохранить'),
+                child: Text('Сохранить'),
               ),
             ],
           );

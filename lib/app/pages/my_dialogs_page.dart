@@ -6,6 +6,7 @@ import '../../features/clients/services/network_message_service.dart';
 import '../../features/clients/services/management_message_service.dart';
 import '../../features/clients/pages/network_dialog_page.dart';
 import '../../features/clients/pages/management_dialog_page.dart';
+import '../../features/clients/pages/broadcast_messages_page.dart';
 import '../../features/product_questions/models/product_question_model.dart';
 import '../../features/product_questions/services/product_question_service.dart';
 import '../../features/product_questions/pages/product_question_personal_dialog_page.dart';
@@ -18,6 +19,7 @@ import '../../core/utils/logger.dart';
 import '../../features/employee_chat/models/employee_chat_model.dart';
 import '../../features/employee_chat/pages/employee_chat_page.dart';
 import '../../features/employee_chat/services/client_group_chat_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница "Мои диалоги" для клиента
 class MyDialogsPage extends StatefulWidget {
@@ -31,6 +33,7 @@ class MyDialogsPage extends StatefulWidget {
 enum _DialogType {
   network,
   management,
+  broadcast,
   reviews,
   productSearch,
   personalDialog,
@@ -162,9 +165,9 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   }
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +176,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       floatingActionButton: _buildFloatingActionButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -187,7 +190,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
               _buildAppBar(),
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       )
                     : _buildContent(),
@@ -201,7 +204,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -212,13 +215,13 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Мои диалоги',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
@@ -243,15 +246,15 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const ManagementDialogPage(),
+            builder: (context) => ManagementDialogPage(),
           ),
         );
         _loadDialogs();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           gradient: LinearGradient(
             colors: [
               _emerald,
@@ -264,13 +267,13 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.business_rounded, color: Colors.white.withOpacity(0.9), size: 20),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Text(
               'Связаться с Руководством',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.9),
                 fontWeight: FontWeight.w500,
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -301,11 +304,27 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       ));
     }
 
-    // Связь с Руководством
-    if (_managementData?.hasMessages ?? false) {
-      final lastMessage = _managementData!.messages.isNotEmpty
-          ? _managementData!.messages.last
-          : null;
+    // Что-то НОВОЕ! (рассылки)
+    if (_managementData?.hasBroadcastMessages ?? false) {
+      final broadcastMsgs = _managementData!.broadcastMessages;
+      final lastBroadcast = broadcastMsgs.isNotEmpty ? broadcastMsgs.last : null;
+      DateTime? broadcastTimestamp;
+      if (lastBroadcast != null) {
+        try {
+          broadcastTimestamp = DateTime.parse(lastBroadcast.timestamp);
+        } catch (_) {}
+      }
+      items.add(_DialogItem(
+        type: _DialogType.broadcast,
+        unreadCount: _managementData!.broadcastUnreadCount,
+        lastMessageTime: broadcastTimestamp,
+      ));
+    }
+
+    // Связь с Руководством (только личные)
+    if (_managementData?.hasPersonalMessages ?? false) {
+      final personalMsgs = _managementData!.personalMessages;
+      final lastMessage = personalMsgs.isNotEmpty ? personalMsgs.last : null;
       DateTime? timestamp;
       if (lastMessage != null) {
         try {
@@ -314,7 +333,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       }
       items.add(_DialogItem(
         type: _DialogType.management,
-        unreadCount: _managementData!.unreadCount,
+        unreadCount: _managementData!.personalUnreadCount,
         lastMessageTime: timestamp,
       ));
     }
@@ -390,6 +409,8 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
         return _buildNetworkCard();
       case _DialogType.management:
         return _buildManagementCard();
+      case _DialogType.broadcast:
+        return _buildBroadcastCard();
       case _DialogType.reviews:
         return _buildReviewsCard();
       case _DialogType.productSearch:
@@ -413,12 +434,12 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     final sortedItems = _sortDialogItems(items);
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 80.h),
       itemCount: sortedItems.length,
       itemBuilder: (context, index) {
         final item = sortedItems[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: EdgeInsets.only(bottom: 6.h),
           child: _buildDialogItemWidget(item),
         );
       },
@@ -435,7 +456,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
             height: 64,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
@@ -444,21 +465,21 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
               color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             'У вас пока нет диалогов',
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Оставьте отзыв, задайте вопрос или сделайте заказ',
             style: TextStyle(
               color: Colors.white.withOpacity(0.4),
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
             textAlign: TextAlign.center,
           ),
@@ -483,9 +504,9 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: hasUnread
                 ? accentColor.withOpacity(0.5)
@@ -506,11 +527,11 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                   height: 34,
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: imageUrl != null
                       ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           child: AppCachedImage(
                             imageUrl: imageUrl,
                             width: 34,
@@ -530,20 +551,20 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                     right: -4,
                     top: -4,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
+                      padding: EdgeInsets.all(4.w),
+                      decoration: BoxDecoration(
                         color: Colors.red,
                         shape: BoxShape.circle,
                       ),
-                      constraints: const BoxConstraints(
+                      constraints: BoxConstraints(
                         minWidth: 18,
                         minHeight: 18,
                       ),
                       child: Text(
                         unreadCount > 9 ? '9+' : unreadCount.toString(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 10.sp,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -552,7 +573,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                   ),
               ],
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             // Контент
             Expanded(
               child: Column(
@@ -562,7 +583,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.95),
                     ),
@@ -571,11 +592,11 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                   ),
                   if (timestamp != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: EdgeInsets.only(top: 2.h),
                       child: Text(
                         timestamp,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.sp,
                           color: Colors.white.withOpacity(0.4),
                         ),
                         maxLines: 1,
@@ -584,13 +605,13 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                     ),
                   if (subtitle != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: EdgeInsets.only(top: 2.h),
                       child: Text(
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
@@ -598,7 +619,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             // Стрелка
             Icon(
               Icons.chevron_right_rounded,
@@ -632,7 +653,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       onTap: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const NetworkDialogPage()),
+          MaterialPageRoute(builder: (context) => NetworkDialogPage()),
         );
         _loadDialogs();
       },
@@ -640,10 +661,9 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   }
 
   Widget _buildManagementCard() {
-    final unread = _managementData!.unreadCount;
-    final lastMessage = _managementData!.messages.isNotEmpty
-        ? _managementData!.messages.last
-        : null;
+    final personalMsgs = _managementData!.personalMessages;
+    final unread = _managementData!.personalUnreadCount;
+    final lastMessage = personalMsgs.isNotEmpty ? personalMsgs.last : null;
 
     return _buildDialogCard(
       title: 'Связь с Руководством',
@@ -660,7 +680,34 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       onTap: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const ManagementDialogPage()),
+          MaterialPageRoute(builder: (context) => ManagementDialogPage()),
+        );
+        _loadDialogs();
+      },
+    );
+  }
+
+  Widget _buildBroadcastCard() {
+    final broadcastMsgs = _managementData!.broadcastMessages;
+    final unread = _managementData!.broadcastUnreadCount;
+    final lastMessage = broadcastMsgs.isNotEmpty ? broadcastMsgs.last : null;
+
+    return _buildDialogCard(
+      title: 'Что-то НОВОЕ!',
+      subtitle: lastMessage != null
+          ? lastMessage.text.length > 60
+              ? '${lastMessage.text.substring(0, 60)}...'
+              : lastMessage.text
+          : 'Нажмите, чтобы открыть',
+      timestamp: lastMessage != null ? _formatTimestamp(lastMessage.timestamp) : null,
+      icon: Icons.campaign_rounded,
+      accentColor: Colors.orange[700]!,
+      gradientColors: [Colors.orange[400]!, Colors.deepOrange[400]!],
+      unreadCount: unread,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => BroadcastMessagesPage()),
         );
         _loadDialogs();
       },
@@ -686,7 +733,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       onTap: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const ClientReviewsListPage()),
+          MaterialPageRoute(builder: (context) => ClientReviewsListPage()),
         );
         _loadDialogs();
       },
@@ -707,7 +754,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       onTap: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const ProductQuestionShopsListPage()),
+          MaterialPageRoute(builder: (context) => ProductQuestionShopsListPage()),
         );
         _loadDialogs();
       },

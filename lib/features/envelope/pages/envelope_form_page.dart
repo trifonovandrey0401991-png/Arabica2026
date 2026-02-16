@@ -15,6 +15,7 @@ import '../../../core/services/media_upload_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class EnvelopeFormPage extends StatefulWidget {
   final String employeeName;
@@ -77,7 +78,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   // ИП - ресурс ключей
   final _ipResourceKeysController = TextEditingController();
 
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   @override
   void initState() {
@@ -272,7 +273,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => const AlertDialog(
+        builder: (ctx) => AlertDialog(
           content: Row(
             children: [
               CircularProgressIndicator(),
@@ -414,7 +415,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
       ),
     );
@@ -509,7 +510,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
       if (created != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
               'Отчет успешно отправлен!',
               style: TextStyle(color: Colors.white),
@@ -535,10 +536,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     if (_isCheckingTime) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Конверт'),
+          title: Text('Конверт'),
           backgroundColor: _primaryColor,
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -546,62 +547,62 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     if (!_isTimeWindowOpen) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Конверт'),
+          title: Text('Конверт'),
           backgroundColor: _primaryColor,
         ),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.timer_off, size: 80, color: Colors.orange),
-                const SizedBox(height: 24),
-                const Text(
+                Icon(Icons.timer_off, size: 80, color: Colors.orange),
+                SizedBox(height: 24),
+                Text(
                   'Время вышло',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF004D40),
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   'Вы можете сдать конверт в:',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     color: Colors.grey[700],
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF004D40).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Color(0xFF004D40).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Text(
                     _nextWindowTime ?? 'Следующее окно',
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: 20.sp,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF004D40),
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Назад'),
+                  icon: Icon(Icons.arrow_back),
+                  label: Text('Назад'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                   ),
                 ),
@@ -618,17 +619,17 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         backgroundColor: _primaryColor,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Progress bar
                 LinearProgressIndicator(
                   value: _progress,
                   backgroundColor: Colors.grey[300],
-                  valueColor: const AlwaysStoppedAnimation<Color>(_primaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.all(8.0.w),
                   child: Text(
                     'Шаг ${_currentStep + 1} из $_totalSteps',
                     style: TextStyle(color: Colors.grey[600]),
@@ -638,7 +639,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 // Content
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: _buildStepContent(),
                   ),
                 ),
@@ -711,7 +712,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       case 9:
         return _buildSummaryStep();
       default:
-        return const SizedBox();
+        return SizedBox();
     }
   }
 
@@ -721,42 +722,42 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       children: [
         // Заголовок с иконкой
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.teal.shade50, Colors.cyan.shade50],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(color: Colors.teal.shade100),
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.teal.shade400, Colors.cyan.shade400],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.teal.withOpacity(0.3),
                       blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.schedule,
                   color: Colors.white,
                   size: 28,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,16 +765,16 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                     Text(
                       'Выберите смену',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey.shade800,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'Укажите какую смену вы сдаёте',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         color: Colors.grey.shade600,
                       ),
                     ),
@@ -783,7 +784,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             ],
           ),
         ),
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
 
         // Утренняя смена
         _buildShiftOption(
@@ -791,10 +792,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           label: 'Утренняя смена',
           subtitle: '00:00 — 14:00',
           icon: Icons.wb_sunny_rounded,
-          gradient: [const Color(0xFFFF9800), const Color(0xFFFFB74D)],
+          gradient: [Color(0xFFFF9800), Color(0xFFFFB74D)],
           lightColor: Colors.orange.shade50,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // Вечерняя смена
         _buildShiftOption(
@@ -802,7 +803,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           label: 'Вечерняя смена',
           subtitle: '14:00 — 00:00',
           icon: Icons.nights_stay_rounded,
-          gradient: [const Color(0xFF3F51B5), const Color(0xFF7986CB)],
+          gradient: [Color(0xFF3F51B5), Color(0xFF7986CB)],
           lightColor: Colors.indigo.shade50,
         ),
       ],
@@ -822,16 +823,16 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     return GestureDetector(
       onTap: () => setState(() => _shiftType = value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         decoration: BoxDecoration(
           color: isSelected ? lightColor : Colors.white,
           border: Border.all(
             color: isSelected ? gradient[0] : Colors.grey.shade200,
             width: isSelected ? 2.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           boxShadow: [
             BoxShadow(
               color: isSelected
@@ -846,8 +847,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           children: [
             // Иконка с градиентом
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(16),
+              duration: Duration(milliseconds: 200),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isSelected
@@ -856,13 +857,13 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
                           color: gradient[0].withOpacity(0.4),
                           blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ]
                     : null,
@@ -873,7 +874,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 size: 36,
               ),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: 20),
 
             // Текст
             Expanded(
@@ -883,12 +884,12 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                       color: isSelected ? gradient[0] : Colors.grey.shade700,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(
@@ -896,11 +897,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                         size: 14,
                         color: isSelected ? gradient[0].withOpacity(0.7) : Colors.grey.shade400,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: isSelected ? gradient[0].withOpacity(0.7) : Colors.grey.shade500,
                           fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
                         ),
@@ -913,7 +914,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
             // Чекбокс
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               width: 28,
               height: 28,
               decoration: BoxDecoration(
@@ -921,7 +922,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                     ? LinearGradient(colors: gradient)
                     : null,
                 color: isSelected ? null : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(
                   color: isSelected ? Colors.transparent : Colors.grey.shade300,
                   width: 2,
@@ -931,13 +932,13 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                         BoxShadow(
                           color: gradient[0].withOpacity(0.3),
                           blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          offset: Offset(0, 2),
                         ),
                       ]
                     : null,
               ),
               child: isSelected
-                  ? const Icon(
+                  ? Icon(
                       Icons.check,
                       color: Colors.white,
                       size: 18,
@@ -960,7 +961,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     String? referencePhotoUrl,
   }) {
     final hasPhoto = photo != null || photoUrl != null;
-    final typeColor = isOoo ? const Color(0xFF1976D2) : const Color(0xFFE65100);
+    final typeColor = isOoo ? Color(0xFF1976D2) : Color(0xFFE65100);
     final hasReference = referencePhotoUrl != null && referencePhotoUrl.isNotEmpty;
 
     return Column(
@@ -970,48 +971,48 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
               decoration: BoxDecoration(
                 color: typeColor,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
                 isOoo ? 'ООО' : 'ИП',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Text(
               'Z-отчёт',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey.shade800,
               ),
             ),
-            const Spacer(),
+            Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
-                color: const Color(0xFF00C853).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                color: Color(0xFF00C853).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.auto_awesome, color: Color(0xFF00C853), size: 12),
                   SizedBox(width: 3),
-                  Text('ИИ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00C853))),
+                  Text('ИИ', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold, color: Color(0xFF00C853))),
                 ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // Область фото - фиксированная высота 420
         GestureDetector(
@@ -1020,14 +1021,14 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             height: 420,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(
                 color: hasPhoto ? Colors.green.shade400 : typeColor.withOpacity(0.3),
                 width: hasPhoto ? 2 : 1,
               ),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               child: hasPhoto
                   ? Stack(
                       fit: StackFit.expand,
@@ -1037,20 +1038,20 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                             : AppCachedImage(imageUrl: photoUrl!, fit: BoxFit.cover),
                         // Бейдж
                         Positioned(
-                          top: 8,
-                          left: 8,
+                          top: 8.h,
+                          left: 8.w,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                             decoration: BoxDecoration(
                               color: Colors.green,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.check, color: Colors.white, size: 12),
                                 SizedBox(width: 4),
-                                Text('Готово', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                Text('Готово', style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w600)),
                               ],
                             ),
                           ),
@@ -1070,20 +1071,20 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                             ),
                             // Бейдж образец
                             Positioned(
-                              top: 8,
-                              left: 8,
+                              top: 8.h,
+                              left: 8.w,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade600,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(8.r),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.photo_library, color: Colors.white, size: 12),
                                     SizedBox(width: 4),
-                                    Text('Образец', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                    Text('Образец', style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
@@ -1094,32 +1095,32 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add_a_photo_rounded, size: 56, color: typeColor.withOpacity(0.6)),
-                            const SizedBox(height: 12),
-                            Text('Нажмите для фото', style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
+                            SizedBox(height: 12),
+                            Text('Нажмите для фото', style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade500)),
                           ],
                         ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // Кнопка
         GestureDetector(
           onTap: () => _pickAndRecognizeZReport(isOoo: isOoo, onPhotoPicked: onPick),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: EdgeInsets.symmetric(vertical: 14.h),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [typeColor, typeColor.withOpacity(0.85)]),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(hasPhoto ? Icons.refresh : Icons.camera_alt, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   hasPhoto ? 'Переснять' : 'Сфотографировать',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
                 ),
               ],
             ),
@@ -1141,18 +1142,18 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // Эталонное фото (если есть)
         if (referencePhotoUrl != null && referencePhotoUrl.isNotEmpty) ...[
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
               color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.blue[200]!),
             ),
             child: Column(
@@ -1161,7 +1162,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 Row(
                   children: [
                     Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(
                       'Образец фото:',
                       style: TextStyle(
@@ -1171,9 +1172,9 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   child: AppCachedImage(
                     imageUrl: referencePhotoUrl,
                     height: 150,
@@ -1196,7 +1197,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
 
         // Ваше фото
@@ -1208,17 +1209,17 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
               color: Colors.grey[700],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
 
         if (photo != null)
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             child: Image.file(photo, height: 300, fit: BoxFit.cover),
           )
         else if (photoUrl != null)
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             child: AppCachedImage(imageUrl: photoUrl, height: 300, fit: BoxFit.cover),
           )
         else
@@ -1226,21 +1227,21 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             height: 200,
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
-            child: const Center(
+            child: Center(
               child: Icon(Icons.camera_alt, size: 64, color: Colors.grey),
             ),
           ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         ElevatedButton.icon(
           onPressed: () => _pickImage(onPick),
-          icon: const Icon(Icons.camera_alt),
+          icon: Icon(Icons.camera_alt),
           label: Text(photo != null ? 'Переснять' : 'Сделать фото'),
           style: ElevatedButton.styleFrom(
             backgroundColor: _primaryColor,
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: EdgeInsets.symmetric(vertical: 16.h),
           ),
         ),
       ],
@@ -1265,26 +1266,26 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.teal.shade200, width: 1),
           ),
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14.w),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: Colors.teal.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(Icons.edit_note, color: Colors.teal.shade700, size: 24),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Введите данные $title:',
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1292,7 +1293,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // Поля ввода
         _buildEnvelopeTextField(
@@ -1301,21 +1302,21 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           Icons.currency_ruble,
           true,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildEnvelopeTextField(
           cashController,
           'Сумма наличных *',
           Icons.payments_outlined,
           true,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildEnvelopeTextField(
           ofdNotSentController,
           'Не передано в ОФД',
           Icons.cloud_off,
           false,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildEnvelopeTextField(
           resourceKeysController,
           'Ресурс ключей',
@@ -1333,24 +1334,24 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         // Итоги ООО
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSummaryRow('Выручка ООО:', _oooRevenue),
                 _buildSummaryRow('Наличные ООО:', _oooCash),
-                const Divider(),
+                Divider(),
                 if (_oooExpenses.isNotEmpty) ...[
-                  const Text(
+                  Text(
                     'Расходы:',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   ..._oooExpenses.asMap().entries.map((entry) {
                     final index = entry.key;
                     final expense = entry.value;
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: EdgeInsets.symmetric(vertical: 4.h),
                       child: Row(
                         children: [
                           Expanded(
@@ -1358,22 +1359,22 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                           ),
                           Text(
                             '${expense.amount.toStringAsFixed(0)} руб',
-                            style: const TextStyle(color: Colors.red),
+                            style: TextStyle(color: Colors.red),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 20),
+                            icon: Icon(Icons.close, size: 20),
                             onPressed: () => _removeOooExpense(index),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            constraints: BoxConstraints(),
                           ),
                         ],
                       ),
                     );
                   }),
-                  const Divider(),
+                  Divider(),
                   _buildSummaryRow('Итого расходов:', _oooTotalExpenses, isRed: true),
                 ],
-                const Divider(),
+                Divider(),
                 _buildSummaryRow(
                   'Итого в конверте ООО:',
                   _oooEnvelopeAmount,
@@ -1384,17 +1385,17 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: _addOooExpense,
-            icon: const Icon(Icons.add),
-            label: const Text('Добавить расход'),
+            icon: Icon(Icons.add),
+            label: Text('Добавить расход'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryColor,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
             ),
           ),
         ),
@@ -1409,24 +1410,24 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         // Итоги
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSummaryRow('Выручка ИП:', _ipRevenue),
                 _buildSummaryRow('Наличные ИП:', _ipCash),
-                const Divider(),
+                Divider(),
                 if (_expenses.isNotEmpty) ...[
-                  const Text(
+                  Text(
                     'Расходы:',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   ..._expenses.asMap().entries.map((entry) {
                     final index = entry.key;
                     final expense = entry.value;
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: EdgeInsets.symmetric(vertical: 4.h),
                       child: Row(
                         children: [
                           Expanded(
@@ -1434,22 +1435,22 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                           ),
                           Text(
                             '${expense.amount.toStringAsFixed(0)} руб',
-                            style: const TextStyle(color: Colors.red),
+                            style: TextStyle(color: Colors.red),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 20),
+                            icon: Icon(Icons.close, size: 20),
                             onPressed: () => _removeExpense(index),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            constraints: BoxConstraints(),
                           ),
                         ],
                       ),
                     );
                   }),
-                  const Divider(),
+                  Divider(),
                   _buildSummaryRow('Итого расходов:', _totalExpenses, isRed: true),
                 ],
-                const Divider(),
+                Divider(),
                 _buildSummaryRow(
                   'Итого в конверте ИП:',
                   _ipEnvelopeAmount,
@@ -1460,17 +1461,17 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: _addExpense,
-            icon: const Icon(Icons.add),
-            label: const Text('Добавить расход'),
+            icon: Icon(Icons.add),
+            label: Text('Добавить расход'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryColor,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
             ),
           ),
         ),
@@ -1486,7 +1487,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     bool isGreen = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1516,12 +1517,12 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -1529,7 +1530,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         controller: controller,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: label,
           hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -1541,23 +1542,23 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           suffixStyle: TextStyle(
             color: Colors.teal.shade700,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 16.sp,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
         ),
         onChanged: (_) => setState(() {}),
       ),
@@ -1568,12 +1569,12 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Итоговый отчет',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           '${widget.shopAddress}',
           style: TextStyle(color: Colors.grey[600]),
@@ -1582,104 +1583,104 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           '${_shiftType == 'morning' ? 'Утренняя' : 'Вечерняя'} смена',
           style: TextStyle(color: Colors.grey[600]),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // ООО секция
         Card(
           color: Colors.blue[50],
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'ООО',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                 ),
-                const Divider(),
+                Divider(),
                 _buildSummaryRow('Выручка:', _oooRevenue),
                 _buildSummaryRow('Наличные:', _oooCash),
                 if (_oooExpenses.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  const Text('Расходы:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Text('Расходы:', style: TextStyle(fontWeight: FontWeight.bold)),
                   ..._oooExpenses.map((e) => Padding(
-                    padding: const EdgeInsets.only(left: 8, top: 4),
+                    padding: EdgeInsets.only(left: 8.w, top: 4.h),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('- ${e.supplierName}'),
                         Text(
                           '-${e.amount.toStringAsFixed(0)} руб',
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(color: Colors.red),
                         ),
                       ],
                     ),
                   )),
                 ],
-                const Divider(),
+                Divider(),
                 _buildSummaryRow('В конверте:', _oooEnvelopeAmount, isBold: true, isGreen: true),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // ИП секция
         Card(
           color: Colors.orange[50],
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'ИП',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                 ),
-                const Divider(),
+                Divider(),
                 _buildSummaryRow('Выручка:', _ipRevenue),
                 _buildSummaryRow('Наличные:', _ipCash),
                 if (_expenses.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  const Text('Расходы:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Text('Расходы:', style: TextStyle(fontWeight: FontWeight.bold)),
                   ..._expenses.map((e) => Padding(
-                    padding: const EdgeInsets.only(left: 8, top: 4),
+                    padding: EdgeInsets.only(left: 8.w, top: 4.h),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('- ${e.supplierName}'),
                         Text(
                           '-${e.amount.toStringAsFixed(0)} руб',
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(color: Colors.red),
                         ),
                       ],
                     ),
                   )),
                 ],
-                const Divider(),
+                Divider(),
                 _buildSummaryRow('В конверте:', _ipEnvelopeAmount, isBold: true, isGreen: true),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // Итого
         Card(
           color: _primaryColor.withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'ИТОГО В КОНВЕРТАХ:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   '${_totalEnvelopeAmount.toStringAsFixed(0)} руб',
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
                     color: _primaryColor,
                   ),
@@ -1694,14 +1695,14 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
   Widget _buildNavigationButtons() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.2),
             blurRadius: 4,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -1711,20 +1712,20 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _prevStep,
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Назад'),
+                icon: Icon(Icons.arrow_back),
+                label: Text('Назад'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
               ),
             ),
-          if (_currentStep > 0) const SizedBox(width: 16),
+          if (_currentStep > 0) SizedBox(width: 16),
           Expanded(
             child: _currentStep == _totalSteps - 1
                 ? ElevatedButton.icon(
                     onPressed: _isSaving ? null : _submitReport,
                     icon: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
@@ -1732,22 +1733,22 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.check),
+                        : Icon(Icons.check),
                     label: Text(_isSaving ? 'Отправка...' : 'Отправить'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                     ),
                   )
                 : ElevatedButton.icon(
                     onPressed: _nextStep,
-                    icon: const Icon(Icons.arrow_forward),
-                    label: const Text('Далее'),
+                    icon: Icon(Icons.arrow_forward),
+                    label: Text('Далее'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _primaryColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                     ),
                   ),
           ),

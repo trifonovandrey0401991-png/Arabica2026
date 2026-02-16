@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 import '../../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class RecurringTaskPointsSettingsPage extends StatefulWidget {
   const RecurringTaskPointsSettingsPage({super.key});
@@ -18,7 +19,7 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
   double _penaltyPoints = -3.0;
 
   // Gradient colors for this page (purple theme)
-  static const _gradientColors = [Color(0xFF8E2DE2), Color(0xFF4A00E0)];
+  static final _gradientColors = [Color(0xFF8E2DE2), Color(0xFF4A00E0)];
 
   @override
   void initState() {
@@ -57,7 +58,7 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
@@ -66,7 +67,7 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
             ),
             backgroundColor: Colors.green[400],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
         Navigator.pop(context);
@@ -86,9 +87,9 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Циклические задачи'),
+        title: Text('Циклические задачи'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -106,7 +107,7 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -123,7 +124,7 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
                           accentColor: Colors.green,
                           icon: Icons.check_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Penalty points slider
                         SettingsSliderWidget(
@@ -138,14 +139,14 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
                           accentColor: Colors.red,
                           icon: Icons.cancel_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Info box (уникальный для этой страницы - оранжевый)
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           decoration: BoxDecoration(
                             color: Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(16.r),
                             border: Border.all(color: Colors.orange.withOpacity(0.3)),
                           ),
                           child: Row(
@@ -155,31 +156,31 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
                                 height: 40,
                                 decoration: BoxDecoration(
                                   color: Colors.orange.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(10.r),
                                 ),
-                                child: const Icon(Icons.info_outline, color: Colors.orange, size: 22),
+                                child: Icon(Icons.info_outline, color: Colors.orange, size: 22),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   'Циклические задачи повторяются каждую смену. Новые правила будут применяться только к новым задачам.',
                                   style: TextStyle(
                                     color: Colors.orange[900],
-                                    fontSize: 13,
+                                    fontSize: 13.sp,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         BinaryPreviewWidget(
                           positiveLabel: 'Выполнена',
                           negativeLabel: 'Просрочена',
@@ -188,7 +189,7 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
                           gradientColors: _gradientColors,
                           valueColumnTitle: 'Статус задачи',
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -196,7 +197,7 @@ class _RecurringTaskPointsSettingsPageState extends State<RecurringTaskPointsSet
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

@@ -553,7 +553,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
         doc_date: dateStr,
         amount_numeric: amount.toString().split('.')[0],
         fio_receiver: employeeData.fullName,
-        basis: 'Зароботная плата', // Всегда "Зароботная плата" для {BASIS}
+        basis: 'Заработная плата', // Всегда "Заработная плата" для {BASIS}
         amount_text: amountWords,
         attachment: '', // Опционально
         head_position: 'ИП',

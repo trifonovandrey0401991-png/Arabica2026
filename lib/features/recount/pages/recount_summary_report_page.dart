@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/recount_report_model.dart';
 import '../../shops/models/shop_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница сводного отчёта по пересчёту (таблица товары x магазины)
 class RecountSummaryReportPage extends StatefulWidget {
@@ -37,7 +38,7 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
   final ScrollController _headerScrollController = ScrollController();
   final ScrollController _bodyScrollController = ScrollController();
 
-  static const _months = [
+  static final _months = [
     '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
   ];
@@ -148,10 +149,10 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Нет товаров для отображения',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -164,10 +165,10 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.store_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Нет магазинов для отображения',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -175,20 +176,20 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
     }
 
     // Фиксированная ширина столбца товара и ячеек
-    const double productColumnWidth = 120;
-    const double cellWidth = 36;
-    const double cellHeight = 32;
-    const double headerHeight = 100;
+    double productColumnWidth = 120;
+    double cellWidth = 36;
+    double cellHeight = 32;
+    double headerHeight = 100;
 
     return Column(
       children: [
         // Легенда
         Container(
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: EdgeInsets.all(12.w),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.05),
@@ -200,11 +201,11 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildLegendItem('0', 'Сходится', Colors.green),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               _buildLegendItem('+N', 'Больше', Colors.blue),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               _buildLegendItem('-N', 'Меньше', Colors.red),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               _buildLegendItem('—', 'Нет данных', Colors.grey),
             ],
           ),
@@ -222,7 +223,7 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
                     // Заголовок "Товар"
                     Container(
                       height: headerHeight,
-                      padding: const EdgeInsets.all(6),
+                      padding: EdgeInsets.all(6.w),
                       decoration: BoxDecoration(
                         color: Colors.deepPurple.shade100,
                         border: Border(
@@ -231,9 +232,9 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
                         ),
                       ),
                       alignment: Alignment.bottomLeft,
-                      child: const Text(
+                      child: Text(
                         'Товар',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.sp),
                       ),
                     ),
                     // Список товаров
@@ -246,7 +247,7 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
 
                           return Container(
                             height: cellHeight,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 4.w),
                             decoration: BoxDecoration(
                               color: index % 2 == 0 ? Colors.white : Colors.grey.shade50,
                               border: Border(
@@ -258,7 +259,7 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
                             child: Text(
                               product,
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 9.sp,
                                 fontWeight: hasMismatch ? FontWeight.bold : FontWeight.normal,
                                 color: hasMismatch ? Colors.red.shade700 : Colors.black87,
                               ),
@@ -297,7 +298,7 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
                                 ),
                               ),
                               alignment: Alignment.bottomCenter,
-                              padding: const EdgeInsets.only(bottom: 4),
+                              padding: EdgeInsets.only(bottom: 4.h),
                               child: RotatedBox(
                                 quarterTurns: 3,
                                 child: SizedBox(
@@ -305,7 +306,7 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
                                   child: Text(
                                     _getShopName(shop.address),
                                     style: TextStyle(
-                                      fontSize: 8,
+                                      fontSize: 8.sp,
                                       fontWeight: FontWeight.bold,
                                       color: hasReport ? Colors.black87 : Colors.grey,
                                     ),
@@ -369,24 +370,24 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
           decoration: BoxDecoration(
             color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
           ),
           child: Text(
             symbol,
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.bold,
-              fontSize: 11,
+              fontSize: 11.sp,
             ),
           ),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
+          style: TextStyle(fontSize: 10.sp, color: Colors.grey),
         ),
       ],
     );
@@ -394,21 +395,21 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
 
   Widget _buildDifferenceCell(int? difference) {
     if (difference == null) {
-      return const Center(
-        child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 10)),
+      return Center(
+        child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 10.sp)),
       );
     }
     if (difference == 0) {
       return Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
           decoration: BoxDecoration(
             color: Colors.green.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(3.r),
           ),
-          child: const Text(
+          child: Text(
             '0',
-            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 9),
+            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 9.sp),
           ),
         ),
       );
@@ -420,14 +421,14 @@ class _RecountSummaryReportPageState extends State<RecountSummaryReportPage> {
 
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
         decoration: BoxDecoration(
           color: color.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(3.r),
         ),
         child: Text(
           '$sign$difference',
-          style: TextStyle(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 9),
+          style: TextStyle(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 9.sp),
         ),
       ),
     );

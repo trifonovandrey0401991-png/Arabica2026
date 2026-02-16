@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/fortune_wheel_model.dart';
 import '../services/fortune_wheel_service.dart';
 import '../widgets/animated_wheel_widget.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница Колеса Удачи - Премиум версия
 class FortuneWheelPage extends StatefulWidget {
@@ -34,11 +35,11 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   late Animation<double> _shimmerAnimation;
 
   // Цвета — Dark Emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-  static const Color _darkGold = Color(0xFFB8860B);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+  static final Color _darkGold = Color(0xFFB8860B);
 
   @override
   void initState() {
@@ -50,7 +51,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   void _initAnimations() {
     // Пульсация для кнопки
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -60,7 +61,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
 
     // Shimmer эффект
     _shimmerController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: Duration(milliseconds: 2000),
       vsync: this,
     )..repeat();
 
@@ -110,7 +111,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white),
                 SizedBox(width: 12),
@@ -120,7 +121,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             backgroundColor: Colors.red[700],
             behavior: SnackBarBehavior.floating,
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -150,14 +151,14 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 340),
+        constraints: BoxConstraints(maxWidth: 340),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [_emeraldDark, _night],
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(24.r),
           border: Border.all(
             width: 2,
             color: _gold.withOpacity(0.5),
@@ -175,7 +176,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
           children: [
             // Верхняя часть с конфетти эффектом
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -185,23 +186,23 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                     Colors.transparent,
                   ],
                 ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(22.r),
                 ),
               ),
               child: Column(
                 children: [
                   // Звезды анимация
-                  const _AnimatedStars(),
-                  const SizedBox(height: 16),
+                  _AnimatedStars(),
+                  SizedBox(height: 16),
                   ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
+                    shaderCallback: (bounds) => LinearGradient(
                       colors: [_gold, Color(0xFFFFF8DC), _gold],
                     ).createShader(bounds),
-                    child: const Text(
+                    child: Text(
                       'ПОЗДРАВЛЯЕМ!',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 28.sp,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                         letterSpacing: 2,
@@ -214,20 +215,20 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
 
             // Приз
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
               child: Column(
                 children: [
                   Text(
                     'Вам выпало:',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       color: Colors.white.withOpacity(0.7),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20.w),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -237,7 +238,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                           result.sector.color.withOpacity(0.1),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(
                         color: result.sector.color,
                         width: 2,
@@ -272,18 +273,18 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.card_giftcard,
                             color: Colors.white,
                             size: 30,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Text(
                           result.sector.text,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 22,
+                          style: TextStyle(
+                            fontSize: 22.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -297,14 +298,14 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
 
             // Информация
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Row(
                       children: [
@@ -313,12 +314,12 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                           color: Colors.white.withOpacity(0.6),
                           size: 20,
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Результат записан.\nАдминистратор свяжется с вами.',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.white.withOpacity(0.6),
                               height: 1.4,
                             ),
@@ -327,7 +328,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -337,15 +338,15 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                         backgroundColor: _gold,
                         foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(25.r),
                         ),
                         elevation: 8,
                         shadowColor: _gold.withOpacity(0.5),
                       ),
-                      child: const Text(
+                      child: Text(
                         'ОТЛИЧНО!',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
                         ),
@@ -365,7 +366,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -402,11 +403,11 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(
             'Загрузка колеса...',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
@@ -440,30 +441,30 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
               color: Colors.white.withOpacity(0.5),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(
             'Колесо не настроено',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 20.sp,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Обратитесь к администратору',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14.sp,
               color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           TextButton.icon(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _gold),
-            label: const Text(
+            icon: Icon(Icons.arrow_back, color: _gold),
+            label: Text(
               'Вернуться',
-              style: TextStyle(color: _gold, fontSize: 16),
+              style: TextStyle(color: _gold, fontSize: 16.sp),
             ),
           ),
         ],
@@ -482,32 +483,32 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
           child: SingleChildScrollView(
             child: Column(
               children: [
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 // Заголовок с эффектом
                 _buildHeader(),
 
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
 
                 // Счетчик прокруток
                 _buildSpinsCounter(),
 
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
 
                 // Колесо
                 _buildWheelSection(),
 
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
 
                 // Кнопка прокрутки
                 _buildSpinButton(),
 
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
 
                 // Информационные карточки
                 _buildInfoCards(),
 
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
               ],
             ),
           ),
@@ -518,34 +519,34 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
 
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,
                 size: 20,
               ),
             ),
           ),
-          const Spacer(),
+          Spacer(),
           IconButton(
             onPressed: _loadData,
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.refresh,
                 color: Colors.white,
                 size: 20,
@@ -566,7 +567,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
           height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [_gold, _darkGold],
@@ -579,32 +580,32 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.casino,
             color: Colors.white,
             size: 32,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
+          shaderCallback: (bounds) => LinearGradient(
             colors: [_gold, Color(0xFFFFF8DC), _gold],
           ).createShader(bounds),
-          child: const Text(
+          child: Text(
             'КОЛЕСО УДАЧИ',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 28.sp,
               fontWeight: FontWeight.w900,
               color: Colors.white,
               letterSpacing: 3,
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           'Испытай свою удачу!',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 16.sp,
             color: Colors.white.withOpacity(0.6),
             letterSpacing: 1,
           ),
@@ -618,8 +619,8 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
       animation: _shimmerAnimation,
       builder: (context, child) {
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          margin: EdgeInsets.symmetric(horizontal: 48.w),
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
@@ -636,7 +637,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                       Colors.grey.withOpacity(0.2),
                     ],
             ),
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(30.r),
             border: Border.all(
               color: _availableSpins > 0
                   ? _gold.withOpacity(0.5)
@@ -653,13 +654,13 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                 color: _availableSpins > 0 ? _gold : Colors.grey,
                 size: 24,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 _availableSpins > 0
                     ? 'Доступно прокруток: $_availableSpins'
                     : 'Прокрутки недоступны',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   color: _availableSpins > 0 ? _gold : Colors.grey,
                 ),
@@ -673,7 +674,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
 
   Widget _buildWheelSection() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: 16.w),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -698,7 +699,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             height: MediaQuery.of(context).size.width * 0.85 + 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [_gold, _darkGold, _gold],
@@ -707,7 +708,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
           ),
           // Колесо
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(10.w),
             child: AnimatedWheelWidget(
               key: _wheelKey,
               sectors: _sectors,
@@ -724,7 +725,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
     final bool canSpin = _availableSpins > 0 && !_isSpinning;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 48),
+      padding: EdgeInsets.symmetric(horizontal: 48.w),
       child: AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
@@ -734,9 +735,9 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
               width: double.infinity,
               height: 60,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(30.r),
                 gradient: canSpin
-                    ? const LinearGradient(
+                    ? LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [_gold, _darkGold],
@@ -752,7 +753,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                           color: _gold.withOpacity(0.5),
                           blurRadius: 20,
                           spreadRadius: 2,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ]
                     : null,
@@ -761,7 +762,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: canSpin ? _spin : null,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(30.r),
                   child: Center(
                     child: _isSpinning
                         ? Row(
@@ -777,11 +778,11 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              const Text(
+                              SizedBox(width: 12),
+                              Text(
                                 'ВРАЩАЕМ...',
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   letterSpacing: 2,
@@ -799,11 +800,11 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                                 color: Colors.white,
                                 size: 26,
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               Text(
                                 canSpin ? 'КРУТИТЬ!' : 'НЕТ ПРОКРУТОК',
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white.withOpacity(
                                       canSpin ? 1.0 : 0.7),
@@ -824,7 +825,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
 
   Widget _buildInfoCards() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Column(
         children: [
           // Как получить прокрутки
@@ -833,16 +834,16 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
             title: 'Как получить прокрутки?',
             description:
                 'Войдите в топ-3 по эффективности за месяц и получите возможность крутить колесо удачи!',
-            gradient: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+            gradient: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Призы
           _buildInfoCard(
             icon: Icons.card_giftcard,
             title: 'Призы',
             description:
                 'Выигрывайте денежные бонусы, подарки и другие приятные сюрпризы!',
-            gradient: const [Color(0xFF10B981), Color(0xFF34D399)],
+            gradient: [Color(0xFF10B981), Color(0xFF34D399)],
           ),
         ],
       ),
@@ -856,10 +857,10 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
     required List<Color> gradient,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -876,35 +877,35 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
                 end: Alignment.bottomRight,
                 colors: gradient,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               boxShadow: [
                 BoxShadow(
                   color: gradient[0].withOpacity(0.4),
                   blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
             child: Icon(icon, color: Colors.white, size: 24),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     color: Colors.white.withOpacity(0.6),
                     height: 1.4,
                   ),
@@ -920,7 +921,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
 
 /// Анимированные звезды для диалога результата
 class _AnimatedStars extends StatefulWidget {
-  const _AnimatedStars();
+  _AnimatedStars();
 
   @override
   State<_AnimatedStars> createState() => _AnimatedStarsState();
@@ -934,7 +935,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
   }
@@ -959,7 +960,7 @@ class _AnimatedStarsState extends State<_AnimatedStars>
               // Большая звезда в центре
               Transform.scale(
                 scale: 0.9 + (_controller.value * 0.2),
-                child: const Icon(
+                child: Icon(
                   Icons.star,
                   color: Color(0xFFD4AF37),
                   size: 50,
@@ -967,49 +968,49 @@ class _AnimatedStarsState extends State<_AnimatedStars>
               ),
               // Маленькие звезды
               Positioned(
-                left: 10,
-                top: 5,
+                left: 10.w,
+                top: 5.h,
                 child: Transform.scale(
                   scale: 0.8 + ((1 - _controller.value) * 0.3),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFD4AF37).withOpacity(0.7),
+                    color: Color(0xFFD4AF37).withOpacity(0.7),
                     size: 20,
                   ),
                 ),
               ),
               Positioned(
-                right: 10,
-                top: 10,
+                right: 10.w,
+                top: 10.h,
                 child: Transform.scale(
                   scale: 0.7 + (_controller.value * 0.3),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFD4AF37).withOpacity(0.6),
+                    color: Color(0xFFD4AF37).withOpacity(0.6),
                     size: 18,
                   ),
                 ),
               ),
               Positioned(
-                left: 20,
-                bottom: 0,
+                left: 20.w,
+                bottom: 0.h,
                 child: Transform.scale(
                   scale: 0.6 + ((1 - _controller.value) * 0.4),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFD4AF37).withOpacity(0.5),
+                    color: Color(0xFFD4AF37).withOpacity(0.5),
                     size: 14,
                   ),
                 ),
               ),
               Positioned(
-                right: 15,
-                bottom: 5,
+                right: 15.w,
+                bottom: 5.h,
                 child: Transform.scale(
                   scale: 0.75 + (_controller.value * 0.25),
                   child: Icon(
                     Icons.star,
-                    color: const Color(0xFFD4AF37).withOpacity(0.65),
+                    color: Color(0xFFD4AF37).withOpacity(0.65),
                     size: 16,
                   ),
                 ),

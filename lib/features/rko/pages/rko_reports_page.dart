@@ -8,6 +8,7 @@ import 'rko_shop_reports_page.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Главная страница отчетов по РКО с вкладками
 class RKOReportsPage extends StatefulWidget {
@@ -31,10 +32,10 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   String _shopSearchQuery = '';
 
   // Dark Emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -101,7 +102,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -119,7 +120,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
               // Содержимое вкладок
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: _gold),
                       )
                     : TabBarView(
@@ -146,32 +147,32 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   /// Красивый заголовок страницы
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 12.h),
       child: Row(
         children: [
           // Кнопка назад
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Заголовок
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Отчёты по РКО',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -179,7 +180,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   'Сотрудников: ${_employees.length}, Магазинов: ${_shops.length}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ],
@@ -189,11 +190,11 @@ class _RKOReportsPageState extends State<RKOReportsPage>
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
+              icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: _loadData,
               tooltip: 'Обновить',
             ),
@@ -206,23 +207,23 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   /// Построение двухрядных вкладок
   Widget _buildTwoRowTabs() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 0.h, 8.w, 8.h),
       child: Column(
         children: [
           // Первый ряд: 2 вкладки
           Row(
             children: [
               _buildTabButton(0, Icons.person_rounded, 'По сотрудникам', _employees.length, Colors.blue),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(1, Icons.store_rounded, 'По магазинам', _shops.length, Colors.orange),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Второй ряд: 2 вкладки
           Row(
             children: [
               _buildTabButton(2, Icons.schedule, 'Ожидают', _pendingRKOs.length, Colors.amber),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(3, Icons.warning_amber, 'Не прошли', _failedRKOs.length, Colors.red),
             ],
           ),
@@ -243,9 +244,9 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             _tabController.animateTo(index);
             setState(() {});
           },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
             decoration: BoxDecoration(
               gradient: isSelected
                   ? LinearGradient(
@@ -255,7 +256,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     )
                   : null,
               color: isSelected ? null : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(
                 color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
                 width: isSelected ? 2 : 1,
@@ -269,29 +270,29 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   size: 18,
                   color: isSelected ? Colors.white : Colors.white70,
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: isSelected ? Colors.white : Colors.white70,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     color: isSelected ? Colors.white.withOpacity(0.3) : accentColor.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       fontWeight: FontWeight.bold,
                       color: isSelected ? Colors.white : accentColor,
                     ),
@@ -314,7 +315,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   }) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -327,22 +328,22 @@ class _RKOReportsPageState extends State<RKOReportsPage>
               ),
               child: Icon(icon, size: 40, color: Colors.white.withOpacity(0.3)),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               subtitle,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
               textAlign: TextAlign.center,
             ),
@@ -361,22 +362,22 @@ class _RKOReportsPageState extends State<RKOReportsPage>
       children: [
         // Поиск
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
               cursorColor: _gold,
               decoration: InputDecoration(
                 hintText: 'Поиск сотрудника...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                prefixIcon: const Icon(Icons.search, color: _gold),
+                prefixIcon: Icon(Icons.search, color: _gold),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               onChanged: (value) {
                 setState(() {
@@ -396,7 +397,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   color: Colors.blue,
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w),
                   itemCount: _employees.length,
                   itemBuilder: (context, index) {
                     final employee = _employees[index];
@@ -405,7 +406,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     if (_employeeSearchQuery.isNotEmpty) {
                       final name = employee.name.toLowerCase();
                       if (!name.contains(_employeeSearchQuery)) {
-                        return const SizedBox.shrink();
+                        return SizedBox.shrink();
                       }
                     }
 
@@ -419,17 +420,17 @@ class _RKOReportsPageState extends State<RKOReportsPage>
 
   Widget _buildEmployeeCard(Employee employee) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () {
             final normalizedName = employee.name.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
             Navigator.push(
@@ -442,7 +443,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Аватар
@@ -455,15 +456,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.person_rounded,
                     color: Colors.white,
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Информация
                 Expanded(
                   child: Column(
@@ -473,18 +474,18 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                         employee.name,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (employee.position != null && employee.position!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           employee.position!,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                         ),
@@ -494,12 +495,12 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 ),
                 // Стрелка
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_forward_ios_rounded,
                     color: _gold,
                     size: 16,
@@ -522,22 +523,22 @@ class _RKOReportsPageState extends State<RKOReportsPage>
       children: [
         // Поиск
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
               cursorColor: _gold,
               decoration: InputDecoration(
                 hintText: 'Поиск магазина...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                prefixIcon: const Icon(Icons.search, color: _gold),
+                prefixIcon: Icon(Icons.search, color: _gold),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               onChanged: (value) {
                 setState(() {
@@ -557,7 +558,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   color: Colors.orange,
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w),
                   itemCount: _shops.length,
                   itemBuilder: (context, index) {
                     final shop = _shops[index];
@@ -566,7 +567,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     if (_shopSearchQuery.isNotEmpty) {
                       final address = shop.address.toLowerCase();
                       if (!address.contains(_shopSearchQuery)) {
-                        return const SizedBox.shrink();
+                        return SizedBox.shrink();
                       }
                     }
 
@@ -580,17 +581,17 @@ class _RKOReportsPageState extends State<RKOReportsPage>
 
   Widget _buildShopCard(Shop shop) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () {
             Navigator.push(
               context,
@@ -602,7 +603,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка магазина
@@ -615,22 +616,22 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.store_rounded,
                     color: Colors.white,
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Адрес
                 Expanded(
                   child: Text(
                     shop.address,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 2,
@@ -639,12 +640,12 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 ),
                 // Стрелка
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_forward_ios_rounded,
                     color: _gold,
                     size: 16,
@@ -673,7 +674,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: _pendingRKOs.length,
       itemBuilder: (context, index) {
         final rko = _pendingRKOs[index];
@@ -705,14 +706,14 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14.w),
         child: Row(
           children: [
             // Иконка
@@ -725,15 +726,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.schedule,
                 color: Colors.white,
                 size: 26,
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             // Информация
             Expanded(
               child: Column(
@@ -743,39 +744,39 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     title,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.5),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       if (shiftType.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          margin: const EdgeInsets.only(right: 6),
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          margin: EdgeInsets.only(right: 6.w),
                           decoration: BoxDecoration(
                             color: shiftType == 'morning'
                                 ? Colors.orange.withOpacity(0.1)
                                 : Colors.indigo.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Text(
                             shiftLabel,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontWeight: FontWeight.w500,
                               color: shiftType == 'morning' ? Colors.orange[800] : Colors.indigo[800],
                             ),
@@ -783,15 +784,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                         ),
                       if (deadlineText.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Text(
                             deadlineText,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontWeight: FontWeight.w500,
                               color: Colors.red[800],
                             ),
@@ -805,15 +806,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             // Сумма
             if (amount.isNotEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: _gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Text(
                   '$amount руб.',
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
                     color: _gold,
                   ),
@@ -840,7 +841,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: _failedRKOs.length,
       itemBuilder: (context, index) {
         final rko = _failedRKOs[index];
@@ -857,14 +858,14 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     final reason = rko['reason'] ?? 'Причина не указана';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.red.withOpacity(0.3)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14.w),
         child: Row(
           children: [
             // Иконка с предупреждением
@@ -877,15 +878,15 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.error_outline,
                 color: Colors.white,
                 size: 26,
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             // Информация
             Expanded(
               child: Column(
@@ -895,52 +896,52 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                     employeeName,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     shopAddress,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.5),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Row(
                     children: [
                       if (rkoType.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Text(
                             rkoType,
-                            style: const TextStyle(
-                              fontSize: 11,
+                            style: TextStyle(
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.w500,
                               color: Colors.red,
                             ),
                           ),
                         ),
-                      const Spacer(),
+                      Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                         decoration: BoxDecoration(
                           color: Colors.red,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(6.r),
                         ),
-                        child: const Text(
+                        child: Text(
                           'ОТКЛОНЕНО',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 10.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -948,11 +949,11 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(
                     reason,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.red[600],
                     ),
                     maxLines: 2,
@@ -963,17 +964,17 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             ),
             // Сумма
             if (amount.isNotEmpty) ...[
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Text(
                   '$amount руб.',
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: TextStyle(
+                    fontSize: 13.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.red,
                   ),

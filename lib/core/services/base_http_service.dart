@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'dart:convert';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
@@ -10,6 +11,7 @@ import '../utils/logger.dart';
 /// - Обработкой ошибок и логированием
 /// - Настраиваемыми таймаутами
 /// - Поддержкой query-параметров
+/// - Глобальным лимитом параллельных запросов (семафор)
 ///
 /// Все feature-сервисы должны использовать этот класс для API-запросов.
 ///
@@ -33,6 +35,38 @@ import '../utils/logger.dart';
 /// );
 /// ```
 class BaseHttpService {
+  // ==================== Семафор (лимит параллельных запросов) ====================
+
+  /// Максимум одновременных HTTP-запросов к серверу.
+  /// 6 — стандартный лимит браузеров на один хост.
+  /// Предотвращает перегрузку сервера при массовой загрузке данных.
+  static const int _maxConcurrent = 6;
+  static int _activeRequests = 0;
+  static final List<Completer<void>> _waitQueue = [];
+
+  /// Занять слот перед HTTP-запросом. Если все слоты заняты — ждать в очереди.
+  static Future<void> _acquireSlot() async {
+    if (_activeRequests < _maxConcurrent) {
+      _activeRequests++;
+      return;
+    }
+    final completer = Completer<void>();
+    _waitQueue.add(completer);
+    await completer.future;
+  }
+
+  /// Освободить слот после завершения HTTP-запроса.
+  static void _releaseSlot() {
+    if (_waitQueue.isNotEmpty) {
+      final next = _waitQueue.removeAt(0);
+      next.complete();
+    } else {
+      _activeRequests--;
+    }
+  }
+
+  // ==================== Логирование ====================
+
   /// Логирование ошибок HTTP с детальной диагностикой 401/403
   static void _logHttpError(int statusCode, String endpoint, String body) {
     if (statusCode == 401) {
@@ -43,6 +77,8 @@ class BaseHttpService {
       Logger.error('❌ HTTP $statusCode on $endpoint');
     }
   }
+
+  // ==================== GET ====================
 
   /// Получить список элементов с сервера.
   ///
@@ -58,6 +94,7 @@ class BaseHttpService {
     Map<String, String>? queryParams,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       final uri = Uri.parse('${ApiConstants.serverUrl}$endpoint')
           .replace(queryParameters: queryParams);
@@ -91,6 +128,8 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return [];
+    } finally {
+      _releaseSlot();
     }
   }
 
@@ -106,6 +145,7 @@ class BaseHttpService {
     required String itemKey,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📥 GET $endpoint');
 
@@ -136,8 +176,77 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return null;
+    } finally {
+      _releaseSlot();
     }
   }
+
+  /// Простой GET-запрос для проверки статуса.
+  ///
+  /// Возвращает true при success: true в ответе.
+  static Future<bool> simpleGet({
+    required String endpoint,
+    Duration? timeout,
+  }) async {
+    await _acquireSlot();
+    try {
+      Logger.debug('📥 GET $endpoint');
+
+      final response = await http
+          .get(Uri.parse('${ApiConstants.serverUrl}$endpoint'), headers: ApiConstants.headersWithApiKey)
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return false;
+    } finally {
+      _releaseSlot();
+    }
+  }
+
+  /// GET-запрос с возвратом сырого Map.
+  ///
+  /// Используется когда нужен доступ к нескольким полям ответа.
+  /// Возвращает весь JSON-ответ при success: true.
+  static Future<Map<String, dynamic>?> getRaw({
+    required String endpoint,
+    Map<String, String>? queryParams,
+    Duration? timeout,
+  }) async {
+    await _acquireSlot();
+    try {
+      var uri = Uri.parse('${ApiConstants.serverUrl}$endpoint');
+      if (queryParams != null && queryParams.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParams);
+      }
+
+      Logger.debug('📥 GET $endpoint');
+
+      final response = await http
+          .get(uri, headers: ApiConstants.headersWithApiKey)
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return result as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    } finally {
+      _releaseSlot();
+    }
+  }
+
+  // ==================== POST ====================
 
   /// Создать элемент на сервере (POST).
   ///
@@ -152,6 +261,7 @@ class BaseHttpService {
     required String itemKey,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📤 POST $endpoint');
 
@@ -183,132 +293,8 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return null;
-    }
-  }
-
-  /// Обновить элемент на сервере (PUT).
-  ///
-  /// [endpoint] - путь API с ID
-  /// [body] - обновленные данные
-  /// [fromJson] - функция десериализации
-  /// [itemKey] - ключ объекта в ответе
-  static Future<T?> put<T>({
-    required String endpoint,
-    required Map<String, dynamic> body,
-    required T Function(Map<String, dynamic>) fromJson,
-    required String itemKey,
-    Duration? timeout,
-  }) async {
-    try {
-      Logger.debug('📤 PUT $endpoint');
-
-      final response = await http
-          .put(
-            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.headersWithApiKey,
-            body: jsonEncode(body),
-          )
-          .timeout(timeout ?? ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final rawItem = result[itemKey];
-          if (rawItem == null || rawItem is! Map<String, dynamic>) {
-            Logger.error('❌ Missing or invalid "$itemKey" in response from $endpoint');
-            return null;
-          }
-          Logger.debug('✅ Updated item at $endpoint');
-          return fromJson(rawItem);
-        } else {
-          Logger.error('❌ API error: ${result['error']}');
-        }
-      } else {
-        _logHttpError(response.statusCode, endpoint, response.body);
-      }
-      return null;
-    } catch (e) {
-      Logger.error('❌ Request failed for $endpoint', e);
-      return null;
-    }
-  }
-
-  /// Удалить элемент на сервере.
-  ///
-  /// [endpoint] - путь API с ID (например, '/api/tasks/123')
-  /// Возвращает true при успешном удалении.
-  static Future<bool> delete({
-    required String endpoint,
-    Duration? timeout,
-  }) async {
-    try {
-      Logger.debug('🗑️ DELETE $endpoint');
-
-      final response = await http
-          .delete(
-            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.headersWithApiKey,
-          )
-          .timeout(timeout ?? ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Deleted item at $endpoint');
-          return true;
-        } else {
-          Logger.error('❌ API error: ${result['error']}');
-        }
-      } else {
-        _logHttpError(response.statusCode, endpoint, response.body);
-      }
-      return false;
-    } catch (e) {
-      Logger.error('❌ Request failed for $endpoint', e);
-      return false;
-    }
-  }
-
-  /// Удалить элемент на сервере с возвратом полного ответа.
-  ///
-  /// [endpoint] - путь API с ID (например, '/api/tasks/123')
-  /// Возвращает Map с данными ответа или null при ошибке.
-  static Future<Map<String, dynamic>?> deleteWithResponse({
-    required String endpoint,
-    Duration? timeout,
-  }) async {
-    try {
-      Logger.debug('🗑️ DELETE $endpoint');
-
-      final response = await http
-          .delete(
-            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.headersWithApiKey,
-          )
-          .timeout(timeout ?? ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Deleted item at $endpoint');
-          return result;
-        } else {
-          Logger.error('❌ API error: ${result['error']}');
-          return result;
-        }
-      } else {
-        _logHttpError(response.statusCode, endpoint, response.body);
-        return {
-          'success': false,
-          'error': 'HTTP ${response.statusCode}',
-        };
-      }
-    } catch (e) {
-      Logger.error('❌ Request failed for $endpoint', e);
-      return {
-        'success': false,
-        'error': e.toString(),
-      };
+    } finally {
+      _releaseSlot();
     }
   }
 
@@ -321,6 +307,7 @@ class BaseHttpService {
     required Map<String, dynamic> body,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📤 POST $endpoint');
 
@@ -334,71 +321,18 @@ class BaseHttpService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final result = jsonDecode(response.body);
-        return result['success'] == true;
-      }
-      return false;
-    } catch (e) {
-      Logger.error('❌ Request failed for $endpoint', e);
-      return false;
-    }
-  }
-
-  /// Простой GET-запрос для проверки статуса.
-  ///
-  /// Возвращает true при success: true в ответе.
-  static Future<bool> simpleGet({
-    required String endpoint,
-    Duration? timeout,
-  }) async {
-    try {
-      Logger.debug('📥 GET $endpoint');
-
-      final response = await http
-          .get(Uri.parse('${ApiConstants.serverUrl}$endpoint'), headers: ApiConstants.headersWithApiKey)
-          .timeout(timeout ?? ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        return result['success'] == true;
-      }
-      return false;
-    } catch (e) {
-      Logger.error('❌ Request failed for $endpoint', e);
-      return false;
-    }
-  }
-
-  /// GET-запрос с возвратом сырого Map.
-  ///
-  /// Используется когда нужен доступ к нескольким полям ответа.
-  /// Возвращает весь JSON-ответ при success: true.
-  static Future<Map<String, dynamic>?> getRaw({
-    required String endpoint,
-    Map<String, String>? queryParams,
-    Duration? timeout,
-  }) async {
-    try {
-      var uri = Uri.parse('${ApiConstants.serverUrl}$endpoint');
-      if (queryParams != null && queryParams.isNotEmpty) {
-        uri = uri.replace(queryParameters: queryParams);
-      }
-
-      Logger.debug('📥 GET $endpoint');
-
-      final response = await http
-          .get(uri, headers: ApiConstants.headersWithApiKey)
-          .timeout(timeout ?? ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return result as Map<String, dynamic>;
+        if (result['success'] != true) {
+          Logger.error('❌ API error on POST $endpoint: ${result['error']}');
         }
+        return result['success'] == true;
       }
-      return null;
+      _logHttpError(response.statusCode, endpoint, response.body);
+      return false;
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
-      return null;
+      return false;
+    } finally {
+      _releaseSlot();
     }
   }
 
@@ -410,6 +344,7 @@ class BaseHttpService {
     required Map<String, dynamic> body,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📤 POST $endpoint');
 
@@ -431,6 +366,8 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return null;
+    } finally {
+      _releaseSlot();
     }
   }
 
@@ -443,6 +380,7 @@ class BaseHttpService {
     required Map<String, dynamic> body,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📤 POST $endpoint');
 
@@ -481,8 +419,136 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return HttpResult(success: false, error: e.toString());
+    } finally {
+      _releaseSlot();
     }
   }
+
+  // ==================== PUT ====================
+
+  /// Обновить элемент на сервере (PUT).
+  ///
+  /// [endpoint] - путь API с ID
+  /// [body] - обновленные данные
+  /// [fromJson] - функция десериализации
+  /// [itemKey] - ключ объекта в ответе
+  static Future<T?> put<T>({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    required T Function(Map<String, dynamic>) fromJson,
+    required String itemKey,
+    Duration? timeout,
+  }) async {
+    await _acquireSlot();
+    try {
+      Logger.debug('📤 PUT $endpoint');
+
+      final response = await http
+          .put(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final rawItem = result[itemKey];
+          if (rawItem == null || rawItem is! Map<String, dynamic>) {
+            Logger.error('❌ Missing or invalid "$itemKey" in response from $endpoint');
+            return null;
+          }
+          Logger.debug('✅ Updated item at $endpoint');
+          return fromJson(rawItem);
+        } else {
+          Logger.error('❌ API error: ${result['error']}');
+        }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    } finally {
+      _releaseSlot();
+    }
+  }
+
+  /// Простой PUT-запрос без десериализации.
+  ///
+  /// Возвращает true при success: true в ответе.
+  static Future<bool> simplePut({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    await _acquireSlot();
+    try {
+      Logger.debug('📤 PUT $endpoint');
+
+      final response = await http
+          .put(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] != true) {
+          Logger.error('❌ API error on PUT $endpoint: ${result['error']}');
+        }
+        return result['success'] == true;
+      }
+      _logHttpError(response.statusCode, endpoint, response.body);
+      return false;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return false;
+    } finally {
+      _releaseSlot();
+    }
+  }
+
+  /// PUT-запрос с возвратом сырого Map.
+  ///
+  /// Используется когда нужен доступ к нескольким полям ответа.
+  static Future<Map<String, dynamic>?> putRaw({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    await _acquireSlot();
+    try {
+      Logger.debug('📤 PUT $endpoint');
+
+      final response = await http
+          .put(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return result as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    } finally {
+      _releaseSlot();
+    }
+  }
+
+  // ==================== PATCH ====================
 
   /// Частичное обновление элемента (PATCH).
   ///
@@ -497,6 +563,7 @@ class BaseHttpService {
     required String itemKey,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📤 PATCH $endpoint');
 
@@ -524,6 +591,8 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return null;
+    } finally {
+      _releaseSlot();
     }
   }
 
@@ -535,6 +604,7 @@ class BaseHttpService {
     required Map<String, dynamic> body,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📤 PATCH $endpoint');
 
@@ -556,6 +626,8 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return null;
+    } finally {
+      _releaseSlot();
     }
   }
 
@@ -567,6 +639,7 @@ class BaseHttpService {
     required Map<String, dynamic> body,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('📤 PATCH $endpoint');
 
@@ -580,74 +653,105 @@ class BaseHttpService {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        if (result['success'] != true) {
+          Logger.error('❌ API error on PATCH $endpoint: ${result['error']}');
+        }
         return result['success'] == true;
       }
+      _logHttpError(response.statusCode, endpoint, response.body);
       return false;
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return false;
+    } finally {
+      _releaseSlot();
     }
   }
 
-  /// Простой PUT-запрос без десериализации.
+  // ==================== DELETE ====================
+
+  /// Удалить элемент на сервере.
   ///
-  /// Возвращает true при success: true в ответе.
-  static Future<bool> simplePut({
+  /// [endpoint] - путь API с ID (например, '/api/tasks/123')
+  /// Возвращает true при успешном удалении.
+  static Future<bool> delete({
     required String endpoint,
-    required Map<String, dynamic> body,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
-      Logger.debug('📤 PUT $endpoint');
+      Logger.debug('🗑️ DELETE $endpoint');
 
       final response = await http
-          .put(
+          .delete(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
             headers: ApiConstants.headersWithApiKey,
-            body: jsonEncode(body),
-          )
-          .timeout(timeout ?? ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        return result['success'] == true;
-      }
-      return false;
-    } catch (e) {
-      Logger.error('❌ Request failed for $endpoint', e);
-      return false;
-    }
-  }
-
-  /// PUT-запрос с возвратом сырого Map.
-  ///
-  /// Используется когда нужен доступ к нескольким полям ответа.
-  static Future<Map<String, dynamic>?> putRaw({
-    required String endpoint,
-    required Map<String, dynamic> body,
-    Duration? timeout,
-  }) async {
-    try {
-      Logger.debug('📤 PUT $endpoint');
-
-      final response = await http
-          .put(
-            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.headersWithApiKey,
-            body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
-          return result as Map<String, dynamic>;
+          Logger.debug('✅ Deleted item at $endpoint');
+          return true;
+        } else {
+          Logger.error('❌ API error: ${result['error']}');
         }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
-      return null;
+      return false;
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
-      return null;
+      return false;
+    } finally {
+      _releaseSlot();
+    }
+  }
+
+  /// Удалить элемент на сервере с возвратом полного ответа.
+  ///
+  /// [endpoint] - путь API с ID (например, '/api/tasks/123')
+  /// Возвращает Map с данными ответа или null при ошибке.
+  static Future<Map<String, dynamic>?> deleteWithResponse({
+    required String endpoint,
+    Duration? timeout,
+  }) async {
+    await _acquireSlot();
+    try {
+      Logger.debug('🗑️ DELETE $endpoint');
+
+      final response = await http
+          .delete(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('✅ Deleted item at $endpoint');
+          return result;
+        } else {
+          Logger.error('❌ API error: ${result['error']}');
+          return result;
+        }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
+        return {
+          'success': false,
+          'error': 'HTTP ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    } finally {
+      _releaseSlot();
     }
   }
 
@@ -658,6 +762,7 @@ class BaseHttpService {
     required String endpoint,
     Duration? timeout,
   }) async {
+    await _acquireSlot();
     try {
       Logger.debug('🗑️ DELETE $endpoint');
 
@@ -678,6 +783,8 @@ class BaseHttpService {
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
       return null;
+    } finally {
+      _releaseSlot();
     }
   }
 }

@@ -7,6 +7,7 @@ import '../models/task_model.dart';
 import '../services/task_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import 'task_recipient_selection_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница создания задачи (для админа)
 class CreateTaskPage extends StatefulWidget {
@@ -27,16 +28,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _descriptionController = TextEditingController();
 
   TaskResponseType _responseType = TaskResponseType.photo;
-  DateTime _deadline = DateTime.now().add(const Duration(days: 1));
+  DateTime _deadline = DateTime.now().add(Duration(days: 1));
   List<TaskRecipient> _recipients = [];
   final List<File> _attachments = [];
   bool _isSubmitting = false;
 
   // Цвета темы — dark emerald
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -60,11 +61,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       context: context,
       initialDate: _deadline,
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: DateTime.now().add(Duration(days: 365)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
+            colorScheme: ColorScheme.dark(
               primary: _gold,
               onPrimary: Colors.black,
               surface: _emeraldDark,
@@ -83,7 +84,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.dark(
+              colorScheme: ColorScheme.dark(
                 primary: _gold,
                 onPrimary: Colors.black,
                 surface: _emeraldDark,
@@ -188,26 +189,26 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Задача отправлена ${_recipients.length} получателям',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
               ],
             ),
             backgroundColor: _emeraldDark,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
         Navigator.pop(context, true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.error, color: Colors.white),
                 SizedBox(width: 12),
@@ -216,7 +217,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             backgroundColor: Colors.red[900],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -232,7 +233,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -248,37 +249,37 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Row(
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(10.w),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.arrow_back_ios_new,
                             color: Colors.white,
                             size: 18,
                           ),
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Новая задача',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 42),
+                      SizedBox(width: 42),
                     ],
                   ),
                 ),
@@ -286,7 +287,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -310,7 +311,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               },
                               onChanged: (_) => setState(() {}),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             _buildTextField(
                               controller: _descriptionController,
                               label: 'Описание',
@@ -321,7 +322,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Карточка типа ответа
                       _buildCard(
@@ -329,7 +330,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         title: 'Тип ответа',
                         child: _buildResponseTypeSelector(),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Карточка дедлайна
                       _buildCard(
@@ -337,7 +338,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         title: 'Дедлайн',
                         child: _buildDeadlinePicker(),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Карточка вложений
                       _buildCard(
@@ -346,7 +347,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         subtitle: _attachments.isNotEmpty ? '${_attachments.length} фото' : null,
                         child: _buildAttachmentsSection(),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Карточка получателей
                       _buildCard(
@@ -357,7 +358,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         hasError: _recipients.isEmpty,
                         child: _buildRecipientsSection(),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -383,7 +384,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
           color: hasError
               ? Colors.red.withOpacity(0.5)
@@ -396,18 +397,18 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         children: [
           // Заголовок карточки
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(icon, color: _gold, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,19 +417,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (isRequired) ...[
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               '*',
                               style: TextStyle(
                                 color: hasError ? Colors.red : _gold,
-                                fontSize: 16,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -436,12 +437,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         ],
                       ),
                       if (subtitle != null) ...[
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           subtitle,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
-                            fontSize: 12,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ],
@@ -458,7 +459,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           ),
           // Контент
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: child,
           ),
         ],
@@ -479,7 +480,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
         hintText: hint,
@@ -489,23 +490,23 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         filled: true,
         fillColor: Colors.white.withOpacity(0.06),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _gold, width: 2),
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: _gold, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: Colors.red),
         ),
-        errorStyle: const TextStyle(color: Colors.red),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        errorStyle: TextStyle(color: Colors.red),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
       ),
       validator: validator,
       onChanged: onChanged,
@@ -524,11 +525,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             child: GestureDetector(
               onTap: () => setState(() => _responseType = type),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                duration: Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(vertical: 14.h),
                 decoration: BoxDecoration(
                   color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
                     color: isSelected ? _gold : Colors.white.withOpacity(0.1),
                     width: isSelected ? 2 : 1,
@@ -541,12 +542,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       color: isSelected ? _gold : Colors.white60,
                       size: 24,
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       type.displayName,
                       style: TextStyle(
                         color: isSelected ? _gold : Colors.white70,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
                       textAlign: TextAlign.center,
@@ -593,59 +594,59 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
     return InkWell(
       onTap: _selectDeadline,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12.r),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.event,
                 color: _gold,
                 size: 24,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     dateLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Нажмите для изменения',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
-                      fontSize: 12,
+                      fontSize: 12.sp,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.edit_calendar,
                 color: Colors.white70,
                 size: 20,
@@ -669,7 +670,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               itemBuilder: (context, index) => _buildAttachmentPreview(index),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
         Row(
           children: [
@@ -680,7 +681,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 onTap: _pickPhoto,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _buildActionButton(
                 icon: Icons.photo_library,
@@ -698,11 +699,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return Stack(
       children: [
         Container(
-          margin: const EdgeInsets.only(right: 12),
+          margin: EdgeInsets.only(right: 12.w),
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
             image: DecorationImage(
               image: FileImage(_attachments[index]),
@@ -711,12 +712,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           ),
         ),
         Positioned(
-          top: 4,
-          right: 16,
+          top: 4.h,
+          right: 16.w,
           child: GestureDetector(
             onTap: () => _removeAttachment(index),
             child: Container(
-              padding: const EdgeInsets.all(4),
+              padding: EdgeInsets.all(4.w),
               decoration: BoxDecoration(
                 color: Colors.red,
                 shape: BoxShape.circle,
@@ -727,7 +728,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   ),
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.close,
                 size: 14,
                 color: Colors.white,
@@ -746,22 +747,22 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: EdgeInsets.symmetric(vertical: 14.h),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: _gold.withOpacity(0.4)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: _gold, size: 20),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w500,
               ),
@@ -777,12 +778,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       children: [
         InkWell(
           onTap: _selectRecipients,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
                 color: _recipients.isEmpty
                     ? Colors.red.withOpacity(0.5)
@@ -792,12 +793,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _recipients.isEmpty
                         ? Colors.red.withOpacity(0.2)
                         : _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     _recipients.isEmpty ? Icons.person_add : Icons.group,
@@ -805,32 +806,32 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: _recipients.isEmpty
                       ? Text(
                           'Выберите получателей',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.6),
-                            fontSize: 16,
+                            fontSize: 16.sp,
                           ),
                         )
                       : Text(
                           '${_recipients.length} ${_getRecipientsWord(_recipients.length)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                 ),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.chevron_right,
                     color: Colors.white70,
                     size: 20,
@@ -843,15 +844,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
         // Список выбранных получателей
         if (_recipients.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: _recipients.map((r) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
                 border: Border.all(color: _gold.withOpacity(0.4)),
               ),
               child: Row(
@@ -859,19 +860,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 children: [
                   Text(
                     r.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 13,
+                      fontSize: 13.sp,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   GestureDetector(
                     onTap: () {
                       setState(() {
                         _recipients.remove(r);
                       });
                     },
-                    child: const Icon(
+                    child: Icon(
                       Icons.close,
                       size: 16,
                       color: Colors.white70,
@@ -898,7 +899,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   Widget _buildSubmitButton() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: _emeraldDark,
         border: Border(
@@ -915,14 +916,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               foregroundColor: _isFormValid ? _night : Colors.white54,
               disabledBackgroundColor: Colors.grey[800],
               disabledForegroundColor: Colors.white54,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               elevation: _isFormValid ? 4 : 0,
             ),
             child: _isSubmitting
-                ? const SizedBox(
+                ? SizedBox(
                     height: 24,
                     width: 24,
                     child: CircularProgressIndicator(
@@ -937,11 +938,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         _isFormValid ? Icons.send : Icons.block,
                         size: 20,
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Text(
                         _isFormValid ? 'СОЗДАТЬ ЗАДАЧУ' : 'ЗАПОЛНИТЕ ВСЕ ПОЛЯ',
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),

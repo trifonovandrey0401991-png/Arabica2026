@@ -6,6 +6,7 @@ import '../services/envelope_report_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class EnvelopeReportViewPage extends StatefulWidget {
   final EnvelopeReport report;
@@ -26,7 +27,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
   bool _isLoading = false;
   int _selectedRating = 5;
 
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   @override
   void initState() {
@@ -42,14 +43,14 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Подтвердить отчет'),
+        title: Text('Подтвердить отчет'),
         content: StatefulBuilder(
           builder: (context, setDialogState) {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Выберите оценку:'),
-                const SizedBox(height: 16),
+                Text('Выберите оценку:'),
+                SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(5, (index) {
@@ -70,7 +71,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                 ),
                 Text(
                   'Оценка: $_selectedRating',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             );
@@ -79,7 +80,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -87,7 +88,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Подтвердить'),
+            child: Text('Подтвердить'),
           ),
         ],
       ),
@@ -137,14 +138,14 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
         if (updated != null && mounted) {
           setState(() => _report = updated);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Отчет подтвержден!'),
               backgroundColor: Colors.green,
             ),
           );
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Не удалось подтвердить отчет. Попробуйте ещё раз.'),
               backgroundColor: Colors.red,
             ),
@@ -169,12 +170,12 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить отчет?'),
-        content: const Text('Это действие нельзя отменить.'),
+        title: Text('Удалить отчет?'),
+        content: Text('Это действие нельзя отменить.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -182,7 +183,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -194,7 +195,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
         final success = await EnvelopeReportService.deleteReport(_report.id);
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Отчет удален'),
               backgroundColor: Colors.green,
             ),
@@ -229,7 +230,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               automaticallyImplyLeading: false,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -238,7 +239,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               child: AppCachedImage(
                 imageUrl: url,
                 fit: BoxFit.contain,
-                errorWidget: (context, error, stackTrace) => const SizedBox(
+                errorWidget: (context, error, stackTrace) => SizedBox(
                   height: 200,
                   child: Center(child: Icon(Icons.error, size: 48)),
                 ),
@@ -254,42 +255,42 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Отчет конверта'),
+        title: Text('Отчет конверта'),
         backgroundColor: _primaryColor,
         actions: [
           if (widget.isAdmin && _report.status == 'pending')
             IconButton(
-              icon: const Icon(Icons.delete),
+              icon: Icon(Icons.delete),
               onPressed: _isLoading ? null : _deleteReport,
             ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Header
                   _buildHeader(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // Status
                   _buildStatusCard(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // ООО Section
                   _buildOOOSection(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // ИП Section
                   _buildIPSection(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // Total
                   _buildTotalCard(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Confirm button
                   if (widget.isAdmin && _report.status == 'pending')
@@ -297,12 +298,12 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : _confirmReport,
-                        icon: const Icon(Icons.check),
-                        label: const Text('Подтвердить отчет'),
+                        icon: Icon(Icons.check),
+                        label: Text('Подтвердить отчет'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
                         ),
                       ),
                     ),
@@ -315,34 +316,34 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
   Widget _buildHeader() {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.person, color: _primaryColor),
-                const SizedBox(width: 8),
+                Icon(Icons.person, color: _primaryColor),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _report.employeeName,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.store, color: Colors.grey, size: 20),
-                const SizedBox(width: 8),
+                Icon(Icons.store, color: Colors.grey, size: 20),
+                SizedBox(width: 8),
                 Expanded(child: Text(_report.shopAddress)),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 Icon(
@@ -354,15 +355,15 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                       : Colors.indigo,
                   size: 20,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text('${_report.shiftTypeText} смена'),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.access_time, color: Colors.grey, size: 20),
-                const SizedBox(width: 8),
+                Icon(Icons.access_time, color: Colors.grey, size: 20),
+                SizedBox(width: 8),
                 Text(_formatDate(_report.createdAt)),
               ],
             ),
@@ -381,7 +382,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
           ? Colors.green[50]
           : (isExpired ? Colors.red[50] : Colors.orange[50]),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Row(
           children: [
             Icon(
@@ -393,7 +394,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                   : (isExpired ? Colors.red : Colors.orange),
               size: 32,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,7 +418,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                   if (_report.rating != null)
                     Row(
                       children: [
-                        const Text('Оценка: '),
+                        Text('Оценка: '),
                         ...List.generate(5, (index) {
                           return Icon(
                             index < _report.rating!
@@ -442,25 +443,25 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     return Card(
       color: Colors.blue[50],
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'ООО',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                 ),
-                const Spacer(),
+                Spacer(),
                 if (_report.oooZReportPhotoUrl != null)
                   TextButton.icon(
                     onPressed: () => _showPhoto(
                       _report.oooZReportPhotoUrl,
                       'Z-отчет ООО',
                     ),
-                    icon: const Icon(Icons.receipt_long, size: 16),
-                    label: const Text('Z-отчет'),
+                    icon: Icon(Icons.receipt_long, size: 16),
+                    label: Text('Z-отчет'),
                   ),
                 if (_report.oooEnvelopePhotoUrl != null)
                   TextButton.icon(
@@ -468,15 +469,15 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                       _report.oooEnvelopePhotoUrl,
                       'Конверт ООО',
                     ),
-                    icon: const Icon(Icons.mail, size: 16),
-                    label: const Text('Конверт'),
+                    icon: Icon(Icons.mail, size: 16),
+                    label: Text('Конверт'),
                   ),
               ],
             ),
-            const Divider(),
+            Divider(),
             _buildInfoRow('Выручка:', '${_report.oooRevenue.toStringAsFixed(0)} руб'),
             _buildInfoRow('Наличные:', '${_report.oooCash.toStringAsFixed(0)} руб'),
-            const Divider(),
+            Divider(),
             _buildInfoRow(
               'В конверте:',
               '${_report.oooEnvelopeAmount.toStringAsFixed(0)} руб',
@@ -493,25 +494,25 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     return Card(
       color: Colors.orange[50],
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'ИП',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                 ),
-                const Spacer(),
+                Spacer(),
                 if (_report.ipZReportPhotoUrl != null)
                   TextButton.icon(
                     onPressed: () => _showPhoto(
                       _report.ipZReportPhotoUrl,
                       'Z-отчет ИП',
                     ),
-                    icon: const Icon(Icons.receipt_long, size: 16),
-                    label: const Text('Z-отчет'),
+                    icon: Icon(Icons.receipt_long, size: 16),
+                    label: Text('Z-отчет'),
                   ),
                 if (_report.ipEnvelopePhotoUrl != null)
                   TextButton.icon(
@@ -519,22 +520,22 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                       _report.ipEnvelopePhotoUrl,
                       'Конверт ИП',
                     ),
-                    icon: const Icon(Icons.mail, size: 16),
-                    label: const Text('Конверт'),
+                    icon: Icon(Icons.mail, size: 16),
+                    label: Text('Конверт'),
                   ),
               ],
             ),
-            const Divider(),
+            Divider(),
             _buildInfoRow('Выручка:', '${_report.ipRevenue.toStringAsFixed(0)} руб'),
             _buildInfoRow('Наличные:', '${_report.ipCash.toStringAsFixed(0)} руб'),
             if (_report.expenses.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 'Расходы:',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               ...(_report.expenses.map((e) => Padding(
-                padding: const EdgeInsets.only(left: 16, top: 4),
+                padding: EdgeInsets.only(left: 16.w, top: 4.h),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -547,7 +548,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                             Text(
                               e.comment!,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -556,19 +557,19 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                     ),
                     Text(
                       '-${e.amount.toStringAsFixed(0)} руб',
-                      style: const TextStyle(color: Colors.red),
+                      style: TextStyle(color: Colors.red),
                     ),
                   ],
                 ),
               ))),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               _buildInfoRow(
                 'Итого расходов:',
                 '-${_report.totalExpenses.toStringAsFixed(0)} руб',
                 color: Colors.red,
               ),
             ],
-            const Divider(),
+            Divider(),
             _buildInfoRow(
               'В конверте:',
               '${_report.ipEnvelopeAmount.toStringAsFixed(0)} руб',
@@ -585,18 +586,18 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     return Card(
       color: _primaryColor.withOpacity(0.1),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'ИТОГО В КОНВЕРТАХ:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
             ),
             Text(
               '${_report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
-              style: const TextStyle(
-                fontSize: 24,
+              style: TextStyle(
+                fontSize: 24.sp,
                 fontWeight: FontWeight.bold,
                 color: _primaryColor,
               ),
@@ -614,7 +615,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     Color? color,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

@@ -3,6 +3,7 @@ import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ScheduleBulkOperationsDialog extends StatefulWidget {
   final WorkSchedule schedule;
@@ -52,17 +53,17 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Массовые операции',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TabBar(
               controller: _tabController,
-              tabs: const [
+              tabs: [
                 Tab(text: 'Копировать неделю'),
                 Tab(text: 'Шаблоны'),
                 Tab(text: 'Автозаполнение'),
@@ -78,13 +79,13 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Закрыть'),
+                  child: Text('Закрыть'),
                 ),
               ],
             ),
@@ -104,14 +105,14 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Копировать график недели', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            Text('Копировать график недели', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+            SizedBox(height: 16),
             ListTile(
-              title: const Text('Неделя источник:'),
+              title: Text('Неделя источник:'),
               subtitle: Text(sourceWeekStart != null
                   ? '${sourceWeekStart!.day}.${sourceWeekStart!.month}.${sourceWeekStart!.year}'
                   : 'Не выбрана'),
-              trailing: const Icon(Icons.calendar_today),
+              trailing: Icon(Icons.calendar_today),
               onTap: () async {
                 final date = await showDatePicker(
                   context: context,
@@ -127,11 +128,11 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
               },
             ),
             ListTile(
-              title: const Text('Неделя назначения:'),
+              title: Text('Неделя назначения:'),
               subtitle: Text(targetWeekStart != null
                   ? '${targetWeekStart!.day}.${targetWeekStart!.month}.${targetWeekStart!.year}'
                   : 'Не выбрана'),
-              trailing: const Icon(Icons.calendar_today),
+              trailing: Icon(Icons.calendar_today),
               onTap: () async {
                 final date = await showDatePicker(
                   context: context,
@@ -146,9 +147,9 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
                 }
               },
             ),
-            const SizedBox(height: 16),
-            const Text('Выберите сотрудников:', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            SizedBox(height: 16),
+            Text('Выберите сотрудников:', style: TextStyle(fontWeight: FontWeight.w600)),
+            SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 itemCount: widget.employees.length,
@@ -181,14 +182,14 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
                       );
                       if (success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Неделя скопирована')),
+                          SnackBar(content: Text('Неделя скопирована')),
                         );
                         widget.onOperationComplete();
                         Navigator.of(context).pop();
                       }
                     }
                   : null,
-              child: const Text('Копировать'),
+              child: Text('Копировать'),
             ),
           ],
         );
@@ -201,7 +202,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
       future: WorkScheduleService.getTemplates(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
@@ -216,18 +217,18 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Шаблоны', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Шаблоны', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
                 ElevatedButton.icon(
                   onPressed: () => _createTemplate(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Создать'),
+                  icon: Icon(Icons.add),
+                  label: Text('Создать'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Expanded(
               child: templates.isEmpty
-                  ? const Center(child: Text('Нет сохраненных шаблонов'))
+                  ? Center(child: Text('Нет сохраненных шаблонов'))
                   : ListView.builder(
                       itemCount: templates.length,
                       itemBuilder: (context, index) {
@@ -239,11 +240,11 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.play_arrow),
+                                icon: Icon(Icons.play_arrow),
                                 onPressed: () => _applyTemplate(template),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete),
+                                icon: Icon(Icons.delete),
                                 onPressed: () => _deleteTemplate(template),
                               ),
                             ],
@@ -262,18 +263,18 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Автозаполнение выходных', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        const Text('Эта функция автоматически отметит выходные для сотрудников, у которых нет смен в определенные дни.'),
-        const SizedBox(height: 24),
+        Text('Автозаполнение выходных', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+        SizedBox(height: 16),
+        Text('Эта функция автоматически отметит выходные для сотрудников, у которых нет смен в определенные дни.'),
+        SizedBox(height: 24),
         ElevatedButton(
           onPressed: () async {
             // Реализация автозаполнения выходных
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Функция в разработке')),
+              SnackBar(content: Text('Функция в разработке')),
             );
           },
-          child: const Text('Автозаполнить выходные'),
+          child: Text('Автозаполнить выходные'),
         ),
       ],
     );
@@ -289,19 +290,19 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Создать шаблон'),
+        title: Text('Создать шаблон'),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(labelText: 'Название шаблона'),
+          decoration: InputDecoration(labelText: 'Название шаблона'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(nameController.text),
-            child: const Text('Создать'),
+            child: Text('Создать'),
           ),
         ],
       ),
@@ -312,9 +313,9 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
       final weekStart = _getWeekStart(widget.selectedMonth);
       final weekEntries = widget.schedule.entries.where((entry) {
         final entryDate = DateTime(entry.date.year, entry.date.month, entry.date.day);
-        final weekEnd = weekStart.add(const Duration(days: 6));
-        return entryDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-               entryDate.isBefore(weekEnd.add(const Duration(days: 1)));
+        final weekEnd = weekStart.add(Duration(days: 6));
+        return entryDate.isAfter(weekStart.subtract(Duration(days: 1))) &&
+               entryDate.isBefore(weekEnd.add(Duration(days: 1)));
       }).toList();
 
       final template = ScheduleTemplate(
@@ -326,7 +327,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
       final success = await WorkScheduleService.saveTemplate(template);
       if (success && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Шаблон сохранен')),
+          SnackBar(content: Text('Шаблон сохранен')),
         );
         setState(() {});
       }
@@ -347,7 +348,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
       if (!mounted) return;
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Шаблон применен')),
+          SnackBar(content: Text('Шаблон применен')),
         );
         widget.onOperationComplete();
         Navigator.of(context).pop();
@@ -359,17 +360,17 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Удалить шаблон?'),
+        title: Text('Удалить шаблон?'),
         content: Text('Шаблон "${template.name}" будет удалён.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),

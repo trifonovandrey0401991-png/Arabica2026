@@ -6,6 +6,7 @@ import '../../../core/utils/logger.dart';
 import '../models/z_report_template_model.dart';
 import '../widgets/region_selector_widget.dart';
 import '../services/z_report_template_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница создания/редактирования шаблона распознавания
 class TemplateEditorPage extends StatefulWidget {
@@ -28,7 +29,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _imagePicker = ImagePicker();
-  final _uuid = const Uuid();
+  final _uuid = Uuid();
 
   // Список наборов областей (форматов)
   List<RegionSet> _regionSets = [];
@@ -134,7 +135,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
   void _deleteCurrentFormat() {
     if (_regionSets.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Нельзя удалить единственный формат'),
           backgroundColor: Colors.orange,
         ),
@@ -145,12 +146,12 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Удалить формат?'),
+        title: Text('Удалить формат?'),
         content: Text('Формат "${_currentSet.name}" будет удалён.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () {
@@ -163,7 +164,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
                 }
               });
             },
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+            child: Text('Удалить', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -175,10 +176,10 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Переименовать формат'),
+        title: Text('Переименовать формат'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Название формата',
             border: OutlineInputBorder(),
           ),
@@ -187,7 +188,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () {
@@ -199,7 +200,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
               }
               Navigator.pop(ctx);
             },
-            child: const Text('Сохранить'),
+            child: Text('Сохранить'),
           ),
         ],
       ),
@@ -306,7 +307,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Шаблон сохранён'),
             backgroundColor: Colors.green,
           ),
@@ -340,9 +341,9 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
             : 'Новый шаблон'),
         actions: [
           if (_isSaving)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: SizedBox(
                   width: 20,
                   height: 20,
@@ -352,7 +353,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
             )
           else
             IconButton(
-              icon: const Icon(Icons.save),
+              icon: Icon(Icons.save),
               onPressed: _saveTemplate,
             ),
         ],
@@ -363,13 +364,13 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
           children: [
             // Форма настроек
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 children: [
                   // Название шаблона
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Название шаблона',
                       hintText: 'Например: АТОЛ Белопольского 2',
                       border: OutlineInputBorder(),
@@ -377,11 +378,11 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
                     validator: (v) =>
                         v == null || v.trim().isEmpty ? 'Введите название' : null,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   // Тип кассы
                   DropdownButtonFormField<String>(
                     value: _cashRegisterType,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Тип кассы',
                       border: OutlineInputBorder(),
                     ),
@@ -401,12 +402,12 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
 
             // Кнопки выбора поля для выделения
             _buildFieldSelector(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Область изображения
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? Center(child: CircularProgressIndicator())
                   : _currentImage == null
                       ? _buildImagePlaceholder()
                       : RegionSelectorWidget(
@@ -420,16 +421,16 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
             // Инструкция
             if (_currentImage != null && _selectedField != null)
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 color: Colors.blue.shade50,
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, size: 16),
-                    const SizedBox(width: 8),
+                    Icon(Icons.info_outline, size: 16),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Выделите область для "${FieldNames.getDisplayName(_selectedField!)}" на фото',
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 12.sp),
                       ),
                     ),
                   ],
@@ -443,7 +444,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
 
   Widget _buildFormatSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         border: Border(
@@ -459,10 +460,10 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
               decoration: InputDecoration(
                 labelText: 'Формат чека',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 filled: true,
                 fillColor: Colors.white,
               ),
@@ -475,14 +476,14 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
                   child: Row(
                     children: [
                       Text(set.name),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       if (hasImage && hasRegions)
-                        const Icon(Icons.check_circle,
+                        Icon(Icons.check_circle,
                             size: 16, color: Colors.green)
                       else if (hasImage)
-                        const Icon(Icons.image, size: 16, color: Colors.blue)
+                        Icon(Icons.image, size: 16, color: Colors.blue)
                       else
-                        const Icon(Icons.add_photo_alternate,
+                        Icon(Icons.add_photo_alternate,
                             size: 16, color: Colors.grey),
                     ],
                   ),
@@ -498,18 +499,18 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
               },
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
 
           // Кнопка добавить формат
           IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.green),
+            icon: Icon(Icons.add_circle, color: Colors.green),
             tooltip: 'Добавить формат',
             onPressed: _addNewFormat,
           ),
 
           // Меню для текущего формата
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: Icon(Icons.more_vert),
             onSelected: (value) {
               if (value == 'rename') {
                 _renameCurrentFormat();
@@ -518,7 +519,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
               }
             },
             itemBuilder: (ctx) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'rename',
                 child: Row(
                   children: [
@@ -528,7 +529,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'delete',
                 child: Row(
                   children: [
@@ -547,11 +548,11 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
 
   Widget _buildFieldSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
         children: [
-          const Text('Выделить: ', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
+          Text('Выделить: ', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(width: 8),
           Expanded(
             child: Wrap(
               spacing: 8,
@@ -566,8 +567,8 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
                     children: [
                       Text(FieldNames.getDisplayName(fieldName)),
                       if (hasRegion) ...[
-                        const SizedBox(width: 4),
-                        const Icon(Icons.check, size: 14),
+                        SizedBox(width: 4),
+                        Icon(Icons.check, size: 14),
                       ],
                     ],
                   ),
@@ -589,26 +590,26 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.image_outlined, size: 80, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Загрузите фото Z-отчёта\nдля формата "${_currentSet.name}"',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: Colors.grey),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ElevatedButton.icon(
                 onPressed: _pickImage,
-                icon: const Icon(Icons.photo_library),
-                label: const Text('Галерея'),
+                icon: Icon(Icons.photo_library),
+                label: Text('Галерея'),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               ElevatedButton.icon(
                 onPressed: _takePhoto,
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Камера'),
+                icon: Icon(Icons.camera_alt),
+                label: Text('Камера'),
               ),
             ],
           ),

@@ -6,6 +6,7 @@ import '../services/product_question_service.dart';
 import 'product_question_dialog_page.dart';
 import 'product_question_client_dialog_page.dart';
 import 'product_question_personal_dialog_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка магазинов для поиска товара
 class ProductQuestionShopsListPage extends StatefulWidget {
@@ -16,6 +17,12 @@ class ProductQuestionShopsListPage extends StatefulWidget {
 }
 
 class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListPage> {
+  // Dark emerald + gold palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   ProductQuestionGroupedData? _groupedData;
   bool _isLoading = true;
   Timer? _refreshTimer;
@@ -24,8 +31,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
   void initState() {
     super.initState();
     _loadData();
-    // Автообновление каждые 5 секунд
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadData());
+    _refreshTimer = Timer.periodic(Duration(seconds: 5), (_) => _loadData());
   }
 
   @override
@@ -65,61 +71,155 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Поиск товара'),
-        backgroundColor: Colors.purple,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _groupedData == null || (_groupedData!.byShop.isEmpty && _groupedData!.networkWideQuestions.isEmpty)
-              ? const Center(
-                  child: Text(
-                    'Нет диалогов',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      // Вся сеть (если есть)
-                      if (_groupedData!.networkWideQuestions.isNotEmpty)
-                        _buildNetworkWideCard(),
-
-                      // Магазины
-                      ..._buildShopCards(),
-                    ],
-                  ),
+      backgroundColor: _night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.15, 0.4],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: EdgeInsets.fromLTRB(4.w, 8.h, 4.w, 8.h),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 22,
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Поиск товара',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            'Мои диалоги',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: _gold.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              // Content
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    : _groupedData == null || (_groupedData!.byShop.isEmpty && _groupedData!.networkWideQuestions.isEmpty)
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    borderRadius: BorderRadius.circular(18.r),
+                                    border: Border.all(color: _gold.withOpacity(0.3)),
+                                  ),
+                                  child: Icon(
+                                    Icons.forum_outlined,
+                                    size: 32,
+                                    color: _gold.withOpacity(0.5),
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+                                Text(
+                                  'Нет диалогов',
+                                  style: TextStyle(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadData,
+                            color: _gold,
+                            backgroundColor: _emeraldDark,
+                            child: ListView(
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                              children: [
+                                if (_groupedData!.networkWideQuestions.isNotEmpty)
+                                  _buildNetworkWideCard(),
+                                ..._buildShopCards(),
+                              ],
+                            ),
+                          ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildNetworkWideCard() {
     final unread = _groupedData!.networkWideUnreadCount;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: unread > 0 ? Colors.purple[50] : null,
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      decoration: BoxDecoration(
+        color: unread > 0 ? _emerald.withOpacity(0.4) : Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: unread > 0 ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+        ),
+      ),
       child: ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         leading: Stack(
           children: [
-            const Icon(Icons.public, size: 40, color: Colors.purple),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _emerald.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: _gold.withOpacity(0.3)),
+              ),
+              child: Icon(Icons.public_rounded, size: 28, color: _gold),
+            ),
             if (unread > 0)
               Positioned(
                 right: 0,
                 top: 0,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
+                  padding: EdgeInsets.all(4.w),
+                  decoration: BoxDecoration(
                     color: Colors.red,
                     shape: BoxShape.circle,
+                    border: Border.all(color: _night, width: 2),
                   ),
                   child: Text(
                     unread > 99 ? '99+' : unread.toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -127,21 +227,23 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
               ),
           ],
         ),
-        title: const Text(
+        title: Text(
           'Вся сеть',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.9),
+          ),
         ),
         subtitle: Text(
           '${_groupedData!.networkWideQuestions.length} вопрос(ов)',
-          style: const TextStyle(fontSize: 14),
+          style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: _gold.withOpacity(0.5)),
         onTap: () async {
-          // Открываем общий диалог (все вопросы без привязки к магазину)
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const ProductQuestionClientDialogPage(),
+              builder: (context) => ProductQuestionClientDialogPage(),
             ),
           );
           _loadData();
@@ -158,28 +260,45 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
       final unread = group.unreadCount;
       final lastMessage = group.getLastMessage();
 
-      return Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        color: unread > 0 ? Colors.purple[50] : null,
+      return Container(
+        margin: EdgeInsets.only(bottom: 8.h),
+        decoration: BoxDecoration(
+          color: unread > 0 ? _emerald.withOpacity(0.4) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(
+            color: unread > 0 ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+          ),
+        ),
         child: ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           leading: Stack(
             children: [
-              const Icon(Icons.store, size: 40, color: Colors.purple),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _emerald.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: _gold.withOpacity(0.3)),
+                ),
+                child: Icon(Icons.store_rounded, size: 28, color: _gold),
+              ),
               if (unread > 0)
                 Positioned(
                   right: 0,
                   top: 0,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
+                    padding: EdgeInsets.all(4.w),
+                    decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
+                      border: Border.all(color: _night, width: 2),
                     ),
                     child: Text(
                       unread > 99 ? '99+' : unread.toString(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -189,51 +308,50 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
           ),
           title: Text(
             shopAddress,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.9),
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: lastMessage != null
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          lastMessage.senderType == 'client'
-                              ? Icons.arrow_upward
-                              : Icons.arrow_downward,
-                          size: 14,
-                          color: lastMessage.senderType == 'client'
-                              ? Colors.blue
-                              : Colors.green,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            lastMessage.text,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: unread > 0 ? FontWeight.bold : FontWeight.normal,
-                            ),
+              ? Padding(
+                  padding: EdgeInsets.only(top: 4.h),
+                  child: Row(
+                    children: [
+                      Icon(
+                        lastMessage.senderType == 'client'
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_downward_rounded,
+                        size: 14,
+                        color: lastMessage.senderType == 'client'
+                            ? _gold.withOpacity(0.7)
+                            : Colors.tealAccent.withOpacity(0.7),
+                      ),
+                      SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          lastMessage.text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            color: Colors.white.withOpacity(unread > 0 ? 0.8 : 0.5),
+                            fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 )
               : Text(
                   '${group.questions.length + group.dialogs.length} сообщени(й/я)',
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
                 ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: _gold.withOpacity(0.5)),
           onTap: () async {
-            // ПРИОРИТЕТ: сначала проверяем персональный диалог
             if (group.dialogs.isNotEmpty) {
-              // Есть персональный диалог - открываем его
               final personalDialog = group.dialogs.last;
               await Navigator.push(
                 context,
@@ -246,7 +364,6 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
               );
               _loadData();
             } else if (group.questions.isNotEmpty) {
-              // Нет персонального диалога, но есть вопросы - открываем обычный диалог
               final questionId = group.questions.last.id;
               await Navigator.push(
                 context,

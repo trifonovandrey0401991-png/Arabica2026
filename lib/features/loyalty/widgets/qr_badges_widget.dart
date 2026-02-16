@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет отображения значков (ачивок) вокруг QR-кода
 class QrBadgesWidget extends StatefulWidget {
@@ -27,15 +28,15 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
   bool _animationStarted = false;
 
   // Размеры
-  static const double _badgeSize = 80.0;
+  static double _badgeSize = 80.0;
   // Смещение = badgeSize - 12 (белая рамка QR = 12px), бейджи не заходят на данные QR
-  static const double _edgeOffset = _badgeSize - 12;
+  static double _edgeOffset = _badgeSize - 12;
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 600),
       vsync: this,
     );
     _scaleAnimation = CurvedAnimation(
@@ -86,28 +87,28 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
         if (top.isNotEmpty)
           Positioned(
             top: -_edgeOffset,
-            left: 0, right: 0,
+            left: 0.w, right: 0.w,
             child: _buildBadgeRow(top),
           ),
         // Значки справа
         if (right.isNotEmpty)
           Positioned(
             right: -_edgeOffset,
-            top: 0, bottom: 0,
+            top: 0.h, bottom: 0.h,
             child: _buildBadgeColumn(right),
           ),
         // Значки снизу
         if (bottom.isNotEmpty)
           Positioned(
             bottom: -_edgeOffset,
-            left: 0, right: 0,
+            left: 0.w, right: 0.w,
             child: _buildBadgeRow(bottom),
           ),
         // Значки слева
         if (left.isNotEmpty)
           Positioned(
             left: -_edgeOffset,
-            top: 0, bottom: 0,
+            top: 0.h, bottom: 0.h,
             child: _buildBadgeColumn(left),
           ),
       ],
@@ -146,7 +147,7 @@ class _StickerBadge extends StatelessWidget {
   final LoyaltyLevel level;
   final double size;
 
-  const _StickerBadge({
+  _StickerBadge({
     required this.level,
     required this.size,
   });
@@ -281,10 +282,10 @@ class _StickerPainter extends CustomPainter {
     // Тень
     final shadowPaint = Paint()
       ..color = color.withOpacity(0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
 
     final shadowPath = _createStickerPath(
-      center + const Offset(0, 2),
+      center + Offset(0, 2),
       outerRadius,
       innerRadius,
       teethAngle,
@@ -298,7 +299,7 @@ class _StickerPainter extends CustomPainter {
         color,
         Color.lerp(color, Colors.black, 0.1)!,
       ],
-      stops: const [0.0, 0.5, 1.0],
+      stops: [0.0, 0.5, 1.0],
     );
 
     final mainPaint = Paint()

@@ -3,7 +3,9 @@ import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../../efficiency/services/points_settings_service.dart';
+import '../services/shift_report_service.dart';
 import 'shift_questions_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора магазина для пересменки
 class ShiftShopSelectionPage extends StatefulWidget {
@@ -19,13 +21,14 @@ class ShiftShopSelectionPage extends StatefulWidget {
 }
 
 class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   String? _currentShiftType;
   bool _isLoadingSettings = true;
+  Set<String> _submittedShops = {};
 
   @override
   void initState() {
@@ -68,6 +71,11 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
         shiftType = 'evening';
       }
 
+      // Загружаем магазины, где уже пройдена пересменка
+      if (shiftType != null) {
+        await _loadSubmittedShops(shiftType);
+      }
+
       if (mounted) {
         setState(() {
           _currentShiftType = shiftType;
@@ -83,15 +91,29 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
     }
   }
 
+  /// Загрузить магазины, где уже есть отчёт за сегодня (статус != pending)
+  Future<void> _loadSubmittedShops(String shiftType) async {
+    try {
+      final reports = await ShiftReportService.getReports(date: DateTime.now());
+      _submittedShops = reports
+          .where((r) => r.shiftType == shiftType && r.status != 'pending')
+          .map((r) => r.shopAddress)
+          .toSet();
+    } catch (e) {
+      // Ошибка загрузки — показываем все магазины
+      _submittedShops = {};
+    }
+  }
+
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -99,11 +121,11 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               'Выберите магазин',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -116,7 +138,7 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -144,35 +166,82 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.error_outline, size: 64, color: Colors.red.withOpacity(0.8)),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   Text(
                                     'Что-то пошло не так, попробуйте позже',
-                                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18),
+                                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18.sp),
                                     textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   ElevatedButton(
                                     onPressed: () => Navigator.pop(context),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: _gold,
                                       foregroundColor: _night,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12.r),
                                       ),
                                     ),
-                                    child: const Text('Назад'),
+                                    child: Text('Назад'),
                                   ),
                                 ],
                               ),
                             );
                           }
 
-                          final shops = snapshot.data ?? [];
-                          if (shops.isEmpty) {
+                          final allShops = snapshot.data ?? [];
+                          // Фильтруем магазины, где уже пройдена пересменка
+                          final shops = allShops
+                              .where((s) => !_submittedShops.contains(s.address))
+                              .toList();
+
+                          if (allShops.isEmpty) {
                             return Center(
                               child: Text(
                                 'Магазины не найдены',
-                                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18),
+                                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18.sp),
+                              ),
+                            );
+                          }
+
+                          if (shops.isEmpty) {
+                            return Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24.w),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.check_circle_outline, size: 64, color: Colors.green.withOpacity(0.8)),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'Все пересменки пройдены',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 20.sp,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Все магазины уже прошли пересменку для текущей смены',
+                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 24),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _gold,
+                                        foregroundColor: _night,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                        ),
+                                      ),
+                                      child: Text('Назад'),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           }
@@ -181,38 +250,38 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                           if (_currentShiftType == null) {
                             return Center(
                               child: Padding(
-                                padding: const EdgeInsets.all(24),
+                                padding: EdgeInsets.all(24.w),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.timer_off, size: 64, color: _gold.withOpacity(0.8)),
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: 16),
                                     Text(
                                       'Сейчас не время для пересменки',
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.9),
-                                        fontSize: 20,
+                                        fontSize: 20.sp,
                                         fontWeight: FontWeight.bold,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: 8),
                                     Text(
                                       'Пересменку можно пройти только в установленные временные интервалы',
-                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp),
                                       textAlign: TextAlign.center,
                                     ),
-                                    const SizedBox(height: 24),
+                                    SizedBox(height: 24),
                                     ElevatedButton(
                                       onPressed: () => Navigator.pop(context),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: _gold,
                                         foregroundColor: _night,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(12.r),
                                         ),
                                       ),
-                                      child: const Text('Назад'),
+                                      child: Text('Назад'),
                                     ),
                                   ],
                                 ),
@@ -221,17 +290,17 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                           }
 
                           return ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             itemCount: shops.length,
                             itemBuilder: (context, index) {
                               final shop = shops[index];
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
+                                padding: EdgeInsets.only(bottom: 12.h),
                                 child: Material(
                                   color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14.r),
                                   child: InkWell(
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                     onTap: () {
                                       Navigator.push(
                                         context,
@@ -245,23 +314,23 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                       );
                                     },
                                     child: Container(
-                                      padding: const EdgeInsets.all(12),
+                                      padding: EdgeInsets.all(12.w),
                                       decoration: BoxDecoration(
                                         color: Colors.white.withOpacity(0.06),
-                                        borderRadius: BorderRadius.circular(14),
+                                        borderRadius: BorderRadius.circular(14.r),
                                         border: Border.all(
                                           color: Colors.white.withOpacity(0.1),
                                         ),
                                       ),
                                       child: Row(
                                         children: [
-                                          const ShopIcon(size: 56),
-                                          const SizedBox(width: 16),
+                                          ShopIcon(size: 56),
+                                          SizedBox(width: 16),
                                           Expanded(
                                             child: Text(
                                               shop.address,
                                               style: TextStyle(
-                                                fontSize: 16,
+                                                fontSize: 16.sp,
                                                 fontWeight: FontWeight.w600,
                                                 color: Colors.white.withOpacity(0.9),
                                               ),

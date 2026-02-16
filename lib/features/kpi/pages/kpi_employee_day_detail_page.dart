@@ -10,6 +10,7 @@ import '../../shifts/models/shift_report_model.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Детальная страница одного дня работы сотрудника в магазине
 class KPIEmployeeDayDetailPage extends StatefulWidget {
@@ -88,7 +89,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
 
     try {
       Logger.debug('📄 Попытка загрузки РКО: ${widget.shopDayData.rkoFileName}');
-      const serverUrl = 'https://arabica26.ru';
+      final serverUrl = 'https://arabica26.ru';
       // Используем query параметр вместо path параметра для правильной обработки кириллицы
       final uri = Uri.parse('$serverUrl/api/rko/download').replace(
         queryParameters: {'fileName': widget.shopDayData.rkoFileName!},
@@ -100,7 +101,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Не удалось открыть файл РКО')),
+            SnackBar(content: Text('Не удалось открыть файл РКО')),
           );
         }
       }
@@ -108,7 +109,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
       Logger.error('Ошибка открытия РКО', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка при открытии файла РКО')),
+          SnackBar(content: Text('Ошибка при открытии файла РКО')),
         );
       }
     }
@@ -119,60 +120,60 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.shopDayData.displayTitle),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: _isLoadingDetails
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.0.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Статусы выполнения
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(16.0.w),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Статусы выполнения',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           _buildStatusRow(
                             'Приход на работу',
                             widget.shopDayData.attendanceTime != null,
                             widget.shopDayData.formattedAttendanceTime ?? 'не отмечен',
                           ),
-                          const Divider(),
+                          Divider(),
                           _buildStatusRow(
                             'Пересменка',
                             widget.shopDayData.hasShift,
                             widget.shopDayData.hasShift ? 'выполнена' : 'не выполнена',
                           ),
-                          const Divider(),
+                          Divider(),
                           _buildStatusRow(
                             'Пересчет товара',
                             widget.shopDayData.hasRecount,
                             widget.shopDayData.hasRecount ? 'выполнен' : 'не выполнен',
                           ),
-                          const Divider(),
+                          Divider(),
                           _buildStatusRow(
                             'РКО',
                             widget.shopDayData.hasRKO,
                             widget.shopDayData.hasRKO ? 'сдано' : 'не сдано',
                           ),
-                          const Divider(),
+                          Divider(),
                           _buildStatusRow(
                             'Конверт',
                             widget.shopDayData.hasEnvelope,
                             widget.shopDayData.hasEnvelope ? 'сформирован' : 'не сформирован',
                           ),
-                          const Divider(),
+                          Divider(),
                           _buildStatusRow(
                             'Сдача смены',
                             widget.shopDayData.hasShiftHandover,
@@ -182,18 +183,18 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   
                   // Время прихода
                   if (widget.shopDayData.attendanceTime != null)
                     Card(
                       child: ListTile(
-                        leading: const Icon(Icons.access_time, color: Color(0xFF004D40)),
-                        title: const Text('Время прихода'),
+                        leading: Icon(Icons.access_time, color: Color(0xFF004D40)),
+                        title: Text('Время прихода'),
                         subtitle: Text(
                           widget.shopDayData.formattedAttendanceTime ?? '',
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -209,13 +210,13 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                             ? Colors.green
                             : Colors.grey,
                       ),
-                      title: const Text('РКО'),
+                      title: Text('РКО'),
                       subtitle: widget.shopDayData.hasRKO
                           ? Text(widget.shopDayData.rkoFileName ?? 'Файл не найден')
-                          : const Text('РКО не сдано'),
+                          : Text('РКО не сдано'),
                       trailing: widget.shopDayData.hasRKO && widget.shopDayData.rkoFileName != null
                           ? IconButton(
-                              icon: const Icon(Icons.download),
+                              icon: Icon(Icons.download),
                               onPressed: _downloadRKO,
                             )
                           : null,
@@ -231,17 +232,17 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                             ? Colors.green
                             : Colors.grey,
                       ),
-                      title: const Text('Отчет пересчета'),
+                      title: Text('Отчет пересчета'),
                       subtitle: widget.shopDayData.hasRecount
-                          ? const Text('Нажмите для просмотра')
-                          : const Text('Пересчет не выполнен'),
+                          ? Text('Нажмите для просмотра')
+                          : Text('Пересчет не выполнен'),
                       initiallyExpanded: widget.shopDayData.hasRecount && _recountReport != null,
                       children: [
                         if (widget.shopDayData.hasRecount)
                           _buildRecountReport(_recountReport)
                         else
-                          const Padding(
-                            padding: EdgeInsets.all(16.0),
+                          Padding(
+                            padding: EdgeInsets.all(16.0.w),
                             child: Text(
                               'Отчет пересчета отсутствует',
                               style: TextStyle(color: Colors.grey),
@@ -260,17 +261,17 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                             ? Colors.green
                             : Colors.grey,
                       ),
-                      title: const Text('Отчет пересменки'),
+                      title: Text('Отчет пересменки'),
                       subtitle: widget.shopDayData.hasShift
-                          ? const Text('Нажмите для просмотра')
-                          : const Text('Пересменка не выполнена'),
+                          ? Text('Нажмите для просмотра')
+                          : Text('Пересменка не выполнена'),
                       initiallyExpanded: widget.shopDayData.hasShift && _shiftReport != null,
                       children: [
                         if (widget.shopDayData.hasShift)
                           _buildShiftReport(_shiftReport)
                         else
-                          const Padding(
-                            padding: EdgeInsets.all(16.0),
+                          Padding(
+                            padding: EdgeInsets.all(16.0.w),
                             child: Text(
                               'Отчет пересменки отсутствует',
                               style: TextStyle(color: Colors.grey),
@@ -292,22 +293,22 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
           isCompleted ? Icons.check_circle : Icons.cancel,
           color: isCompleted ? Colors.green : Colors.red,
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               Text(
                 status,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: Colors.grey[600],
                 ),
               ),
@@ -320,8 +321,8 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
 
   Widget _buildRecountReport(RecountReport? report) {
     if (report == null) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
+      return Padding(
+        padding: EdgeInsets.all(16.0.w),
         child: Text(
           'Отчет пересчета не найден',
           style: TextStyle(color: Colors.grey),
@@ -330,55 +331,55 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.all(16.0.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'ID отчета: ${report.id}',
-            style: const TextStyle(
-              fontSize: 12,
+            style: TextStyle(
+              fontSize: 12.sp,
               color: Colors.grey,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           if (report.answers.isEmpty)
-            const Text(
+            Text(
               'Нет ответов в отчете',
               style: TextStyle(color: Colors.grey),
             )
           else
             ...report.answers.map((answer) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
+                  padding: EdgeInsets.only(bottom: 12.0.h),
                   child: Card(
                     color: Colors.grey[100],
                     child: Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: EdgeInsets.all(12.0.w),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Вопрос: ${answer.question}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text('Ответ: ${answer.answer}'),
                           if (answer.quantity != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text('Количество: ${answer.quantity}'),
                           ],
                           if (answer.actualBalance != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text('Фактический остаток: ${answer.actualBalance}'),
                           ],
                           if (answer.programBalance != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text('Остаток в программе: ${answer.programBalance}'),
                           ],
                           if (answer.difference != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               'Разница: ${answer.difference}',
                               style: TextStyle(
@@ -390,11 +391,11 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                             ),
                           ],
                           if (answer.photoUrl != null) ...[
-                            const SizedBox(height: 8),
-                            const Text(
+                            SizedBox(height: 8),
+                            Text(
                               'Фото прикреплено',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: Colors.blue,
                               ),
                             ),
@@ -411,8 +412,8 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
 
   Widget _buildShiftReport(ShiftReport? report) {
     if (report == null) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
+      return Padding(
+        padding: EdgeInsets.all(16.0.w),
         child: Text(
           'Отчет пересменки не найден',
           style: TextStyle(color: Colors.grey),
@@ -421,49 +422,49 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.all(16.0.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'ID отчета: ${report.id}',
-            style: const TextStyle(
-              fontSize: 12,
+            style: TextStyle(
+              fontSize: 12.sp,
               color: Colors.grey,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           if (report.answers.isEmpty)
-            const Text(
+            Text(
               'Нет ответов в отчете',
               style: TextStyle(color: Colors.grey),
             )
           else
             ...report.answers.map((answer) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
+                  padding: EdgeInsets.only(bottom: 12.0.h),
                   child: Card(
                     color: Colors.grey[100],
                     child: Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: EdgeInsets.all(12.0.w),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Вопрос: ${answer.question}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           if (answer.textAnswer != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text('Ответ: ${answer.textAnswer}'),
                           ],
                           if (answer.numberAnswer != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text('Ответ (число): ${answer.numberAnswer}'),
                           ],
                           if (answer.photoPath != null || answer.photoDriveId != null) ...[
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             // Если есть эталонное фото, показываем две фото рядом
                             Builder(
                               builder: (context) {
@@ -477,43 +478,43 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                   return Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text(
+                                      Text(
                                         'Фото:',
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 12.sp,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.grey,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      SizedBox(height: 4),
                                       Row(
                                         children: [
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                const Text(
+                                                Text(
                                                   'Эталон',
                                                   style: TextStyle(
-                                                    fontSize: 10,
+                                                    fontSize: 10.sp,
                                                     color: Colors.grey,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 4),
+                                                SizedBox(height: 4),
                                                 Container(
                                                   height: 100,
                                                   decoration: BoxDecoration(
-                                                    borderRadius: BorderRadius.circular(8),
+                                                    borderRadius: BorderRadius.circular(8.r),
                                                     border: Border.all(color: Colors.grey),
                                                   ),
                                                   child: ClipRRect(
-                                                    borderRadius: BorderRadius.circular(8),
+                                                    borderRadius: BorderRadius.circular(8.r),
                                                     child: AppCachedImage(
                                                       imageUrl: answer.referencePhotoUrl!,
                                                       fit: BoxFit.cover,
                                                       errorWidget: (context, error, stackTrace) {
                                                         Logger.error('Ошибка загрузки эталонного фото, URL: ${answer.referencePhotoUrl}', error);
-                                                        return const Center(
+                                                        return Center(
                                                           child: Icon(Icons.error, size: 24),
                                                         );
                                                       },
@@ -523,27 +524,27 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                               ],
                                             ),
                                           ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
+                                        Text(
                                           'Сделано',
                                           style: TextStyle(
-                                            fontSize: 10,
+                                            fontSize: 10.sp,
                                             color: Colors.grey,
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
+                                        SizedBox(height: 4),
                                         Container(
                                           height: 100,
                                           decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8.r),
                                             border: Border.all(color: Colors.grey),
                                           ),
                                           child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8.r),
                                             child: answer.photoPath != null
                                                 ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
                                                     ? AppCachedImage(
@@ -551,7 +552,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         fit: BoxFit.cover,
                                                         errorWidget: (context, error, stackTrace) {
                                                           Logger.error('Ошибка загрузки фото сотрудника', error);
-                                                          return const Center(
+                                                          return Center(
                                                             child: Icon(Icons.error, size: 24),
                                                           );
                                                         },
@@ -561,7 +562,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         fit: BoxFit.cover,
                                                         errorBuilder: (context, error, stackTrace) {
                                                           Logger.error('Ошибка загрузки локального фото', error);
-                                                          return const Center(
+                                                          return Center(
                                                             child: Icon(Icons.error, size: 24),
                                                           );
                                                         },
@@ -578,18 +579,18 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                               fit: BoxFit.cover,
                                                               errorWidget: (context, error, stackTrace) {
                                                                 Logger.error('Ошибка загрузки фото из Google Drive, URL: $photoUrl, photoDriveId: ${answer.photoDriveId}', error);
-                                                                return const Center(
+                                                                return Center(
                                                                   child: Icon(Icons.error, size: 24),
                                                                 );
                                                               },
                                                             );
                                                           }
-                                                          return const Center(
+                                                          return Center(
                                                             child: CircularProgressIndicator(),
                                                           );
                                                         },
                                                       )
-                                                    : const Center(
+                                                    : Center(
                                                         child: Icon(Icons.image, size: 24),
                                                       ),
                                           ),
@@ -603,7 +604,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                   );
                                 } else {
                                   Logger.debug('Нет эталонного фото в ответе');
-                                  return const SizedBox.shrink();
+                                  return SizedBox.shrink();
                                 }
                               },
                             ),
@@ -612,11 +613,11 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                               Container(
                                 height: 200,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(8.r),
                                   border: Border.all(color: Colors.grey),
                                 ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(8.r),
                                   child: answer.photoPath != null
                                       ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
                                           ? AppCachedImage(
@@ -624,7 +625,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                               fit: BoxFit.cover,
                                               errorWidget: (context, error, stackTrace) {
                                                 Logger.error('Ошибка загрузки фото сотрудника', error);
-                                                return const Center(
+                                                return Center(
                                                   child: Icon(Icons.error, size: 64),
                                                 );
                                               },
@@ -634,7 +635,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                               fit: BoxFit.cover,
                                               errorBuilder: (context, error, stackTrace) {
                                                 Logger.error('Ошибка загрузки локального фото', error);
-                                                return const Center(
+                                                return Center(
                                                   child: Icon(Icons.error, size: 64),
                                                 );
                                               },
@@ -649,18 +650,18 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                     fit: BoxFit.cover,
                                                     errorWidget: (context, error, stackTrace) {
                                                       Logger.error('Ошибка загрузки фото из Google Drive, URL: ${snapshot.data}', error);
-                                                      return const Center(
+                                                      return Center(
                                                         child: Icon(Icons.error, size: 64),
                                                       );
                                                     },
                                                   );
                                                 }
-                                                return const Center(
+                                                return Center(
                                                   child: CircularProgressIndicator(),
                                                 );
                                               },
                                             )
-                                          : const Center(
+                                          : Center(
                                               child: Icon(Icons.image, size: 64),
                                             ),
                                 ),

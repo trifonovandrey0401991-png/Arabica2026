@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/z_report_sample_model.dart';
 import '../services/z_report_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Результат диалога распознавания Z-отчёта
 class ZReportRecognitionResult {
@@ -157,11 +158,11 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
             hasData ? Icons.check_circle : Icons.warning_amber,
             color: hasData ? Colors.green : Colors.orange,
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               hasData ? 'Распознано с Z-отчёта' : 'Не удалось распознать',
-              style: const TextStyle(fontSize: 18),
+              style: TextStyle(fontSize: 18.sp),
             ),
           ),
         ],
@@ -172,11 +173,11 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!hasData) ...[
-              const Text(
+              Text(
                 'Введите данные вручную. Это поможет обучить ИИ.',
                 style: TextStyle(color: Colors.grey),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
 
             // Выручка
@@ -188,7 +189,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               enabled: _isEditing || !hasData,
               isMoney: true,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Наличные
             _buildField(
@@ -199,7 +200,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               enabled: _isEditing || !hasData,
               isMoney: true,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Не переданы в ОФД
             _buildField(
@@ -210,7 +211,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               enabled: _isEditing || !hasData,
               isInteger: true,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Ресурс ключей
             _buildField(
@@ -223,21 +224,21 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
             ),
 
             if (_isEditing) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.school, color: Colors.blue, size: 20),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Исправленные данные будут использованы для обучения ИИ',
-                        style: TextStyle(fontSize: 12, color: Colors.blue),
+                        style: TextStyle(fontSize: 12.sp, color: Colors.blue),
                       ),
                     ),
                   ],
@@ -251,31 +252,31 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         if (!_isEditing && hasData) ...[
           TextButton(
             onPressed: _cancel,
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: _startEditing,
-            child: const Text('Исправить'),
+            child: Text('Исправить'),
           ),
           ElevatedButton(
             onPressed: _confirm,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: Color(0xFF004D40),
             ),
-            child: const Text('Подтвердить'),
+            child: Text('Подтвердить'),
           ),
         ] else ...[
           TextButton(
             onPressed: _cancel,
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: _isSaving ? null : _confirm,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: Color(0xFF004D40),
             ),
             child: _isSaving
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
@@ -303,12 +304,12 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -317,17 +318,17 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         enabled: enabled,
         keyboardType: isInteger
             ? TextInputType.number
-            : const TextInputType.numberWithOptions(decimal: true),
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            : TextInputType.numberWithOptions(decimal: true),
+        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey.shade600),
           prefixIcon: Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(8),
+            margin: EdgeInsets.all(8.w),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: isMoney ? Colors.teal.shade50 : Colors.blueGrey.shade50,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(
               icon,
@@ -339,7 +340,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
           suffixStyle: TextStyle(
             color: Colors.teal.shade700,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 16.sp,
           ),
           suffixIcon: confidence != null
               ? Icon(
@@ -349,24 +350,24 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
                 )
               : null,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
           ),
           disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.grey.shade200),
           ),
           filled: true,
           fillColor: enabled ? Colors.white : Colors.grey.shade50,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
       ),
     );
@@ -378,14 +379,14 @@ Future<void> showRecognitionErrorDialog(BuildContext context) {
   return showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
           Icon(Icons.error_outline, color: Colors.red),
           SizedBox(width: 8),
           Text('Ошибка распознавания'),
         ],
       ),
-      content: const Text(
+      content: Text(
         'Не удалось распознать данные с фото Z-отчёта. '
         'Пожалуйста, введите данные вручную на следующем шаге.',
       ),
@@ -393,9 +394,9 @@ Future<void> showRecognitionErrorDialog(BuildContext context) {
         ElevatedButton(
           onPressed: () => Navigator.pop(context),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF004D40),
+            backgroundColor: Color(0xFF004D40),
           ),
-          child: const Text('Понятно'),
+          child: Text('Понятно'),
         ),
       ],
     ),

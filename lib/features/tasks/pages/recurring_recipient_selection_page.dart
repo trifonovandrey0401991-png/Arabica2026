@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/recurring_task_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Группа получателей
 enum RecipientGroup {
@@ -37,10 +38,10 @@ class RecurringRecipientSelectionPage extends StatefulWidget {
 }
 
 class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSelectionPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   RecipientGroup _selectedGroup = RecipientGroup.all;
   List<Employee> _allEmployees = [];
@@ -128,7 +129,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -142,7 +143,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -152,25 +153,25 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.1),
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
                           color: Colors.white,
                           size: 20,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
+                    SizedBox(width: 16),
+                    Expanded(
                       child: Text(
                         'Получатели',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -190,7 +191,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
 
             // Группы
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               child: Row(
                 children: RecipientGroup.values.map((group) {
                   final isSelected = _selectedGroup == group;
@@ -202,8 +203,8 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
                       child: ChoiceChip(
                         label: Text(
                           group.displayName,
-                          style: const TextStyle(
-                            fontSize: 13,
+                          style: TextStyle(
+                            fontSize: 13.sp,
                             color: Colors.white,
                           ),
                         ),
@@ -252,7 +253,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
                               checkColor: _night,
                               title: Text(
                                 employee.name,
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(color: Colors.white),
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +261,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
                                   Text(
                                     isManager ? 'Заведующий' : 'Сотрудник',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 12.sp,
                                       color: Colors.white.withOpacity(0.5),
                                     ),
                                   ),
@@ -268,7 +269,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
                                     Text(
                                       employee.phone!,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 11.sp,
                                         color: Colors.white.withOpacity(0.5),
                                       ),
                                     ),
@@ -295,7 +296,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
 
             // Кнопка подтверждения
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: _emeraldDark,
                 border: Border(
@@ -312,17 +313,17 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
                       foregroundColor: _night,
                       disabledBackgroundColor: _gold.withOpacity(0.3),
                       disabledForegroundColor: Colors.white.withOpacity(0.3),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
                     child: Text(
                       totalSelected > 0
                           ? 'ВЫБРАТЬ ($totalSelected человек)'
                           : 'ВЫБЕРИТЕ ПОЛУЧАТЕЛЕЙ',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

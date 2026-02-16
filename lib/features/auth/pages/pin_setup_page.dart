@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart' show AuthService, AuthResult;
 import '../widgets/pin_input_widget.dart';
 import '../../../features/clients/pages/registration_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница создания PIN-кода
 ///
@@ -40,9 +41,9 @@ class _PinSetupPageState extends State<PinSetupPage> {
   final AuthService _authService = AuthService();
 
   // Брендовые цвета Arabica
-  static const Color _primaryColor = Color(0xFF1A4D4D);
-  static const Color _primaryDark = Color(0xFF0D3333);
-  static const Color _accentGold = Color(0xFFD4AF37);
+  static final Color _primaryColor = Color(0xFF1A4D4D);
+  static final Color _primaryDark = Color(0xFF0D3333);
+  static final Color _accentGold = Color(0xFFD4AF37);
 
   bool _isConfirmStep = false;
   String _firstPin = '';
@@ -63,7 +64,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
       });
 
       // Сбрасываем флаг очистки
-      Future.delayed(const Duration(milliseconds: 100), () {
+      Future.delayed(Duration(milliseconds: 100), () {
         if (mounted) {
           setState(() {
             _clearPin = false;
@@ -81,7 +82,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
           _clearPin = true;
         });
 
-        Future.delayed(const Duration(milliseconds: 100), () {
+        Future.delayed(Duration(milliseconds: 100), () {
           if (mounted) {
             setState(() {
               _clearPin = false;
@@ -151,7 +152,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
         _clearPin = true;
       });
 
-      Future.delayed(const Duration(milliseconds: 100), () {
+      Future.delayed(Duration(milliseconds: 100), () {
         if (mounted) {
           setState(() {
             _clearPin = false;
@@ -171,7 +172,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
         _errorMessage = null;
       });
 
-      Future.delayed(const Duration(milliseconds: 100), () {
+      Future.delayed(Duration(milliseconds: 100), () {
         if (mounted) {
           setState(() {
             _clearPin = false;
@@ -187,18 +188,18 @@ class _PinSetupPageState extends State<PinSetupPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Сменить аккаунт'),
-        content: const Text(
+        title: Text('Сменить аккаунт'),
+        content: Text(
           'Вы хотите войти с другим номером телефона?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Да, сменить'),
+            child: Text('Да, сменить'),
           ),
         ],
       ),
@@ -210,7 +211,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const RegistrationPage(),
+          builder: (context) => RegistrationPage(),
         ),
       );
     }
@@ -220,7 +221,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -239,22 +240,22 @@ class _PinSetupPageState extends State<PinSetupPage> {
                 children: [
                   // Верхняя панель с кнопкой назад и выхода
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                     child: Row(
                       children: [
                         if (!widget.showLogout)
                           IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            icon: Icon(Icons.arrow_back, color: Colors.white),
                             onPressed: _goBack,
                           )
                         else
-                          const SizedBox(width: 48),
+                          SizedBox(width: 48),
                         Expanded(
                           child: Text(
                             widget.isChangingPin ? 'Смена PIN-кода' : 'Создание PIN-кода',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.w600,
                             ),
                             textAlign: TextAlign.center,
@@ -266,20 +267,20 @@ class _PinSetupPageState extends State<PinSetupPage> {
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.white70,
                             ),
-                            child: const Text('Сменить'),
+                            child: Text('Сменить'),
                           )
                         else
-                          const SizedBox(width: 48), // Для баланса
+                          SizedBox(width: 48), // Для баланса
                       ],
                     ),
                   ),
 
                   // Логотип Arabica
-                  const SizedBox(height: 16),
+                  SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16.r),
                       color: Colors.white.withOpacity(0.1),
                       border: Border.all(
                         color: _accentGold.withOpacity(0.4),
@@ -288,17 +289,17 @@ class _PinSetupPageState extends State<PinSetupPage> {
                     ),
                     child: Image.asset(
                       'assets/images/arabica_logo.png',
-                      width: 80,
-                      height: 80,
+                      width: 60,
+                      height: 60,
                       fit: BoxFit.contain,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
 
                   // PIN ввод
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(horizontal: 24.w),
                       child: PinInputWidget(
                         pinLength: 4,
                         title: _isConfirmStep ? 'Подтвердите PIN' : 'Создайте PIN-код',
@@ -323,12 +324,12 @@ class _PinSetupPageState extends State<PinSetupPage> {
                   color: Colors.black45,
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.all(32),
+                      padding: EdgeInsets.all(32.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
-                      child: const Column(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircularProgressIndicator(
@@ -339,7 +340,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
                             'Завершаем регистрацию...',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

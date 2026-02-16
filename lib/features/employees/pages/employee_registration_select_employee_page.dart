@@ -4,6 +4,7 @@ import '../services/employee_service.dart';
 import 'employee_registration_page.dart';
 import '../services/employee_registration_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора сотрудника для регистрации (только для админа)
 class EmployeeRegistrationSelectEmployeePage extends StatefulWidget {
@@ -65,21 +66,21 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Выберите сотрудника'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Выберите сотрудника'),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Поиск сотрудника...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -95,7 +96,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
               future: _employeesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator());
                 }
 
                 if (snapshot.hasError) {
@@ -103,17 +104,17 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
+                        Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        SizedBox(height: 16),
                         Text('Ошибка загрузки данных'),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
                             setState(() {
                               _employeesFuture = _loadEmployees();
                             });
                           },
-                          child: const Text('Повторить'),
+                          child: Text('Повторить'),
                         ),
                       ],
                     ),
@@ -136,13 +137,13 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                 }).toList();
 
                 if (filteredEmployees.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text('Все сотрудники зарегистрированы или не найдены'),
                   );
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w),
                   itemCount: filteredEmployees.length,
                   itemBuilder: (context, index) {
                     final employee = filteredEmployees[index];
@@ -151,17 +152,17 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                         : false;
 
                     return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      margin: EdgeInsets.symmetric(vertical: 4.h),
                       child: ListTile(
                         leading: Stack(
                           children: [
                             CircleAvatar(
-                              backgroundColor: const Color(0xFF004D40),
+                              backgroundColor: Color(0xFF004D40),
                               child: Text(
                                 employee.name.isNotEmpty
                                     ? employee.name[0].toUpperCase()
                                     : '?',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -169,15 +170,15 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                             ),
                             if (isVerified)
                               Positioned(
-                                right: 0,
-                                bottom: 0,
+                                right: 0.w,
+                                bottom: 0.h,
                                 child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
+                                  padding: EdgeInsets.all(2.w),
+                                  decoration: BoxDecoration(
                                     color: Colors.green,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.check,
                                     color: Colors.white,
                                     size: 12,
@@ -191,14 +192,14 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                             Expanded(
                               child: Text(
                                 employee.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                 ),
                               ),
                             ),
                             if (isVerified)
-                              const Icon(
+                              Icon(
                                 Icons.verified,
                                 color: Colors.green,
                                 size: 20,

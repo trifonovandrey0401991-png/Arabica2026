@@ -9,6 +9,7 @@ class ManagementMessage {
   final String? senderPhone;
   final bool isReadByClient;
   final bool isReadByManager;
+  final bool isBroadcast;
 
   ManagementMessage({
     required this.id,
@@ -20,6 +21,7 @@ class ManagementMessage {
     this.senderPhone,
     this.isReadByClient = false,
     this.isReadByManager = false,
+    this.isBroadcast = false,
   });
 
   factory ManagementMessage.fromJson(Map<String, dynamic> json) => ManagementMessage(
@@ -32,6 +34,7 @@ class ManagementMessage {
     senderPhone: json['senderPhone'],
     isReadByClient: json['isReadByClient'] ?? false,
     isReadByManager: json['isReadByManager'] ?? false,
+    isBroadcast: json['isBroadcast'] ?? false,
   );
 
   Map<String, dynamic> toJson() => {
@@ -44,6 +47,7 @@ class ManagementMessage {
     if (senderPhone != null) 'senderPhone': senderPhone,
     'isReadByClient': isReadByClient,
     'isReadByManager': isReadByManager,
+    'isBroadcast': isBroadcast,
   };
 
   bool get isFromManager => senderType == 'manager';
@@ -60,13 +64,33 @@ class ManagementDialogData {
     required this.unreadCount,
   });
 
-  factory ManagementDialogData.fromJson(Map<String, dynamic> json) => ManagementDialogData(
-    messages: (json['messages'] as List<dynamic>?)
+  factory ManagementDialogData.fromJson(Map<String, dynamic> json) {
+    final allMessages = (json['messages'] as List<dynamic>?)
         ?.map((m) => ManagementMessage.fromJson(m as Map<String, dynamic>))
-        .toList() ?? [],
-    unreadCount: json['unreadCount'] ?? 0,
-  );
+        .toList() ?? [];
+    final unread = json['unreadCount'] ?? 0;
+    return ManagementDialogData(messages: allMessages, unreadCount: unread);
+  }
 
   bool get hasUnread => unreadCount > 0;
   bool get hasMessages => messages.isNotEmpty;
+
+  /// Только рассылки (broadcast)
+  List<ManagementMessage> get broadcastMessages =>
+      messages.where((m) => m.isBroadcast).toList();
+
+  /// Только личные сообщения (не broadcast)
+  List<ManagementMessage> get personalMessages =>
+      messages.where((m) => !m.isBroadcast).toList();
+
+  /// Непрочитанные рассылки
+  int get broadcastUnreadCount =>
+      broadcastMessages.where((m) => m.isFromManager && !m.isReadByClient).length;
+
+  /// Непрочитанные личные
+  int get personalUnreadCount =>
+      personalMessages.where((m) => m.isFromManager && !m.isReadByClient).length;
+
+  bool get hasBroadcastMessages => broadcastMessages.isNotEmpty;
+  bool get hasPersonalMessages => personalMessages.isNotEmpty;
 }

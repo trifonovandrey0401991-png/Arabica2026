@@ -15,6 +15,7 @@ import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../recount/services/recount_service.dart';
 // Сервис настроек баллов для проверки временного окна
 import '../../efficiency/services/points_settings_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {
@@ -32,7 +33,7 @@ class RKOAmountInputPage extends StatefulWidget {
 }
 
 class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   final _amountController = TextEditingController();
   Shop? _selectedShop;
@@ -196,7 +197,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   Future<void> _createRKO() async {
     if (_amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Введите сумму'),
           backgroundColor: Colors.orange,
         ),
@@ -207,7 +208,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     final amount = double.tryParse(_amountController.text.replaceAll(',', '.'));
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Введите корректную сумму'),
           backgroundColor: Colors.red,
         ),
@@ -217,7 +218,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
 
     if (_selectedShop == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Выберите магазин'),
           backgroundColor: Colors.orange,
         ),
@@ -238,7 +239,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           shopSettings.directorName.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Настройки магазина не заполнены. Заполните их в меню "Сотрудники" -> "Магазины"'),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 5),
@@ -256,7 +257,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       if (employeeData == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Данные сотрудника не найдены. Пройдите регистрацию'),
               backgroundColor: Colors.red,
             ),
@@ -342,7 +343,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           );
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('РКО успешно создан и загружен на сервер'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
@@ -353,7 +354,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             SnackBar(
               content: Text('РКО создан локально: ${pdfFile.path}, но не удалось загрузить на сервер'),
               backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 5),
+              duration: Duration(seconds: 5),
             ),
           );
         }
@@ -389,7 +390,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     if (_employeeName == null) return [];
 
     final now = DateTime.now();
-    final yesterday = now.subtract(const Duration(hours: 24));
+    final yesterday = now.subtract(Duration(hours: 24));
     final activities = <_ActivityRecord>[];
 
     try {
@@ -468,8 +469,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            const SizedBox(width: 12),
-            const Text('Внимание'),
+            SizedBox(width: 12),
+            Text('Внимание'),
           ],
         ),
         content: SingleChildScrollView(
@@ -477,19 +478,19 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Вы уверены что ваш выбор правильный?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
               ),
-              const SizedBox(height: 16),
-              const Text('За последние 24 часа у вас была активность на другом магазине:'),
-              const SizedBox(height: 12),
+              SizedBox(height: 16),
+              Text('За последние 24 часа у вас была активность на другом магазине:'),
+              SizedBox(height: 12),
               ...shopActivities.entries.map((entry) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
+                margin: EdgeInsets.only(bottom: 8.h),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: Colors.orange.withOpacity(0.3)),
                 ),
                 child: Column(
@@ -498,7 +499,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     Row(
                       children: [
                         Icon(Icons.store, size: 18, color: Colors.orange[700]),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             entry.key,
@@ -507,12 +508,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     ...entry.value.map((a) => Padding(
-                      padding: const EdgeInsets.only(left: 26),
+                      padding: EdgeInsets.only(left: 26.w),
                       child: Text(
                         '• ${a.type}',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        style: TextStyle(fontSize: 13.sp, color: Colors.grey[700]),
                       ),
                     )),
                   ],
@@ -524,12 +525,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: _primaryColor),
-            child: const Text('Да, продолжить', style: TextStyle(color: Colors.white)),
+            child: Text('Да, продолжить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -562,7 +563,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           title: Text('РКО: ${widget.rkoType}'),
           backgroundColor: _primaryColor,
         ),
-        body: const Center(
+        body: Center(
           child: CircularProgressIndicator(),
         ),
       );
@@ -577,39 +578,39 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         ),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(24.w),
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                     border: Border.all(color: Colors.orange, width: 2),
                   ),
                   child: Column(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.access_time_rounded,
                         size: 64,
                         color: Colors.orange,
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
+                      SizedBox(height: 16),
+                      Text(
                         'Окно сдачи РКО закрыто',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.orange,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: 8),
+                      Text(
                         'РКО можно сдать только в определённое время',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.grey,
                         ),
                         textAlign: TextAlign.center,
@@ -617,39 +618,39 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                const Text(
+                SizedBox(height: 24),
+                Text(
                   'Следующее окно:',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     color: Colors.grey,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Text(
                     _nextWindowTime ?? 'Следующее окно',
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: 20.sp,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF004D40),
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Назад'),
+                  icon: Icon(Icons.arrow_back),
+                  label: Text('Назад'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
                   ),
                 ),
               ],
@@ -684,41 +685,41 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text(
                       'Загрузка данных...',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                      style: TextStyle(color: Colors.white70, fontSize: 16.sp),
                     ),
                   ],
                 ),
               )
             : SafeArea(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Заголовок с типом РКО
                       _buildTypeHeader(),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Информация о сотруднике
                       if (_employeeName != null) ...[
                         _buildEmployeeCard(),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
 
                       // Выбор магазина
                       _buildShopCard(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Ввод суммы
                       _buildAmountCard(),
-                      const SizedBox(height: 28),
+                      SizedBox(height: 28),
 
                       // Кнопка создания
                       _buildCreateButton(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Подсказка
                       _buildInfoTip(),
@@ -733,10 +734,10 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   /// Заголовок с типом РКО
   Widget _buildTypeHeader() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
         children: [
@@ -745,7 +746,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             height: 64,
             decoration: BoxDecoration(
               color: _rkoTypeColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
             ),
             child: Icon(
               _rkoTypeIcon,
@@ -753,26 +754,26 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
               color: Colors.white,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.rkoType,
-                  style: const TextStyle(
-                    fontSize: 20,
+                  style: TextStyle(
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   widget.rkoType.contains('месяц')
                       ? 'Месячная выплата заработной платы'
                       : 'Выплата за отработанную смену',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     color: Colors.white.withOpacity(0.8),
                   ),
                 ),
@@ -789,17 +790,17 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Row(
           children: [
             Container(
@@ -807,7 +808,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
               height: 48,
               decoration: BoxDecoration(
                 color: _primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
               ),
               child: Icon(
                 Icons.person_rounded,
@@ -815,7 +816,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                 size: 26,
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -823,15 +824,15 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                   Text(
                     'Сотрудник',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey[600],
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     _employeeName!,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2D2D2D),
                     ),
@@ -855,17 +856,17 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(18.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -876,7 +877,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.store_rounded,
@@ -884,22 +885,22 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Магазин',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 17.sp,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF2D2D2D),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
               ),
               child: DropdownButtonFormField<Shop>(
                 value: _selectedShop != null && _shops.any((s) => s.address == _selectedShop!.address)
@@ -907,7 +908,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     : null,
                 decoration: InputDecoration(
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                   hintText: 'Выберите магазин',
                   hintStyle: TextStyle(color: Colors.grey[400]),
                 ),
@@ -919,7 +920,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                       shop.name,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 2,
-                      style: const TextStyle(fontSize: 15),
+                      style: TextStyle(fontSize: 15.sp),
                     ),
                   );
                 }).toList(),
@@ -949,12 +950,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
               ),
             ),
             if (_selectedShop != null) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: _primaryColor.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Row(
                   children: [
@@ -963,12 +964,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                       color: _primaryColor,
                       size: 18,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _selectedShop!.address,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: _primaryColor,
                         ),
                       ),
@@ -988,17 +989,17 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(18.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1009,7 +1010,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: _rkoTypeColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.payments_rounded,
@@ -1017,59 +1018,59 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Сумма выплаты',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 17.sp,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF2D2D2D),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
               controller: _amountController,
-              style: const TextStyle(
-                fontSize: 24,
+              style: TextStyle(
+                fontSize: 24.sp,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF2D2D2D),
               ),
               decoration: InputDecoration(
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   borderSide: BorderSide(color: _primaryColor, width: 2),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14.r),
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
                 hintText: '0',
                 hintStyle: TextStyle(
                   color: Colors.grey[400],
-                  fontSize: 24,
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                 ),
                 suffixText: 'руб.',
                 suffixStyle: TextStyle(
                   color: _primaryColor,
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: 18.sp,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             // Подсказка с быстрым вводом
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1094,19 +1095,19 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         onTap: () {
           _amountController.text = amount.toString();
         },
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
           decoration: BoxDecoration(
             border: Border.all(color: _primaryColor.withOpacity(0.3)),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Text(
             '$amount',
             style: TextStyle(
               color: _primaryColor,
               fontWeight: FontWeight.w600,
-              fontSize: 14,
+              fontSize: 14.sp,
             ),
           ),
         ),
@@ -1119,12 +1120,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -1132,9 +1133,9 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: _isCreating ? null : _createRKO,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(18.r),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18),
+            padding: EdgeInsets.symmetric(vertical: 18.h),
             child: _isCreating
                 ? Center(
                     child: SizedBox(
@@ -1154,11 +1155,11 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                         color: _primaryColor,
                         size: 24,
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Text(
                         'Создать РКО',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: _primaryColor,
                         ),
@@ -1174,10 +1175,10 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   /// Подсказка внизу
   Widget _buildInfoTip() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
       ),
       child: Row(
         children: [
@@ -1186,12 +1187,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             color: Colors.white.withOpacity(0.7),
             size: 22,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               'После оформления РКО будет сформирован PDF документ и загружен на сервер',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 color: Colors.white.withOpacity(0.7),
               ),
             ),

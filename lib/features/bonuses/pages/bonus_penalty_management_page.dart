@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import '../services/bonus_penalty_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class BonusPenaltyManagementPage extends StatefulWidget {
   const BonusPenaltyManagementPage({super.key});
@@ -19,9 +20,9 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
   String _adminName = '';
 
   // Gradient colors
-  static const _bonusGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
-  static const _penaltyGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
-  static const _neutralGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
+  static final _bonusGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
+  static final _penaltyGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
+  static final _neutralGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
 
   @override
   void initState() {
@@ -76,9 +77,9 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -86,31 +87,31 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
             children: [
               // Handle bar
               Container(
-                margin: const EdgeInsets.only(top: 12),
+                margin: EdgeInsets.only(top: 12.h),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
               // Header
               Container(
                 width: double.infinity,
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
+                margin: EdgeInsets.all(16.w),
+                padding: EdgeInsets.all(20.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: gradientColors,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                   boxShadow: [
                     BoxShadow(
                       color: gradientColors[0].withOpacity(0.4),
                       blurRadius: 15,
-                      offset: const Offset(0, 8),
+                      offset: Offset(0, 8),
                     ),
                   ],
                 ),
@@ -121,7 +122,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                       height: 56,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
                       child: Icon(
                         isBonus ? Icons.card_giftcard : Icons.money_off,
@@ -129,16 +130,16 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                         size: 28,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             typeTitle,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 20.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -146,7 +147,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             employee.name,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.9),
-                              fontSize: 15,
+                              fontSize: 15.sp,
                             ),
                           ),
                         ],
@@ -157,7 +158,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
               ),
               // Form
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 24.h),
                 child: Form(
                   key: formKey,
                   child: Column(
@@ -167,14 +168,14 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(color: accentColor.withOpacity(0.3)),
                         ),
                         child: TextFormField(
                           controller: amountController,
                           keyboardType: TextInputType.number,
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 24.sp,
                             fontWeight: FontWeight.bold,
                             color: accentColor,
                           ),
@@ -182,12 +183,12 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             labelText: 'Сумма',
                             labelStyle: TextStyle(color: Colors.grey[600]),
                             prefixIcon: Container(
-                              margin: const EdgeInsets.all(12),
+                              margin: EdgeInsets.all(12.w),
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
                                 color: accentColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Icon(
                                 isBonus ? Icons.add : Icons.remove,
@@ -196,12 +197,12 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             ),
                             suffixText: 'руб',
                             suffixStyle: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.w500,
                               color: Colors.grey[600],
                             ),
                             border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -215,12 +216,12 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                           },
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Comment field
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(color: Colors.grey[300]!),
                         ),
                         child: TextFormField(
@@ -232,13 +233,13 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             hintText: 'Причина ${isBonus ? "премии" : "штрафа"}...',
                             hintStyle: TextStyle(color: Colors.grey[400]),
                             prefixIcon: Container(
-                              margin: const EdgeInsets.only(left: 12, top: 12, bottom: 12),
+                              margin: EdgeInsets.only(left: 12.w, top: 12.h, bottom: 12.h),
                               alignment: Alignment.topCenter,
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
                                 color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: Icon(
                                 Icons.comment_outlined,
@@ -246,7 +247,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                               ),
                             ),
                             border: InputBorder.none,
-                            contentPadding: const EdgeInsets.all(16),
+                            contentPadding: EdgeInsets.all(16.w),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -256,7 +257,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                           },
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       // Buttons
                       Row(
                         children: [
@@ -264,22 +265,22 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
                                 side: BorderSide(color: Colors.grey[400]!),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14.r),
                                 ),
                               ),
                               child: Text(
                                 'Отмена',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                   color: Colors.grey[700],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             flex: 2,
                             child: Container(
@@ -287,12 +288,12 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                                 gradient: LinearGradient(
                                   colors: gradientColors,
                                 ),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14.r),
                                 boxShadow: [
                                   BoxShadow(
                                     color: gradientColors[0].withOpacity(0.4),
                                     blurRadius: 12,
-                                    offset: const Offset(0, 6),
+                                    offset: Offset(0, 6),
                                   ),
                                 ],
                               ),
@@ -310,9 +311,9 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: EdgeInsets.symmetric(vertical: 16.h),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                   ),
                                 ),
                                 child: Row(
@@ -322,11 +323,11 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                                       isBonus ? Icons.check_circle : Icons.send,
                                       color: Colors.white,
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     Text(
                                       isBonus ? 'Начислить' : 'Списать',
-                                      style: const TextStyle(
-                                        fontSize: 16,
+                                      style: TextStyle(
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
@@ -378,7 +379,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                 isBonus ? Icons.check_circle : Icons.info,
                 color: Colors.white,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text('$typeText ${amount.toStringAsFixed(0)} руб для ${employee.name}'),
               ),
@@ -386,14 +387,14 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
           ),
           backgroundColor: isBonus ? Colors.green[600] : Colors.red[600],
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
       setState(() => _selectedType = null);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
               Icon(Icons.error, color: Colors.white),
               SizedBox(width: 12),
@@ -402,7 +403,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
           ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
     }
@@ -411,7 +412,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         title: Text(_selectedType == null
             ? 'Премия/Штрафы'
@@ -422,7 +423,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
         actions: [
           if (_selectedType != null)
             IconButton(
-              icon: const Icon(Icons.close),
+              icon: Icon(Icons.close),
               onPressed: () => setState(() => _selectedType = null),
               tooltip: 'Сбросить выбор',
             ),
@@ -448,12 +449,12 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
               end: Alignment.bottomRight,
               colors: _neutralGradient,
             ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(32),
-              bottomRight: Radius.circular(32),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(32.r),
+              bottomRight: Radius.circular(32.r),
             ),
           ),
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+          padding: EdgeInsets.fromLTRB(24.w, 0.h, 24.w, 32.h),
           child: Column(
             children: [
               Container(
@@ -461,29 +462,29 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                 height: 80,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.account_balance_wallet_outlined,
                   color: Colors.white,
                   size: 40,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Управление премиями',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Начислите премию или назначьте штраф',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
-                  fontSize: 15,
+                  fontSize: 15.sp,
                 ),
               ),
             ],
@@ -492,7 +493,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
         // Selection buttons
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -503,7 +504,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                   gradientColors: _bonusGradient,
                   type: 'bonus',
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 _buildLargeTypeButton(
                   icon: Icons.money_off,
                   title: 'Штраф',
@@ -530,15 +531,15 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
       onTap: () => setState(() => _selectedType = type),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(24.r),
           boxShadow: [
             BoxShadow(
               color: gradientColors[0].withOpacity(0.2),
               blurRadius: 20,
-              offset: const Offset(0, 10),
+              offset: Offset(0, 10),
             ),
           ],
         ),
@@ -553,18 +554,18 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                   end: Alignment.bottomRight,
                   colors: gradientColors,
                 ),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(18.r),
                 boxShadow: [
                   BoxShadow(
                     color: gradientColors[0].withOpacity(0.4),
                     blurRadius: 12,
-                    offset: const Offset(0, 6),
+                    offset: Offset(0, 6),
                   ),
                 ],
               ),
               child: Icon(icon, color: Colors.white, size: 32),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -572,16 +573,16 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
                       color: gradientColors[0],
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Colors.grey[600],
                     ),
                   ),
@@ -593,7 +594,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
               height: 44,
               decoration: BoxDecoration(
                 color: gradientColors[0].withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 Icons.arrow_forward_ios,
@@ -622,19 +623,19 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
               end: Alignment.bottomRight,
               colors: gradientColors,
             ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(28),
-              bottomRight: Radius.circular(28),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(28.r),
+              bottomRight: Radius.circular(28.r),
             ),
           ),
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 24.h),
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                 ),
                 child: Row(
                   children: [
@@ -643,7 +644,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                       height: 48,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Icon(
                         isBonus ? Icons.card_giftcard : Icons.money_off,
@@ -651,16 +652,16 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             isBonus ? 'Выберите сотрудника' : 'Выберите сотрудника',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -668,7 +669,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             isBonus ? 'для начисления премии' : 'для назначения штрафа',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.9),
-                              fontSize: 13,
+                              fontSize: 13.sp,
                             ),
                           ),
                         ],
@@ -682,16 +683,16 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
         ),
         // Search field
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -702,7 +703,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                 hintStyle: TextStyle(color: Colors.grey[400]),
                 prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
               ),
             ),
           ),
@@ -719,13 +720,13 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                         size: 64,
                         color: Colors.grey[300],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         _searchQuery.isEmpty
                             ? 'Нет сотрудников'
                             : 'Ничего не найдено',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           color: Colors.grey[500],
                         ),
                       ),
@@ -733,7 +734,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
                   itemCount: _filteredEmployees.length,
                   itemBuilder: (context, index) {
                     final employee = _filteredEmployees[index];
@@ -752,16 +753,16 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
     return GestureDetector(
       onTap: () => _selectEmployee(employee),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(bottom: 12.h),
+        padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 10,
-              offset: const Offset(0, 4),
+              offset: Offset(0, 4),
             ),
           ],
         ),
@@ -779,29 +780,29 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                     gradientColors[1].withOpacity(0.8),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
               ),
               child: Center(
                 child: Text(
                   employee.name.isNotEmpty ? employee.name[0].toUpperCase() : '?',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 22,
+                    fontSize: 22.sp,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     employee.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       color: Color(0xFF2D3436),
                     ),
                   ),
@@ -809,7 +810,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                     Text(
                       employee.phone!,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.sp,
                         color: Colors.grey[500],
                       ),
                     ),
@@ -821,7 +822,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
               height: 40,
               decoration: BoxDecoration(
                 color: gradientColors[0].withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 isBonus ? Icons.add_circle_outline : Icons.remove_circle_outline,

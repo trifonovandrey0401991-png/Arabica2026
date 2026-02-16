@@ -279,12 +279,14 @@ class UserRoleService {
       }
 
       // Проверяем срок давности кэша (30 минут)
+      // При устаревании — возвращаем кэш (чтобы UI не ломался), обновляем в фоне
+      bool cacheExpired = false;
       final savedAt = prefs.getInt('user_role_saved_at');
       if (savedAt != null) {
         final age = DateTime.now().millisecondsSinceEpoch - savedAt;
         if (age > 30 * 60 * 1000) {
-          Logger.debug('⚠️ Кэш роли устарел (${(age / 60000).toStringAsFixed(0)} мин), требуется обновление');
-          return null;
+          Logger.debug('⚠️ Кэш роли устарел (${(age / 60000).toStringAsFixed(0)} мин), обновляем в фоне');
+          cacheExpired = true;
         }
       }
 
@@ -306,7 +308,7 @@ class UserRoleService {
           role = UserRole.client;
       }
 
-      return UserRoleData(
+      final result = UserRoleData(
         role: role,
         displayName: displayName,
         phone: phone,
@@ -316,9 +318,39 @@ class UserRoleService {
         primaryShopId: primaryShopId,
         canSeeAllManagerShops: canSeeAllManagerShops,
       );
+
+      // Фоновое обновление при устаревшем кэше
+      if (cacheExpired && phone.isNotEmpty) {
+        _refreshRoleInBackground(phone);
+      }
+
+      return result;
     } catch (e) {
       Logger.debug('❌ Ошибка загрузки роли: $e');
       return null;
+    }
+  }
+
+  /// Фоновое обновление роли (без блокировки UI)
+  static Future<void> _refreshRoleInBackground(String phone) async {
+    try {
+      Logger.debug('🔄 Фоновое обновление роли...');
+      final freshRole = await getUserRole(phone);
+
+      // Защита: не понижаем developer/admin до client при сбое API
+      if (freshRole.role == UserRole.client) {
+        final prefs = await SharedPreferences.getInstance();
+        final currentRole = prefs.getString('user_role');
+        if (currentRole == 'developer' || currentRole == 'admin') {
+          Logger.debug('⚠️ Фоновое обновление: не понижаем роль $currentRole → client');
+          return;
+        }
+      }
+
+      await saveUserRole(freshRole);
+      Logger.debug('✅ Роль обновлена в фоне: ${freshRole.role.name}');
+    } catch (e) {
+      Logger.debug('⚠️ Не удалось обновить роль в фоне: $e');
     }
   }
 

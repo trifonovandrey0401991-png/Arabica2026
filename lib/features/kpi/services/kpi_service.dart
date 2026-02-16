@@ -262,6 +262,7 @@ class KPIService {
       // Проверяем кэш
       final cached = KPICacheService.getAllEmployees();
       if (cached != null) {
+        Logger.debug('KPI getAllEmployees: из кэша ${cached.length} сотрудников');
         return cached;
       }
 
@@ -323,11 +324,29 @@ class KPIService {
 
       final employees = employeesSet.toList()..sort();
 
-      // Сохраняем в кэш
-      KPICacheService.saveAllEmployees(employees);
+      Logger.debug('KPI getAllEmployees: attendance=${attendanceRecords.length}, '
+          'schedule_current=${currentSchedule.entries.length}, '
+          'schedule_prev=${prevSchedule.entries.length}, '
+          'unique=${employees.length}');
 
-      // Персистим для offline доступа
-      KPIPersistenceService.saveAllEmployees(employees);
+      // Если оба графика пустые — скорее всего ошибка сети, не кэшируем неполные данные
+      final hasScheduleData = currentSchedule.entries.isNotEmpty || prevSchedule.entries.isNotEmpty;
+
+      if (hasScheduleData) {
+        // Полные данные — кэшируем и персистим
+        KPICacheService.saveAllEmployees(employees);
+        KPIPersistenceService.saveAllEmployees(employees);
+      } else {
+        Logger.debug('KPI getAllEmployees: графики пустые, не кэшируем неполный результат');
+        // Если есть persistence с большим количеством — используем его как дополнение
+        final persisted = await KPIPersistenceService.getAllEmployees();
+        if (persisted != null && persisted.length > employees.length) {
+          Logger.debug('KPI getAllEmployees: дополняем из persistence (${persisted.length} vs ${employees.length})');
+          employeesSet.addAll(persisted);
+          final merged = employeesSet.toList()..sort();
+          return merged;
+        }
+      }
 
       return employees;
     } catch (e) {
@@ -587,7 +606,7 @@ class KPIService {
         final handoverDate = handover.createdAt;
         final isInRange = (handoverDate.year == currentMonth.year && handoverDate.month == currentMonth.month) ||
                           (handoverDate.year == previousMonth.year && handoverDate.month == previousMonth.month);
-        return isInRange;
+        return handover.employeeName == employeeName && isInRange;
       }).toList();
 
       // Агрегируем данные по магазинам и датам
@@ -741,9 +760,126 @@ class KPIService {
     }
   }
 
-  /// Получить месячную статистику магазина (текущий, прошлый, позапрошлый месяц)
-  /// Получить месячную статистику магазина (ОПТИМИЗИРОВАНО)
-  /// Загружает все данные одним пакетом вместо множества запросов
+  /// BATCH: Загрузить статистику ВСЕХ магазинов за 3 месяца одним пакетом
+  /// Вместо 13 магазинов × 6 API = 78 запросов → всего 8 запросов
+  static Future<Map<String, List<KPIShopMonthStats>>> getAllShopsMonthlyStatsBatch(List<String> shopAddresses) async {
+    try {
+      final now = DateTime.now();
+      final currentMonth = DateTime(now.year, now.month);
+      DateTime previousMonth;
+      if (now.month == 1) {
+        previousMonth = DateTime(now.year - 1, 12);
+      } else {
+        previousMonth = DateTime(now.year, now.month - 1);
+      }
+      DateTime twoMonthsAgo;
+      if (now.month <= 2) {
+        twoMonthsAgo = DateTime(now.year - 1, 12 + now.month - 2);
+      } else {
+        twoMonthsAgo = DateTime(now.year, now.month - 2);
+      }
+
+      Logger.debug('KPI BATCH: загрузка данных для ${shopAddresses.length} магазинов...');
+
+      // Загружаем ВСЕ данные одним пакетом (6 API + 3 schedule = 9 запросов вместо 78)
+      final results = await Future.wait([
+        AttendanceService.getAttendanceRecords(),                    // ВСЕ отметки
+        ShiftReportService.getReports(),                              // ВСЕ пересменки
+        RecountService.getReports(),                                  // ВСЕ пересчёты
+        RKOReportsService.getAllRKOs(),                               // ВСЕ РКО
+        EnvelopeReportService.getReportsForCurrentUser(),             // ВСЕ конверты (1 раз)
+        ShiftHandoverReportService.getReports(),                      // ВСЕ сдачи смены
+        // Прогреваем кэш графиков (3 месяца)
+        KPIScheduleIntegrationService.getScheduleForMonth(currentMonth.year, currentMonth.month),
+        KPIScheduleIntegrationService.getScheduleForMonth(previousMonth.year, previousMonth.month),
+        KPIScheduleIntegrationService.getScheduleForMonth(twoMonthsAgo.year, twoMonthsAgo.month),
+      ]).timeout(const Duration(seconds: 30));
+
+      final allAttendance = results[0] as List<dynamic>;
+      final allShifts = results[1] as List<dynamic>;
+      final allRecounts = results[2] as List<dynamic>;
+      final allRKOsRaw = results[3] as List<Map<String, dynamic>>;
+      final allEnvelopes = results[4] as List<dynamic>;
+      final allShiftHandovers = results[5] as List<dynamic>;
+
+      Logger.debug('KPI BATCH: загружено attendance=${allAttendance.length}, shifts=${allShifts.length}, recounts=${allRecounts.length}, rko=${allRKOsRaw.length}, envelopes=${allEnvelopes.length}, handovers=${allShiftHandovers.length}');
+
+      // Парсим ВСЕ РКО
+      final allRKOs = <RKOMetadata>[];
+      for (var rkoJson in allRKOsRaw) {
+        try {
+          allRKOs.add(RKOMetadata.fromJson(rkoJson));
+        } catch (e) { Logger.debug('KPI BATCH: skip malformed RKO: $e'); }
+      }
+
+      // Группируем данные по магазинам
+      final result = <String, List<KPIShopMonthStats>>{};
+
+      for (final shopAddress in shopAddresses) {
+        // Фильтруем данные для этого магазина
+        final shopAttendance = allAttendance.where((r) {
+          try { return r.shopAddress == shopAddress; } catch (_) { return false; }
+        }).toList();
+
+        final shopShifts = allShifts.where((r) {
+          try { return r.shopAddress == shopAddress; } catch (_) { return false; }
+        }).toList();
+
+        final shopRecounts = allRecounts.where((r) {
+          try { return r.shopAddress == shopAddress; } catch (_) { return false; }
+        }).toList();
+
+        final shopRKOs = allRKOs.where((r) {
+          try { return r.shopAddress == shopAddress; } catch (_) { return false; }
+        }).toList();
+
+        final shopShiftHandovers = allShiftHandovers.where((r) {
+          try { return r.shopAddress == shopAddress; } catch (_) { return false; }
+        }).toList();
+
+        // Получаем статистику графика для каждого магазина
+        final currentScheduleStats = await KPIScheduleIntegrationService.getShopMonthScheduleStats(
+          shopAddress: shopAddress, year: currentMonth.year, month: currentMonth.month,
+        );
+        final prevScheduleStats = await KPIScheduleIntegrationService.getShopMonthScheduleStats(
+          shopAddress: shopAddress, year: previousMonth.year, month: previousMonth.month,
+        );
+        final twoMonthsScheduleStats = await KPIScheduleIntegrationService.getShopMonthScheduleStats(
+          shopAddress: shopAddress, year: twoMonthsAgo.year, month: twoMonthsAgo.month,
+        );
+
+        final stats = <KPIShopMonthStats>[];
+        stats.add(_buildShopMonthStatsFromData(
+          shopAddress: shopAddress, year: currentMonth.year, month: currentMonth.month,
+          allAttendance: shopAttendance, allShifts: shopShifts, allRecounts: shopRecounts,
+          allRKOs: shopRKOs, allEnvelopes: allEnvelopes, allShiftHandovers: shopShiftHandovers,
+          scheduleStats: currentScheduleStats,
+        ));
+        stats.add(_buildShopMonthStatsFromData(
+          shopAddress: shopAddress, year: previousMonth.year, month: previousMonth.month,
+          allAttendance: shopAttendance, allShifts: shopShifts, allRecounts: shopRecounts,
+          allRKOs: shopRKOs, allEnvelopes: allEnvelopes, allShiftHandovers: shopShiftHandovers,
+          scheduleStats: prevScheduleStats,
+        ));
+        stats.add(_buildShopMonthStatsFromData(
+          shopAddress: shopAddress, year: twoMonthsAgo.year, month: twoMonthsAgo.month,
+          allAttendance: shopAttendance, allShifts: shopShifts, allRecounts: shopRecounts,
+          allRKOs: shopRKOs, allEnvelopes: allEnvelopes, allShiftHandovers: shopShiftHandovers,
+          scheduleStats: twoMonthsScheduleStats,
+        ));
+
+        result[shopAddress] = stats;
+      }
+
+      Logger.debug('KPI BATCH: готово, статистика для ${result.length} магазинов');
+      return result;
+    } catch (e) {
+      Logger.error('KPI BATCH: ошибка загрузки', e);
+      return {};
+    }
+  }
+
+  /// Получить месячную статистику одного магазина (для обратной совместимости)
   static Future<List<KPIShopMonthStats>> getShopMonthlyStats(String shopAddress) async {
     try {
       final now = DateTime.now();
@@ -917,10 +1053,12 @@ class KPIService {
       }
     }).toList();
 
-    // Считаем пересчёты
+    // Считаем пересчёты (только confirmed и review — реально пройденные)
     final monthRecounts = allRecounts.where((recount) {
       try {
-        final date = recount.date ?? recount.createdAt as DateTime;
+        final status = recount.status as String?;
+        if (status != 'confirmed' && status != 'review') return false;
+        final date = recount.completedAt as DateTime;
         return isInMonth(date);
       } catch (_) {
         return false;

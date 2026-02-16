@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/cleanup_category.dart';
 import '../services/cleanup_service.dart' show CleanupService, DiskInfo;
 import '../widgets/cleanup_period_dialog.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница очистки исторических данных сервера.
 class DataCleanupPage extends StatefulWidget {
@@ -18,11 +19,11 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
   String? _error;
 
   // Gradient colors
-  static const _primaryGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
-  static const _storageGreenGradient = [Color(0xFF11998e), Color(0xFF38ef7d)];
-  static const _storageOrangeGradient = [Color(0xFFf7971e), Color(0xFFffd200)];
-  static const _storageRedGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
-  static const _categoryGradients = [
+  static final _primaryGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
+  static final _storageGreenGradient = [Color(0xFF11998e), Color(0xFF38ef7d)];
+  static final _storageOrangeGradient = [Color(0xFFf7971e), Color(0xFFffd200)];
+  static final _storageRedGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
+  static final _categoryGradients = [
     [Color(0xFF4facfe), Color(0xFF00f2fe)],
     [Color(0xFF43e97b), Color(0xFF38f9d7)],
     [Color(0xFFfa709a), Color(0xFFfee140)],
@@ -92,7 +93,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       body: CustomScrollView(
         slivers: [
           // Gradient AppBar
@@ -119,36 +120,36 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                         height: 56,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.cleaning_services_rounded,
                           color: Colors.white,
                           size: 28,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: 8),
+                      Text(
                         'Очистка Историй',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
+                          fontSize: 22.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                     ],
                   ),
                 ),
               ),
             ),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.white),
+                icon: Icon(Icons.refresh, color: Colors.white),
                 onPressed: _loadStats,
                 tooltip: 'Обновить',
               ),
@@ -165,7 +166,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const SizedBox(
+      return SizedBox(
         height: 300,
         child: Center(
           child: CircularProgressIndicator(),
@@ -175,7 +176,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
 
     if (_error != null) {
       return Container(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -184,29 +185,29 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
               height: 80,
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
               ),
               child: Icon(Icons.error_outline, size: 40, color: Colors.red[400]),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               _error!,
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: _primaryGradient),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: ElevatedButton(
                 onPressed: _loadStats,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
                 ),
-                child: const Text(
+                child: Text(
                   'Повторить',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
@@ -219,7 +220,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
 
     if (_categories.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -228,14 +229,14 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
               height: 80,
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: _storageGreenGradient),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.r),
               ),
-              child: const Icon(Icons.check_circle_outline, size: 40, color: Colors.white),
+              child: Icon(Icons.check_circle_outline, size: 40, color: Colors.white),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               'Нет данных для очистки',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -245,14 +246,14 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
     return RefreshIndicator(
       onRefresh: _loadStats,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           children: [
             _buildStorageWidget(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Section header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 8.h),
               child: Row(
                 children: [
                   Container(
@@ -264,14 +265,14 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                         end: Alignment.bottomCenter,
                         colors: _primaryGradient,
                       ),
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(2.r),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: 12),
+                  Text(
                     'Категории данных',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2D3748),
                     ),
@@ -279,7 +280,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             ...List.generate(_categories.length, (index) {
               return _buildCategoryCard(_categories[index], index);
             }),
@@ -344,12 +345,12 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
             color: storageGradient[0].withOpacity(0.2),
             blurRadius: 20,
-            offset: const Offset(0, 10),
+            offset: Offset(0, 10),
           ),
         ],
       ),
@@ -357,16 +358,16 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
         children: [
           // Gradient header
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: storageGradient,
               ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24.r),
+                topRight: Radius.circular(24.r),
               ),
             ),
             child: Column(
@@ -378,32 +379,32 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       height: 56,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                       ),
-                      child: const Icon(Icons.storage, color: Colors.white, size: 28),
+                      child: Icon(Icons.storage, color: Colors.white, size: 28),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Хранилище сервера',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Row(
                             children: [
                               Icon(statusIcon, color: Colors.white.withOpacity(0.9), size: 16),
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Text(
                                 statusText,
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 14.sp,
                                   color: Colors.white.withOpacity(0.9),
                                 ),
                               ),
@@ -413,15 +414,15 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Text(
                         '${(usagePercent * 100).toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -429,13 +430,13 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 // Progress bar
                 Container(
                   height: 12,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -444,13 +445,13 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(6.r),
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 // Size info
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -459,14 +460,14 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       'Занято: ${formatSize(usedBytes)}',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                     ),
                     Text(
                       'Всего: ${formatSize(totalBytes)}',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                     ),
                   ],
@@ -476,7 +477,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
           ),
           // Stats footer
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -537,15 +538,15 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
           height: 36,
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: gradient),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, size: 18, color: Colors.white),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: 16.sp,
             fontWeight: FontWeight.bold,
             color: Color(0xFF2D3748),
           ),
@@ -553,7 +554,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 11.sp,
             color: Colors.grey[600],
           ),
         ),
@@ -572,15 +573,15 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
     final gradient = _getCategoryGradient(index);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: gradient[0].withOpacity(0.15),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -588,9 +589,9 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showCleanupDialog(category),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Gradient icon
@@ -603,22 +604,22 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       end: Alignment.bottomRight,
                       colors: gradient,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
                         color: gradient[0].withOpacity(0.4),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.folder_outlined,
                     color: Colors.white,
                     size: 28,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 // Info
                 Expanded(
                   child: Column(
@@ -626,13 +627,13 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                     children: [
                       Text(
                         category.name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2D3748),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Row(
                         children: [
                           _buildInfoChip(
@@ -640,7 +641,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                             label: category.formattedSize,
                             gradient: gradient,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           _buildInfoChip(
                             icon: Icons.description_outlined,
                             label: '${category.count} файлов',
@@ -649,7 +650,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                         ],
                       ),
                       if (category.oldestDate != null || category.newestDate != null) ...[
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Row(
                           children: [
                             Icon(
@@ -657,11 +658,11 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                               size: 14,
                               color: Colors.grey[500],
                             ),
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Text(
                               _formatDateRange(category.oldestDate, category.newestDate),
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -677,7 +678,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                   height: 40,
                   decoration: BoxDecoration(
                     color: gradient[0].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.chevron_right,
@@ -698,7 +699,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
     required List<Color> gradient,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -706,17 +707,17 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
             gradient[1].withOpacity(0.1),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: gradient[0]),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w500,
               color: gradient[0],
             ),

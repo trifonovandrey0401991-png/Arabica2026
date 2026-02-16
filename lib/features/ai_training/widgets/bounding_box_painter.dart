@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет для рисования bounding boxes на изображении
 class BoundingBoxPainter extends StatefulWidget {
@@ -58,7 +59,7 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
   @override
   Widget build(BuildContext context) {
     if (_image == null) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
 
     return LayoutBuilder(
@@ -302,7 +303,7 @@ class _BoxPainter extends CustomPainter {
           text: '${i + 1}',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.bold,
             backgroundColor: i == selectedIndex ? Colors.red : boxColor,
           ),

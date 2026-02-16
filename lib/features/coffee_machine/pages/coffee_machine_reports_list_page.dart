@@ -3,6 +3,7 @@ import '../models/coffee_machine_report_model.dart';
 import '../models/pending_coffee_machine_report_model.dart';
 import '../services/coffee_machine_report_service.dart';
 import 'coffee_machine_report_view_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Список отчётов по счётчикам кофемашин (5 вкладок)
 class CoffeeMachineReportsListPage extends StatefulWidget {
@@ -14,10 +15,10 @@ class CoffeeMachineReportsListPage extends StatefulWidget {
 
 class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListPage>
     with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   int _selectedTab = 0;
@@ -99,7 +100,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -115,7 +116,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               _buildFilters(),
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: _gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -136,23 +137,23 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
-          const Icon(Icons.coffee_outlined, color: _gold, size: 22),
-          const SizedBox(width: 8),
-          const Text(
+          Icon(Icons.coffee_outlined, color: _gold, size: 22),
+          SizedBox(width: 8),
+          Text(
             'Счётчик кофемашин',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
           ),
-          const Spacer(),
+          Spacer(),
           IconButton(
             onPressed: _loadData,
-            icon: const Icon(Icons.refresh, color: Colors.white70),
+            icon: Icon(Icons.refresh, color: Colors.white70),
           ),
         ],
       ),
@@ -170,7 +171,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         border: Border(
@@ -186,7 +187,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               Expanded(child: _buildTabButton(2, tabNames[2], counts[2])),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               Expanded(child: _buildTabButton(3, tabNames[3], counts[3])),
@@ -201,7 +202,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
   Widget _buildTabButton(int index, String label, int count) {
     final isSelected = _selectedTab == index;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      padding: EdgeInsets.symmetric(horizontal: 3.w),
       child: GestureDetector(
         onTap: () {
           setState(() {
@@ -210,10 +211,10 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
           });
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
           decoration: BoxDecoration(
             color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             border: Border.all(
               color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             ),
@@ -227,7 +228,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
                   label,
                   style: TextStyle(
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: isSelected ? _gold : Colors.white.withOpacity(0.6),
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -235,19 +236,19 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
                 ),
               ),
               if (count > 0) ...[
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     color: isSelected ? _gold : Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
                       color: isSelected ? _night : Colors.white.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                      fontSize: 11.sp,
                     ),
                   ),
                 ),
@@ -265,7 +266,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     final hasFilter = _selectedShop != null || _selectedEmployee != null || _selectedDate != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
       child: Row(
         children: [
           // Магазин
@@ -277,7 +278,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               onChanged: (v) => setState(() => _selectedShop = v),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Сотрудник
           Expanded(
             child: _buildFilterDropdown<String>(
@@ -287,7 +288,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               onChanged: (v) => setState(() => _selectedEmployee = v),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Дата
           GestureDetector(
             onTap: () async {
@@ -300,10 +301,10 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               if (date != null) setState(() => _selectedDate = date);
             },
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Icon(
                 Icons.calendar_today,
@@ -314,7 +315,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
           ),
           // Сброс
           if (hasFilter) ...[
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             GestureDetector(
               onTap: () => setState(() {
                 _selectedShop = null;
@@ -322,12 +323,12 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
                 _selectedDate = null;
               }),
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Icon(Icons.close, color: Colors.red, size: 18),
+                child: Icon(Icons.close, color: Colors.red, size: 18),
               ),
             ),
           ],
@@ -343,18 +344,18 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     required ValueChanged<T?> onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+          hint: Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp)),
           isExpanded: true,
           dropdownColor: _emeraldDark,
-          style: const TextStyle(color: Colors.white, fontSize: 12),
+          style: TextStyle(color: Colors.white, fontSize: 12.sp),
           icon: Icon(Icons.arrow_drop_down, color: Colors.white.withOpacity(0.4)),
           items: [
             DropdownMenuItem<T>(value: null, child: Text('Все', style: TextStyle(color: Colors.white.withOpacity(0.5)))),
@@ -380,7 +381,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
       onRefresh: _loadData,
       color: _gold,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         itemCount: reports.length,
         itemBuilder: (_, i) => _buildPendingCard(reports[i]),
       ),
@@ -395,7 +396,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
       onRefresh: _loadData,
       color: _gold,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         itemCount: reports.length,
         itemBuilder: (_, i) => _buildReportCard(reports[i]),
       ),
@@ -408,8 +409,8 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.coffee_outlined, size: 48, color: Colors.white.withOpacity(0.2)),
-          const SizedBox(height: 12),
-          Text(message, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14)),
+          SizedBox(height: 12),
+          Text(message, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14.sp)),
         ],
       ),
     );
@@ -421,11 +422,11 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     final icon = isFailed ? Icons.close : Icons.hourglass_empty;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: 10.h),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
@@ -435,35 +436,35 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
             height: 44,
             decoration: BoxDecoration(
               color: statusColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Icon(icon, color: statusColor, size: 22),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   report.shopAddress,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   '${report.shiftTypeText} / ${report.date}',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
                     report.statusText,
-                    style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: statusColor, fontSize: 11.sp, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -500,11 +501,11 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
         _loadData();
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10.h),
+        padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
@@ -514,48 +515,48 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               height: 44,
               decoration: BoxDecoration(
                 color: statusColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(icon, color: statusColor, size: 22),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     report.shopAddress,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     report.employeeName,
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     '${report.shiftTypeText} / ${report.date}',
-                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Text(
                         'Сумма: ${report.sumOfMachines}',
-                        style: TextStyle(color: _gold, fontSize: 13, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: _gold, fontSize: 13.sp, fontWeight: FontWeight.w600),
                       ),
                       if (report.hasDiscrepancy) ...[
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
                           decoration: BoxDecoration(
                             color: Colors.orange.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Text(
                             'Расхождение: ${report.discrepancyAmount}',
-                            style: const TextStyle(color: Colors.orange, fontSize: 10),
+                            style: TextStyle(color: Colors.orange, fontSize: 10.sp),
                           ),
                         ),
                       ],

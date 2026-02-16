@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
 import 'review_shop_selection_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора типа отзыва (положительный/отрицательный)
 class ReviewTypeSelectionPage extends StatelessWidget {
   const ReviewTypeSelectionPage({super.key});
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +19,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
       return Scaffold(
         backgroundColor: _night,
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -32,17 +33,17 @@ class ReviewTypeSelectionPage extends StatelessWidget {
                 _buildAppBar(context),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
                     child: Column(
                       children: [
-                        const SizedBox(height: 48),
+                        SizedBox(height: 48),
                         // Иконка
                         Container(
                           width: 72,
                           height: 72,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(20.r),
                             border: Border.all(
                               color: Colors.white.withOpacity(0.15),
                             ),
@@ -53,47 +54,47 @@ class ReviewTypeSelectionPage extends StatelessWidget {
                             color: Colors.white.withOpacity(0.8),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         Text(
                           'Выберите тип отзыва',
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 22.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withOpacity(0.9),
                             letterSpacing: 0.5,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           'Ваше мнение важно для нас',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const Spacer(),
+                        Spacer(),
                         // Положительный отзыв
                         _buildReviewCard(
                           context: context,
                           title: 'Положительный отзыв',
                           subtitle: 'Нам понравилось!',
                           icon: Icons.thumb_up_rounded,
-                          accentColor: const Color(0xFF4CAF50),
+                          accentColor: Color(0xFF4CAF50),
                           reviewType: 'positive',
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         // Отрицательный отзыв
                         _buildReviewCard(
                           context: context,
                           title: 'Отрицательный отзыв',
                           subtitle: 'Есть замечания',
                           icon: Icons.thumb_down_rounded,
-                          accentColor: const Color(0xFFEF5350),
+                          accentColor: Color(0xFFEF5350),
                           reviewType: 'negative',
                         ),
-                        const Spacer(),
+                        Spacer(),
                       ],
                     ),
                   ),
@@ -107,7 +108,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
       Logger.error('Ошибка в ReviewTypeSelectionPage.build()', e, stackTrace);
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Ошибка'),
+          title: Text('Ошибка'),
           backgroundColor: _emerald,
         ),
         body: Center(
@@ -119,7 +120,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -130,19 +131,19 @@ class ReviewTypeSelectionPage extends StatelessWidget {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Оставить отзыв',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -168,9 +169,9 @@ class ReviewTypeSelectionPage extends StatelessWidget {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: accentColor.withOpacity(0.4)),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -188,7 +189,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: accentColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 icon,
@@ -196,7 +197,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
                 size: 28,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,16 +205,16 @@ class ReviewTypeSelectionPage extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white.withOpacity(0.95),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.7),
                     ),
                   ),

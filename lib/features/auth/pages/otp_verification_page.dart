@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../widgets/otp_input_widget.dart';
 import 'pin_setup_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ввода OTP-кода
 ///
@@ -98,7 +99,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Новый код отправлен в Telegram'),
             backgroundColor: Colors.green,
           ),
@@ -126,18 +127,18 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Подтверждение'),
+        title: Text('Подтверждение'),
         centerTitle: true,
       ),
       body: SafeArea(
         child: Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Виджет ввода кода
                   OtpInputWidget(
@@ -150,40 +151,40 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                     resendTimeout: 60,
                   ),
 
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Кнопка открытия Telegram
                   OutlinedButton.icon(
                     onPressed: _openTelegram,
-                    icon: const Icon(Icons.telegram),
-                    label: const Text('Открыть Telegram'),
+                    icon: Icon(Icons.telegram),
+                    label: Text('Открыть Telegram'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Подсказка
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     decoration: BoxDecoration(
                       color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: Colors.orange[200]!),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.info_outline, color: Colors.orange[700]),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Если код не пришёл, проверьте что вы открыли бота @ArabicaAuthBot26_bot и поделились своим номером телефона',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: Colors.orange[900],
                             ),
                           ),
@@ -199,7 +200,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
             if (_isLoading)
               Container(
                 color: Colors.black26,
-                child: const Center(
+                child: Center(
                   child: CircularProgressIndicator(),
                 ),
               ),

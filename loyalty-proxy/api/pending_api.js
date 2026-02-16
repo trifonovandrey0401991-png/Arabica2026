@@ -10,6 +10,7 @@ const path = require('path');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const PENDING_RECOUNT_DIR = `${DATA_DIR}/pending-recount-reports`;
+const RECOUNT_REPORTS_DIR = `${DATA_DIR}/recount-reports`; // Scheduler пишет сюда
 const PENDING_SHIFT_DIR = `${DATA_DIR}/pending-shift-reports`;
 const PENDING_SHIFT_HANDOVER_FILE = `${DATA_DIR}/pending-shift-handover-reports.json`;
 const SHOPS_DIR = `${DATA_DIR}/shops`;
@@ -415,13 +416,17 @@ function setupPendingAPI(app) {
       const { shopAddress, employeeName } = req.query;
       const reports = [];
 
-      if (await fileExists(PENDING_RECOUNT_DIR)) {
-        const files = (await fsp.readdir(PENDING_RECOUNT_DIR)).filter(f => f.endsWith('.json'));
+      // Читаем из recount-reports (куда scheduler пишет pending отчёты)
+      if (await fileExists(RECOUNT_REPORTS_DIR)) {
+        const files = (await fsp.readdir(RECOUNT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = await fsp.readFile(path.join(PENDING_RECOUNT_DIR, file), 'utf8');
+            const content = await fsp.readFile(path.join(RECOUNT_REPORTS_DIR, file), 'utf8');
             const report = JSON.parse(content);
+
+            // Только pending отчёты
+            if (report.status !== 'pending') continue;
 
             if (shopAddress && report.shopAddress !== shopAddress) continue;
             if (employeeName && report.employeeName !== employeeName) continue;

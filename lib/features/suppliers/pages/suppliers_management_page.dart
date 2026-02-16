@@ -7,6 +7,7 @@ import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import '../../tasks/services/recurring_task_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления поставщиками
 class SuppliersManagementPage extends StatefulWidget {
@@ -23,7 +24,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   bool _isLoading = true;
   String _searchQuery = '';
 
-  static const List<String> _weekDays = [
+  static List<String> _weekDays = [
     'Понедельник',
     'Вторник',
     'Среда',
@@ -62,7 +63,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Ошибка загрузки данных'),
             backgroundColor: Colors.red,
           ),
@@ -120,30 +121,30 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Container(
           height: MediaQuery.of(context).size.height * 0.9,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
+              topLeft: Radius.circular(28.r),
+              topRight: Radius.circular(28.r),
             ),
           ),
           child: Column(
             children: [
               // Заголовок
               Container(
-                padding: const EdgeInsets.fromLTRB(24, 16, 16, 16),
+                padding: EdgeInsets.fromLTRB(24.w, 16.h, 16.w, 16.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF00695C),
-                      const Color(0xFF004D40),
+                      Color(0xFF00695C),
+                      Color(0xFF004D40),
                     ],
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(28.r),
+                    topRight: Radius.circular(28.r),
                   ),
                 ),
                 child: Row(
@@ -153,24 +154,24 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.local_shipping,
                         color: Colors.white,
                         size: 26,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             isEditing ? 'Редактирование' : 'Новый поставщик',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 20.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -178,7 +179,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                             isEditing ? supplier.name : 'Заполните данные',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
-                              fontSize: 13,
+                              fontSize: 13.sp,
                             ),
                           ),
                         ],
@@ -186,7 +187,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context, false),
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: Icon(Icons.close, color: Colors.white),
                     ),
                   ],
                 ),
@@ -194,7 +195,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
               // Контент
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -202,9 +203,9 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       _buildSectionHeader(
                         icon: Icons.info_outline,
                         title: 'Основная информация',
-                        color: const Color(0xFF004D40),
+                        color: Color(0xFF004D40),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       _buildStyledTextField(
                         controller: nameController,
                         label: 'Название компании',
@@ -212,17 +213,17 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         icon: Icons.business,
                         isRequired: true,
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       // Тип организации - красивые кнопки
-                      const Text(
+                      Text(
                         'Тип организации',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF636E72),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
@@ -232,7 +233,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                               onTap: () => setDialogState(() => selectedLegalType = 'ООО'),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: _buildSelectButton(
                               label: 'ИП',
@@ -242,7 +243,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       _buildStyledTextField(
                         controller: innController,
                         label: 'ИНН',
@@ -251,21 +252,21 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         keyboardType: TextInputType.number,
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       // Секция: Контакты
                       _buildSectionHeader(
                         icon: Icons.contact_phone_outlined,
                         title: 'Контактные данные',
                         color: Colors.blue,
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       _buildStyledTextField(
                         controller: contactPersonController,
                         label: 'Контактное лицо',
                         hint: 'ФИО представителя',
                         icon: Icons.person_outline,
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       _buildStyledTextField(
                         controller: phoneController,
                         label: 'Телефон',
@@ -273,7 +274,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       _buildStyledTextField(
                         controller: emailController,
                         label: 'Email',
@@ -282,14 +283,14 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         keyboardType: TextInputType.emailAddress,
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       // Секция: Оплата
                       _buildSectionHeader(
                         icon: Icons.payment_outlined,
                         title: 'Тип оплаты',
                         color: Colors.orange,
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
@@ -301,7 +302,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                               color: Colors.blue,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: _buildSelectButton(
                               label: 'Наличный',
@@ -314,22 +315,22 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         ],
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       // Секция: Доставки
                       _buildSectionHeader(
                         icon: Icons.store_outlined,
                         title: 'Доставки по магазинам',
                         color: Colors.green,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Выберите дни доставки и ответственных',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.grey[500],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       // Список магазинов
                       ..._shops.map((shop) => _buildShopDeliveryCard(
                         shop: shop,
@@ -347,21 +348,21 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           });
                         },
                       )),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                     ],
                   ),
                 ),
               ),
               // Кнопки внизу
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
                       blurRadius: 10,
-                      offset: const Offset(0, -4),
+                      offset: Offset(0, -4),
                     ),
                   ],
                 ),
@@ -373,33 +374,33 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.grey[700],
                           side: BorderSide(color: Colors.grey[300]!),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(14.r),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Отмена',
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       flex: 2,
                       child: Container(
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [Color(0xFF00695C), Color(0xFF004D40)],
                           ),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14.r),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF004D40).withOpacity(0.3),
+                              color: Color(0xFF004D40).withOpacity(0.3),
                               blurRadius: 8,
-                              offset: const Offset(0, 4),
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),
@@ -408,7 +409,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                             if (nameController.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: const Row(
+                                  content: Row(
                                     children: [
                                       Icon(Icons.error_outline, color: Colors.white),
                                       SizedBox(width: 8),
@@ -417,7 +418,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                                   ),
                                   backgroundColor: Colors.red[400],
                                   behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                                 ),
                               );
                               return;
@@ -506,7 +507,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: const Row(
+                                  content: Row(
                                     children: [
                                       Icon(Icons.error_outline, color: Colors.white),
                                       SizedBox(width: 8),
@@ -515,7 +516,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                                   ),
                                   backgroundColor: Colors.red[400],
                                   behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                                 ),
                               );
                             }
@@ -523,19 +524,19 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(14.r),
                             ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(isEditing ? Icons.save_outlined : Icons.add, size: 20),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Text(
                                 isEditing ? 'Сохранить' : 'Добавить поставщика',
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15.sp),
                               ),
                             ],
                           ),
@@ -568,15 +569,15 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           height: 32,
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
           ),
           child: Icon(icon, size: 18, color: color),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Text(
           title,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 16.sp,
             fontWeight: FontWeight.bold,
             color: Colors.grey[800],
           ),
@@ -600,24 +601,24 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 13,
+              style: TextStyle(
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF636E72),
               ),
             ),
             if (isRequired)
-              const Text(
+              Text(
                 ' *',
                 style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
           ],
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FA),
-            borderRadius: BorderRadius.circular(12),
+            color: Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.grey[200]!),
           ),
           child: TextField(
@@ -628,7 +629,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
               hintStyle: TextStyle(color: Colors.grey[400]),
               prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             ),
           ),
         ),
@@ -646,11 +647,11 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : const Color(0xFFF8F9FA),
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? color.withOpacity(0.1) : Color(0xFFF8F9FA),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
             color: isSelected ? color : Colors.grey[200]!,
             width: isSelected ? 2 : 1,
@@ -665,12 +666,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                 size: 18,
                 color: isSelected ? color : Colors.grey[500],
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
             ],
             Text(
               label,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 color: isSelected ? color : Colors.grey[600],
               ),
@@ -694,10 +695,10 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     final isActive = hasDelivery || hasManagers;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       color: isActive ? Colors.green.shade50 : Colors.grey.shade50,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -708,7 +709,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                   size: 20,
                   color: isActive ? Colors.green.shade700 : Colors.grey.shade600,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     shop.name,
@@ -722,15 +723,15 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                 ),
                 if (hasDelivery)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                     decoration: BoxDecoration(
                       color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
                       '${selectedDays.length} ${_getDayWord(selectedDays.length)}',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 11.sp,
                         color: Colors.green.shade700,
                         fontWeight: FontWeight.w500,
                       ),
@@ -738,7 +739,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             // Дни недели
             Wrap(
               spacing: 4,
@@ -750,7 +751,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                   label: Text(
                     shortDay,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -764,15 +765,15 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     }
                     onDaysChanged(newDays);
                   },
-                  selectedColor: const Color(0xFF004D40).withOpacity(0.3),
-                  checkmarkColor: const Color(0xFF004D40),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  selectedColor: Color(0xFF004D40).withOpacity(0.3),
+                  checkmarkColor: Color(0xFF004D40),
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 );
               }).toList(),
             ),
             // Заведующие
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             InkWell(
               onTap: () => _showManagersDialog(
                 shopName: shop.name,
@@ -781,12 +782,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                 onChanged: onManagersChanged,
               ),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: hasManagers ? Colors.orange.shade300 : Colors.grey.shade300,
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   color: hasManagers ? Colors.orange.shade50 : Colors.white,
                 ),
                 child: Row(
@@ -796,14 +797,14 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       size: 18,
                       color: hasManagers ? Colors.orange.shade700 : Colors.grey.shade600,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         hasManagers
                             ? _getManagerNames(selectedManagerIds, allManagers)
                             : 'Выбрать заведующих...',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: hasManagers ? Colors.orange.shade800 : Colors.grey.shade600,
                         ),
                         maxLines: 1,
@@ -812,21 +813,21 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     ),
                     if (hasManagers)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade100,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
                         child: Text(
                           '${selectedManagerIds.length}',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             color: Colors.orange.shade700,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Icon(
                       Icons.chevron_right,
                       size: 18,
@@ -867,9 +868,9 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           content: SizedBox(
             width: double.maxFinite,
             child: allManagers.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(20),
+                      padding: EdgeInsets.all(20.w),
                       child: Text(
                         'Нет сотрудников с должностью "Менеджер" или "Заведующий"',
                         textAlign: TextAlign.center,
@@ -888,7 +889,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         subtitle: manager.position != null
                             ? Text(
                                 manager.position!,
-                                style: const TextStyle(fontSize: 12),
+                                style: TextStyle(fontSize: 12.sp),
                               )
                             : null,
                         value: isSelected,
@@ -901,7 +902,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                             }
                           });
                         },
-                        activeColor: const Color(0xFF004D40),
+                        activeColor: Color(0xFF004D40),
                         dense: true,
                       );
                     },
@@ -910,7 +911,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: Text('Отмена'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -918,9 +919,9 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF004D40),
+                backgroundColor: Color(0xFF004D40),
               ),
-              child: const Text('Применить'),
+              child: Text('Применить'),
             ),
           ],
         ),
@@ -938,19 +939,19 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить поставщика?'),
+        title: Text('Удалить поставщика?'),
         content: Text('Вы уверены, что хотите удалить поставщика "${supplier.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -970,7 +971,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
         _loadData();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Поставщик удален'),
               backgroundColor: Colors.green,
             ),
@@ -979,7 +980,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка удаления поставщика'),
               backgroundColor: Colors.red,
             ),
@@ -992,31 +993,31 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Поставщики'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Поставщики'),
+        backgroundColor: Color(0xFF004D40),
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadData,
           ),
         ],
       ),
       floatingActionButton: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFF00695C), Color(0xFF004D40)],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF004D40).withOpacity(0.4),
+              color: Color(0xFF004D40).withOpacity(0.4),
               blurRadius: 12,
-              offset: const Offset(0, 6),
+              offset: Offset(0, 6),
             ),
           ],
         ),
@@ -1024,7 +1025,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           onPressed: () => _showAddEditDialog(),
           backgroundColor: Colors.transparent,
           elevation: 0,
-          child: const Icon(Icons.add, size: 28),
+          child: Icon(Icons.add, size: 28),
         ),
       ),
       body: Column(
@@ -1032,26 +1033,26 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           // Заголовок с количеством
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Color(0xFF004D40),
               borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
+                bottomLeft: Radius.circular(24.r),
+                bottomRight: Radius.circular(24.r),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 20.h),
             child: Column(
               children: [
                 // Поле поиска
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
                         blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -1061,7 +1062,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       hintStyle: TextStyle(color: Colors.grey[400]),
                       prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                     ),
                     onChanged: (value) {
                       setState(() {
@@ -1070,7 +1071,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     },
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Статистика
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1081,7 +1082,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       count: _suppliers.length,
                       color: Colors.white,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     _buildStatChip(
                       icon: Icons.check_circle,
                       label: 'С доставкой',
@@ -1095,7 +1096,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           ),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF004D40)))
+                ? Center(child: CircularProgressIndicator(color: Color(0xFF004D40)))
                 : _filteredSuppliers.isEmpty
                     ? Center(
                         child: Column(
@@ -1112,29 +1113,29 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                                 ),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.local_shipping_outlined,
                                 size: 50,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
                             Text(
                               _searchQuery.isEmpty
                                   ? 'Нет поставщиков'
                                   : 'Поставщики не найдены',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 20.sp,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey[700],
                               ),
                             ),
                             if (_searchQuery.isEmpty) ...[
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Text(
                                 'Нажмите + чтобы добавить первого',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 14.sp,
                                   color: Colors.grey[500],
                                 ),
                               ),
@@ -1144,9 +1145,9 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       )
                     : RefreshIndicator(
                         onRefresh: _loadData,
-                        color: const Color(0xFF004D40),
+                        color: Color(0xFF004D40),
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           itemCount: _filteredSuppliers.length,
                           itemBuilder: (context, index) {
                             final supplier = _filteredSuppliers[index];
@@ -1167,30 +1168,30 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             '$count',
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 16.sp,
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
               color: color.withOpacity(0.8),
-              fontSize: 12,
+              fontSize: 12.sp,
             ),
           ),
         ],
@@ -1201,30 +1202,30 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   Widget _buildSupplierCard(Supplier supplier) {
     final hasDelivery = supplier.shopsWithDeliveryCount > 0;
     final gradientColors = hasDelivery
-        ? [const Color(0xFF00695C), const Color(0xFF004D40)]
+        ? [Color(0xFF00695C), Color(0xFF004D40)]
         : [Colors.blueGrey[600]!, Colors.blueGrey[800]!];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         child: InkWell(
           onTap: () => _showSupplierDetails(supplier),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1240,12 +1241,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           end: Alignment.bottomRight,
                           colors: gradientColors,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16.r),
                         boxShadow: [
                           BoxShadow(
                             color: gradientColors[0].withOpacity(0.4),
                             blurRadius: 8,
-                            offset: const Offset(0, 4),
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
@@ -1254,15 +1255,15 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           supplier.name.isNotEmpty
                               ? supplier.name[0].toUpperCase()
                               : '?',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 24,
+                            fontSize: 24.sp,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    SizedBox(width: 14),
                     // Информация
                     Expanded(
                       child: Column(
@@ -1273,26 +1274,26 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                               Flexible(
                                 child: Text(
                                   supplier.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 17,
+                                    fontSize: 17.sp,
                                     color: Color(0xFF2D3436),
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (supplier.legalType != null) ...[
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF004D40).withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
+                                    color: Color(0xFF004D40).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(
                                     supplier.legalType!,
-                                    style: const TextStyle(
-                                      fontSize: 11,
+                                    style: TextStyle(
+                                      fontSize: 11.sp,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF004D40),
                                     ),
@@ -1301,13 +1302,13 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                               ],
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           if (supplier.contactPerson != null)
                             Text(
                               supplier.contactPerson!,
                               style: TextStyle(
                                 color: Colors.grey[600],
-                                fontSize: 13,
+                                fontSize: 13.sp,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1318,7 +1319,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     // Меню
                     PopupMenuButton<String>(
                       icon: Icon(Icons.more_vert, color: Colors.grey[400]),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                       onSelected: (value) {
                         if (value == 'edit') {
                           _showAddEditDialog(supplier);
@@ -1332,12 +1333,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           child: Row(
                             children: [
                               Icon(Icons.edit_outlined, size: 20, color: Colors.grey[700]),
-                              const SizedBox(width: 12),
-                              const Text('Редактировать'),
+                              SizedBox(width: 12),
+                              Text('Редактировать'),
                             ],
                           ),
                         ),
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'delete',
                           child: Row(
                             children: [
@@ -1351,7 +1352,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 // Нижняя часть с тегами
                 Row(
                   children: [
@@ -1362,7 +1363,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         label: supplier.paymentType!,
                         color: supplier.paymentType == 'Нал' ? Colors.orange : Colors.blue,
                       ),
-                    if (supplier.paymentType != null) const SizedBox(width: 8),
+                    if (supplier.paymentType != null) SizedBox(width: 8),
                     // Доставка
                     if (hasDelivery)
                       _buildInfoChip(
@@ -1370,7 +1371,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                         label: '${supplier.shopsWithDeliveryCount} ${_getShopWord(supplier.shopsWithDeliveryCount)}',
                         color: Colors.green,
                       ),
-                    const Spacer(),
+                    Spacer(),
                     // Телефон
                     if (supplier.phone != null)
                       Icon(Icons.phone, size: 16, color: Colors.grey[400]),
@@ -1390,20 +1391,20 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w600,
               color: color,
             ),
@@ -1431,23 +1432,23 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
             children: [
               if (supplier.legalType != null) ...[
                 _detailRow(Icons.business, 'Тип', supplier.legalType!),
-                const Divider(),
+                Divider(),
               ],
               if (supplier.inn != null) ...[
                 _detailRow(Icons.numbers, 'ИНН', supplier.inn!),
-                const Divider(),
+                Divider(),
               ],
               if (supplier.phone != null) ...[
                 _detailRow(Icons.phone, 'Телефон', supplier.phone!),
-                const Divider(),
+                Divider(),
               ],
               if (supplier.email != null) ...[
                 _detailRow(Icons.email, 'Email', supplier.email!),
-                const Divider(),
+                Divider(),
               ],
               if (supplier.contactPerson != null) ...[
                 _detailRow(Icons.person, 'Контактное лицо', supplier.contactPerson!),
-                const Divider(),
+                Divider(),
               ],
               if (supplier.paymentType != null) ...[
                 _detailRow(
@@ -1455,46 +1456,46 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                   'Оплата',
                   supplier.paymentType!,
                 ),
-                const Divider(),
+                Divider(),
               ],
               // Показываем доставки по магазинам
               if (supplier.shopDeliveries != null && supplier.shopDeliveries!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Text(
+                SizedBox(height: 8),
+                Text(
                   'Доставки и заведующие:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ...supplier.shopDeliveries!.map((sd) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: EdgeInsets.only(bottom: 12.h),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.store, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
+                      Icon(Icons.store, size: 16, color: Colors.grey),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               sd.shopName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w500,
-                                fontSize: 13,
+                                fontSize: 13.sp,
                               ),
                             ),
                             if (sd.daysShortText.isNotEmpty)
                               Row(
                                 children: [
                                   Icon(Icons.calendar_today, size: 12, color: Colors.green.shade600),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text(
                                     sd.daysShortText,
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 12.sp,
                                       color: Colors.green.shade700,
                                     ),
                                   ),
@@ -1502,17 +1503,17 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                               ),
                             if (sd.hasManagers)
                               Padding(
-                                padding: const EdgeInsets.only(top: 2),
+                                padding: EdgeInsets.only(top: 2.h),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Icon(Icons.person, size: 12, color: Colors.orange.shade600),
-                                    const SizedBox(width: 4),
+                                    SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
                                         sd.managersText,
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 12.sp,
                                           color: Colors.orange.shade700,
                                         ),
                                       ),
@@ -1533,7 +1534,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
+            child: Text('Закрыть'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1541,9 +1542,9 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
               _showAddEditDialog(supplier);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
+              backgroundColor: Color(0xFF004D40),
             ),
-            child: const Text('Редактировать'),
+            child: Text('Редактировать'),
           ),
         ],
       ),
@@ -1552,12 +1553,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
 
   Widget _detailRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: Colors.grey[600]),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1565,13 +1566,13 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.grey[600],
                   ),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 14.sp),
                 ),
               ],
             ),

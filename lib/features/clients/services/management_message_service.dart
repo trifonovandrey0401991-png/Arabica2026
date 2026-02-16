@@ -87,12 +87,14 @@ class ManagementMessageService {
   }
 
   /// Отметить сообщения как прочитанные клиентом
-  static Future<bool> markAsReadByClient(String clientPhone) async {
-    Logger.debug('Marking management messages as read by client: ${Logger.maskPhone(clientPhone)}');
+  /// [type] — 'broadcast', 'personal' или null (все)
+  static Future<bool> markAsReadByClient(String clientPhone, {String? type}) async {
+    Logger.debug('Marking management messages as read by client: ${Logger.maskPhone(clientPhone)} type=$type');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
+    final typeParam = type != null ? '?type=$type' : '';
     return await BaseHttpService.simplePost(
-      endpoint: '$_baseEndpoint/$normalizedPhone/management/read-by-client',
+      endpoint: '$_baseEndpoint/$normalizedPhone/management/read-by-client$typeParam',
       body: {},
     );
   }

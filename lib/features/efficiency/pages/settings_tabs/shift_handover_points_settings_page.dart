@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring shift handover points settings (Сдать смену)
 class ShiftHandoverPointsSettingsPage extends StatefulWidget {
@@ -30,7 +31,7 @@ class _ShiftHandoverPointsSettingsPageState
   int _adminReviewTimeout = 4; // Время на проверку админом (в часах)
 
   // Gradient colors for this page (pink theme)
-  static const _gradientColors = [Color(0xFFf093fb), Color(0xFFf5576c)];
+  static final _gradientColors = [Color(0xFFf093fb), Color(0xFFf5576c)];
 
   @override
   void initState() {
@@ -93,7 +94,7 @@ class _ShiftHandoverPointsSettingsPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -102,7 +103,7 @@ class _ShiftHandoverPointsSettingsPageState
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -139,9 +140,9 @@ class _ShiftHandoverPointsSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за сдачу смены'),
+        title: Text('Баллы за сдачу смены'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -159,7 +160,7 @@ class _ShiftHandoverPointsSettingsPageState
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -176,7 +177,7 @@ class _ShiftHandoverPointsSettingsPageState
                           accentColor: Colors.red,
                           icon: Icons.remove_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Zero threshold slider
                         SettingsSliderWidget(
@@ -192,7 +193,7 @@ class _ShiftHandoverPointsSettingsPageState
                           accentColor: Colors.orange,
                           icon: Icons.adjust,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Max points slider
                         SettingsSliderWidget(
@@ -207,14 +208,14 @@ class _ShiftHandoverPointsSettingsPageState
                           accentColor: Colors.green,
                           icon: Icons.add_circle_outline,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Time windows section
                         SettingsSectionTitle(
                           title: 'Временные окна сдачи смены',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TimeWindowsSection(
                           windows: [
                             TimeWindowPickerWidget(
@@ -239,7 +240,7 @@ class _ShiftHandoverPointsSettingsPageState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Missed penalty slider
                         SettingsSliderWidget(
@@ -254,29 +255,29 @@ class _ShiftHandoverPointsSettingsPageState
                           accentColor: Colors.deepOrange,
                           icon: Icons.warning_amber_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Admin review timeout section
                         SettingsSectionTitle(
                           title: 'Время на проверку админом',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _buildAdminReviewTimeoutSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр расчета баллов',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         RatingPreviewWidget(
                           previewRatings: [1, 4, _zeroThreshold, 8, 10],
                           calculatePoints: _calculatePoints,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -284,7 +285,7 @@ class _ShiftHandoverPointsSettingsPageState
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -305,16 +306,16 @@ class _ShiftHandoverPointsSettingsPageState
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -325,31 +326,31 @@ class _ShiftHandoverPointsSettingsPageState
                 height: 44,
                 decoration: BoxDecoration(
                   color: Colors.purple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.admin_panel_settings_outlined,
                   color: Colors.purple,
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Таймаут проверки',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF2D3436),
                       ),
                     ),
-                    const Text(
+                    Text(
                       'Время админу на оценку отчёта',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.grey,
                       ),
                     ),
@@ -358,24 +359,24 @@ class _ShiftHandoverPointsSettingsPageState
               ),
               // Текущее значение
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [Colors.purple, Colors.deepPurple],
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.purple.withOpacity(0.3),
                       blurRadius: 8,
-                      offset: const Offset(0, 4),
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Text(
                   formatHours(_adminReviewTimeout),
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -383,7 +384,7 @@ class _ShiftHandoverPointsSettingsPageState
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           // Слайдер
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
@@ -392,7 +393,7 @@ class _ShiftHandoverPointsSettingsPageState
               thumbColor: Colors.purple,
               overlayColor: Colors.purple.withOpacity(0.2),
               trackHeight: 6,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: 10),
             ),
             child: Slider(
               value: _adminReviewTimeout.toDouble(),
@@ -406,35 +407,35 @@ class _ShiftHandoverPointsSettingsPageState
           ),
           // Метки
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('1 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('6 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('12 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('18 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                Text('24 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('1 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('6 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('12 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('18 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
+                Text('24 ч', style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
               color: Colors.amber.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.amber.withOpacity(0.3)),
             ),
             child: Row(
               children: [
                 Icon(Icons.info_outline, color: Colors.amber[700], size: 20),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Если админ не оценит отчёт за ${formatHours(_adminReviewTimeout)}, статус изменится на "Отклонено" и сотрудник получит штраф',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.amber[900],
                     ),
                   ),

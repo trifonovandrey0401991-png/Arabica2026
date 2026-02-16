@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 import '../../../orders/services/order_timeout_settings_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring orders points settings (Заказы клиентов)
 class OrdersPointsSettingsPage extends StatefulWidget {
@@ -24,7 +25,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   double _missedOrderPenalty = -2;
 
   // Gradient colors for this page (green theme for orders)
-  static const _gradientColors = [Color(0xFF11998e), Color(0xFF38ef7d)];
+  static final _gradientColors = [Color(0xFF11998e), Color(0xFF38ef7d)];
 
   @override
   void initState() {
@@ -78,7 +79,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -87,7 +88,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -107,9 +108,9 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за заказы'),
+        title: Text('Баллы за заказы'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -127,7 +128,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -144,7 +145,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                           accentColor: Colors.green,
                           icon: Icons.check_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Rejected points slider
                         SettingsSliderWidget(
@@ -159,14 +160,14 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                           accentColor: Colors.red,
                           icon: Icons.cancel_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Divider section for timeout settings
                         SettingsSectionTitle(
                           title: 'Пропущенные заказы',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
 
                         // Timeout info card
                         SettingsInfoBox(
@@ -174,20 +175,20 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                           color: Colors.orange,
                           icon: Icons.info_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Timeout dropdown
                         _buildDropdownSection(
                           title: 'Таймаут на принятие',
                           subtitle: 'Время ожидания принятия заказа',
                           value: _timeoutMinutes,
-                          items: const [5, 10, 15, 20, 30],
+                          items: [5, 10, 15, 20, 30],
                           onChanged: (value) => setState(() => _timeoutMinutes = value ?? 15),
                           valueLabel: '$_timeoutMinutes мин',
                           accentColor: Colors.orange,
                           icon: Icons.timer_outlined,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Missed order penalty slider
                         SettingsSliderWidget(
@@ -202,16 +203,16 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                           accentColor: Colors.orange,
                           icon: Icons.timer_off_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _buildPreviewTable(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -219,7 +220,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -242,17 +243,17 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: accentColor.withOpacity(0.1),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -263,19 +264,19 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(icon, color: accentColor, size: 24),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2D3436),
                         ),
@@ -283,7 +284,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.grey[500],
                         ),
                       ),
@@ -291,35 +292,35 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                   decoration: BoxDecoration(
                     color: accentColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
                       BoxShadow(
                         color: accentColor.withOpacity(0.4),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Text(
                     valueLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 18.sp,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
               decoration: BoxDecoration(
                 color: accentColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: accentColor.withOpacity(0.3)),
               ),
               child: DropdownButtonHideUnderline(
@@ -329,7 +330,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                   icon: Icon(Icons.keyboard_arrow_down, color: accentColor),
                   style: TextStyle(
                     color: Colors.grey[800],
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                   ),
                   items: items.map((item) => DropdownMenuItem(
@@ -350,22 +351,22 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         child: Column(
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -373,7 +374,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                   colors: _gradientColors,
                 ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Expanded(
                     child: Text(
@@ -381,7 +382,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -392,7 +393,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -451,7 +452,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
         color: backgroundColor,
         border: isLast ? null : Border(bottom: BorderSide(color: Colors.grey[200]!)),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: EdgeInsets.symmetric(vertical: 16.h),
       child: Row(
         children: [
           Expanded(
@@ -463,25 +464,25 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                   height: 32,
                   decoration: BoxDecoration(
                     color: iconColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Icon(icon, color: iconColor, size: 20),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Text(
                   label,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15.sp),
                 ),
               ],
             ),
           ),
           Expanded(
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              margin: EdgeInsets.symmetric(horizontal: 20.w),
+              padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Text(
                 isPositive ? '+${points.toStringAsFixed(2)}' : points.toStringAsFixed(2),
@@ -489,7 +490,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 16.sp,
                 ),
               ),
             ),

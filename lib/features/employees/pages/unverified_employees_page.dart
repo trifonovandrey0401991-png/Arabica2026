@@ -5,6 +5,7 @@ import '../services/employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import '../models/employee_registration_model.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница не верифицированных сотрудников (у которых была снята верификация)
 class UnverifiedEmployeesPage extends StatefulWidget {
@@ -31,7 +32,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
       final results = await Future.wait([
         EmployeeService.getEmployees(),
         EmployeeRegistrationService.getAllRegistrations(),
-      ]).timeout(const Duration(seconds: 30));
+      ]).timeout(Duration(seconds: 30));
 
       final allEmployees = results[0] as List<Employee>;
       final allRegistrations = results[1] as List<EmployeeRegistration>;
@@ -73,11 +74,11 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Не верифицированные сотрудники'),
+        title: Text('Не верифицированные сотрудники'),
         backgroundColor: Colors.orange,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: () {
               setState(() {
                 _employeesFuture = _loadUnverifiedEmployees();
@@ -90,15 +91,15 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Поиск сотрудника...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -114,7 +115,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
               future: _employeesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator());
                 }
 
                 if (snapshot.hasError) {
@@ -122,17 +123,17 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
+                        Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        SizedBox(height: 16),
                         Text('Ошибка загрузки данных: ${snapshot.error}'),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
                             setState(() {
                               _employeesFuture = _loadUnverifiedEmployees();
                             });
                           },
-                          child: const Text('Повторить'),
+                          child: Text('Повторить'),
                         ),
                       ],
                     ),
@@ -147,13 +148,13 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                 }).toList();
 
                 if (filteredEmployees.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text('Не верифицированные сотрудники не найдены'),
                   );
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w),
                   itemCount: filteredEmployees.length,
                   itemBuilder: (context, index) {
                     final employee = filteredEmployees[index];
@@ -162,7 +163,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                         : null;
 
                     return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      margin: EdgeInsets.symmetric(vertical: 4.h),
                       color: Colors.orange.shade50,
                       child: ListTile(
                         leading: CircleAvatar(
@@ -171,7 +172,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                             employee.name.isNotEmpty
                                 ? employee.name[0].toUpperCase()
                                 : '?',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
@@ -179,9 +180,9 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                         ),
                         title: Text(
                           employee.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 16.sp,
                           ),
                         ),
                         subtitle: Column(
@@ -192,13 +193,13 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                               Text(
                                 'Верификация снята: ${registration.verifiedAt!.day}.${registration.verifiedAt!.month}.${registration.verifiedAt!.year}',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.grey[600],
                                 ),
                               ),
                           ],
                         ),
-                        trailing: const Icon(Icons.pending, color: Colors.orange),
+                        trailing: Icon(Icons.pending, color: Colors.orange),
                         onTap: employee.phone != null && employee.phone!.isNotEmpty
                             ? () async {
                                 // Сохраняем navigator перед async операцией

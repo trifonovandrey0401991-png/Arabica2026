@@ -6,6 +6,7 @@ import '../services/product_question_service.dart';
 import 'product_question_answer_page.dart';
 import 'product_question_employee_dialog_page.dart';
 import '../../shops/models/shop_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ProductQuestionsManagementPage extends StatefulWidget {
   const ProductQuestionsManagementPage({super.key});
@@ -14,21 +15,22 @@ class ProductQuestionsManagementPage extends StatefulWidget {
   State<ProductQuestionsManagementPage> createState() => _ProductQuestionsManagementPageState();
 }
 
-class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagementPage> with SingleTickerProviderStateMixin {
-  // Цветовая схема
-  static const _primaryColor = Color(0xFF004D40);
-  static const _accentColor = Color(0xFF00897B);
-  static const _orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
-  static const _redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
-  static const _greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
+class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagementPage> {
+  // Dark emerald + gold palette
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   List<ProductQuestion> _allQuestions = [];
   List<PersonalProductDialog> _personalDialogs = [];
   List<Shop> _shops = [];
   bool _isLoading = true;
   String? _selectedShopAddress;
-  late TabController _tabController;
   Timer? _refreshTimer;
+
+  // 0 = Ожидают, 1 = Не отвечено, 2 = Отвеченные
+  int _selectedTab = 0;
 
   // Роль пользователя
   String _userRole = 'employee';
@@ -40,16 +42,13 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _loadUserRole();
     _loadData();
-    // Автообновление каждые 10 секунд
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => _loadDataSilent());
+    _refreshTimer = Timer.periodic(Duration(seconds: 10), (_) => _loadDataSilent());
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _refreshTimer?.cancel();
     super.dispose();
   }
@@ -139,14 +138,14 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
               color: Colors.white,
               size: 20,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: isError ? Colors.red[700] : (isSuccess ? Colors.green[700] : _primaryColor),
+        backgroundColor: isError ? Colors.red[700] : (isSuccess ? Colors.green[700] : _emerald),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        margin: EdgeInsets.all(16.w),
       ),
     );
   }
@@ -184,34 +183,37 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     return await showDialog<Shop>(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Gradient header
+            // Header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: _orangeGradient),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: _emerald,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                border: Border(bottom: BorderSide(color: _gold.withOpacity(0.3))),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      color: _gold.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: _gold.withOpacity(0.3)),
                     ),
-                    child: const Icon(Icons.store, color: Colors.white, size: 24),
+                    child: Icon(Icons.store, color: _gold, size: 24),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: 12),
+                  Text(
                     'Выберите магазин',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -225,48 +227,49 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
               ),
               child: ListView.separated(
                 shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 8.h),
                 itemCount: unansweredShops.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
+                separatorBuilder: (context, index) => Divider(
+                  height: 1,
+                  color: Colors.white.withOpacity(0.08),
+                ),
                 itemBuilder: (context, index) {
                   final shop = unansweredShops[index];
                   return InkWell(
                     onTap: () => Navigator.pop(context, shop),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                       child: Row(
                         children: [
                           Container(
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: _orangeGradient),
-                              borderRadius: BorderRadius.circular(12),
+                              color: _emerald.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(color: _gold.withOpacity(0.3)),
                             ),
-                            child: const Icon(
-                              Icons.storefront,
-                              color: Colors.white,
-                              size: 24,
-                            ),
+                            child: Icon(Icons.storefront, color: _gold, size: 24),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   shop.name,
-                                  style: const TextStyle(
-                                    fontSize: 15,
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
                                     fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.9),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(
                                   shop.address,
                                   style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[600],
+                                    fontSize: 13.sp,
+                                    color: Colors.white.withOpacity(0.5),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -277,7 +280,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                           Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
-                            color: Colors.grey[400],
+                            color: _gold.withOpacity(0.5),
                           ),
                         ],
                       ),
@@ -288,13 +291,11 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             ),
             // Cancel button
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.grey[700],
-                ),
-                child: const Text('Отмена'),
+                style: TextButton.styleFrom(foregroundColor: _gold),
+                child: Text('Отмена'),
               ),
             ),
           ],
@@ -304,22 +305,33 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   }
 
   bool _hasUnansweredShops(ProductQuestion question) {
-    if (!question.isAnswered) {
-      return true;
+    if (!question.isAnswered) return true;
+    if (question.isNetworkWide) {
+      final answeredShops = question.messages
+          .where((m) => m.senderType == 'employee' && m.shopAddress != null)
+          .map((m) => m.shopAddress!)
+          .toSet();
+      return _shops.any((shop) => !answeredShops.contains(shop.address));
     }
     return false;
   }
 
   List<ProductQuestion> get _pendingQuestions {
-    return _allQuestions.where((q) => !q.isAnswered && !_isExpired(q)).toList();
+    return _allQuestions.where((q) =>
+      (!q.isAnswered && !_isExpired(q)) || q.hasUnreadFromClient
+    ).toList();
   }
 
   List<ProductQuestion> get _expiredQuestions {
-    return _allQuestions.where((q) => (!q.isAnswered || _hasUnansweredShops(q)) && _isExpired(q)).toList();
+    return _allQuestions.where((q) =>
+      (!q.isAnswered || _hasUnansweredShops(q)) && _isExpired(q) && !q.hasUnreadFromClient
+    ).toList();
   }
 
   List<ProductQuestion> get _answeredQuestions {
-    return _allQuestions.where((q) => q.isAnswered && !_hasUnansweredShops(q)).toList();
+    return _allQuestions.where((q) =>
+      q.isAnswered && !_hasUnansweredShops(q) && !q.hasUnreadFromClient
+    ).toList();
   }
 
   String _formatTimestamp(String timestamp) {
@@ -334,7 +346,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   String _formatTimeRemaining(ProductQuestion question) {
     try {
       final questionTime = DateTime.parse(question.timestamp);
-      final expireTime = questionTime.add(const Duration(minutes: _expiredMinutes));
+      final expireTime = questionTime.add(Duration(minutes: _expiredMinutes));
       final now = DateTime.now();
       final remaining = expireTime.difference(now);
 
@@ -355,183 +367,230 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('Ответы (поиск товара)'),
-        backgroundColor: _primaryColor,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _loadQuestions();
-              _loadPersonalDialogs();
-            },
-            tooltip: 'Обновить',
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: _primaryColor,
-              indicatorWeight: 3,
-              labelColor: _primaryColor,
-              unselectedLabelColor: Colors.grey[600],
-              labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-              tabs: [
-                _buildModernTab('Ожидают', _pendingCount + _unreadDialogsCount, _orangeGradient),
-                _buildModernTab('Не отвечено', _expiredCount, _redGradient),
-                _buildModernTab('Отвеченные', _answeredQuestions.length, _greenGradient),
-              ],
-            ),
+      backgroundColor: _night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.15, 0.4],
           ),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildCombinedPendingTab(),
-          _buildQuestionsTab(_expiredQuestions, isExpired: true),
-          _buildQuestionsTab(_answeredQuestions, isAnswered: true),
-        ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: EdgeInsets.fromLTRB(4.w, 8.h, 4.w, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 22,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Поиск товара',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        _loadQuestions();
+                        _loadPersonalDialogs();
+                      },
+                      icon: Icon(
+                        Icons.refresh_rounded,
+                        color: _gold.withOpacity(0.7),
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 3 tabs
+              Padding(
+                padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 4.h),
+                child: Row(
+                  children: [
+                    Expanded(child: _buildTopTab(0, 'Ожидают', _pendingCount + _unreadDialogsCount, Color(0xFFFF6B35))),
+                    SizedBox(width: 6.w),
+                    Expanded(child: _buildTopTab(1, 'Не отвечено', _expiredCount, Color(0xFFE53935))),
+                    SizedBox(width: 6.w),
+                    Expanded(child: _buildTopTab(2, 'Отвеченные', _answeredQuestions.length, Color(0xFF00b09b))),
+                  ],
+                ),
+              ),
+              // Shop filter
+              Padding(
+                padding: EdgeInsets.only(top: 4.h),
+                child: _buildShopFilter(),
+              ),
+              // Content area
+              Expanded(
+                child: _selectedTab == 2
+                    ? _buildAnsweredContent()
+                    : _selectedTab == 0
+                        ? _buildPendingContent()
+                        : _buildExpiredContent(),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildModernTab(String text, int count, List<Color> gradientColors) {
-    return Tab(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              text,
+  Widget _buildTopTab(int index, String label, int count, Color accentColor) {
+    final isSelected = _selectedTab == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTab = index),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(vertical: 12.h),
+        decoration: BoxDecoration(
+          color: isSelected ? _emerald.withOpacity(0.8) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(
+            color: isSelected ? _gold.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
+                fontSize: 11.sp,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-          if (count > 0) ...[
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: gradientColors),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: gradientColors[0].withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+            if (count > 0) ...[
+              SizedBox(width: 6.w),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
+                ),
               ),
-              child: Text(
-                count.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShopFilter() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 12.w),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.store_rounded, color: _gold.withOpacity(0.7), size: 20),
+          SizedBox(width: 12),
+          Expanded(
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                canvasColor: _emeraldDark,
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedShopAddress,
+                  hint: Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                  isExpanded: true,
+                  icon: Icon(Icons.keyboard_arrow_down, color: _gold.withOpacity(0.5)),
+                  dropdownColor: _emeraldDark,
+                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
+                  items: [
+                    DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+                    ),
+                    ..._shops.map((shop) => DropdownMenuItem<String>(
+                      value: shop.address,
+                      child: Text(
+                        shop.address,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                      ),
+                    )),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedShopAddress = value;
+                    });
+                    _loadQuestions();
+                    _loadPersonalDialogs();
+                  },
                 ),
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildQuestionsTab(List<ProductQuestion> questions, {
-    bool isPending = false,
-    bool isExpired = false,
-    bool isAnswered = false,
-    List<PersonalProductDialog>? personalDialogs,
-  }) {
+  Widget _buildPendingContent() {
+    final unreadDialogs = _personalDialogs.where((d) => d.hasUnreadFromClient).toList();
+    return _buildQuestionsList(
+      _pendingQuestions,
+      isPending: true,
+      personalDialogs: unreadDialogs,
+    );
+  }
+
+  Widget _buildExpiredContent() {
     return Column(
       children: [
-        // Modern shop filter
-        Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.store, color: _accentColor, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedShopAddress,
-                    hint: const Text('Все магазины'),
-                    isExpanded: true,
-                    icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey[600]),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('Все магазины'),
-                      ),
-                      ..._shops.map((shop) => DropdownMenuItem<String>(
-                        value: shop.address,
-                        child: Text(
-                          shop.address,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      )),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedShopAddress = value;
-                      });
-                      _loadQuestions();
-                      _loadPersonalDialogs();
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Warning for expired tab
-        if (isExpired && !_isAdmin)
+        // Warning for expired tab (non-admin)
+        if (!_isAdmin)
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 0),
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.red[50]!, Colors.red[100]!],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red[200]!),
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.red.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 20),
-                ),
-                const SizedBox(width: 12),
+                Icon(Icons.warning_amber_rounded, color: Colors.red[300], size: 20),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Время ответа истекло. Только администратор может отвечать.',
                     style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.red[700],
+                      fontSize: 12.sp,
+                      color: Colors.red[300],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -539,61 +598,69 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
               ],
             ),
           ),
-        // Questions list
         Expanded(
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-                  ),
-                )
-              : (questions.isEmpty && (personalDialogs == null || personalDialogs.isEmpty))
-                  ? _buildEmptyState(isPending, isExpired, isAnswered)
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      itemCount: (personalDialogs?.length ?? 0) + questions.length,
-                      itemBuilder: (context, index) {
-                        if (personalDialogs != null && index < personalDialogs.length) {
-                          final dialog = personalDialogs[index];
-                          return _buildModernPersonalDialogCard(dialog);
-                        }
-
-                        final questionIndex = index - (personalDialogs?.length ?? 0);
-                        final question = questions[questionIndex];
-                        return _buildModernQuestionCard(
-                          question,
-                          isPending: isPending,
-                          isExpired: isExpired,
-                          isAnswered: isAnswered,
-                        );
-                      },
-                    ),
+          child: _buildQuestionsList(_expiredQuestions, isExpired: true),
         ),
       ],
+    );
+  }
+
+  Widget _buildAnsweredContent() {
+    return _buildQuestionsList(_answeredQuestions, isAnswered: true);
+  }
+
+  Widget _buildQuestionsList(
+    List<ProductQuestion> questions, {
+    bool isPending = false,
+    bool isExpired = false,
+    bool isAnswered = false,
+    List<PersonalProductDialog>? personalDialogs,
+  }) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator(color: _gold));
+    }
+
+    final totalCount = (personalDialogs?.length ?? 0) + questions.length;
+    if (totalCount == 0) {
+      return _buildEmptyState(isPending, isExpired, isAnswered);
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: _gold,
+      backgroundColor: _emeraldDark,
+      child: ListView.builder(
+        padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 8.h),
+        itemCount: totalCount,
+        itemBuilder: (context, index) {
+          if (personalDialogs != null && index < personalDialogs.length) {
+            return _buildPersonalDialogCard(personalDialogs[index]);
+          }
+          final questionIndex = index - (personalDialogs?.length ?? 0);
+          return _buildQuestionCard(
+            questions[questionIndex],
+            isPending: isPending,
+            isExpired: isExpired,
+            isAnswered: isAnswered,
+          );
+        },
+      ),
     );
   }
 
   Widget _buildEmptyState(bool isPending, bool isExpired, bool isAnswered) {
     IconData icon;
     String title;
-    String subtitle;
-    List<Color> gradientColors;
 
     if (isPending) {
-      icon = Icons.hourglass_empty;
+      icon = Icons.hourglass_empty_rounded;
       title = 'Нет ожидающих вопросов';
-      subtitle = 'Все вопросы обработаны или истекли';
-      gradientColors = _orangeGradient;
     } else if (isExpired) {
-      icon = Icons.timer_off;
+      icon = Icons.timer_off_rounded;
       title = 'Нет просроченных вопросов';
-      subtitle = 'Отлично! Все вопросы отвечены вовремя';
-      gradientColors = _redGradient;
     } else {
-      icon = Icons.check_circle_outline;
+      icon = Icons.check_circle_outline_rounded;
       title = 'Нет отвеченных вопросов';
-      subtitle = 'Отвеченные вопросы появятся здесь';
-      gradientColors = _greenGradient;
     }
 
     return Center(
@@ -601,32 +668,22 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: gradientColors.map((c) => c.withOpacity(0.15)).toList()),
-              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(18.r),
+              border: Border.all(color: _gold.withOpacity(0.3)),
             ),
-            child: Icon(
-              icon,
-              size: 48,
-              color: gradientColors[0],
-            ),
+            child: Icon(icon, size: 32, color: _gold.withOpacity(0.5)),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.6),
             ),
           ),
         ],
@@ -634,45 +691,33 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     );
   }
 
-  Widget _buildModernQuestionCard(ProductQuestion question, {
+  Widget _buildQuestionCard(ProductQuestion question, {
     bool isPending = false,
     bool isExpired = false,
     bool isAnswered = false,
   }) {
-    final canAnswer = isPending || (_isAdmin && isExpired);
-
-    List<Color> statusGradient;
-    IconData statusIcon;
-
-    if (isAnswered) {
-      statusGradient = _greenGradient;
-      statusIcon = Icons.check_circle;
-    } else if (isExpired) {
-      statusGradient = _redGradient;
-      statusIcon = Icons.timer_off;
-    } else {
-      statusGradient = _orangeGradient;
-      statusIcon = Icons.schedule;
-    }
+    final hasClientReply = question.hasUnreadFromClient;
+    final canAnswer = isPending || hasClientReply || (_isAdmin && isExpired);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: hasClientReply
+            ? _emerald.withOpacity(0.4)
+            : Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: hasClientReply
+              ? _gold.withOpacity(0.6)
+              : Colors.white.withOpacity(0.1),
+          width: hasClientReply ? 1.5 : 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           onTap: () async {
             if (isExpired && !_isAdmin) {
               _showFloatingSnackBar('Время ответа истекло. Только администратор может отвечать.', isError: true);
@@ -680,7 +725,6 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             }
 
             String shopAddressForAnswer;
-
             if (!question.isNetworkWide) {
               shopAddressForAnswer = question.shopAddress;
             } else {
@@ -702,134 +746,117 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             _loadQuestions();
           },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(14.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header row
                 Row(
                   children: [
+                    // Status icon
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(9.w),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: statusGradient),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: statusGradient[0].withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        color: hasClientReply
+                            ? Color(0xFFFF6B35).withOpacity(0.2)
+                            : isAnswered
+                                ? Color(0xFF00b09b).withOpacity(0.2)
+                                : isExpired
+                                    ? Colors.red.withOpacity(0.2)
+                                    : _gold.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: hasClientReply
+                              ? Color(0xFFFF6B35).withOpacity(0.4)
+                              : isAnswered
+                                  ? Color(0xFF00b09b).withOpacity(0.4)
+                                  : isExpired
+                                      ? Colors.red.withOpacity(0.4)
+                                      : _gold.withOpacity(0.3),
+                        ),
                       ),
                       child: Icon(
-                        statusIcon,
-                        color: Colors.white,
+                        hasClientReply
+                            ? Icons.mark_unread_chat_alt
+                            : isAnswered
+                                ? Icons.check_circle
+                                : isExpired
+                                    ? Icons.timer_off
+                                    : Icons.schedule,
+                        color: hasClientReply
+                            ? Color(0xFFFF6B35)
+                            : isAnswered
+                                ? Color(0xFF96c93d)
+                                : isExpired
+                                    ? Colors.red[300]
+                                    : _gold,
                         size: 20,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 10),
+                    // Client info
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             question.clientName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15.sp,
+                              color: Colors.white.withOpacity(0.9),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             question.clientPhone,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                              fontSize: 12.sp,
+                              color: Colors.white.withOpacity(0.4),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Status badge
-                    if (isPending)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: _orangeGradient),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.timer, color: Colors.white, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatTimeRemaining(question),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (isExpired)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: _redGradient),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.warning, color: Colors.white, size: 14),
-                            SizedBox(width: 4),
-                            Text(
-                              'Просрочено',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    // Status badges
+                    if (hasClientReply)
+                      _buildBadge('Ответ клиента', Color(0xFFFF6B35)),
+                    if (isPending && !hasClientReply)
+                      _buildBadge(_formatTimeRemaining(question), _gold),
+                    if (isExpired && !hasClientReply)
+                      _buildBadge('Просрочено', Colors.red),
                     if (!canAnswer && !isAnswered)
                       Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: EdgeInsets.all(6.w),
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
-                        child: Icon(Icons.lock, size: 16, color: Colors.grey[500]),
+                        child: Icon(Icons.lock, size: 16, color: Colors.white.withOpacity(0.3)),
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 10),
                 // Shop info
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.store, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 6),
+                      Icon(Icons.store_rounded, size: 14, color: _gold.withOpacity(0.6)),
+                      SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           question.shopAddress,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
+                            fontSize: 12.sp,
+                            color: Colors.white.withOpacity(0.5),
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -837,18 +864,19 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                         ),
                       ),
                       if (question.isNetworkWide) ...[
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            borderRadius: BorderRadius.circular(4),
+                            color: Colors.tealAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4.r),
+                            border: Border.all(color: Colors.tealAccent.withOpacity(0.3)),
                           ),
                           child: Text(
                             'Вся сеть',
                             style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.blue[700],
+                              fontSize: 10.sp,
+                              color: Colors.tealAccent.withOpacity(0.8),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -857,57 +885,58 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 10),
                 // Question text
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: double.infinity,
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(color: Colors.white.withOpacity(0.06)),
                   ),
                   child: Text(
                     question.questionText,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[800],
+                      fontSize: 13.sp,
+                      color: Colors.white.withOpacity(0.7),
                       height: 1.4,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 10),
                 // Footer
                 Row(
                   children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                    const SizedBox(width: 4),
+                    Icon(Icons.access_time_rounded, size: 14, color: Colors.white.withOpacity(0.3)),
+                    SizedBox(width: 4),
                     Text(
                       _formatTimestamp(question.timestamp),
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
+                        fontSize: 12.sp,
+                        color: Colors.white.withOpacity(0.3),
                       ),
                     ),
                     if (question.isAnswered && question.answeredByName != null) ...[
-                      const SizedBox(width: 12),
+                      SizedBox(width: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                         decoration: BoxDecoration(
-                          color: Colors.green[50],
-                          borderRadius: BorderRadius.circular(6),
+                          color: Color(0xFF00b09b).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.check, size: 12, color: Colors.green[700]),
-                            const SizedBox(width: 4),
+                            Icon(Icons.check, size: 12, color: Color(0xFF96c93d)),
+                            SizedBox(width: 4),
                             Text(
                               question.answeredByName!,
                               style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.green[700],
+                                fontSize: 11.sp,
+                                color: Color(0xFF96c93d),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -915,11 +944,11 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                         ),
                       ),
                     ],
-                    const Spacer(),
+                    Spacer(),
                     Icon(
-                      Icons.arrow_forward_ios,
+                      Icons.arrow_forward_ios_rounded,
                       size: 14,
-                      color: Colors.grey[400],
+                      color: _gold.withOpacity(0.4),
                     ),
                   ],
                 ),
@@ -931,31 +960,48 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     );
   }
 
-  Widget _buildModernPersonalDialogCard(PersonalProductDialog dialog) {
+  Widget _buildBadge(String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 10.sp,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPersonalDialogCard(PersonalProductDialog dialog) {
     final hasUnread = dialog.hasUnreadFromClient;
     final lastMessage = dialog.getLastMessage();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: hasUnread ? Border.all(color: Colors.orange[300]!, width: 2) : null,
-        boxShadow: [
-          BoxShadow(
-            color: hasUnread
-                ? Colors.orange.withOpacity(0.15)
-                : Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: hasUnread
+            ? _emerald.withOpacity(0.4)
+            : Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: hasUnread
+              ? _gold.withOpacity(0.6)
+              : Colors.white.withOpacity(0.1),
+          width: hasUnread ? 1.5 : 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           onTap: () async {
             await Navigator.push(
               context,
@@ -970,7 +1016,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             _loadPersonalDialogs();
           },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(14.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -981,23 +1027,21 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                       clipBehavior: Clip.none,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(9.w),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: hasUnread ? _orangeGradient : [_primaryColor, _accentColor],
+                            color: hasUnread
+                                ? Color(0xFFFF6B35).withOpacity(0.2)
+                                : _emerald.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(
+                              color: hasUnread
+                                  ? Color(0xFFFF6B35).withOpacity(0.4)
+                                  : _gold.withOpacity(0.3),
                             ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: (hasUnread ? Colors.orange : _primaryColor).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
                           ),
-                          child: const Icon(
-                            Icons.chat_bubble,
-                            color: Colors.white,
+                          child: Icon(
+                            Icons.chat_bubble_rounded,
+                            color: hasUnread ? Color(0xFFFF6B35) : _gold,
                             size: 20,
                           ),
                         ),
@@ -1006,19 +1050,19 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                             right: -4,
                             top: -4,
                             child: Container(
-                              width: 18,
-                              height: 18,
+                              width: 16,
+                              height: 16,
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(colors: _redGradient),
+                                color: Colors.red,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(color: _night, width: 2),
                               ),
-                              child: const Center(
+                              child: Center(
                                 child: Text(
                                   '!',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
+                                    fontSize: 9.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1027,83 +1071,55 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                           ),
                       ],
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.person, size: 14, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  dialog.clientName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            dialog.clientName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15.sp,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             dialog.clientPhone,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                              fontSize: 12.sp,
+                              color: Colors.white.withOpacity(0.4),
                             ),
                           ),
                         ],
                       ),
                     ),
                     if (hasUnread)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: _orangeGradient),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.mark_unread_chat_alt, color: Colors.white, size: 14),
-                            SizedBox(width: 4),
-                            Text(
-                              'Новое',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      _buildBadge('Новое', Color(0xFFFF6B35)),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 10),
                 // Shop info
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.store, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 6),
+                      Icon(Icons.store_rounded, size: 14, color: _gold.withOpacity(0.6)),
+                      SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           dialog.shopAddress,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
+                            fontSize: 12.sp,
+                            color: Colors.white.withOpacity(0.5),
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -1114,15 +1130,19 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                   ),
                 ),
                 if (lastMessage != null) ...[
-                  const SizedBox(height: 12),
-                  // Last message
+                  SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: double.infinity,
+                    padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
-                      color: hasUnread ? Colors.orange[50] : Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
+                      color: hasUnread
+                          ? _gold.withOpacity(0.08)
+                          : Colors.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(
-                        color: hasUnread ? Colors.orange[200]! : Colors.grey[200]!,
+                        color: hasUnread
+                            ? _gold.withOpacity(0.2)
+                            : Colors.white.withOpacity(0.06),
                       ),
                     ),
                     child: Text(
@@ -1130,31 +1150,30 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
-                        color: hasUnread ? Colors.orange[900] : Colors.grey[800],
+                        fontSize: 13.sp,
+                        color: Colors.white.withOpacity(hasUnread ? 0.8 : 0.6),
                         fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
                         height: 1.4,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Timestamp
+                  SizedBox(height: 10),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
+                      Icon(Icons.access_time_rounded, size: 14, color: Colors.white.withOpacity(0.3)),
+                      SizedBox(width: 4),
                       Text(
                         _formatTimestamp(lastMessage.timestamp),
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
+                          fontSize: 12.sp,
+                          color: Colors.white.withOpacity(0.3),
                         ),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       Icon(
-                        Icons.arrow_forward_ios,
+                        Icons.arrow_forward_ios_rounded,
                         size: 14,
-                        color: Colors.grey[400],
+                        color: _gold.withOpacity(0.4),
                       ),
                     ],
                   ),
@@ -1164,16 +1183,6 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildCombinedPendingTab() {
-    final unreadDialogs = _personalDialogs.where((d) => d.hasUnreadFromClient).toList();
-
-    return _buildQuestionsTab(
-      _pendingQuestions,
-      isPending: true,
-      personalDialogs: unreadDialogs,
     );
   }
 }

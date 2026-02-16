@@ -4,6 +4,7 @@ import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../services/employee_service.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class EmployeePreferencesDialog extends StatefulWidget {
   final Employee employee;
@@ -26,7 +27,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
   bool _isSaving = false;
 
   // Названия дней недели
-  static const Map<String, String> _dayNames = {
+  static Map<String, String> _dayNames = {
     'monday': 'Понедельник',
     'tuesday': 'Вторник',
     'wednesday': 'Среда',
@@ -36,7 +37,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
     'sunday': 'Воскресенье',
   };
 
-  static const List<String> _weekDays = [
+  static List<String> _weekDays = [
     'monday',
     'tuesday',
     'wednesday',
@@ -47,14 +48,14 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
   ];
 
   // Названия смен
-  static const Map<String, String> _shiftNames = {
+  static Map<String, String> _shiftNames = {
     'morning': 'Утро',
     'day': 'День',
     'night': 'Ночь',
   };
 
   // Описания градаций
-  static const Map<int, String> _gradeDescriptions = {
+  static Map<int, String> _gradeDescriptions = {
     1: 'Всегда хочет работать',
     2: 'Не хочет, но может',
     3: 'Не будет работать',
@@ -122,7 +123,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка сохранения предпочтений'),
               backgroundColor: Colors.red,
             ),
@@ -153,36 +154,36 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
     return Dialog(
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+        constraints: BoxConstraints(maxWidth: 500, maxHeight: 700),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Заголовок
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: const Color(0xFF004D40),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  topRight: Radius.circular(8),
+                color: Color(0xFF004D40),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(8.r),
+                  topRight: Radius.circular(8.r),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.settings, color: Colors.white),
-                  const SizedBox(width: 8),
+                  Icon(Icons.settings, color: Colors.white),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Предпочтения сотрудника',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, color: Colors.white),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -191,34 +192,34 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
             // Содержимое
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Информация о сотруднике
                     Card(
                       child: Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(12.w),
                         child: Row(
                           children: [
                             CircleAvatar(
-                              backgroundColor: const Color(0xFF004D40),
+                              backgroundColor: Color(0xFF004D40),
                               child: Text(
                                 widget.employee.name.isNotEmpty
                                     ? widget.employee.name[0].toUpperCase()
                                     : '?',
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(color: Colors.white),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     widget.employee.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
                                       fontWeight: FontWeight.bold,
                                     ),
                                     maxLines: 1,
@@ -228,7 +229,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                                     Text(
                                       widget.employee.phone!,
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 14.sp,
                                         color: Colors.grey[600],
                                       ),
                                     ),
@@ -239,16 +240,16 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     // Желаемые дни работы
-                    const Text(
+                    Text(
                       'Желаемые дни работы:',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     ..._weekDays.map((day) {
                       final isSelected = _selectedDays.contains(day);
                       return CheckboxListTile(
@@ -266,21 +267,21 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                         contentPadding: EdgeInsets.zero,
                       );
                     }),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     // Желаемые магазины
-                    const Text(
+                    Text(
                       'Желаемые магазины:',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     if (_isLoading)
-                      const Center(child: CircularProgressIndicator())
+                      Center(child: CircularProgressIndicator())
                     else if (_shops.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(16.0),
+                      Padding(
+                        padding: EdgeInsets.all(16.0.w),
                         child: Text(
                           'Магазины не найдены',
                           style: TextStyle(color: Colors.grey),
@@ -299,7 +300,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                           ),
                           subtitle: Text(
                             shop.address,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -322,41 +323,41 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                           contentPadding: EdgeInsets.zero,
                         );
                       }),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     // Предпочтения смен
-                    const Text(
+                    Text(
                       'Предпочтения смен:',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     ...['morning', 'day', 'night'].map((shiftKey) {
                       final shiftName = _shiftNames[shiftKey] ?? shiftKey;
                       final currentGrade = _shiftPreferences[shiftKey] ?? 2;
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: EdgeInsets.only(bottom: 12.h),
                         child: Padding(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.all(12.w),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 shiftName,
-                                style: const TextStyle(
-                                  fontSize: 16,
+                                style: TextStyle(
+                                  fontSize: 16.sp,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               ...([1, 2, 3] as List<int>).map((grade) {
                                 final isSelected = currentGrade == grade;
                                 return RadioListTile<int>(
                                   title: Text(
                                     _gradeDescriptions[grade] ?? 'Градация $grade',
                                     style: TextStyle(
-                                      color: isSelected ? const Color(0xFF004D40) : Colors.black87,
+                                      color: isSelected ? Color(0xFF004D40) : Colors.black87,
                                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                     ),
                                   ),
@@ -382,7 +383,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
             ),
             // Кнопки
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(color: Colors.grey[300]!),
@@ -393,16 +394,16 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                 children: [
                   TextButton(
                     onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Отмена'),
+                    child: Text('Отмена'),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: _isSaving ? null : _savePreferences,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
+                      backgroundColor: Color(0xFF004D40),
                     ),
                     child: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
@@ -410,7 +411,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text('Сохранить'),
+                        : Text('Сохранить'),
                   ),
                 ],
               ),

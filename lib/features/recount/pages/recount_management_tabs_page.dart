@@ -6,6 +6,7 @@ import 'dart:io';
 import '../models/recount_question_model.dart';
 import '../services/recount_question_service.dart';
 import 'recount_points_settings_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница с вкладками для управления пересчётом
 /// Содержит вкладки: Товары и Настройка баллов
@@ -21,10 +22,10 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
   late TabController _tabController;
 
   // Dark Emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   // Для вкладки товаров
   List<RecountQuestion> _products = [];
@@ -70,11 +71,11 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка загрузки товаров', style: TextStyle(color: Colors.white)),
+            content: Text('Ошибка загрузки товаров', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            margin: EdgeInsets.all(16.w),
           ),
         );
       }
@@ -88,10 +89,10 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
             color: _emeraldDark,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20.r),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -99,30 +100,30 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               // Заголовок
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [_emerald, _emeraldDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20.r),
+                    topRight: Radius.circular(20.r),
                   ),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(10.w),
                       decoration: BoxDecoration(
                         color: _gold.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Icon(Icons.upload_file, color: _gold, size: 24),
                     ),
-                    const SizedBox(width: 14),
-                    const Expanded(
+                    SizedBox(width: 14),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -130,7 +131,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                             'Загрузка из Excel',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -139,7 +140,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                             'Формат: .xlsx',
                             style: TextStyle(
                               color: Colors.white70,
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                           ),
                         ],
@@ -149,82 +150,82 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: Text(
                         'Столбец 1: Баркод\nСтолбец 2: Группа товара\nСтолбец 3: Наименование\nСтолбец 4: Грейд (1, 2 или 3)',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
                           height: 1.5,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     // Кнопка "Заменить все"
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.pop(context, 'replace'),
-                        icon: const Icon(Icons.refresh, size: 20),
-                        label: const Text('Заменить все'),
+                        icon: Icon(Icons.refresh, size: 20),
+                        label: Text('Заменить все'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange[700],
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           elevation: 0,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       'Удалить текущие и загрузить новые',
-                      style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4)),
+                      style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.4)),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     // Кнопка "Добавить новые"
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.pop(context, 'add_new'),
-                        icon: const Icon(Icons.add, size: 20),
-                        label: const Text('Добавить новые'),
+                        icon: Icon(Icons.add, size: 20),
+                        label: Text('Добавить новые'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _gold,
                           foregroundColor: _night,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           elevation: 0,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       'Только товары с новыми баркодами',
-                      style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4)),
+                      style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.4)),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
                           side: BorderSide(color: Colors.white.withOpacity(0.2)),
                         ),
@@ -266,12 +267,12 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
           barrierDismissible: false,
           builder: (context) => Center(
             child: Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
                 color: _emeraldDark,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
               ),
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(_gold),
               ),
             ),
@@ -289,7 +290,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Не удалось прочитать файл'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Не удалось прочитать файл'), backgroundColor: Colors.red),
           );
         }
         return;
@@ -300,7 +301,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Формат .xls не поддерживается.\nСохраните файл в формате .xlsx'),
               backgroundColor: Colors.orange,
             ),
@@ -316,7 +317,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ошибка чтения файла'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Ошибка чтения файла'), backgroundColor: Colors.red),
           );
         }
         return;
@@ -326,7 +327,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Excel файл не содержит листов'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Excel файл не содержит листов'), backgroundColor: Colors.red),
           );
         }
         return;
@@ -370,7 +371,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Excel файл не содержит валидных товаров'), backgroundColor: Colors.orange),
+            SnackBar(content: Text('Excel файл не содержит валидных товаров'), backgroundColor: Colors.orange),
           );
         }
         return;
@@ -386,32 +387,32 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         builder: (context) => Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: BoxConstraints(maxWidth: 400),
             decoration: BoxDecoration(
               color: _emeraldDark,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  padding: EdgeInsets.symmetric(vertical: 24.h),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: mode == 'replace'
                           ? [Colors.orange[400]!, Colors.orange[700]!]
                           : [_emerald, _emeraldDark],
                     ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20.r),
+                      topRight: Radius.circular(20.r),
                     ),
                   ),
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           shape: BoxShape.circle,
@@ -422,12 +423,12 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                           size: 32,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Text(
                         mode == 'replace' ? 'Заменить все товары?' : 'Добавить новые товары?',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -435,7 +436,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20.w),
                   child: Column(
                     children: [
                       Text(
@@ -443,44 +444,44 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                             ? 'Найдено ${products.length} товаров.\nВсе существующие товары будут удалены.'
                             : 'Найдено ${products.length} товаров.\nБудут добавлены только товары с новыми баркодами.',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.7),
                           height: 1.5,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context, false),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 side: BorderSide(color: Colors.white.withOpacity(0.2)),
                               ),
                               child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(context, true),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: mode == 'replace' ? Colors.orange[700] : _gold,
                                 foregroundColor: mode == 'replace' ? Colors.white : _night,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 elevation: 0,
                               ),
                               child: Text(
                                 mode == 'replace' ? 'Заменить' : 'Добавить',
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ),
                           ),
@@ -505,12 +506,12 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
           barrierDismissible: false,
           builder: (context) => Center(
             child: Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
                 color: _emeraldDark,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
               ),
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(_gold),
               ),
             ),
@@ -529,15 +530,15 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.white),
-                    const SizedBox(width: 12),
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 12),
                     Text('Загружено ${uploadResult.length} товаров'),
                   ],
                 ),
                 backgroundColor: Colors.green[600],
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                margin: EdgeInsets.all(16.w),
               ),
             );
           }
@@ -553,15 +554,15 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.white),
-                    const SizedBox(width: 12),
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 12),
                     Text('Добавлено ${addResult.added}, пропущено ${addResult.skipped}'),
                   ],
                 ),
                 backgroundColor: Colors.green[600],
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                margin: EdgeInsets.all(16.w),
               ),
             );
           }
@@ -583,48 +584,48 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
             color: _emeraldDark,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20.r),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: 24.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.red[400]!, Colors.red[600]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20.r),
+                    topRight: Radius.circular(20.r),
                   ),
                 ),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.delete_forever_rounded,
                         color: Colors.white,
                         size: 32,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: 12),
+                    Text(
                       'Удалить товар?',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -632,14 +633,14 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(20.w),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(14.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: Column(
@@ -647,17 +648,17 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                           Text(
                             product.productName,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               color: Colors.white.withOpacity(0.8),
                               height: 1.4,
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             'Баркод: ${product.barcode}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: Colors.white.withOpacity(0.5),
                               fontFamily: 'monospace',
                             ),
@@ -665,36 +666,36 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(context, false),
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               side: BorderSide(color: Colors.white.withOpacity(0.2)),
                             ),
                             child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () => Navigator.pop(context, true),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red[500],
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                               elevation: 0,
                             ),
-                            child: const Text('Удалить', style: TextStyle(fontWeight: FontWeight.w600)),
+                            child: Text('Удалить', style: TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ],
@@ -715,7 +716,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 12),
@@ -724,8 +725,8 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               ),
               backgroundColor: Colors.green[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              margin: EdgeInsets.all(16.w),
             ),
           );
         }
@@ -735,9 +736,9 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
 
   Color _getGradeColor(int grade) {
     switch (grade) {
-      case 1: return const Color(0xFFE53935);
-      case 2: return const Color(0xFFFB8C00);
-      case 3: return const Color(0xFF43A047);
+      case 1: return Color(0xFFE53935);
+      case 2: return Color(0xFFFB8C00);
+      case 3: return Color(0xFF43A047);
       default: return Colors.grey;
     }
   }
@@ -756,7 +757,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -774,7 +775,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                   controller: _tabController,
                   children: [
                     _buildProductsTab(),
-                    const RecountPointsSettingsPage(),
+                    RecountPointsSettingsPage(),
                   ],
                 ),
               ),
@@ -787,13 +788,13 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
 
   Widget _buildCustomAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -801,16 +802,16 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Вопросы пересчета',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -823,7 +824,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                           : 'Настройка баллов',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),
-                        fontSize: 13,
+                        fontSize: 13.sp,
                       ),
                     );
                   },
@@ -842,7 +843,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                       onPressed: _showUploadModeDialog,
                       tooltip: 'Загрузить из Excel',
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     _buildActionButton(
                       icon: Icons.refresh,
                       onPressed: _loadProducts,
@@ -851,7 +852,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                   ],
                 );
               }
-              return const SizedBox.shrink();
+              return SizedBox.shrink();
             },
           ),
         ],
@@ -867,49 +868,49 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: IconButton(
         icon: Icon(icon, color: Colors.white.withOpacity(0.8), size: 20),
         onPressed: onPressed,
         tooltip: tooltip,
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        constraints: BoxConstraints(minWidth: 44, minHeight: 44),
       ),
     );
   }
 
   Widget _buildCustomTabBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 16.h),
       child: Container(
         height: 56,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: TabBar(
           controller: _tabController,
           indicator: BoxDecoration(
             color: _gold.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: _gold, width: 1.5),
           ),
           indicatorSize: TabBarIndicatorSize.tab,
-          indicatorPadding: const EdgeInsets.all(4),
+          indicatorPadding: EdgeInsets.all(4.w),
           dividerColor: Colors.transparent,
           labelColor: _gold,
           unselectedLabelColor: Colors.white.withOpacity(0.6),
-          labelStyle: const TextStyle(
+          labelStyle: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 13,
+            fontSize: 13.sp,
           ),
-          unselectedLabelStyle: const TextStyle(
+          unselectedLabelStyle: TextStyle(
             fontWeight: FontWeight.w500,
-            fontSize: 13,
+            fontSize: 13.sp,
           ),
-          tabs: const [
+          tabs: [
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -943,23 +944,23 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(_gold),
                 strokeWidth: 3,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Загрузка товаров...',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -971,17 +972,17 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
       children: [
         // Поиск
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 8.h),
           child: Container(
             height: 50,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: TextStyle(color: Colors.white, fontSize: 15.sp),
               decoration: InputDecoration(
                 hintText: 'Поиск по баркоду или названию...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
@@ -996,7 +997,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               cursorColor: _gold,
               onChanged: (value) => setState(() => _searchQuery = value),
@@ -1005,27 +1006,27 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         ),
         // Статистика по грейдам
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           child: Row(
             children: [
               _buildGradeChip(1, 'Важных'),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _buildGradeChip(2, 'Средних'),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _buildGradeChip(3, 'Обычных'),
-              const Spacer(),
+              Spacer(),
               if (_searchQuery.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Text(
                     'Найдено: ${_filteredProducts.length}',
                     style: TextStyle(
                       color: _gold,
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1041,7 +1042,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                   onRefresh: _loadProducts,
                   color: _gold,
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
                     itemCount: _filteredProducts.length,
                     itemBuilder: (context, index) {
                       final product = _filteredProducts[index];
@@ -1059,10 +1060,10 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
     final color = _getGradeColor(grade);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
@@ -1076,12 +1077,12 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text(
             '$count',
             style: TextStyle(
               color: color,
-              fontSize: 13,
+              fontSize: 13.sp,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -1096,7 +1097,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(28),
+            padding: EdgeInsets.all(28.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               shape: BoxShape.circle,
@@ -1108,23 +1109,23 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               color: _gold.withOpacity(0.6),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(
             _searchQuery.isNotEmpty ? 'Товары не найдены' : 'Нет товаров',
-            style: const TextStyle(
-              fontSize: 22,
+            style: TextStyle(
+              fontSize: 22.sp,
               fontWeight: FontWeight.bold,
               color: _gold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           if (_searchQuery.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
+              padding: EdgeInsets.symmetric(horizontal: 48.w),
               child: Text(
                 'Нажмите кнопку загрузки\nчтобы добавить товары из Excel',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   color: Colors.white.withOpacity(0.5),
                   height: 1.5,
                 ),
@@ -1135,7 +1136,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
             Text(
               'Попробуйте изменить запрос',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white.withOpacity(0.5),
               ),
             ),
@@ -1148,21 +1149,21 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
     final gradeColor = _getGradeColor(product.grade);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: () {},
           splashColor: gradeColor.withOpacity(0.08),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Индикатор грейда
@@ -1178,10 +1179,10 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                         gradeColor.withOpacity(0.4),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Информация о товаре
                 Expanded(
                   child: Column(
@@ -1189,15 +1190,15 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                     children: [
                       // Баркод
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(
                           product.barcode,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'monospace',
                             color: Colors.white.withOpacity(0.6),
@@ -1205,14 +1206,14 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       // Название
                       Text(
                         product.productName.isNotEmpty
                             ? product.productName
                             : '(без названия)',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w500,
                           color: product.productName.isNotEmpty
                               ? Colors.white.withOpacity(0.9)
@@ -1223,16 +1224,16 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                       ),
                       // Группа
                       if (product.productGroup.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Row(
                           children: [
                             Icon(Icons.folder_outlined, size: 14, color: Colors.white.withOpacity(0.3)),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 product.productGroup,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.white.withOpacity(0.4),
                                 ),
                                 maxLines: 1,
@@ -1245,17 +1246,17 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 // Грейд и кнопка удаления
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     // Бейдж грейда
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                       decoration: BoxDecoration(
                         color: gradeColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(
                           color: gradeColor.withOpacity(0.3),
                           width: 1,
@@ -1273,11 +1274,11 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                             size: 14,
                             color: gradeColor,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             _getGradeLabel(product.grade),
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.w600,
                               color: gradeColor,
                             ),
@@ -1285,16 +1286,16 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     // Кнопка удаления
                     InkWell(
                       onTap: () => _deleteProduct(product),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8.w),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Icon(
                           Icons.delete_outline_rounded,

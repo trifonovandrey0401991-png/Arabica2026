@@ -6,6 +6,7 @@ import '../services/attendance_report_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import 'attendance_month_page.dart';
 import 'attendance_employee_detail_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчётов по приходам с 4 вкладками
 class AttendanceReportsPage extends StatefulWidget {
@@ -32,10 +33,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   final Set<String> _expandedShops = {};
   String _searchQuery = '';
 
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -90,7 +91,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -113,27 +114,27 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
               'Отчёты по приходам',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -141,11 +142,11 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
+              icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: _loadAllData,
               tooltip: 'Обновить',
             ),
@@ -157,18 +158,18 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
   Widget _buildTabButtons() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
           // Первый ряд кнопок
           Row(
             children: [
               Expanded(child: _buildTabButton(0, 'По сотрудникам', Icons.people)),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(child: _buildTabButton(1, 'По магазинам', Icons.store)),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           // Второй ряд кнопок
           Row(
             children: [
@@ -180,7 +181,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                   badgeColor: _pendingReports.isNotEmpty ? Colors.orange : null,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: _buildTabButton(
                   3,
@@ -205,11 +206,11 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         });
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
         decoration: BoxDecoration(
           color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
             color: isSelected ? _gold : Colors.white.withOpacity(0.1),
           ),
@@ -221,7 +222,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
               Container(
                 width: 8,
                 height: 8,
-                margin: const EdgeInsets.only(right: 6),
+                margin: EdgeInsets.only(right: 6.w),
                 decoration: BoxDecoration(
                   color: badgeColor,
                   shape: BoxShape.circle,
@@ -232,14 +233,14 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
               size: 18,
               color: isSelected ? _gold : Colors.white,
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
                 style: TextStyle(
                   color: isSelected ? _gold : Colors.white,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -252,7 +253,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: _gold),
       );
     }
@@ -275,27 +276,27 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   Widget _buildErrorView() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 48),
-            const SizedBox(height: 16),
-            const Text(
+            Icon(Icons.error_outline, color: Colors.white, size: 48),
+            SizedBox(height: 16),
+            Text(
               'Ошибка загрузки',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: TextStyle(color: Colors.white, fontSize: 18.sp),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               _error!,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: Colors.white70, fontSize: 14.sp),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadAllData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
+              icon: Icon(Icons.refresh),
+              label: Text('Повторить'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _gold,
                 foregroundColor: Colors.white,
@@ -314,22 +315,22 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       children: [
         // Поиск
         Container(
-          margin: const EdgeInsets.all(16),
+          margin: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: TextField(
             onChanged: (value) => setState(() => _searchQuery = value),
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: Colors.white),
             cursorColor: _gold,
             decoration: InputDecoration(
               hintText: 'Поиск по имени...',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-              prefixIcon: const Icon(Icons.search, color: _gold),
+              prefixIcon: Icon(Icons.search, color: _gold),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             ),
           ),
         ),
@@ -355,10 +356,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.5)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty ? 'Сотрудники не найдены' : 'Нет данных',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
             ),
           ],
         ),
@@ -370,7 +371,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
         itemCount: filtered.length,
         itemBuilder: (context, index) => _buildEmployeeCard(filtered[index]),
       ),
@@ -381,10 +382,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     final onTimeRate = summary.onTimeRate;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
@@ -400,9 +401,9 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
               ),
             );
           },
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Аватар
@@ -416,7 +417,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                     color: summary.hasTodayAttendance ? Colors.green : Colors.red,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 // Инфо
                 Expanded(
                   child: Column(
@@ -426,20 +427,20 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                         summary.employeeName,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           _buildMiniChip(
                             'Сегодня: ${summary.todayCount}',
                             summary.hasTodayAttendance ? Colors.green : Colors.red,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           _buildMiniChip(
                             '${onTimeRate.toStringAsFixed(0)}% вовремя',
                             _getOnTimeColor(onTimeRate),
@@ -461,17 +462,17 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
   Widget _buildMiniChip(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         border: Border.all(color: color.withOpacity(0.5)),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 11,
+          fontSize: 11.sp,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -487,10 +488,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.store, size: 64, color: Colors.white.withOpacity(0.5)),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Нет данных о магазинах',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
             ),
           ],
         ),
@@ -502,7 +503,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _shopsSummary.length,
         itemBuilder: (context, index) => _buildShopCard(_shopsSummary[index]),
       ),
@@ -513,10 +514,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     final isExpanded = _expandedShops.contains(summary.shopAddress);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -529,31 +530,31 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                   : summary.todayAttendanceCount > 0
                       ? Colors.orange
                       : Colors.red.shade300,
-              child: const Icon(Icons.store, color: Colors.white),
+              child: Icon(Icons.store, color: Colors.white),
             ),
             title: Text(
               summary.shopAddress,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 14.sp,
                 color: Colors.white.withOpacity(0.9),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: 4.h),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                     decoration: BoxDecoration(
                       color: summary.isTodayComplete
                           ? Colors.green.withOpacity(0.1)
                           : summary.todayAttendanceCount > 0
                               ? Colors.orange.withOpacity(0.1)
                               : Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
                         color: summary.isTodayComplete
                             ? Colors.green
@@ -571,17 +572,17 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                                 ? Colors.orange
                                 : Colors.red,
                         fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   if (summary.totalRecords > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                       decoration: BoxDecoration(
                         color: _getOnTimeColor(summary.onTimeRate).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(
                           color: _getOnTimeColor(summary.onTimeRate),
                         ),
@@ -594,13 +595,13 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                             size: 12,
                             color: _getOnTimeColor(summary.onTimeRate),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             '${summary.onTimeRate.toStringAsFixed(0)}%',
                             style: TextStyle(
                               color: _getOnTimeColor(summary.onTimeRate),
                               fontWeight: FontWeight.w600,
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                           ),
                         ],
@@ -640,7 +641,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     final percentage = (month.completionRate * 100).toStringAsFixed(0);
 
     return ListTile(
-      contentPadding: const EdgeInsets.only(left: 56, right: 16),
+      contentPadding: EdgeInsets.only(left: 56.w, right: 16.w),
       leading: Container(
         width: 36,
         height: 36,
@@ -655,7 +656,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             style: TextStyle(
               color: statusColor,
               fontWeight: FontWeight.bold,
-              fontSize: 10,
+              fontSize: 10.sp,
             ),
           ),
         ),
@@ -669,7 +670,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       ),
       subtitle: Text(
         '${month.displayName} ${month.year}',
-        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+        style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
       ),
       trailing: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
       onTap: () {
@@ -695,15 +696,15 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.check_circle, size: 64, color: Colors.white.withOpacity(0.5)),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Нет ожидающих отчётов',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Сейчас не время для отметки',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
             ),
           ],
         ),
@@ -715,7 +716,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _pendingReports.length,
         itemBuilder: (context, index) => _buildPendingCard(_pendingReports[index]),
       ),
@@ -728,14 +729,14 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     final minutesLeft = timeLeft.inMinutes;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Row(
           children: [
             // Иконка
@@ -746,9 +747,9 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                 color: Colors.orange.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.hourglass_empty, color: Colors.orange),
+              child: Icon(Icons.hourglass_empty, color: Colors.orange),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             // Инфо
             Expanded(
               child: Column(
@@ -758,48 +759,48 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                     report.shopName.isNotEmpty ? report.shopName : report.shopAddress,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     report.shopAddress,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
-                      fontSize: 13,
+                      fontSize: 13.sp,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(4.r),
                         ),
                         child: Text(
                           report.shiftTypeDisplay,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.blue,
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Icon(Icons.timer, size: 14, color: Colors.white.withOpacity(0.4)),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         'до $deadline',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],
@@ -809,12 +810,12 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             ),
             // Осталось времени
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: minutesLeft <= 30
                     ? Colors.red.withOpacity(0.1)
                     : Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(
                   color: minutesLeft <= 30 ? Colors.red : Colors.orange,
                 ),
@@ -824,7 +825,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                 style: TextStyle(
                   color: minutesLeft <= 30 ? Colors.red : Colors.orange,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                 ),
               ),
             ),
@@ -843,15 +844,15 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.check_circle, size: 64, color: Colors.white.withOpacity(0.5)),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Все магазины отметились',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Нет пропущенных отчётов',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
             ),
           ],
         ),
@@ -863,7 +864,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         itemCount: _failedReports.length,
         itemBuilder: (context, index) => _buildFailedCard(_failedReports[index]),
       ),
@@ -876,14 +877,14 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         : '—';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.red.withOpacity(0.3)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Row(
           children: [
             // Иконка
@@ -894,9 +895,9 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                 color: Colors.red.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.cancel, color: Colors.red),
+              child: Icon(Icons.cancel, color: Colors.red),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             // Инфо
             Expanded(
               child: Column(
@@ -906,48 +907,48 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
                     report.shopName.isNotEmpty ? report.shopName : report.shopAddress,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     report.shopAddress,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
-                      fontSize: 13,
+                      fontSize: 13.sp,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(4.r),
                         ),
                         child: Text(
                           report.shiftTypeDisplay,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.blue,
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Icon(Icons.schedule, size: 14, color: Colors.white.withOpacity(0.4)),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         'дедлайн: $failedAt',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],
@@ -957,18 +958,18 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             ),
             // Статус
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(color: Colors.red),
               ),
-              child: const Text(
+              child: Text(
                 'Пропущен',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                 ),
               ),
             ),

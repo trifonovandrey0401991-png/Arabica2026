@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import '../models/z_report_template_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет для выделения областей на изображении Z-отчёта
 class RegionSelectorWidget extends StatefulWidget {
@@ -57,14 +58,14 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   Size? _currentDisplaySize; // Текущий размер отображения изображения
 
   // Цвета для разных полей
-  static const Map<String, Color> _fieldColors = {
+  static Map<String, Color> _fieldColors = {
     'totalSum': Colors.green,
     'cashSum': Colors.blue,
     'ofdNotSent': Colors.orange,
   };
 
   // Размер ручки для изменения размера
-  static const double _handleSize = 20.0;
+  static double _handleSize = 20.0;
 
   @override
   void initState() {
@@ -335,17 +336,17 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   @override
   Widget build(BuildContext context) {
     if (_image == null) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
 
     return Column(
       children: [
         // Легенда и кнопки управления
         _buildLegend(),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         // Панель масштабирования
         _buildZoomControls(),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         // Изображение с областями
         Expanded(
           child: LayoutBuilder(
@@ -459,11 +460,11 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
         // Панель редактирования (если редактируем область)
         if (_editingRegionField != null)
           Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            margin: EdgeInsets.only(bottom: 8.h),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
             decoration: BoxDecoration(
               color: _getFieldColor(_editingRegionField!).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               border: Border.all(color: _getFieldColor(_editingRegionField!)),
             ),
             child: Row(
@@ -474,32 +475,32 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
                   size: 14,
                   color: _getFieldColor(_editingRegionField!),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     FieldNames.getDisplayName(_editingRegionField!),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.bold,
                       color: _getFieldColor(_editingRegionField!),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Кнопка отмены
                 GestureDetector(
                   onTap: _cancelEditingRegion,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: EdgeInsets.all(4.w),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close, size: 16, color: Colors.red),
+                    child: Icon(Icons.close, size: 16, color: Colors.red),
                   ),
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 // Кнопка подтверждения
                 GestureDetector(
                   onTap: () {
@@ -508,12 +509,12 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: EdgeInsets.all(4.w),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check, size: 16, color: Colors.green),
+                    child: Icon(Icons.check, size: 16, color: Colors.green),
                   ),
                 ),
               ],
@@ -529,20 +530,20 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
                 final newScale = (_currentScale - 0.5).clamp(1.0, 5.0);
                 _transformController.value = Matrix4.identity()..scale(newScale);
               },
-              icon: const Icon(Icons.remove_circle_outline),
+              icon: Icon(Icons.remove_circle_outline),
               tooltip: 'Уменьшить',
               iconSize: 28,
             ),
             // Индикатор масштаба
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Text(
                 '${(_currentScale * 100).toInt()}%',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             // Кнопка увеличить
@@ -551,18 +552,18 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
                 final newScale = (_currentScale + 0.5).clamp(1.0, 5.0);
                 _transformController.value = Matrix4.identity()..scale(newScale);
               },
-              icon: const Icon(Icons.add_circle_outline),
+              icon: Icon(Icons.add_circle_outline),
               tooltip: 'Увеличить',
               iconSize: 28,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             // Кнопка сброса
             TextButton.icon(
               onPressed: _resetZoom,
-              icon: const Icon(Icons.fit_screen, size: 18),
-              label: const Text('Сброс'),
+              icon: Icon(Icons.fit_screen, size: 18),
+              label: Text('Сброс'),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
               ),
             ),
           ],
@@ -581,14 +582,14 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
         final color = _getFieldColor(fieldName);
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
           decoration: BoxDecoration(
             color: isSelected ? color.withOpacity(0.3) : Colors.transparent,
             border: Border.all(
               color: color,
               width: isSelected ? 2 : 1,
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -601,16 +602,16 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
                   border: Border.all(color: color),
                 ),
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Text(
                 FieldNames.getDisplayName(fieldName),
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
               if (hasRegion) ...[
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 GestureDetector(
                   onTap: () => _removeRegion(fieldName),
                   child: Icon(Icons.close, size: 14, color: color),
@@ -668,7 +669,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   /// Строит редактируемую область с ручками изменения размера
   Widget _buildEditableRegion(Size displaySize) {
     if (_editingRect == null || _editingRegionField == null) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     final color = _getFieldColor(_editingRegionField!);

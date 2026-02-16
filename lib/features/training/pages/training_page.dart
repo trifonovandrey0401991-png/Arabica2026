@@ -6,6 +6,7 @@ import '../models/training_model.dart';
 import 'training_article_view_page.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница обучения
 class TrainingPage extends StatefulWidget {
@@ -24,10 +25,10 @@ class _TrainingPageState extends State<TrainingPage> {
   final FocusNode _searchFocus = FocusNode();
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -245,7 +246,7 @@ class _TrainingPageState extends State<TrainingPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -275,7 +276,7 @@ class _TrainingPageState extends State<TrainingPage> {
       future: _articlesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(color: Colors.white),
           );
         }
@@ -298,7 +299,7 @@ class _TrainingPageState extends State<TrainingPage> {
         final groups = grouped.keys.toList()..sort();
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 20.h),
           itemCount: groups.length,
           itemBuilder: (context, groupIndex) {
             final group = groups[groupIndex];
@@ -307,9 +308,9 @@ class _TrainingPageState extends State<TrainingPage> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (groupIndex > 0) const SizedBox(height: 16),
+                if (groupIndex > 0) SizedBox(height: 16),
                 _buildGroupHeader(group, groupArticles.length),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ...groupArticles.map((article) => _buildArticleCard(article)),
               ],
             );
@@ -332,21 +333,21 @@ class _TrainingPageState extends State<TrainingPage> {
               size: 48,
               color: Colors.white.withOpacity(0.3),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Ничего не найдено',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.6),
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               'Попробуйте другой запрос',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.3),
-                fontSize: 13,
+                fontSize: 13.sp,
               ),
             ),
           ],
@@ -355,17 +356,17 @@ class _TrainingPageState extends State<TrainingPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 20.h),
       itemCount: results.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10.h),
             child: Text(
               'Найдено: ${results.length} ${_getArticlesText(results.length)}',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 12,
+                fontSize: 12.sp,
               ),
             ),
           );
@@ -381,10 +382,10 @@ class _TrainingPageState extends State<TrainingPage> {
     return GestureDetector(
       onTap: () => _openArticle(article),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: Colors.white.withOpacity(0.12)),
           color: Colors.white.withOpacity(0.06),
         ),
@@ -398,7 +399,7 @@ class _TrainingPageState extends State<TrainingPage> {
                   height: 36,
                   decoration: BoxDecoration(
                     color: _emerald.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(9.r),
                   ),
                   child: Icon(
                     Icons.article_rounded,
@@ -406,7 +407,7 @@ class _TrainingPageState extends State<TrainingPage> {
                     size: 18,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,18 +415,18 @@ class _TrainingPageState extends State<TrainingPage> {
                       Text(
                         article.title,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         article.group,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.sp,
                           color: _gold.withOpacity(0.7),
                         ),
                       ),
@@ -440,17 +441,17 @@ class _TrainingPageState extends State<TrainingPage> {
               ],
             ),
             if (snippet != null) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Text(
                   snippet,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.white.withOpacity(0.5),
                     height: 1.4,
                   ),
@@ -467,18 +468,18 @@ class _TrainingPageState extends State<TrainingPage> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 12.h),
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           color: Colors.white.withOpacity(0.08),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 14),
+              padding: EdgeInsets.only(left: 14.w),
               child: Icon(
                 Icons.search_rounded,
                 color: Colors.white.withOpacity(0.4),
@@ -491,16 +492,16 @@ class _TrainingPageState extends State<TrainingPage> {
                 focusNode: _searchFocus,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
-                  fontSize: 14,
+                  fontSize: 14.sp,
                 ),
                 decoration: InputDecoration(
                   hintText: 'Поиск по статьям...',
                   hintStyle: TextStyle(
                     color: Colors.white.withOpacity(0.3),
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -519,7 +520,7 @@ class _TrainingPageState extends State<TrainingPage> {
                   _searchFocus.unfocus();
                 },
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
+                  padding: EdgeInsets.only(right: 12.w),
                   child: Icon(
                     Icons.close_rounded,
                     color: Colors.white.withOpacity(0.4),
@@ -535,7 +536,7 @@ class _TrainingPageState extends State<TrainingPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -546,19 +547,19 @@ class _TrainingPageState extends State<TrainingPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Обучение',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -574,7 +575,7 @@ class _TrainingPageState extends State<TrainingPage> {
             height: 64,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
@@ -583,21 +584,21 @@ class _TrainingPageState extends State<TrainingPage> {
               color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             'Статьи не найдены',
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Материалы для обучения пока не добавлены',
             style: TextStyle(
               color: Colors.white.withOpacity(0.4),
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
           ),
         ],
@@ -607,9 +608,9 @@ class _TrainingPageState extends State<TrainingPage> {
 
   Widget _buildGroupHeader(String group, int count) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: _gold.withOpacity(0.5)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -627,27 +628,27 @@ class _TrainingPageState extends State<TrainingPage> {
             color: _gold,
             size: 22,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               group,
-              style: const TextStyle(
-                fontSize: 15,
+              style: TextStyle(
+                fontSize: 15.sp,
                 fontWeight: FontWeight.w600,
                 color: _gold,
               ),
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Text(
               '$count ${_getArticlesText(count)}',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 11.sp,
                 fontWeight: FontWeight.w500,
                 color: _gold.withOpacity(0.9),
               ),
@@ -684,7 +685,7 @@ class _TrainingPageState extends State<TrainingPage> {
               content: Text('Не удалось открыть ссылку: ${article.url}'),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -705,10 +706,10 @@ class _TrainingPageState extends State<TrainingPage> {
     return GestureDetector(
       onTap: () => _openArticle(article),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: EdgeInsets.only(bottom: 6.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: Colors.white.withOpacity(0.12)),
           color: Colors.white.withOpacity(0.04),
         ),
@@ -721,7 +722,7 @@ class _TrainingPageState extends State<TrainingPage> {
                 color: hasContent
                     ? _emerald.withOpacity(0.4)
                     : Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 hasContent ? Icons.article_rounded : Icons.open_in_new_rounded,
@@ -731,7 +732,7 @@ class _TrainingPageState extends State<TrainingPage> {
                 size: 20,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -739,25 +740,25 @@ class _TrainingPageState extends State<TrainingPage> {
                   Text(
                     article.title,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     hasContent ? 'Просмотр' : 'Внешняя ссылка',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.white.withOpacity(0.4),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Icon(
               hasContent ? Icons.chevron_right_rounded : Icons.open_in_new_rounded,
               color: Colors.white.withOpacity(0.3),

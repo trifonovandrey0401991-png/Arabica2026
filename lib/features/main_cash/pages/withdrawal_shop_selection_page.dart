@@ -3,13 +3,14 @@ import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import 'withdrawal_employee_selection_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора магазина для выемки из главной кассы
 class WithdrawalShopSelectionPage extends StatelessWidget {
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   final String currentUserName;
 
@@ -23,7 +24,7 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -36,7 +37,7 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -46,23 +47,23 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.1),
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Text(
+                    SizedBox(width: 16),
+                    Text(
                       'Выберите магазин',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -75,7 +76,7 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
                   future: ShopService.getShopsForCurrentUser(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
+                      return Center(
                         child: CircularProgressIndicator(color: _gold),
                       );
                     }
@@ -88,16 +89,16 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
                             Icon(Icons.error_outline,
                                 size: 64,
                                 color: Colors.white.withOpacity(0.5)),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               'Что-то пошло не так, попробуйте позже',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.9),
-                                fontSize: 18,
+                                fontSize: 18.sp,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: () => Navigator.pop(context),
                               style: ElevatedButton.styleFrom(
@@ -108,7 +109,7 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
                                   color: Colors.white.withOpacity(0.1),
                                 ),
                               ),
-                              child: const Text('Назад'),
+                              child: Text('Назад'),
                             ),
                           ],
                         ),
@@ -122,19 +123,19 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
                           'Магазины не найдены',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.5),
-                            fontSize: 18,
+                            fontSize: 18.sp,
                           ),
                         ),
                       );
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16.w),
                       itemCount: shops.length,
                       itemBuilder: (context, index) {
                         final shop = shops[index];
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: EdgeInsets.only(bottom: 12.h),
                           child: GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -149,23 +150,23 @@ class WithdrawalShopSelectionPage extends StatelessWidget {
                               );
                             },
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(12.w),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(
                                   color: Colors.white.withOpacity(0.1),
                                 ),
                               ),
                               child: Row(
                                 children: [
-                                  const ShopIcon(size: 56),
-                                  const SizedBox(width: 16),
+                                  ShopIcon(size: 56),
+                                  SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
                                       shop.address,
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white.withOpacity(0.9),
                                       ),

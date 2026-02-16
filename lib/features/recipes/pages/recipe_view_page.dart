@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/recipe_model.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class RecipeViewPage extends StatelessWidget {
   final Recipe recipe;
@@ -15,11 +16,11 @@ class RecipeViewPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(recipe.name),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
+          color: Color(0xFF004D40),
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -27,7 +28,7 @@ class RecipeViewPage extends StatelessWidget {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -35,7 +36,7 @@ class RecipeViewPage extends StatelessWidget {
               if (recipe.photoUrlOrId != null)
                 Card(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     child: recipe.photoUrlOrId!.startsWith('http')
                         ? AppCachedImage(
                             imageUrl: recipe.photoUrlOrId!,
@@ -63,26 +64,26 @@ class RecipeViewPage extends StatelessWidget {
                           ),
                   ),
                 ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               // Цена
               if (recipe.price != null && recipe.price!.isNotEmpty)
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Цена',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 20.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
                           '${recipe.price} руб.',
-                          style: const TextStyle(
-                            fontSize: 24,
+                          style: TextStyle(
+                            fontSize: 24.sp,
                             fontWeight: FontWeight.bold,
                             color: Colors.green,
                           ),
@@ -92,52 +93,52 @@ class RecipeViewPage extends StatelessWidget {
                   ),
                 ),
               if (recipe.price != null && recipe.price!.isNotEmpty)
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               // Ингредиенты
               if (recipe.ingredients.isNotEmpty)
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Ингредиенты',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 20.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Text(
                           recipe.ingredients.replaceAll('\\n', '\n'),
-                          style: const TextStyle(fontSize: 16),
+                          style: TextStyle(fontSize: 16.sp),
                         ),
                       ],
                     ),
                   ),
                 ),
-              if (recipe.ingredients.isNotEmpty) const SizedBox(height: 16),
+              if (recipe.ingredients.isNotEmpty) SizedBox(height: 16),
               // Последовательность приготовления
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Последовательность приготовления',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Text(
                         recipe.steps.isNotEmpty
                             ? recipe.steps.replaceAll('\\n', '\n')
                             : recipe.recipeText.replaceAll('\\n', '\n'),
-                        style: const TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: 16.sp),
                       ),
                     ],
                   ),

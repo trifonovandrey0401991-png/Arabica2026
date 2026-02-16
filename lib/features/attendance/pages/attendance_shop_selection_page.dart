@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../services/attendance_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AttendanceShopSelectionPage extends StatefulWidget {
   final String employeeName;
@@ -48,7 +49,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.schedule, color: Color(0xFF004D40)),
             SizedBox(width: 8),
@@ -58,11 +59,11 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Время отметки не попадает в интервал смен.\nВыберите вашу смену:',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontSize: 14.sp, color: Colors.grey),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildShiftOption(
               context: context,
               icon: Icons.wb_sunny,
@@ -70,7 +71,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
               label: 'Утренняя смена',
               value: 'morning',
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildShiftOption(
               context: context,
               icon: Icons.wb_cloudy,
@@ -78,7 +79,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
               label: 'Дневная смена',
               value: 'day',
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildShiftOption(
               context: context,
               icon: Icons.nights_stay,
@@ -91,7 +92,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, null),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
         ],
       ),
@@ -107,27 +108,27 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
   }) {
     return InkWell(
       onTap: () => Navigator.pop(context, value),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(8.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         decoration: BoxDecoration(
           border: Border.all(color: color.withOpacity(0.5)),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.r),
           color: color.withOpacity(0.1),
         ),
         child: Row(
           children: [
             Icon(icon, color: color),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w500,
                 color: color,
               ),
             ),
-            const Spacer(),
+            Spacer(),
             Icon(Icons.chevron_right, color: color),
           ],
         ),
@@ -173,7 +174,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
         title: Row(
           children: [
             Icon(icon, color: backgroundColor),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(child: Text(title)),
           ],
         ),
@@ -185,7 +186,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
               Navigator.pop(context); // Закрываем диалог
               Navigator.pop(context); // Закрываем страницу выбора магазина
             },
-            child: const Text('OK'),
+            child: Text('OK'),
           ),
         ],
       ),
@@ -196,7 +197,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
     if (shop.latitude == null || shop.longitude == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Координаты магазина не найдены'),
             backgroundColor: Colors.red,
           ),
@@ -237,7 +238,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Вы слишком далеко от магазина'),
+              title: Text('Вы слишком далеко от магазина'),
               content: Text(
                 'Вы находитесь на расстоянии ${distance.toStringAsFixed(0)} м от магазина.\n'
                 'Необходимо находиться в радиусе 750 м.',
@@ -245,7 +246,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
+                  child: Text('OK'),
                 ),
               ],
             ),
@@ -306,7 +307,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Row(
+              title: Row(
                 children: [
                   Icon(Icons.error, color: Colors.red),
                   SizedBox(width: 8),
@@ -317,7 +318,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
+                  child: Text('OK'),
                 ),
               ],
             ),
@@ -343,51 +344,51 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Я на работе'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Я на работе'),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: EdgeInsets.all(16.0.w),
                         child: Text(
                           _errorMessage!,
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(color: Colors.red),
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadShops,
-                        child: const Text('Повторить'),
+                        child: Text('Повторить'),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   itemCount: _shops.length,
                   itemBuilder: (context, index) {
                     final shop = _shops[index];
                     return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: EdgeInsets.only(bottom: 12.h),
                       child: ListTile(
                         leading: shop.leadingIcon,
                         title: Text(shop.name),
                         subtitle: Text(shop.address),
                         trailing: _isMarking
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : IconButton(
-                                icon: const Icon(Icons.check_circle),
+                                icon: Icon(Icons.check_circle),
                                 color: Colors.green,
                                 onPressed: () => _markAttendance(shop),
                               ),

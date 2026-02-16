@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Переиспользуемый виджет слайдера для настроек баллов
 ///
@@ -48,17 +49,17 @@ class SettingsSliderWidget extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: accentColor.withOpacity(0.1),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -70,11 +71,11 @@ class SettingsSliderWidget extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(icon, color: accentColor, size: 24),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Title and subtitle
                 Expanded(
                   child: Column(
@@ -82,8 +83,8 @@ class SettingsSliderWidget extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2D3436),
                         ),
@@ -91,7 +92,7 @@ class SettingsSliderWidget extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.grey[500],
                         ),
                       ),
@@ -100,30 +101,30 @@ class SettingsSliderWidget extends StatelessWidget {
                 ),
                 // Value badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                   decoration: BoxDecoration(
                     color: accentColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
                       BoxShadow(
                         color: accentColor.withOpacity(0.4),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Text(
                     _displayValue,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 18.sp,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Slider
             SliderTheme(
               data: SliderThemeData(
@@ -132,7 +133,7 @@ class SettingsSliderWidget extends StatelessWidget {
                 thumbColor: accentColor,
                 overlayColor: accentColor.withOpacity(0.2),
                 trackHeight: 6,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 10),
               ),
               child: Slider(
                 value: value,
@@ -144,14 +145,14 @@ class SettingsSliderWidget extends StatelessWidget {
             ),
             // Min/max labels
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(horizontal: 8.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     isInteger ? min.toInt().toString() : min.toString(),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey[400],
                       fontWeight: FontWeight.w500,
                     ),
@@ -159,7 +160,7 @@ class SettingsSliderWidget extends StatelessWidget {
                   Text(
                     isInteger ? max.toInt().toString() : max.toString(),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey[400],
                       fontWeight: FontWeight.w500,
                     ),

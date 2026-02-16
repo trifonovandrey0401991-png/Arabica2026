@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 import 'dart:io';
 import '../models/recipe_model.dart';
@@ -145,8 +146,15 @@ class RecipeService {
       }
 
       request.fields['recipeId'] = recipeId;
+
+      // Определяем MIME-тип по расширению (fallback: image/jpeg)
+      final ext = photoFile.path.split('.').last.toLowerCase();
+      final mimeType = ext == 'png' ? MediaType('image', 'png')
+          : ext == 'webp' ? MediaType('image', 'webp')
+          : MediaType('image', 'jpeg');
+
       request.files.add(
-        await http.MultipartFile.fromPath('photo', photoFile.path),
+        await http.MultipartFile.fromPath('photo', photoFile.path, contentType: mimeType),
       );
 
       final response = await request.send().timeout(ApiConstants.longTimeout);

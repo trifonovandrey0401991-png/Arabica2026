@@ -6,6 +6,7 @@ import '../models/recurring_task_model.dart';
 import '../models/task_model.dart' show TaskResponseType, TaskResponseTypeExtension;
 import '../services/recurring_task_service.dart';
 import '../../../core/services/media_upload_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ответа на циклическую задачу
 class RecurringTaskResponsePage extends StatefulWidget {
@@ -22,10 +23,10 @@ class RecurringTaskResponsePage extends StatefulWidget {
 }
 
 class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   final _textController = TextEditingController();
   final List<File> _photos = [];
@@ -106,10 +107,10 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Задача выполнена!', style: TextStyle(color: Colors.white)),
+            content: Text('Задача выполнена!', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.green.shade800,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
         Navigator.pop(context, true);
@@ -118,10 +119,10 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: $e', style: const TextStyle(color: Colors.white)),
+            content: Text('Ошибка: $e', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.red.shade900,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -136,11 +137,11 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
     return Stack(
       children: [
         Container(
-          margin: const EdgeInsets.only(right: 8),
+          margin: EdgeInsets.only(right: 8.w),
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
             image: DecorationImage(
               image: FileImage(_photos[index]),
@@ -149,17 +150,17 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
           ),
         ),
         Positioned(
-          top: 4,
-          right: 12,
+          top: 4.h,
+          right: 12.w,
           child: GestureDetector(
             onTap: () => _removePhoto(index),
             child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(4.w),
+              decoration: BoxDecoration(
                 color: Colors.red,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.close,
                 size: 16,
                 color: Colors.white,
@@ -182,7 +183,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -195,31 +196,31 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
                           color: Colors.white,
                           size: 22,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Text(
+                    SizedBox(width: 16),
+                    Text(
                       'Выполнение задачи',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -230,7 +231,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
               // Body content
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -238,31 +239,31 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
                                   Icon(Icons.repeat, color: _gold),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                      vertical: 2.h,
                                     ),
                                     decoration: BoxDecoration(
                                       color: _gold.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(8.r),
                                     ),
                                     child: Text(
                                       'Циклическая',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 11.sp,
                                         color: _gold,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -270,40 +271,40 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Text(
                                 instance.title,
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white.withOpacity(0.9),
                                 ),
                               ),
                               if (instance.description.isNotEmpty) ...[
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Text(
                                   instance.description,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                     color: Colors.white.withOpacity(0.6),
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Row(
                                 children: [
                                   Icon(Icons.access_time, size: 16, color: Colors.white.withOpacity(0.5)),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text(
                                     'Выполнить до: ${dateFormat.format(instance.deadline)}',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                       color: Colors.white.withOpacity(0.6),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Row(
                                 children: [
                                   Icon(
@@ -313,13 +314,13 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                                     size: 16,
                                     color: instance.isExpired ? Colors.red[400] : Colors.white.withOpacity(0.5),
                                   ),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text(
                                     instance.isExpired
                                         ? 'Просрочено!'
                                         : 'Требуется: ${instance.responseType.displayName}',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                       color: instance.isExpired ? Colors.red[400] : Colors.white.withOpacity(0.6),
                                     ),
                                   ),
@@ -330,19 +331,19 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       // Фото (если нужно)
                       if (needsPhoto) ...[
                         Text(
                           'Фото *',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withOpacity(0.9),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         if (_photos.isNotEmpty) ...[
                           SizedBox(
                             height: 100,
@@ -352,7 +353,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                               itemBuilder: (context, index) => _buildPhotoPreview(index),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                         ],
                         Row(
                           children: [
@@ -364,13 +365,13 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(color: _gold),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12.r),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding: EdgeInsets.symmetric(vertical: 12.h),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: _pickFromGallery,
@@ -379,15 +380,15 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(color: _gold),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12.r),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding: EdgeInsets.symmetric(vertical: 12.h),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                       ],
 
                       // Текст (если нужно)
@@ -395,56 +396,56 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                         Text(
                           'Комментарий ${needsPhoto ? "" : "*"}',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withOpacity(0.9),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         TextFormField(
                           controller: _textController,
                           maxLines: 4,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Опишите выполнение задачи...',
                             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                             filled: true,
                             fillColor: Colors.white.withOpacity(0.06),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               borderSide: BorderSide(color: _gold.withOpacity(0.6)),
                             ),
                           ),
                           onChanged: (_) => setState(() {}),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                       ],
 
                       // Информация о баллах
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(12.w),
                         decoration: BoxDecoration(
                           color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.green.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.check_circle, color: Colors.green[400], size: 20),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'После нажатия "Выполнено" задача будет сразу закрыта без проверки',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 13.sp,
                                   color: Colors.green[300],
                                 ),
                               ),
@@ -453,7 +454,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                         ),
                       ),
 
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
 
                       // Кнопка выполнения
                       SizedBox(
@@ -467,9 +468,9 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                             foregroundColor: _night,
                             disabledBackgroundColor: _gold.withOpacity(0.3),
                             disabledForegroundColor: _night.withOpacity(0.5),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
                           ),
                           child: _isSubmitting
@@ -481,10 +482,10 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                                     valueColor: AlwaysStoppedAnimation<Color>(_night),
                                   ),
                                 )
-                              : const Text(
+                              : Text(
                                   'ВЫПОЛНЕНО',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -493,23 +494,23 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
 
                       if (instance.isExpired)
                         Padding(
-                          padding: const EdgeInsets.only(top: 16),
+                          padding: EdgeInsets.only(top: 16.h),
                           child: Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(12.w),
                             decoration: BoxDecoration(
                               color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                               border: Border.all(color: Colors.red.withOpacity(0.3)),
                             ),
                             child: Row(
                               children: [
                                 Icon(Icons.error, color: Colors.red[400], size: 20),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     'Задача просрочена. Вы получили -3 балла.',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                       color: Colors.red[300],
                                     ),
                                   ),

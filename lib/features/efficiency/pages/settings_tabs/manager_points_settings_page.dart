@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring manager points settings (Управляющие)
 ///
@@ -42,7 +43,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
   };
 
   // Gradient colors for this page (purple theme for managers)
-  static const _gradientColors = [Color(0xFF9C27B0), Color(0xFF673AB7)];
+  static final _gradientColors = [Color(0xFF9C27B0), Color(0xFF673AB7)];
 
   @override
   void initState() {
@@ -106,7 +107,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -115,7 +116,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -138,9 +139,9 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы управляющих'),
+        title: Text('Баллы управляющих'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -158,52 +159,52 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Пояснение
                         _buildInfoCard(),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // Секция: Пересменка
                         _buildCategorySection(
                           key: 'shift',
                           title: 'Пересменка',
                           icon: Icons.swap_horiz_outlined,
-                          gradientColors: [const Color(0xFFf093fb), const Color(0xFFf5576c)],
+                          gradientColors: [Color(0xFFf093fb), Color(0xFFf5576c)],
                           confirmedPoints: _shiftConfirmedPoints,
                           rejectedPenalty: _shiftRejectedPenalty,
                           onConfirmedPointsChanged: (v) => setState(() => _shiftConfirmedPoints = v),
                           onRejectedPenaltyChanged: (v) => setState(() => _shiftRejectedPenalty = v),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
 
                         // Секция: Пересчет
                         _buildCategorySection(
                           key: 'recount',
                           title: 'Пересчет',
                           icon: Icons.inventory_2_outlined,
-                          gradientColors: [const Color(0xFF4facfe), const Color(0xFF00f2fe)],
+                          gradientColors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
                           confirmedPoints: _recountConfirmedPoints,
                           rejectedPenalty: _recountRejectedPenalty,
                           onConfirmedPointsChanged: (v) => setState(() => _recountConfirmedPoints = v),
                           onRejectedPenaltyChanged: (v) => setState(() => _recountRejectedPenalty = v),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
 
                         // Секция: Сдать смену
                         _buildCategorySection(
                           key: 'shiftHandover',
                           title: 'Сдать смену',
                           icon: Icons.assignment_turned_in_outlined,
-                          gradientColors: [const Color(0xFF30cfd0), const Color(0xFF330867)],
+                          gradientColors: [Color(0xFF30cfd0), Color(0xFF330867)],
                           confirmedPoints: _shiftHandoverConfirmedPoints,
                           rejectedPenalty: _shiftHandoverRejectedPenalty,
                           onConfirmedPointsChanged: (v) => setState(() => _shiftHandoverConfirmedPoints = v),
                           onRejectedPenaltyChanged: (v) => setState(() => _shiftHandoverRejectedPenalty = v),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -211,7 +212,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -223,15 +224,15 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
 
   Widget _buildInfoCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -245,7 +246,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: _gradientColors[0].withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Icon(
                   Icons.info_outline,
@@ -253,25 +254,25 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Как рассчитываются баллы',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2D3436),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildInfoRow(
             Icons.check_circle_outline,
             'Отчёт проверен',
             'Баллы начисляются за каждый подтверждённый отчёт',
             Colors.green,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildInfoRow(
             Icons.cancel_outlined,
             'Отчёт не проверен',
@@ -288,7 +289,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 18, color: color),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +297,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   fontWeight: FontWeight.w600,
                   color: color,
                 ),
@@ -304,7 +305,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
               Text(
                 subtitle,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.grey[600],
                 ),
               ),
@@ -330,12 +331,12 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: gradientColors[0].withOpacity(0.15),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -344,16 +345,16 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
           // Header (clickable)
           Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20.r),
             child: InkWell(
               onTap: () {
                 setState(() {
                   _expandedSections[key] = !isExpanded;
                 });
               },
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.r),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 child: Row(
                   children: [
                     // Icon with gradient
@@ -366,12 +367,12 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                           end: Alignment.bottomRight,
                           colors: gradientColors,
                         ),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                         boxShadow: [
                           BoxShadow(
                             color: gradientColors[0].withOpacity(0.4),
                             blurRadius: 8,
-                            offset: const Offset(0, 4),
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
@@ -381,7 +382,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    SizedBox(width: 14),
                     // Title and summary
                     Expanded(
                       child: Column(
@@ -389,17 +390,17 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
-                              fontSize: 17,
+                            style: TextStyle(
+                              fontSize: 17.sp,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF2D3436),
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             '+${confirmedPoints.toStringAsFixed(1)} / ${rejectedPenalty.toStringAsFixed(1)}',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.grey[600],
                             ),
                           ),
@@ -409,13 +410,13 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                     // Expand/collapse icon
                     AnimatedRotation(
                       turns: isExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
+                      duration: Duration(milliseconds: 200),
                       child: Container(
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
                         child: Icon(
                           Icons.keyboard_arrow_down_rounded,
@@ -431,13 +432,13 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
           ),
           // Expandable content
           AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
+            firstChild: SizedBox.shrink(),
             secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
               child: Column(
                 children: [
-                  const Divider(),
-                  const SizedBox(height: 12),
+                  Divider(),
+                  SizedBox(height: 12),
                   // Confirmed Points
                   _buildSlider(
                     title: 'Отчёт проверен',
@@ -449,7 +450,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                     accentColor: Colors.green,
                     icon: Icons.check_circle_outline,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   // Rejected Penalty
                   _buildSlider(
                     title: 'Отчёт не проверен',
@@ -466,7 +467,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
             ),
             crossFadeState:
                 isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
+            duration: Duration(milliseconds: 200),
           ),
         ],
       ),
@@ -484,10 +485,10 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
     required IconData icon,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,19 +500,19 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                 height: 36,
                 decoration: BoxDecoration(
                   color: accentColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Icon(icon, color: accentColor, size: 20),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF2D3436),
                       ),
@@ -519,7 +520,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 11.sp,
                         color: Colors.grey[600],
                       ),
                     ),
@@ -527,23 +528,23 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
                   color: accentColor,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Text(
                   value >= 0 ? '+${value.toStringAsFixed(1)}' : value.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           SliderTheme(
             data: SliderThemeData(
               activeTrackColor: accentColor,
@@ -551,7 +552,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
               thumbColor: accentColor,
               overlayColor: accentColor.withOpacity(0.2),
               trackHeight: 5,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
             ),
             child: Slider(
               value: value,
@@ -562,17 +563,17 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   min.toString(),
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
                 ),
                 Text(
                   max.toString(),
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
                 ),
               ],
             ),

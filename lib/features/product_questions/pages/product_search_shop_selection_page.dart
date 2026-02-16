@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shops/models/shop_model.dart';
 import 'product_question_input_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ProductSearchShopSelectionPage extends StatefulWidget {
   const ProductSearchShopSelectionPage({super.key});
@@ -15,9 +16,9 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
   String? _errorMessage;
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   @override
   void initState() {
@@ -57,7 +58,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -71,7 +72,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
               _buildAppBar(),
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       )
                     : _errorMessage != null
@@ -87,7 +88,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -98,19 +99,19 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Поиск товара',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -119,7 +120,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
   Widget _buildErrorState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -128,16 +129,16 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
               size: 48,
               color: Colors.red.withOpacity(0.7),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _errorMessage!,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.7),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             GestureDetector(
               onTap: () {
                 setState(() {
@@ -147,9 +148,9 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
                 _loadShops();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
                 child: Text(
@@ -169,18 +170,18 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
 
   Widget _buildShopList() {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 20.h),
       itemCount: _shops.length + 1, // +1 для "Узнать во всей сети"
       itemBuilder: (context, index) {
         if (index == 0) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: 12.h),
             child: _buildAllNetworkCard(),
           );
         }
         final shop = _shops[index - 1];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: EdgeInsets.only(bottom: 6.h),
           child: _buildShopCard(shop),
         );
       },
@@ -188,14 +189,14 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
   }
 
   Widget _buildAllNetworkCard() {
-    const gold = Color(0xFFD4AF37);
+    final gold = Color(0xFFD4AF37);
 
     return GestureDetector(
       onTap: () => _selectShop(null),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: gold.withOpacity(0.5)),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -213,33 +214,33 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
               height: 40,
               decoration: BoxDecoration(
                 color: gold.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.store_mall_directory_rounded,
                 color: gold,
                 size: 22,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Узнать во всей сети',
                     style: TextStyle(
                       color: gold,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     'Вопрос будет отправлен всем магазинам',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
-                      fontSize: 12,
+                      fontSize: 12.sp,
                     ),
                   ),
                 ],
@@ -260,9 +261,9 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
     return GestureDetector(
       onTap: () => _selectShop(shop),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: Colors.white.withOpacity(0.12)),
           color: Colors.white.withOpacity(0.04),
         ),
@@ -273,7 +274,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
               height: 40,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 Icons.store_rounded,
@@ -281,7 +282,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
                 size: 20,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             // Информация
             Expanded(
               child: Column(
@@ -291,18 +292,18 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
                   Text(
                     shop.name,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     shop.address,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.white.withOpacity(0.4),
                     ),
                     maxLines: 1,
@@ -311,7 +312,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Icon(
               Icons.chevron_right_rounded,
               size: 20,

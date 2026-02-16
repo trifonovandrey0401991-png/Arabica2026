@@ -6,6 +6,7 @@ import '../utils/efficiency_utils.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
 import '../../employees/services/employee_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница детальной информации об эффективности сотрудника
 class EmployeeEfficiencyDetailPage extends StatefulWidget {
@@ -25,10 +26,10 @@ class EmployeeEfficiencyDetailPage extends StatefulWidget {
 
 class _EmployeeEfficiencyDetailPageState
     extends State<EmployeeEfficiencyDetailPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   EmployeeReferralPoints? _referralPoints;
   bool _isLoadingReferrals = true;
@@ -74,8 +75,8 @@ class _EmployeeEfficiencyDetailPageState
     showModalBottomSheet(
       context: context,
       backgroundColor: _emeraldDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
       builder: (context) => SafeArea(
         child: Column(
@@ -83,7 +84,7 @@ class _EmployeeEfficiencyDetailPageState
           children: [
             ListTile(
               leading: Icon(Icons.text_snippet, color: _gold),
-              title: const Text('Копировать как текст', style: TextStyle(color: Colors.white)),
+              title: Text('Копировать как текст', style: TextStyle(color: Colors.white)),
               subtitle: Text('Форматированный отчёт', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
                 Navigator.pop(context);
@@ -92,7 +93,7 @@ class _EmployeeEfficiencyDetailPageState
             ),
             ListTile(
               leading: Icon(Icons.table_chart, color: _gold),
-              title: const Text('Копировать как CSV', style: TextStyle(color: Colors.white)),
+              title: Text('Копировать как CSV', style: TextStyle(color: Colors.white)),
               subtitle: Text('Для Excel/Google Sheets', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
                 Navigator.pop(context);
@@ -114,9 +115,9 @@ class _EmployeeEfficiencyDetailPageState
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Отчёт скопирован в буфер обмена'),
+        content: Text('Отчёт скопирован в буфер обмена'),
         backgroundColor: _emerald,
-        duration: const Duration(seconds: 2),
+        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -130,9 +131,9 @@ class _EmployeeEfficiencyDetailPageState
     Clipboard.setData(ClipboardData(text: csv));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('CSV скопирован в буфер обмена'),
+        content: Text('CSV скопирован в буфер обмена'),
         backgroundColor: _emerald,
-        duration: const Duration(seconds: 2),
+        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -142,7 +143,7 @@ class _EmployeeEfficiencyDetailPageState
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -155,19 +156,19 @@ class _EmployeeEfficiencyDetailPageState
             children: [
               // Custom Row AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                       onPressed: () => Navigator.pop(context),
                     ),
                     Expanded(
                       child: Text(
                         widget.summary.entityName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.w600,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -184,7 +185,7 @@ class _EmployeeEfficiencyDetailPageState
               // Body
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -192,12 +193,12 @@ class _EmployeeEfficiencyDetailPageState
                         summary: widget.summary,
                         monthName: widget.monthName,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       EfficiencyDetailCategoriesCard(summary: widget.summary),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildReferralPointsSection(),
                       _buildShopsCard(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       EfficiencyDetailRecentRecordsCard(
                         summary: widget.summary,
                         showEmployeeName: false, // Для сотрудника показываем адреса магазинов
@@ -231,7 +232,7 @@ class _EmployeeEfficiencyDetailPageState
     }
 
     if (pointsByShop.isEmpty) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     // Сортируем по баллам
@@ -241,22 +242,22 @@ class _EmployeeEfficiencyDetailPageState
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'По магазинам',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.bold,
               color: _gold,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           ...sortedShops.map((entry) => _buildShopRow(entry.key, entry.value)),
         ],
       ),
@@ -270,7 +271,7 @@ class _EmployeeEfficiencyDetailPageState
         : points.toStringAsFixed(2);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Row(
         children: [
           Container(
@@ -278,7 +279,7 @@ class _EmployeeEfficiencyDetailPageState
             height: 36,
             decoration: BoxDecoration(
               color: _emerald.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(
               Icons.store,
@@ -286,20 +287,20 @@ class _EmployeeEfficiencyDetailPageState
               color: _gold,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               shopAddress,
-              style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.9)),
+              style: TextStyle(fontSize: 15.sp, color: Colors.white.withOpacity(0.9)),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Text(
             formattedPoints,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w600,
-              color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFEF5350),
+              color: isPositive ? Color(0xFF4CAF50) : Color(0xFFEF5350),
             ),
           ),
         ],
@@ -309,17 +310,17 @@ class _EmployeeEfficiencyDetailPageState
 
   Widget _buildReferralPointsSection() {
     if (_isLoadingReferrals) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
-    if (_referralPoints == null) return const SizedBox.shrink();
+    if (_referralPoints == null) return SizedBox.shrink();
 
     final hasCurrentMonth = _referralPoints!.currentMonthPoints > 0 ||
         _referralPoints!.currentMonthReferrals > 0;
     final hasPreviousMonth = _referralPoints!.previousMonthPoints > 0 ||
         _referralPoints!.previousMonthReferrals > 0;
 
-    if (!hasCurrentMonth && !hasPreviousMonth) return const SizedBox.shrink();
+    if (!hasCurrentMonth && !hasPreviousMonth) return SizedBox.shrink();
 
     return Column(
       children: [
@@ -337,7 +338,7 @@ class _EmployeeEfficiencyDetailPageState
             referralsCount: _referralPoints!.previousMonthReferrals,
             isPreviousMonth: true,
           ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
       ],
     );
   }
@@ -352,10 +353,10 @@ class _EmployeeEfficiencyDetailPageState
       margin: EdgeInsets.only(bottom: isPreviousMonth ? 0 : 8),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Row(
         children: [
           Container(
@@ -363,14 +364,14 @@ class _EmployeeEfficiencyDetailPageState
             height: 40,
             decoration: BoxDecoration(
               color: _emerald.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(
               Icons.person_add_alt_outlined,
               color: _gold,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,7 +379,7 @@ class _EmployeeEfficiencyDetailPageState
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w500,
                     color: isPreviousMonth
                         ? Colors.white.withOpacity(0.5)
@@ -388,7 +389,7 @@ class _EmployeeEfficiencyDetailPageState
                 Text(
                   '$referralsCount ${_getReferralsLabel(referralsCount)}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.white.withOpacity(0.5),
                   ),
                 ),
@@ -398,16 +399,16 @@ class _EmployeeEfficiencyDetailPageState
           Text(
             '+$points',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.bold,
               color: _gold,
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             'балл${_getPointsEnding(points)}',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),

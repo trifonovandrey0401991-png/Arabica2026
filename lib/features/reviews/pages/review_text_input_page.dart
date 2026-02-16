@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shops/models/shop_model.dart';
 import '../services/review_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ввода текста отзыва
 class ReviewTextInputPage extends StatefulWidget {
@@ -23,14 +24,14 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
   bool _isLoading = false;
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   bool get _isPositive => widget.reviewType == 'positive';
   Color get _accentColor => _isPositive
-      ? const Color(0xFF4CAF50)
-      : const Color(0xFFEF5350);
+      ? Color(0xFF4CAF50)
+      : Color(0xFFEF5350);
 
   @override
   void dispose() {
@@ -42,10 +43,10 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
     if (_textController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Пожалуйста, введите текст отзыва'),
+          content: Text('Пожалуйста, введите текст отзыва'),
           backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
       return;
@@ -64,10 +65,10 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ошибка: данные пользователя не найдены'),
+              content: Text('Ошибка: данные пользователя не найдены'),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -86,20 +87,20 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
         if (review != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Отзыв успешно отправлен!'),
-              backgroundColor: const Color(0xFF4CAF50),
+              content: Text('Отзыв успешно отправлен!'),
+              backgroundColor: Color(0xFF4CAF50),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
           Navigator.of(context).popUntil((route) => route.isFirst);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ошибка при отправке отзыва'),
+              content: Text('Ошибка при отправке отзыва'),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -111,7 +112,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
       }
@@ -129,7 +130,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -143,15 +144,15 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
               _buildAppBar(),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
                   child: Column(
                     children: [
                       // Магазин + тип отзыва
                       _buildInfoCard(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Поле ввода
                       Expanded(child: _buildTextInput()),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Кнопки
                       _buildButtons(),
                     ],
@@ -167,7 +168,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -178,19 +179,19 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Напишите отзыв',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -198,9 +199,9 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
 
   Widget _buildInfoCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
       child: Column(
@@ -213,7 +214,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Icon(
                   Icons.store_rounded,
@@ -221,12 +222,12 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   widget.shop.address,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withOpacity(0.9),
                   ),
@@ -235,7 +236,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: 12.h),
             child: Divider(
               color: Colors.white.withOpacity(0.1),
               height: 1,
@@ -249,7 +250,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: _accentColor,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Icon(
                   _isPositive ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
@@ -257,11 +258,11 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 _isPositive ? 'Положительный отзыв' : 'Отрицательный отзыв',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   fontWeight: FontWeight.w500,
                   color: _accentColor,
                 ),
@@ -276,7 +277,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
   Widget _buildTextInput() {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: _accentColor.withOpacity(0.3)),
         color: Colors.white.withOpacity(0.05),
       ),
@@ -286,7 +287,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
         expands: true,
         textAlignVertical: TextAlignVertical.top,
         style: TextStyle(
-          fontSize: 16,
+          fontSize: 16.sp,
           color: Colors.white.withOpacity(0.9),
           height: 1.5,
         ),
@@ -295,9 +296,9 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
           hintText: 'Введите ваш отзыв...',
           hintStyle: TextStyle(
             color: Colors.white.withOpacity(0.3),
-            fontSize: 16,
+            fontSize: 16.sp,
           ),
-          contentPadding: const EdgeInsets.all(20),
+          contentPadding: EdgeInsets.all(20.w),
           border: InputBorder.none,
         ),
       ),
@@ -312,16 +313,16 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
           child: GestureDetector(
             onTap: _isLoading ? null : () => Navigator.pop(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
               child: Center(
                 child: Text(
                   'Вернуться',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withOpacity(0.7),
                   ),
@@ -330,15 +331,15 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         // Отправить
         Expanded(
           child: GestureDetector(
             onTap: _isLoading ? null : _submitReview,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 gradient: LinearGradient(
                   colors: [
                     _accentColor,
@@ -353,15 +354,15 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
+                          valueColor: AlwaysStoppedAnimation<Color>(
                             Colors.white,
                           ),
                         ),
                       )
-                    : const Text(
+                    : Text(
                         'Отправить',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),

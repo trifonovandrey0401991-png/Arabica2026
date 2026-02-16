@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/attendance_model.dart';
 import '../services/attendance_report_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница детальной информации по посещаемости сотрудника
 class AttendanceEmployeeDetailPage extends StatefulWidget {
@@ -21,7 +22,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
   bool _isLoading = true;
   String _selectedPeriod = 'month'; // week, month, all
 
-  static const _gradientColors = [Color(0xFF004D40), Color(0xFF00695C)];
+  static final _gradientColors = [Color(0xFF004D40), Color(0xFF00695C)];
 
   @override
   void initState() {
@@ -38,7 +39,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
 
       switch (_selectedPeriod) {
         case 'week':
-          startDate = now.subtract(const Duration(days: 7));
+          startDate = now.subtract(Duration(days: 7));
           break;
         case 'month':
           startDate = DateTime(now.year, now.month, 1);
@@ -89,7 +90,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
               // Список отметок
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    ? Center(child: CircularProgressIndicator(color: Colors.white))
                     : _buildRecordsList(),
               ),
             ],
@@ -101,29 +102,29 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.employeeName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
                   maxLines: 1,
@@ -133,7 +134,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
                   'Отметок: ${_records.length}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ],
@@ -142,10 +143,10 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
+              icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: _loadData,
             ),
           ),
@@ -156,16 +157,16 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
 
   Widget _buildStatsCard(int onTimeCount, int lateCount, double onTimeRate) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -186,16 +187,16 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
         Text(
           value,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 24.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.sp,
             color: Colors.grey[600],
           ),
         ),
@@ -205,13 +206,13 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
 
   Widget _buildPeriodFilter() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         children: [
           _buildPeriodChip('week', 'Неделя'),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _buildPeriodChip('month', 'Месяц'),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _buildPeriodChip('all', 'Все'),
         ],
       ),
@@ -228,12 +229,12 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
             setState(() => _selectedPeriod = period);
             _loadData();
           },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.symmetric(vertical: 10.h),
             decoration: BoxDecoration(
               color: isSelected ? Colors.white : Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(
                 color: isSelected ? Colors.white : Colors.white30,
               ),
@@ -259,10 +260,10 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.access_time, size: 64, color: Colors.white.withOpacity(0.5)),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Нет отметок за период',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
             ),
           ],
         ),
@@ -280,7 +281,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
       ..sort((a, b) => DateFormat('dd.MM.yyyy').parse(b).compareTo(DateFormat('dd.MM.yyyy').parse(a)));
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: sortedDates.length,
       itemBuilder: (context, index) {
         final date = sortedDates[index];
@@ -292,15 +293,15 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
 
   Widget _buildDayCard(String date, List<AttendanceRecord> records) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -309,15 +310,15 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
         children: [
           // Заголовок дня
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
               color: _gradientColors[0].withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
             ),
             child: Row(
               children: [
                 Icon(Icons.calendar_today, size: 18, color: _gradientColors[0]),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   date,
                   style: TextStyle(
@@ -325,12 +326,12 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
                     color: _gradientColors[0],
                   ),
                 ),
-                const Spacer(),
+                Spacer(),
                 Text(
                   '${records.length} ${_getEnding(records.length)}',
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontSize: 12,
+                    fontSize: 12.sp,
                   ),
                 ),
               ],
@@ -350,7 +351,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
     final shiftLabel = _getShiftLabel(record.shiftType);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: Colors.grey.shade200),
@@ -380,7 +381,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
               color: isOnTime ? Colors.green : isLate ? Colors.red : Colors.grey,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Информация
           Expanded(
             child: Column(
@@ -388,16 +389,16 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
               children: [
                 Text(
                   time,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                    fontSize: 15.sp,
                   ),
                 ),
                 if (shiftLabel.isNotEmpty)
                   Text(
                     shiftLabel,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey[600],
                     ),
                   ),
@@ -407,33 +408,33 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
           // Статус
           if (isLate && record.lateMinutes != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
                 '+${record.lateMinutes} мин',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                 ),
               ),
             )
           else if (isOnTime)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              child: const Text(
+              child: Text(
                 'Вовремя',
                 style: TextStyle(
                   color: Colors.green,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                 ),
               ),
             ),

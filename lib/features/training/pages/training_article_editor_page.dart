@@ -5,6 +5,7 @@ import '../models/training_model.dart';
 import '../models/content_block.dart';
 import '../services/training_article_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница редактора статьи обучения с поддержкой блоков контента
 class TrainingArticleEditorPage extends StatefulWidget {
@@ -18,10 +19,10 @@ class TrainingArticleEditorPage extends StatefulWidget {
 
 class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   // Dark Emerald цвета
-  static const _emerald = Color(0xFF1A4D4D);
-  static const _emeraldDark = Color(0xFF0D2E2E);
-  static const _night = Color(0xFF051515);
-  static const _gold = Color(0xFFD4AF37);
+  static final _emerald = Color(0xFF1A4D4D);
+  static final _emeraldDark = Color(0xFF0D2E2E);
+  static final _night = Color(0xFF051515);
+  static final _gold = Color(0xFFD4AF37);
 
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
@@ -95,13 +96,13 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         barrierDismissible: false,
         builder: (context) => Center(
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               color: _emeraldDark,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(color: _gold),
@@ -129,7 +130,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка загрузки изображения'),
+            content: Text('Ошибка загрузки изображения'),
             backgroundColor: Colors.red[600],
           ),
         );
@@ -209,7 +210,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     if (!hasContent && !_showUrlField) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Добавьте контент статьи или внешнюю ссылку'),
+          content: Text('Добавьте контент статьи или внешнюю ссылку'),
           backgroundColor: Colors.orange[600],
         ),
       );
@@ -263,7 +264,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ошибка сохранения статьи'),
+              content: Text('Ошибка сохранения статьи'),
               backgroundColor: Colors.red[600],
             ),
           );
@@ -293,7 +294,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -317,30 +318,30 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
   Widget _buildAppBar(bool isEditing) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.06)),
             ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   isEditing ? 'Редактировать статью' : 'Новая статья',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -348,7 +349,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                   '${_contentBlocks.length} ${_getBlocksEnding(_contentBlocks.length)}',
                   style: TextStyle(
                     color: _gold.withOpacity(0.8),
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ],
@@ -358,12 +359,12 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           Container(
             decoration: BoxDecoration(
               color: _gold.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: _gold.withOpacity(0.4)),
             ),
             child: IconButton(
               icon: _isSaving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -371,7 +372,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                         color: _gold,
                       ),
                     )
-                  : const Icon(Icons.check_rounded, color: _gold, size: 24),
+                  : Icon(Icons.check_rounded, color: _gold, size: 24),
               onPressed: _isSaving ? null : _saveArticle,
             ),
           ),
@@ -395,24 +396,24 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         children: [
           // Основная информация
           _buildInfoCard(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Блоки контента
           _buildContentBlocksSection(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Кнопки добавления блоков
           _buildAddBlockButtons(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Внешняя ссылка
           _buildUrlSection(),
 
-          const SizedBox(height: 80),
+          SizedBox(height: 80),
         ],
       ),
     );
@@ -420,10 +421,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
   Widget _buildInfoCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
@@ -432,26 +433,26 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: _gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: _gold.withOpacity(0.3)),
                 ),
                 child: Icon(Icons.info_outline, color: _gold, size: 20),
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Основная информация',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                   color: _gold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildTextField(
             controller: _titleController,
             label: 'Название статьи',
@@ -464,7 +465,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               return null;
             },
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildTextField(
             controller: _groupController,
             label: 'Группа',
@@ -477,7 +478,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Выбор видимости
           _buildVisibilitySelector(),
         ],
@@ -492,18 +493,18 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         Row(
           children: [
             Icon(Icons.visibility_rounded, color: Colors.white.withOpacity(0.5), size: 18),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               'Кто может видеть',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w500,
                 color: Colors.white.withOpacity(0.5),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -513,7 +514,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 icon: Icons.people_rounded,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _buildVisibilityOption(
                 value: 'managers',
@@ -539,12 +540,12 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           _visibility = value;
         });
       },
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(10.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 12.w),
         decoration: BoxDecoration(
           color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
             color: isSelected ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.08),
             width: isSelected ? 2 : 1,
@@ -558,11 +559,11 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               size: 18,
               color: isSelected ? _gold : Colors.white.withOpacity(0.4),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 13.sp,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color: isSelected ? _gold : Colors.white.withOpacity(0.5),
               ),
@@ -580,26 +581,26 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(color: _gold.withOpacity(0.3)),
               ),
               child: Icon(Icons.view_agenda_rounded, color: _gold, size: 20),
             ),
-            const SizedBox(width: 12),
-            const Text(
+            SizedBox(width: 12),
+            Text(
               'Контент статьи',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: _gold,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         ...List.generate(_contentBlocks.length, (index) {
           final block = _contentBlocks[index];
           return _buildContentBlockCard(block, index);
@@ -610,10 +611,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
   Widget _buildContentBlockCard(ContentBlock block, int index) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
@@ -621,14 +622,14 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         children: [
           // Заголовок блока с кнопками
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
             decoration: BoxDecoration(
               color: block.type == ContentBlockType.image
                   ? Colors.blue.withOpacity(0.1)
                   : _gold.withOpacity(0.08),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16.r),
+                topRight: Radius.circular(16.r),
               ),
             ),
             child: Row(
@@ -642,12 +643,12 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                       ? Colors.blue[300]
                       : _gold,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     block.type == ContentBlockType.image ? 'Изображение' : 'Текст',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: block.type == ContentBlockType.image
                           ? Colors.blue[300]
@@ -674,7 +675,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           ),
           // Контент блока
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12.w),
             child: block.type == ContentBlockType.image
                 ? _buildImageBlockContent(block, index)
                 : _buildTextBlockContent(block, index),
@@ -691,9 +692,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(6.r),
       child: Container(
-        padding: const EdgeInsets.all(4),
+        padding: EdgeInsets.all(4.w),
         child: Icon(
           icon,
           size: 20,
@@ -708,25 +709,25 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       initialValue: block.content,
       maxLines: null,
       minLines: 3,
-      style: TextStyle(fontSize: 14, height: 1.6, color: Colors.white.withOpacity(0.9)),
+      style: TextStyle(fontSize: 14.sp, height: 1.6, color: Colors.white.withOpacity(0.9)),
       decoration: InputDecoration(
         hintText: 'Введите текст...',
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
         filled: true,
         fillColor: Colors.white.withOpacity(0.04),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
         ),
-        contentPadding: const EdgeInsets.all(14),
+        contentPadding: EdgeInsets.all(14.w),
       ),
       cursorColor: _gold,
       onChanged: (value) => _updateTextBlock(index, value),
@@ -740,37 +741,37 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         // Поле подписи (сверху фото)
         TextFormField(
           initialValue: block.caption ?? '',
-          style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)),
+          style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9)),
           decoration: InputDecoration(
             hintText: 'Подпись к изображению (опционально)',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13.sp),
             prefixIcon: Icon(Icons.short_text_rounded, color: Colors.white.withOpacity(0.4), size: 20),
             filled: true,
             fillColor: Colors.white.withOpacity(0.04),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 1.5),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             isDense: true,
           ),
           cursorColor: _gold,
           onChanged: (value) => _updateImageCaption(index, value),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         // Превью изображения с кнопкой замены
         Stack(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               child: AppCachedImage(
                 imageUrl: block.content,
                 width: double.infinity,
@@ -781,16 +782,16 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                   height: 200,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.broken_image_rounded, color: Colors.white.withOpacity(0.3), size: 48),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Ошибка загрузки',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
                       ),
                     ],
                   ),
@@ -799,16 +800,16 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             ),
             // Кнопка замены фото
             Positioned(
-              right: 8,
-              bottom: 8,
+              right: 8.w,
+              bottom: 8.h,
               child: Material(
                 color: Colors.black.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 child: InkWell(
                   onTap: () => _replaceImage(index),
-                  borderRadius: BorderRadius.circular(8),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -818,7 +819,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                           'Заменить',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -852,13 +853,13 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         barrierDismissible: false,
         builder: (context) => Center(
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               color: _emeraldDark,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(color: _gold),
@@ -894,7 +895,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white, size: 20),
                   SizedBox(width: 8),
@@ -903,14 +904,14 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               ),
               backgroundColor: Colors.green[600],
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
+              duration: Duration(seconds: 2),
             ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка загрузки изображения'),
+            content: Text('Ошибка загрузки изображения'),
             backgroundColor: Colors.red[600],
           ),
         );
@@ -939,7 +940,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             onTap: _addTextBlock,
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: _buildAddButton(
             icon: Icons.add_photo_alternate_rounded,
@@ -960,24 +961,24 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: EdgeInsets.symmetric(vertical: 14.h),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 13,
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -989,10 +990,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
   Widget _buildUrlSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
@@ -1007,12 +1008,12 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 }
               });
             },
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               decoration: BoxDecoration(
                 color: _showUrlField ? _gold.withOpacity(0.1) : Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(
                   color: _showUrlField ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.08),
                 ),
@@ -1024,7 +1025,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                     color: _showUrlField ? _gold : Colors.white.withOpacity(0.4),
                     size: 22,
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1032,7 +1033,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                         Text(
                           'Внешняя ссылка',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
                             color: _showUrlField ? _gold : Colors.white.withOpacity(0.7),
                           ),
@@ -1040,7 +1041,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                         Text(
                           'Дополнительный источник информации',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             color: Colors.white.withOpacity(0.4),
                           ),
                         ),
@@ -1052,7 +1053,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             ),
           ),
           if (_showUrlField) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _buildTextField(
               controller: _urlController,
               label: 'URL',
@@ -1083,7 +1084,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
+      style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.9)),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -1093,22 +1094,22 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         filled: true,
         fillColor: Colors.white.withOpacity(0.06),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: Colors.red[300]!),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
         isDense: true,
         errorStyle: TextStyle(color: Colors.red[300]),
       ),

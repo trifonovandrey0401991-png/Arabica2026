@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring RKO points settings (РКО)
 class RkoPointsSettingsPage extends StatefulWidget {
@@ -26,7 +27,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
   double _missedPenalty = -3.0;
 
   // Gradient colors for this page (indigo theme)
-  static const _gradientColors = [Color(0xFF4776E6), Color(0xFF8E54E9)];
+  static final _gradientColors = [Color(0xFF4776E6), Color(0xFF8E54E9)];
 
   @override
   void initState() {
@@ -83,7 +84,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
@@ -92,7 +93,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
               ),
               backgroundColor: Colors.green[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
           );
         }
@@ -115,9 +116,9 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Баллы за РКО'),
+        title: Text('Баллы за РКО'),
         backgroundColor: _gradientColors[0],
         elevation: 0,
       ),
@@ -135,7 +136,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
                 // Контент
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -152,7 +153,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
                           accentColor: Colors.green,
                           icon: Icons.check_circle_outline,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         // No RKO points slider
                         SettingsSliderWidget(
@@ -167,14 +168,14 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
                           accentColor: Colors.red,
                           icon: Icons.cancel_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Time windows section
                         SettingsSectionTitle(
                           title: 'Временные окна для РКО',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TimeWindowsSection(
                           windows: [
                             TimeWindowPickerWidget(
@@ -199,7 +200,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Missed penalty slider
                         SettingsSliderWidget(
@@ -214,14 +215,14 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
                           accentColor: Colors.deepOrange,
                           icon: Icons.warning_amber_outlined,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Preview section
                         SettingsSectionTitle(
                           title: 'Предпросмотр',
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         BinaryPreviewWidget(
                           positiveLabel: 'Есть РКО',
                           negativeLabel: 'Нет РКО',
@@ -230,7 +231,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
                           gradientColors: _gradientColors,
                           valueColumnTitle: 'Статус РКО',
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save button
                         SettingsSaveButton(
@@ -238,7 +239,7 @@ class _RkoPointsSettingsPageState extends State<RkoPointsSettingsPage> {
                           onPressed: _saveSettings,
                           gradientColors: _gradientColors,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     ),
                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/referral_service.dart';
 import '../models/referral_stats_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница детальной статистики приглашений сотрудника
 class EmployeeReferralsDetailPage extends StatefulWidget {
@@ -71,22 +72,22 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.employeeName} (#${widget.referralCode})'),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(_error!, style: const TextStyle(color: Colors.red)),
-                      const SizedBox(height: 16),
+                      Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(_error!, style: TextStyle(color: Colors.red)),
+                      SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadStats,
-                        child: const Text('Повторить'),
+                        child: Text('Повторить'),
                       ),
                     ],
                   ),
@@ -94,49 +95,49 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
               : RefreshIndicator(
                   onRefresh: _loadStats,
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16.w),
                     children: [
                       // Статистика
                       Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Статистика приглашений',
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               _buildStatRow('Сегодня', _today),
                               _buildStatRow('За текущий месяц', _currentMonth),
                               _buildStatRow('За прошлый месяц', _previousMonth),
-                              const Divider(),
+                              Divider(),
                               _buildStatRow('Всего', _total, isTotal: true),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
 
                       // Заголовок списка клиентов
                       Text(
                         'Приглашённые клиенты (${_clients.length})',
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
 
                       // Список клиентов
                       if (_clients.isEmpty)
-                        const Center(
+                        Center(
                           child: Padding(
-                            padding: EdgeInsets.all(32),
+                            padding: EdgeInsets.all(32.w),
                             child: Text(
                               'Нет приглашённых клиентов',
                               style: TextStyle(color: Colors.grey),
@@ -153,7 +154,7 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
 
   Widget _buildStatRow(String label, int value, {bool isTotal = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -165,10 +166,10 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: isTotal ? const Color(0xFF004D40) : Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
+              color: isTotal ? Color(0xFF004D40) : Colors.grey[200],
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text(
               '$value',
@@ -188,15 +189,15 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
     final dateFormat = DateFormat('dd.MM.yyyy');
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
-        leading: const CircleAvatar(
+        leading: CircleAvatar(
           backgroundColor: Color(0xFF004D40),
           child: Icon(Icons.person, color: Colors.white),
         ),
         title: Text(
           client.name.isNotEmpty ? client.name : 'Клиент',
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: TextStyle(fontWeight: FontWeight.w500),
         ),
         subtitle: Text(client.maskedPhone),
         trailing: Text(

@@ -7,6 +7,7 @@ import '../services/task_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ответа на задачу (для работника)
 class TaskResponsePage extends StatefulWidget {
@@ -24,10 +25,10 @@ class TaskResponsePage extends StatefulWidget {
 }
 
 class _TaskResponsePageState extends State<TaskResponsePage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   final _textController = TextEditingController();
   final List<File> _selectedPhotos = [];
@@ -107,7 +108,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
       if (result != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ответ отправлен на проверку', style: TextStyle(color: Colors.white)),
+            content: Text('Ответ отправлен на проверку', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.green.shade800,
           ),
         );
@@ -116,7 +117,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка при отправке ответа', style: TextStyle(color: Colors.white)),
+            content: Text('Ошибка при отправке ответа', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.red.shade900,
           ),
         );
@@ -147,7 +148,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
       if (result != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Задача отклонена', style: TextStyle(color: Colors.white)),
+            content: Text('Задача отклонена', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.orange.shade900,
           ),
         );
@@ -156,7 +157,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка при отклонении задачи', style: TextStyle(color: Colors.white)),
+            content: Text('Ошибка при отклонении задачи', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.red.shade900,
           ),
         );
@@ -176,7 +177,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -189,31 +190,31 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 22),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Задача',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 20.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -221,7 +222,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                             'Ответ на задание',
                             style: TextStyle(
                               color: _gold,
-                              fontSize: 13,
+                              fontSize: 13.sp,
                             ),
                           ),
                         ],
@@ -233,15 +234,15 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
               // Body
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildTaskInfoCard(assignment, dateFormat),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       if (_canRespond) ...[
                         _buildResponseSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildActionButtons(),
                       ] else ...[
                         _buildStatusInfoCard(assignment, dateFormat),
@@ -263,35 +264,35 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               assignment.taskTitle,
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
             if (assignment.taskDescription.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 assignment.taskDescription,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   color: Colors.white.withOpacity(0.6),
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Divider(color: Colors.white.withOpacity(0.1)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 Icon(
@@ -299,18 +300,18 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                   size: 18,
                   color: isOverdue ? Colors.red : Colors.white.withOpacity(0.5),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   'Срок: ${dateFormat.format(assignment.deadline)}',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     color: isOverdue ? Colors.red : Colors.white.withOpacity(0.6),
                     fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 Icon(
@@ -318,29 +319,29 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                   size: 18,
                   color: Colors.white.withOpacity(0.5),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   'Тип ответа: ${assignment.responseType.displayName}',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     color: Colors.white.withOpacity(0.6),
                   ),
                 ),
               ],
             ),
             if (isOverdue) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.warning, color: Colors.red[400]),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Срок выполнения истек! Ответ всё ещё можно отправить.',
@@ -356,18 +357,18 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
             ],
             // Прикрепленные фото от админа
             if (assignment.task?.attachments.isNotEmpty == true) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Divider(color: Colors.white.withOpacity(0.1)),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 'Прикрепленные файлы:',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w500,
                   color: Colors.white.withOpacity(0.9),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               SizedBox(
                 height: 100,
                 child: ListView.builder(
@@ -384,13 +385,13 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                       child: Container(
                         width: 100,
                         height: 100,
-                        margin: const EdgeInsets.only(right: 8),
+                        margin: EdgeInsets.only(right: 8.w),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(color: Colors.white.withOpacity(0.2)),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                           child: AppCachedImage(
                             imageUrl: fullUrl,
                             fit: BoxFit.cover,
@@ -423,17 +424,17 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
               child: AppCachedImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.contain,
-                errorWidget: (_, __, ___) => const Center(
+                errorWidget: (_, __, ___) => Center(
                   child: Icon(Icons.broken_image, size: 64, color: Colors.white),
                 ),
               ),
             ),
             Positioned(
-              top: 8,
-              right: 8,
+              top: 8.h,
+              right: 8.w,
               child: IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: Colors.white),
+                icon: Icon(Icons.close, color: Colors.white),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.black54,
                 ),
@@ -464,33 +465,33 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: _gold.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              child: const Text(
+              child: Text(
                 'Ваш ответ',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                   color: _gold,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (needsPhoto) ...[
               _buildPhotoSection(),
-              if (needsText) const SizedBox(height: 16),
+              if (needsText) SizedBox(height: 16),
             ],
             if (needsText) _buildTextSection(),
           ],
@@ -506,11 +507,11 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
         Text(
           'Фотографии',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 14.sp,
             color: Colors.white.withOpacity(0.6),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (_selectedPhotos.isNotEmpty) ...[
           SizedBox(
             height: 100,
@@ -520,35 +521,35 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
               itemBuilder: (context, index) => _buildPhotoPreview(index),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
         ],
         Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _pickPhoto,
-                icon: const Icon(Icons.camera_alt, color: _gold),
-                label: const Text('Камера', style: TextStyle(color: _gold)),
+                icon: Icon(Icons.camera_alt, color: _gold),
+                label: Text('Камера', style: TextStyle(color: _gold)),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: _gold),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: BorderSide(color: _gold),
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _pickFromGallery,
-                icon: const Icon(Icons.photo_library, color: _gold),
-                label: const Text('Галерея', style: TextStyle(color: _gold)),
+                icon: Icon(Icons.photo_library, color: _gold),
+                label: Text('Галерея', style: TextStyle(color: _gold)),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: _gold),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: BorderSide(color: _gold),
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
               ),
@@ -563,11 +564,11 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     return Stack(
       children: [
         Container(
-          margin: const EdgeInsets.only(right: 8),
+          margin: EdgeInsets.only(right: 8.w),
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
             border: Border.all(color: Colors.white.withOpacity(0.2)),
             image: DecorationImage(
               image: FileImage(_selectedPhotos[index]),
@@ -576,17 +577,17 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
           ),
         ),
         Positioned(
-          top: 4,
-          right: 12,
+          top: 4.h,
+          right: 12.w,
           child: GestureDetector(
             onTap: () => _removePhoto(index),
             child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(4.w),
+              decoration: BoxDecoration(
                 color: Colors.red,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.close,
                 size: 16,
                 color: Colors.white,
@@ -605,31 +606,31 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
         Text(
           'Текст ответа',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 14.sp,
             color: Colors.white.withOpacity(0.6),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         TextField(
           controller: _textController,
           maxLines: 5,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'Введите ваш ответ...',
             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
             filled: true,
             fillColor: Colors.white.withOpacity(0.06),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: _gold),
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(color: _gold),
             ),
           ),
           onChanged: (_) => setState(() {}),
@@ -650,13 +651,13 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
               foregroundColor: _night,
               disabledBackgroundColor: _gold.withOpacity(0.3),
               disabledForegroundColor: _night.withOpacity(0.5),
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
             ),
             child: _isSubmitting
-                ? const SizedBox(
+                ? SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
@@ -664,16 +665,16 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                       valueColor: AlwaysStoppedAnimation<Color>(_night),
                     ),
                   )
-                : const Text(
+                : Text(
                     'ОТПРАВИТЬ ОТВЕТ',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
@@ -681,15 +682,15 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red[400],
               side: BorderSide(color: Colors.red[400]!),
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
             ),
-            child: const Text(
+            child: Text(
               'ОТКЛОНИТЬ ЗАДАЧУ',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -703,18 +704,18 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 _buildStatusIcon(assignment.status),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,14 +723,14 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                       Text(
                         'Статус',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                       Text(
                         assignment.status.displayName,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: _getStatusColor(assignment.status),
                         ),
@@ -740,43 +741,43 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
               ],
             ),
             if (assignment.responseText != null && assignment.responseText!.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Divider(color: Colors.white.withOpacity(0.1)),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 'Ваш ответ:',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 assignment.responseText!,
-                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.9)),
               ),
             ],
             if (assignment.responsePhotos.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 'Фото:',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               SizedBox(
                 height: 80,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: assignment.responsePhotos.length,
                   itemBuilder: (context, index) => Container(
-                    margin: const EdgeInsets.only(right: 8),
+                    margin: EdgeInsets.only(right: 8.w),
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.white.withOpacity(0.2)),
                       image: DecorationImage(
                         image: NetworkImage(assignment.responsePhotos[index]),
@@ -788,28 +789,28 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
               ),
             ],
             if (assignment.reviewComment != null && assignment.reviewComment!.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Divider(color: Colors.white.withOpacity(0.1)),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 'Комментарий проверяющего:',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 assignment.reviewComment!,
-                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.9)),
               ),
             ],
             if (assignment.reviewedAt != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Проверено: ${dateFormat.format(assignment.reviewedAt!)}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
@@ -826,7 +827,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
       height: 48,
       decoration: BoxDecoration(
         color: _getStatusColor(status).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
       ),
       child: Icon(
@@ -874,8 +875,8 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
 
 /// Диалог для указания причины отклонения
 class _DeclineDialog extends StatelessWidget {
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _gold = Color(0xFFD4AF37);
 
   final _reasonController = TextEditingController();
 
@@ -885,8 +886,8 @@ class _DeclineDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: _emeraldDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      title: const Text(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+      title: Text(
         'Отклонить задачу?',
         style: TextStyle(color: Colors.white),
       ),
@@ -897,10 +898,10 @@ class _DeclineDialog extends StatelessWidget {
             'При отклонении задачи будут начислены штрафные баллы (-3).',
             style: TextStyle(color: Colors.red[400]),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _reasonController,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: Colors.white),
             decoration: InputDecoration(
               labelText: 'Причина (необязательно)',
               labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -908,16 +909,16 @@ class _DeclineDialog extends StatelessWidget {
               filled: true,
               fillColor: Colors.white.withOpacity(0.06),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: _gold),
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: _gold),
               ),
             ),
             maxLines: 2,
@@ -938,7 +939,7 @@ class _DeclineDialog extends StatelessWidget {
             backgroundColor: Colors.red.shade800,
             foregroundColor: Colors.white,
           ),
-          child: const Text('Отклонить'),
+          child: Text('Отклонить'),
         ),
       ],
     );

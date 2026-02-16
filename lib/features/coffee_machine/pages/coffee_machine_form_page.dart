@@ -10,6 +10,7 @@ import '../services/coffee_machine_report_service.dart';
 import '../services/coffee_machine_ocr_service.dart';
 import '../widgets/counter_region_selector.dart';
 import '../../../core/services/media_upload_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Форма сдачи показаний счётчиков кофемашин
 class CoffeeMachineFormPage extends StatefulWidget {
@@ -27,10 +28,10 @@ class CoffeeMachineFormPage extends StatefulWidget {
 }
 
 class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   final _imagePicker = ImagePicker();
 
@@ -189,10 +190,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(
+      builder: (_) => Center(
         child: Card(
           child: Padding(
-            padding: EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -260,15 +261,15 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
-            const Icon(Icons.smart_toy, color: _gold, size: 24),
-            const SizedBox(width: 8),
+            Icon(Icons.smart_toy, color: _gold, size: 24),
+            SizedBox(width: 8),
             Text(
               isRetry ? 'Повторное распознавание' : 'Результат распознавания',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 16.sp),
             ),
           ],
         ),
@@ -276,25 +277,25 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 24.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Text(
                 '$number',
-                style: const TextStyle(
-                  fontSize: 36,
+                style: TextStyle(
+                  fontSize: 36.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                   letterSpacing: 2,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Число верное?',
-              style: TextStyle(color: Colors.white70, fontSize: 15),
+              style: TextStyle(color: Colors.white70, fontSize: 15.sp),
             ),
           ],
         ),
@@ -318,7 +319,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             ),
             label: Text(
               isRetry ? 'Ввести вручную' : 'Неверно',
-              style: const TextStyle(color: Colors.orange, fontSize: 15),
+              style: TextStyle(color: Colors.orange, fontSize: 15.sp),
             ),
           ),
           // Кнопка "Верно"
@@ -327,14 +328,14 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               Navigator.pop(ctx);
               _acceptOcrNumber(number, templateId: templateId, isComputer: isComputer);
             },
-            icon: const Icon(Icons.check, color: Colors.white, size: 20),
-            label: const Text(
+            icon: Icon(Icons.check, color: Colors.white, size: 20),
+            label: Text(
               'Верно',
-              style: TextStyle(color: Colors.white, fontSize: 15),
+              style: TextStyle(color: Colors.white, fontSize: 15.sp),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade700,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
           ),
         ],
@@ -412,39 +413,39 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        backgroundColor: Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Row(
           children: [
             Icon(Icons.edit, color: _gold, size: 22),
             SizedBox(width: 8),
-            Text('Введите число', style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text('Введите число', style: TextStyle(color: Colors.white, fontSize: 16.sp)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Введите показание счётчика вручную',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: Colors.white70, fontSize: 14.sp),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
               controller: manualController,
               autofocus: true,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontSize: 28.sp, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 hintText: '12345',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: _gold, width: 2),
+                  borderRadius: BorderRadius.circular(10.r),
+                  borderSide: BorderSide(color: _gold, width: 2),
                 ),
               ),
               textAlign: TextAlign.center,
@@ -454,7 +455,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена', style: TextStyle(color: Colors.white54)),
+            child: Text('Отмена', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -472,9 +473,9 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _gold,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
-            child: const Text('Подтвердить', style: TextStyle(color: Colors.white)),
+            child: Text('Подтвердить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -487,23 +488,23 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        backgroundColor: Color(0xFF1A2E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
             SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Не удалось распознать',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: Colors.white, fontSize: 16.sp),
               ),
             ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'ИИ не смог определить число на фото.\nВыделите область со счётчиком на фото.',
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+          style: TextStyle(color: Colors.white70, fontSize: 14.sp),
         ),
         actions: [
           ElevatedButton.icon(
@@ -511,11 +512,11 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               Navigator.pop(ctx);
               _openRegionSelector(templateId: templateId, isComputer: isComputer);
             },
-            icon: const Icon(Icons.crop_free, color: Colors.white, size: 20),
-            label: const Text('Выделить область', style: TextStyle(color: Colors.white)),
+            icon: Icon(Icons.crop_free, color: Colors.white, size: 20),
+            label: Text('Выделить область', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: _gold,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
           ),
         ],
@@ -672,7 +673,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -682,7 +683,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         ),
         child: SafeArea(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: _gold))
+              ? Center(child: CircularProgressIndicator(color: _gold))
               : _error != null
                   ? _buildError()
                   : _buildForm(),
@@ -694,22 +695,22 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   Widget _buildError() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.coffee_outlined, size: 64, color: Colors.white.withOpacity(0.3)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _error!,
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16),
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16.sp),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(backgroundColor: _emerald),
-              child: const Text('Назад', style: TextStyle(color: Colors.white)),
+              child: Text('Назад', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -734,27 +735,27 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Icon(Icons.coffee_outlined, color: _gold, size: 24),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Счётчик кофемашин',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   widget.shopAddress,
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.sp),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -768,7 +769,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   Widget _buildProgress() {
     final progress = (_currentStep + 1) / _totalSteps;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
           Row(
@@ -776,21 +777,21 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             children: [
               Text(
                 'Шаг ${_currentStep + 1} из $_totalSteps',
-                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.sp),
               ),
               Text(
                 _getStepTitle(),
-                style: TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(color: _gold, fontSize: 12.sp, fontWeight: FontWeight.w600),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor: Colors.white.withOpacity(0.1),
-              valueColor: const AlwaysStoppedAnimation<Color>(_gold),
+              valueColor: AlwaysStoppedAnimation<Color>(_gold),
               minHeight: 4,
             ),
           ),
@@ -825,40 +826,40 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     final controller = _machineControllers[template.id]!;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Название машины
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: _gold.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(Icons.coffee, color: _gold, size: 28),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         template.name,
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         CoffeeMachineTypes.getDisplayName(template.machineType),
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
                       ),
                     ],
                   ),
@@ -866,7 +867,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Кнопка фото
           _buildPhotoButton(
@@ -874,7 +875,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             label: 'Сфотографировать счётчик',
             onTap: () => _pickAndRecognize(template.id),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Поле ввода числа
           _buildNumberInput(
@@ -890,40 +891,40 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
   Widget _buildComputerStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Заголовок
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: const Icon(Icons.computer, color: Colors.blue, size: 28),
+                  child: Icon(Icons.computer, color: Colors.blue, size: 28),
                 ),
-                const SizedBox(width: 14),
-                const Expanded(
+                SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Показание компьютера',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         'Сфотографируйте экран компьютера с остатком',
-                        style: TextStyle(color: Colors.white54, fontSize: 13),
+                        style: TextStyle(color: Colors.white54, fontSize: 13.sp),
                       ),
                     ],
                   ),
@@ -931,7 +932,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Фото
           _buildPhotoButton(
@@ -939,7 +940,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             label: 'Сфотографировать компьютер',
             onTap: () => _pickAndRecognize('', isComputer: true),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Поле ввода (разрешаем минус, пробел, запятую, точку для компьютерного числа)
           _buildComputerNumberInput(),
@@ -955,16 +956,16 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     final diff = _discrepancyAmount;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Заголовок
           Text(
             'Итоги',
-            style: TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: _gold, fontSize: 20.sp, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Показания машин
           ...(_machineTemplates.map((t) {
@@ -972,14 +973,14 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             return _buildSummaryRow(t.name, val);
           })),
 
-          const Divider(color: Colors.white24, height: 24),
+          Divider(color: Colors.white24, height: 24),
 
           // Сумма
           _buildSummaryRow('Сумма машин', '+$sum', isBold: true, color: _gold),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildSummaryRow('Компьютер', '${computer.toStringAsFixed(2)}', isBold: true, color: Colors.blue),
 
-          const Divider(color: Colors.white24, height: 24),
+          Divider(color: Colors.white24, height: 24),
 
           // Итог: компьютер + сумма
           _buildSummaryRow(
@@ -989,32 +990,32 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             color: discrepancy ? Colors.orange : Colors.green,
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Расхождение
           if (discrepancy)
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(14.w),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.orange.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-                  const SizedBox(width: 12),
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Не сходится!',
-                          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16.sp),
                         ),
                         Text(
                           'Разница: ${diff.toStringAsFixed(2)}',
-                          style: const TextStyle(color: Colors.orange, fontSize: 14),
+                          style: TextStyle(color: Colors.orange, fontSize: 14.sp),
                         ),
                       ],
                     ),
@@ -1024,35 +1025,35 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             )
           else
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(14.w),
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 border: Border.all(color: Colors.green.withOpacity(0.3)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.green, size: 28),
                   SizedBox(width: 12),
                   Text(
                     'Счётчик сходится!',
-                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16.sp),
                   ),
                 ],
               ),
             ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Информация
           Text(
             'Сотрудник: ${widget.employeeName}',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             'Магазин: ${widget.shopAddress}',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
           ),
         ],
       ),
@@ -1061,7 +1062,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
   Widget _buildSummaryRow(String label, String value, {bool isBold = false, Color? color}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1069,7 +1070,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             label,
             style: TextStyle(
               color: Colors.white.withOpacity(0.7),
-              fontSize: 14,
+              fontSize: 14.sp,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -1077,7 +1078,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             value,
             style: TextStyle(
               color: color ?? Colors.white,
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
             ),
           ),
@@ -1094,7 +1095,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         height: photo != null ? 250 : 140,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: photo != null ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.15),
             width: photo != null ? 2 : 1,
@@ -1102,26 +1103,26 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         ),
         child: photo != null
             ? ClipRRect(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(13.r),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Image.file(photo, fit: BoxFit.cover),
                     Positioned(
-                      bottom: 8,
-                      right: 8,
+                      bottom: 8.h,
+                      right: 8.w,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                         decoration: BoxDecoration(
                           color: _gold,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.camera_alt, color: Colors.white, size: 16),
                             SizedBox(width: 4),
-                            Text('Переснять', style: TextStyle(color: Colors.white, fontSize: 12)),
+                            Text('Переснять', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
                           ],
                         ),
                       ),
@@ -1133,10 +1134,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.camera_alt_outlined, color: Colors.white.withOpacity(0.3), size: 40),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   Text(
                     label,
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp),
                   ),
                 ],
               ),
@@ -1151,10 +1152,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     int? aiNumber,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -1163,31 +1164,31 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           if (ocrDone && aiNumber != null) ...[
             Row(
               children: [
-                const Icon(Icons.smart_toy, color: _gold, size: 18),
-                const SizedBox(width: 6),
+                Icon(Icons.smart_toy, color: _gold, size: 18),
+                SizedBox(width: 6),
                 Text(
                   'ИИ распознал: $aiNumber',
-                  style: TextStyle(color: _gold, fontSize: 13),
+                  style: TextStyle(color: _gold, fontSize: 13.sp),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
           ],
           TextField(
             controller: controller,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               labelText: label,
               labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _gold, width: 2),
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: BorderSide(color: _gold, width: 2),
               ),
               prefixIcon: Icon(Icons.numbers, color: Colors.white.withOpacity(0.4)),
             ),
@@ -1201,10 +1202,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   /// Поле ввода числа компьютера (только цифры, минус добавляется автоматически)
   Widget _buildComputerNumberInput() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -1213,44 +1214,44 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           if (_computerOcrDone && _computerAiNumber != null) ...[
             Row(
               children: [
-                const Icon(Icons.smart_toy, color: _gold, size: 18),
-                const SizedBox(width: 6),
+                Icon(Icons.smart_toy, color: _gold, size: 18),
+                SizedBox(width: 6),
                 Text(
                   'ИИ распознал: $_computerAiNumber',
-                  style: TextStyle(color: _gold, fontSize: 13),
+                  style: TextStyle(color: _gold, fontSize: 13.sp),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
           ],
           TextField(
             controller: _computerController,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               labelText: 'Остаток по компьютеру',
               hintText: '138141',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 16),
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 16.sp),
               labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _gold, width: 2),
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: BorderSide(color: _gold, width: 2),
               ),
               prefixIcon: Icon(Icons.computer, color: Colors.white.withOpacity(0.4)),
               prefixText: '− ',
-              prefixStyle: const TextStyle(color: Colors.red, fontSize: 24, fontWeight: FontWeight.bold),
+              prefixStyle: TextStyle(color: Colors.red, fontSize: 24.sp, fontWeight: FontWeight.bold),
             ),
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             'Минус применяется автоматически',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
           ),
         ],
       ),
@@ -1261,7 +1262,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     final isLastStep = _currentStep == _totalSteps - 1;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.3),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
@@ -1274,13 +1275,13 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                 onPressed: () => setState(() => _currentStep--),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                 ),
-                child: const Text('Назад', style: TextStyle(color: Colors.white)),
+                child: Text('Назад', style: TextStyle(color: Colors.white)),
               ),
             ),
-          if (_currentStep > 0) const SizedBox(width: 12),
+          if (_currentStep > 0) SizedBox(width: 12),
           Expanded(
             flex: 2,
             child: ElevatedButton(
@@ -1293,18 +1294,18 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                           : () => setState(() => _currentStep++),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isLastStep ? _gold : _emerald,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: EdgeInsets.symmetric(vertical: 14.h),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               ),
               child: _isSaving
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : Text(
                       isLastStep ? 'Отправить' : 'Далее',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w600),
                     ),
             ),
           ),

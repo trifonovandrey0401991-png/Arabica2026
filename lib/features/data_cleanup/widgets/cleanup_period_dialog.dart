@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cleanup_category.dart';
 import '../services/cleanup_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог выбора периода для очистки данных.
 class CleanupPeriodDialog extends StatefulWidget {
@@ -16,15 +17,15 @@ class CleanupPeriodDialog extends StatefulWidget {
 }
 
 class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
-  DateTime _selectedDate = DateTime.now().subtract(const Duration(days: 30));
+  DateTime _selectedDate = DateTime.now().subtract(Duration(days: 30));
   int _previewCount = 0;
   bool _isLoadingPreview = false;
   bool _isDeleting = false;
 
   // Gradient colors
-  static const _primaryGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
-  static const _dangerGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
-  static const _warningGradient = [Color(0xFFf7971e), Color(0xFFffd200)];
+  static final _primaryGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
+  static final _dangerGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
+  static final _warningGradient = [Color(0xFFf7971e), Color(0xFFffd200)];
 
   @override
   void initState() {
@@ -63,7 +64,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      locale: const Locale('ru'),
+      locale: Locale('ru'),
       helpText: 'Удалить данные ДО этой даты',
       builder: (context, child) {
         return Theme(
@@ -91,20 +92,20 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         title: Row(
           children: [
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: _dangerGradient),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(colors: _dangerGradient),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
+              child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
             ),
-            const SizedBox(width: 12),
-            const Text('Подтверждение'),
+            SizedBox(width: 12),
+            Text('Подтверждение'),
           ],
         ),
         content: Text(
@@ -120,8 +121,8 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
           ),
           Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: _dangerGradient),
-              borderRadius: BorderRadius.circular(10),
+              gradient: LinearGradient(colors: _dangerGradient),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
@@ -129,9 +130,9 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
               ),
-              child: const Text('Удалить'),
+              child: Text('Удалить'),
             ),
           ),
         ],
@@ -164,17 +165,17 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                   height: 32,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  child: Icon(Icons.check_circle, color: Colors.white, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Text('Удалено $deletedCount файлов ($freedMB MB)'),
               ],
             ),
-            backgroundColor: const Color(0xFF11998e),
+            backgroundColor: Color(0xFF11998e),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
 
@@ -189,17 +190,17 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                   height: 32,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                  child: Icon(Icons.error_outline, color: Colors.white, size: 20),
                 ),
-                const SizedBox(width: 12),
-                const Text('Ошибка при очистке данных'),
+                SizedBox(width: 12),
+                Text('Ошибка при очистке данных'),
               ],
             ),
             backgroundColor: _dangerGradient[0],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
         setState(() => _isDeleting = false);
@@ -215,17 +216,17 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                   height: 32,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                  child: Icon(Icons.error_outline, color: Colors.white, size: 20),
                 ),
-                const SizedBox(width: 12),
-                const Text('Ошибка при очистке данных'),
+                SizedBox(width: 12),
+                Text('Ошибка при очистке данных'),
               ],
             ),
             backgroundColor: _dangerGradient[0],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
         setState(() => _isDeleting = false);
@@ -239,22 +240,22 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
         '${_selectedDate.day.toString().padLeft(2, '0')}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.year}';
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header with gradient
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: _primaryGradient,
               ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24.r),
+                topRight: Radius.circular(24.r),
               ),
             ),
             child: Row(
@@ -264,23 +265,23 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                   height: 48,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.delete_sweep,
                     color: Colors.white,
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Очистить данные',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -288,7 +289,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                       Text(
                         widget.category.name,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                       ),
@@ -301,7 +302,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
 
           // Content
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -317,31 +318,31 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                           end: Alignment.bottomCenter,
                           colors: _primaryGradient,
                         ),
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius: BorderRadius.circular(2.r),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    const Text(
+                    SizedBox(width: 10),
+                    Text(
                       'Удалить данные ДО:',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF2D3748),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
 
                 // Date selector
                 InkWell(
                   onTap: _selectDate,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F7FA),
-                      borderRadius: BorderRadius.circular(16),
+                      color: Color(0xFFF5F7FA),
+                      borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(color: _primaryGradient[0].withOpacity(0.3)),
                     ),
                     child: Row(
@@ -351,20 +352,20 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                           height: 44,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(colors: _primaryGradient),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
-                          child: const Icon(Icons.calendar_today, color: Colors.white, size: 22),
+                          child: Icon(Icons.calendar_today, color: Colors.white, size: 22),
                         ),
-                        const SizedBox(width: 14),
+                        SizedBox(width: 14),
                         Text(
                           dateStr,
-                          style: const TextStyle(
-                            fontSize: 20,
+                          style: TextStyle(
+                            fontSize: 20.sp,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF2D3748),
                           ),
                         ),
-                        const Spacer(),
+                        Spacer(),
                         Icon(
                           Icons.edit,
                           color: _primaryGradient[0],
@@ -374,11 +375,11 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Warning box
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -386,7 +387,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                         _warningGradient[1].withOpacity(0.1),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     border: Border.all(color: _warningGradient[0].withOpacity(0.3)),
                   ),
                   child: Row(
@@ -396,11 +397,11 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                         height: 44,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(colors: _warningGradient),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
+                        child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: 14),
                       Expanded(
                         child: _isLoadingPreview
                             ? Row(
@@ -413,7 +414,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                                       valueColor: AlwaysStoppedAnimation(_warningGradient[0]),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12),
                                   Text(
                                     'Подсчёт файлов...',
                                     style: TextStyle(
@@ -426,17 +427,17 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                             : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Будет удалено:',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                       color: Color(0xFF2D3748),
                                     ),
                                   ),
                                   Text(
                                     '$_previewCount файлов',
                                     style: TextStyle(
-                                      fontSize: 18,
+                                      fontSize: 18.sp,
                                       fontWeight: FontWeight.bold,
                                       color: _warningGradient[0],
                                     ),
@@ -453,17 +454,17 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
 
           // Actions
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
             child: Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _isDeleting ? null : () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
                       side: BorderSide(color: Colors.grey[300]!),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                     ),
                     child: Text(
@@ -475,7 +476,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -484,14 +485,14 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                             ? [Colors.grey[400]!, Colors.grey[500]!]
                             : _dangerGradient,
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       boxShadow: (_isDeleting || _previewCount == 0)
                           ? []
                           : [
                               BoxShadow(
                                 color: _dangerGradient[0].withOpacity(0.4),
                                 blurRadius: 8,
-                                offset: const Offset(0, 4),
+                                offset: Offset(0, 4),
                               ),
                             ],
                     ),
@@ -501,13 +502,13 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14.r),
                         ),
                       ),
                       child: _isDeleting
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
@@ -515,7 +516,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Row(
+                          : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.delete_outline, size: 20),

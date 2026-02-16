@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/employee_chat_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления участниками чата магазина — dark emerald стиль
 class ShopChatMembersPage extends StatefulWidget {
@@ -20,9 +21,9 @@ class ShopChatMembersPage extends StatefulWidget {
 
 class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   List<ShopChatMember> _members = [];
   List<Employee> _allEmployees = [];
@@ -58,7 +59,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
             content: Text('Ошибка загрузки: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -78,10 +79,10 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
     if (available.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Все сотрудники уже добавлены в чат'),
+          content: Text('Все сотрудники уже добавлены в чат'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
         ),
       );
       return;
@@ -94,7 +95,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _night.withOpacity(0.98),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Добавить сотрудников',
               style: TextStyle(color: Colors.white.withOpacity(0.9))),
           content: SizedBox(
@@ -141,7 +142,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _emerald,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
               ),
               child: Text('Добавить (${selectedPhones.length})'),
             ),
@@ -163,17 +164,17 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
           content: Text('Добавлено ${phones.length} сотрудников'),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
         ),
       );
       _loadData();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Ошибка добавления сотрудников'),
+          content: Text('Ошибка добавления сотрудников'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
         ),
       );
     }
@@ -184,7 +185,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _night.withOpacity(0.98),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Удалить участника?',
             style: TextStyle(color: Colors.white.withOpacity(0.9))),
         content: Text('Удалить ${member.name} из чата магазина?',
@@ -198,9 +199,9 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -219,17 +220,17 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
             content: Text('${member.name} удалён из чата'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
         _loadData();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Ошибка удаления'),
+            content: Text('Ошибка удаления'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
         );
       }
@@ -241,7 +242,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -254,7 +255,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
             children: [
               // AppBar
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
                 child: Row(
                   children: [
                     IconButton(
@@ -269,7 +270,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                             'Участники чата',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.95),
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.w400,
                             ),
                           ),
@@ -277,7 +278,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                             widget.shopAddress,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.4),
-                              fontSize: 12,
+                              fontSize: 12.sp,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -295,7 +296,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
               // Body
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    ? Center(child: CircularProgressIndicator(color: Colors.white))
                     : _members.isEmpty
                         ? Center(
                             child: Column(
@@ -306,26 +307,26 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                                   height: 64,
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.06),
-                                    borderRadius: BorderRadius.circular(18),
+                                    borderRadius: BorderRadius.circular(18.r),
                                     border: Border.all(color: Colors.white.withOpacity(0.1)),
                                   ),
                                   child: Icon(Icons.group_off, size: 32,
                                       color: Colors.white.withOpacity(0.4)),
                                 ),
-                                const SizedBox(height: 20),
+                                SizedBox(height: 20),
                                 Text(
                                   'Нет участников',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 18.sp,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.white.withOpacity(0.8),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Text(
                                   'Добавьте сотрудников в чат магазина',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 13.sp,
                                     color: Colors.white.withOpacity(0.4),
                                   ),
                                 ),
@@ -337,16 +338,16 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                             color: Colors.white,
                             backgroundColor: _emerald,
                             child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 80.h),
                               itemCount: _members.length,
                               itemBuilder: (context, index) {
                                 final member = _members[index];
                                 return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.all(12),
+                                  margin: EdgeInsets.only(bottom: 8.h),
+                                  padding: EdgeInsets.all(12.w),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.04),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                     border: Border.all(color: Colors.white.withOpacity(0.1)),
                                   ),
                                   child: Row(
@@ -366,12 +367,12 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                                             style: TextStyle(
                                               color: Colors.orange[300],
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 18,
+                                              fontSize: 18.sp,
                                             ),
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,7 +381,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                                               member.name,
                                               style: TextStyle(
                                                 color: Colors.white.withOpacity(0.95),
-                                                fontSize: 15,
+                                                fontSize: 15.sp,
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
@@ -388,14 +389,14 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                                               member.phone,
                                               style: TextStyle(
                                                 color: Colors.white.withOpacity(0.4),
-                                                fontSize: 12,
+                                                fontSize: 12.sp,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                        icon: Icon(Icons.remove_circle, color: Colors.red),
                                         onPressed: () => _removeMember(member),
                                       ),
                                     ],
@@ -412,23 +413,23 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
       floatingActionButton: GestureDetector(
         onTap: _showAddMembersDialog,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           decoration: BoxDecoration(
             color: _emerald,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.person_add, color: Colors.white.withOpacity(0.9), size: 22),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 'Добавить',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
                   fontWeight: FontWeight.w500,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                 ),
               ),
             ],

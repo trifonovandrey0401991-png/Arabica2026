@@ -10,6 +10,7 @@ import '../../../features/shops/models/shop_model.dart';
 import '../../../features/shops/services/shop_service.dart';
 import '../../../features/efficiency/models/points_settings_model.dart';
 import '../../../features/efficiency/services/points_settings_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Модель строки сводного отчёта (дата + смена)
 class ShiftSummaryItem {
@@ -30,7 +31,7 @@ class ShiftSummaryItem {
   });
 
   String get displayTitle {
-    const months = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    final months = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
                    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     return '${date.day} ${months[date.month]}, $shiftName ($passedCount/$totalCount)';
   }
@@ -70,13 +71,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     with SingleTickerProviderStateMixin {
 
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
-  late Future<List<String>> _shopsFuture;
+  Future<List<String>> _shopsFuture = Future.value([]);
   String? _selectedShop;
   String? _selectedEmployee;
   DateTime? _selectedDate;
@@ -97,7 +98,6 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(_onTabChanged);
-    _loadSettings();
     _loadData();
     // Отмечаем все уведомления этого типа как просмотренные
     ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftHandover);
@@ -115,18 +115,6 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     }
   }
 
-  Future<void> _loadSettings() async {
-    try {
-      final settings = await PointsSettingsService.getShiftPointsSettings();
-      setState(() {
-        _shiftSettings = settings;
-      });
-      Logger.success('Загружены настройки пересменки: утро ${settings.morningStartTime}-${settings.morningEndTime}, вечер ${settings.eveningStartTime}-${settings.eveningEndTime}');
-    } catch (e) {
-      Logger.error('Ошибка загрузки настроек пересменки', e);
-    }
-  }
-
   @override
   void dispose() {
     _tabController.removeListener(_onTabChanged);
@@ -134,86 +122,84 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     super.dispose();
   }
 
-  Future<List<String>> _loadShopAddresses() async {
-    try {
-      final serverReports = await ShiftReportService.getReportsForCurrentUser();
-      final localReports = await ShiftReport.loadAllReports();
-
-      final addresses = <String>{};
-      for (var report in serverReports) {
-        if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
-      }
-      for (var report in localReports) {
-        if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
-      }
-
-      final addressList = addresses.toList()..sort();
-      return addressList;
-    } catch (e) {
-      Logger.error('Ошибка загрузки адресов магазинов', e);
-      return await ShiftReport.getUniqueShopAddresses();
-    }
-  }
-
   Future<void> _loadData() async {
     Logger.info('Загрузка отчетов пересменки...');
-    setState(() {
-      _shopsFuture = _loadShopAddresses();
-    });
 
-    // Загружаем магазины для вычисления непройденных пересменок
-    try {
-      final shops = await ShopService.getShopsForCurrentUser();
-      _allShops = shops;
-      Logger.success('Загружено магазинов: ${shops.length}');
-    } catch (e) {
-      Logger.error('Ошибка загрузки магазинов', e);
+    // Запускаем ВСЕ запросы параллельно (6 запросов одновременно)
+    ShiftPointsSettings? settings;
+    List<Shop> shops = [];
+    List<ShiftReport> serverReports = [];
+    List<ShiftReport> expiredReports = [];
+    List<ShiftReport> localReports = [];
+    List<ShiftReport> pendingReports = [];
+
+    await Future.wait([
+      // 1. Настройки пересменки
+      () async {
+        try { settings = await PointsSettingsService.getShiftPointsSettings(); }
+        catch (e) { Logger.error('Ошибка загрузки настроек пересменки', e); }
+      }(),
+      // 2. Магазины
+      () async {
+        try { shops = await ShopService.getShopsForCurrentUser(); }
+        catch (e) { Logger.error('Ошибка загрузки магазинов', e); }
+      }(),
+      // 3. Все отчёты с сервера
+      () async {
+        try { serverReports = await ShiftReportService.getReportsForCurrentUser(); }
+        catch (e) { Logger.error('Ошибка загрузки отчетов с сервера', e); }
+      }(),
+      // 4. Просроченные отчёты
+      () async {
+        try { expiredReports = await ShiftReportService.getExpiredReports(); }
+        catch (e) { Logger.error('Ошибка загрузки просроченных отчётов', e); }
+      }(),
+      // 5. Локальные отчёты
+      () async {
+        try { localReports = await ShiftReport.loadAllReports(); }
+        catch (e) { Logger.error('Ошибка загрузки локальных отчетов', e); }
+      }(),
+      // 6. Pending отчёты (ожидающие)
+      () async {
+        try { pendingReports = await ShiftReportService.getPendingReports(); }
+        catch (e) { Logger.error('Ошибка загрузки pending отчётов', e); }
+      }(),
+    ]);
+
+    // Сохраняем настройки
+    if (settings != null) {
+      _shiftSettings = settings;
+      final s = settings!;
+      Logger.success('Настройки: утро ${s.morningStartTime}-${s.morningEndTime}, вечер ${s.eveningStartTime}-${s.eveningEndTime}');
     }
 
-    // Загружаем просроченные отчёты
-    try {
-      final expiredReports = await ShiftReportService.getExpiredReports();
-      _expiredReports = expiredReports;
-      Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
-    } catch (e) {
-      Logger.error('Ошибка загрузки просроченных отчётов', e);
+    _allShops = shops;
+    _expiredReports = expiredReports;
+
+    // Объединяем серверные и локальные отчёты (серверные приоритетнее)
+    final Map<String, ShiftReport> reportsMap = {};
+    for (var report in localReports) {
+      reportsMap[report.id] = report;
     }
-
-    // Загружаем отчеты с сервера
-    try {
-      final serverReports = await ShiftReportService.getReportsForCurrentUser();
-      Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
-
-      final localReports = await ShiftReport.loadAllReports();
-      Logger.success('Загружено локальных отчетов: ${localReports.length}');
-
-      final Map<String, ShiftReport> reportsMap = {};
-
-      for (var report in localReports) {
-        reportsMap[report.id] = report;
-      }
-
-      for (var report in serverReports) {
-        reportsMap[report.id] = report;
-      }
-
-      _allReports = reportsMap.values.toList();
-      _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-      // Загружаем pending отчёты с сервера (вместо локального вычисления)
-      await _loadPendingReportsFromServer();
-      // Вычисляем сводные данные за 30 дней
-      _calculateSummaryItems();
-
-      Logger.success('Всего отчетов после объединения: ${_allReports.length}');
-      setState(() {});
-    } catch (e) {
-      Logger.error('Ошибка загрузки отчетов', e);
-      _allReports = await ShiftReport.loadAllReports();
-      _calculatePendingShiftsFallback();
-      _calculateSummaryItems();
-      setState(() {});
+    for (var report in serverReports) {
+      reportsMap[report.id] = report;
     }
+    _allReports = reportsMap.values.toList();
+    _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // Извлекаем адреса из уже загруженных данных (без повторного запроса)
+    final addresses = <String>{};
+    for (var report in _allReports) {
+      if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
+    }
+    _shopsFuture = Future.value(addresses.toList()..sort());
+
+    // Обрабатываем pending/failed из уже загруженных данных
+    _processPendingAndFailed(pendingReports);
+    _calculateSummaryItems();
+
+    Logger.success('Загружено: ${_allReports.length} отчётов, ${shops.length} магазинов, ${_pendingShifts.length} pending, ${_failedShifts.length} failed');
+    if (mounted) setState(() {});
   }
 
   /// Определить тип смены по времени отчёта
@@ -259,88 +245,71 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     return null; // Вне интервалов
   }
 
-  /// Загрузить pending отчёты с сервера (вместо локального вычисления)
-  Future<void> _loadPendingReportsFromServer() async {
+  /// Обработка pending и failed отчётов из уже загруженных данных (без доп. запросов)
+  void _processPendingAndFailed(List<ShiftReport> pendingReports) {
     final today = DateTime.now();
     final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-    // Получаем дедлайны из настроек
     final morningDeadline = _shiftSettings?.morningEndTime ?? '13:00';
     final eveningDeadline = _shiftSettings?.eveningEndTime ?? '23:00';
+    final currentShiftType = _getCurrentShiftType();
 
-    Logger.info('Загрузка pending отчётов с сервера...');
+    // Фильтруем pending только для текущего интервала
+    final filteredPending = currentShiftType != null
+        ? pendingReports.where((r) => r.shiftType == currentShiftType).toList()
+        : <ShiftReport>[];
 
-    try {
-      // Определяем текущий активный интервал
-      final currentShiftType = _getCurrentShiftType();
-      Logger.info('Текущий активный интервал: $currentShiftType');
+    // Failed берём из уже загруженных _allReports (за сегодня)
+    final failedReports = _allReports.where((r) {
+      if (r.status != 'failed') return false;
+      final local = r.createdAt.toLocal();
+      return local.year == today.year && local.month == today.month && local.day == today.day;
+    }).toList();
 
-      // Загружаем pending отчёты с сервера для текущего интервала
-      List<ShiftReport> serverPending = [];
-      if (currentShiftType != null) {
-        serverPending = await ShiftReportService.getPendingReports(shiftType: currentShiftType);
-        Logger.success('Загружено pending с сервера: ${serverPending.length}');
-      }
+    // Конвертируем в PendingShiftReport
+    _pendingShifts = filteredPending.map((report) {
+      final isMorning = report.shiftType == 'morning';
+      return PendingShiftReport(
+        id: report.id,
+        shopAddress: report.shopAddress,
+        shiftType: report.shiftType ?? 'morning',
+        shiftLabel: isMorning ? 'Утро' : 'Вечер',
+        date: todayStr,
+        deadline: isMorning ? morningDeadline : eveningDeadline,
+        status: 'pending',
+        createdAt: report.createdAt,
+      );
+    }).toList();
 
-      // Также загружаем failed отчёты (статус 'failed') за сегодня
-      final allTodayReports = await ShiftReportService.getReportsForCurrentUser(date: today);
-      final failedReports = allTodayReports.where((r) => r.status == 'failed').toList();
-      Logger.info('Failed отчётов за сегодня: ${failedReports.length}');
+    _failedShifts = failedReports.map((report) {
+      final isMorning = report.shiftType == 'morning';
+      return PendingShiftReport(
+        id: report.id,
+        shopAddress: report.shopAddress,
+        shiftType: report.shiftType ?? 'morning',
+        shiftLabel: isMorning ? 'Утро' : 'Вечер',
+        date: todayStr,
+        deadline: isMorning ? morningDeadline : eveningDeadline,
+        status: 'failed',
+        createdAt: report.createdAt,
+      );
+    }).toList();
 
-      // Конвертируем pending отчёты в PendingShiftReport
-      _pendingShifts = serverPending.map((report) {
-        final isMorning = report.shiftType == 'morning';
-        return PendingShiftReport(
-          id: report.id,
-          shopAddress: report.shopAddress,
-          shiftType: report.shiftType ?? 'morning',
-          shiftLabel: isMorning ? 'Утро' : 'Вечер',
-          date: todayStr,
-          deadline: isMorning ? morningDeadline : eveningDeadline,
-          status: 'pending',
-          createdAt: report.createdAt,
-        );
-      }).toList();
-
-      // Конвертируем failed отчёты в PendingShiftReport (для вкладки "Не прошли")
-      _failedShifts = failedReports.map((report) {
-        final isMorning = report.shiftType == 'morning';
-        return PendingShiftReport(
-          id: report.id,
-          shopAddress: report.shopAddress,
-          shiftType: report.shiftType ?? 'morning',
-          shiftLabel: isMorning ? 'Утро' : 'Вечер',
-          date: todayStr,
-          deadline: isMorning ? morningDeadline : eveningDeadline,
-          status: 'failed',
-          createdAt: report.createdAt,
-        );
-      }).toList();
-
-      // Обновляем счётчик бейджа
-      if (_tabController.index != 1) {
-        _failedShiftsBadgeCount = _failedShifts.length;
-      }
-
-      // Сортируем
-      _pendingShifts.sort((a, b) {
-        final shopCompare = a.shopAddress.compareTo(b.shopAddress);
-        if (shopCompare != 0) return shopCompare;
-        return a.shiftType == 'morning' ? -1 : 1;
-      });
-
-      _failedShifts.sort((a, b) {
-        final shopCompare = a.shopAddress.compareTo(b.shopAddress);
-        if (shopCompare != 0) return shopCompare;
-        return a.shiftType == 'morning' ? -1 : 1;
-      });
-
-      Logger.info('Ожидающих пересменок (с сервера): ${_pendingShifts.length}');
-      Logger.info('Просроченных пересменок (с сервера): ${_failedShifts.length}');
-    } catch (e) {
-      Logger.error('Ошибка загрузки pending с сервера, используем fallback', e);
-      _calculatePendingShiftsFallback();
+    if (_tabController.index != 1) {
+      _failedShiftsBadgeCount = _failedShifts.length;
     }
+
+    _pendingShifts.sort((a, b) {
+      final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+      if (shopCompare != 0) return shopCompare;
+      return a.shiftType == 'morning' ? -1 : 1;
+    });
+
+    _failedShifts.sort((a, b) {
+      final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+      if (shopCompare != 0) return shopCompare;
+      return a.shiftType == 'morning' ? -1 : 1;
+    });
   }
 
   /// Fallback: локальное вычисление pending (если сервер недоступен)
@@ -356,9 +325,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     // Собираем пройденные пересменки за сегодня
     final completedShifts = <String>{};
     for (final report in _allReports) {
-      final reportDate = '${report.createdAt.year}-${report.createdAt.month.toString().padLeft(2, '0')}-${report.createdAt.day.toString().padLeft(2, '0')}';
+      final localCreated = report.createdAt.toLocal();
+      final reportDate = '${localCreated.year}-${localCreated.month.toString().padLeft(2, '0')}-${localCreated.day.toString().padLeft(2, '0')}';
       if (reportDate == todayStr && (report.status == 'review' || report.status == 'confirmed')) {
-        final shiftType = report.shiftType ?? _getShiftType(report.createdAt);
+        final shiftType = report.shiftType ?? _getShiftType(localCreated);
         final key = '${report.shopAddress.toLowerCase().trim()}_$shiftType';
         completedShifts.add(key);
       }
@@ -422,7 +392,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   /// Вычислить сводные данные за последние 30 дней
   void _calculateSummaryItems() {
     final now = DateTime.now();
-    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    final thirtyDaysAgo = now.subtract(Duration(days: 30));
 
     _summaryItems = [];
 
@@ -432,8 +402,9 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     for (final report in _allReports) {
       if (report.createdAt.isBefore(thirtyDaysAgo)) continue;
 
-      final dateKey = '${report.createdAt.year}-${report.createdAt.month.toString().padLeft(2, '0')}-${report.createdAt.day.toString().padLeft(2, '0')}';
-      final shiftType = _getShiftType(report.createdAt);
+      final localCreated = report.createdAt.toLocal();
+      final dateKey = '${localCreated.year}-${localCreated.month.toString().padLeft(2, '0')}-${localCreated.day.toString().padLeft(2, '0')}';
+      final shiftType = report.shiftType ?? _getShiftType(localCreated);
       final key = '${dateKey}_$shiftType';
 
       grouped.putIfAbsent(key, () => []).add(report);
@@ -447,11 +418,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       // Утренняя смена
       final morningKey = '${dateKey}_morning';
       final morningReports = grouped[morningKey] ?? [];
+      final morningPassed = morningReports.where((r) =>
+        r.status != 'pending' && r.status != 'failed' && r.employeeName.isNotEmpty
+      ).length;
       _summaryItems.add(ShiftSummaryItem(
         date: date,
         shiftType: 'morning',
         shiftName: 'Утренняя',
-        passedCount: morningReports.length,
+        passedCount: morningPassed,
         totalCount: _allShops.length,
         reports: morningReports,
       ));
@@ -459,11 +433,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       // Вечерняя смена
       final eveningKey = '${dateKey}_evening';
       final eveningReports = grouped[eveningKey] ?? [];
+      final eveningPassed = eveningReports.where((r) =>
+        r.status != 'pending' && r.status != 'failed' && r.employeeName.isNotEmpty
+      ).length;
       _summaryItems.add(ShiftSummaryItem(
         date: date,
         shiftType: 'evening',
         shiftName: 'Вечерняя',
-        passedCount: eveningReports.length,
+        passedCount: eveningPassed,
         totalCount: _allShops.length,
         reports: eveningReports,
       ));
@@ -473,25 +450,21 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   }
 
   List<ShiftReport> _applyFilters(List<ShiftReport> reports) {
-    var filtered = reports;
-
-    if (_selectedShop != null) {
-      filtered = filtered.where((r) => r.shopAddress == _selectedShop).toList();
+    if (_selectedShop == null && _selectedEmployee == null && _selectedDate == null) {
+      return reports;
     }
 
-    if (_selectedEmployee != null) {
-      filtered = filtered.where((r) => r.employeeName == _selectedEmployee).toList();
-    }
-
-    if (_selectedDate != null) {
-      filtered = filtered.where((r) {
-        return r.createdAt.year == _selectedDate!.year &&
-               r.createdAt.month == _selectedDate!.month &&
-               r.createdAt.day == _selectedDate!.day;
-      }).toList();
-    }
-
-    return filtered;
+    return reports.where((r) {
+      if (_selectedShop != null && r.shopAddress != _selectedShop) return false;
+      if (_selectedEmployee != null && r.employeeName != _selectedEmployee) return false;
+      if (_selectedDate != null) {
+        final local = r.createdAt.toLocal();
+        if (local.year != _selectedDate!.year ||
+            local.month != _selectedDate!.month ||
+            local.day != _selectedDate!.day) return false;
+      }
+      return true;
+    }).toList();
   }
 
   /// Неподтверждённые отчёты (ожидают проверки) - только менее 5 часов
@@ -544,7 +517,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 7)),
+      firstDate: DateTime.now().subtract(Duration(days: 7)),
       lastDate: DateTime.now(),
     );
     if (picked != null) {
@@ -557,13 +530,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   /// Custom AppBar
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -571,20 +544,20 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Отчёты по пересменкам',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w600),
                 ),
                 Text(
                   'Всего отчётов: ${_allReports.length}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ],
@@ -593,7 +566,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -610,29 +583,29 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   /// Построение двухрядных вкладок (3 сверху, 2 снизу)
   Widget _buildTwoRowTabs() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 0.h, 8.w, 8.h),
       child: Column(
         children: [
           // Первый ряд: 3 вкладки
           Row(
             children: [
               _buildTabButton(0, Icons.schedule, 'Ожидают', _pendingShifts.length, Colors.orange),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(1, Icons.warning_amber, 'Не прошли', _failedShifts.length, Colors.red, badge: _failedShiftsBadgeCount),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(2, Icons.hourglass_empty, 'Проверка', _awaitingReports.length, Colors.blue),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Второй ряд: 2 вкладки
           Row(
             children: [
               _buildTabButton(3, Icons.check_circle, 'Подтверждённые', _allReports.where((r) => r.isConfirmed).length, Colors.green),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(4, Icons.cancel, 'Отклонённые', _expiredReports.length + _overdueUnconfirmedReports.length, Colors.grey),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Третий ряд: 1 вкладка "Отчёт"
           Row(
             children: [
@@ -656,9 +629,9 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
             _tabController.animateTo(index);
             setState(() {});
           },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
             decoration: BoxDecoration(
               gradient: isSelected
                   ? LinearGradient(
@@ -668,7 +641,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                     )
                   : null,
               color: isSelected ? null : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(
                 color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
                 width: isSelected ? 2 : 1,
@@ -682,46 +655,46 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                   size: 14,
                   color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
                   decoration: BoxDecoration(
                     color: isSelected ? Colors.white.withOpacity(0.3) : accentColor.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                       color: isSelected ? Colors.white : accentColor,
                     ),
                   ),
                 ),
                 if (badge > 0) ...[
-                  const SizedBox(width: 2),
+                  SizedBox(width: 2),
                   Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
+                    padding: EdgeInsets.all(4.w),
+                    decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
                       '$badge',
-                      style: const TextStyle(
-                        fontSize: 8,
+                      style: TextStyle(
+                        fontSize: 8.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -739,11 +712,11 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   /// Секция фильтров
   Widget _buildFiltersSection() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -765,16 +738,16 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         onChanged: (v) => setState(() => _selectedShop = v),
                       );
                     }
-                    return const SizedBox();
+                    return SizedBox();
                   },
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               // Дата
               _buildDateButton(),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           // Сотрудник + сброс
           Row(
             children: [
@@ -788,7 +761,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 ),
               ),
               if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 _buildResetButton(),
               ],
             ],
@@ -807,10 +780,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     required ValueChanged<String?> onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: DropdownButtonHideUnderline(
@@ -822,8 +795,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           hint: Row(
             children: [
               Icon(icon, size: 18, color: Colors.white.withOpacity(0.5)),
-              const SizedBox(width: 8),
-              Text(hint, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5))),
+              SizedBox(width: 8),
+              Text(hint, style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5))),
             ],
           ),
           selectedItemBuilder: (context) {
@@ -831,18 +804,18 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               Row(
                 children: [
                   Icon(icon, size: 18, color: _gold),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Все', style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)))),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Все', style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9)))),
                 ],
               ),
               ...items.map((item) => Row(
                 children: [
                   Icon(icon, size: 18, color: _gold),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       item,
-                      style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)),
+                      style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9)),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -864,24 +837,24 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   Widget _buildDateButton() {
     return InkWell(
       onTap: () => _selectDate(context),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(10.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.calendar_today, size: 18, color: _gold),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               _selectedDate == null
                   ? 'Дата'
                   : '${_selectedDate!.day}.${_selectedDate!.month}',
-              style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)),
+              style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9)),
             ),
           ],
         ),
@@ -899,14 +872,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           _selectedDate = null;
         });
       },
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(10.r),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(10.w),
         decoration: BoxDecoration(
           color: Colors.red.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
         ),
-        child: const Icon(Icons.clear, size: 20, color: Colors.white),
+        child: Icon(Icons.clear, size: 20, color: Colors.white),
       ),
     );
   }
@@ -920,7 +893,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   }) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -933,22 +906,22 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               ),
               child: Icon(icon, size: 40, color: color),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               title,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.9),
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               subtitle,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
+                fontSize: 14.sp,
               ),
               textAlign: TextAlign.center,
             ),
@@ -963,7 +936,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -1020,7 +993,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: _pendingShifts.length,
       itemBuilder: (context, index) {
         final pending = _pendingShifts[index];
@@ -1028,20 +1001,20 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         final shiftColor = isMorning ? Colors.orange : Colors.indigo;
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: EdgeInsets.only(bottom: 10.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             child: InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               onTap: () {},
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14.w),
                 child: Row(
                   children: [
                     // Иконка смены
@@ -1056,7 +1029,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                       child: Icon(
                         isMorning ? Icons.wb_sunny : Icons.nights_stay,
@@ -1064,7 +1037,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         size: 26,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    SizedBox(width: 14),
                     // Информация
                     Expanded(
                       child: Column(
@@ -1074,38 +1047,38 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                             pending.shopAddress,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                              fontSize: 15.sp,
                               color: Colors.white.withOpacity(0.9),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                                 decoration: BoxDecoration(
                                   color: shiftColor.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(8.r),
                                   border: Border.all(color: shiftColor.withOpacity(0.3)),
                                 ),
                                 child: Text(
                                   pending.shiftLabel,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                     fontWeight: FontWeight.bold,
                                     color: shiftColor,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Icon(Icons.access_time, size: 14, color: Colors.white.withOpacity(0.5)),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Text(
                                 'до ${pending.deadline}',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.white.withOpacity(0.5),
                                 ),
                               ),
@@ -1116,12 +1089,12 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                     ),
                     // Статус
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8.w),
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.schedule,
                         color: Colors.orange,
                         size: 24,
@@ -1149,21 +1122,21 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: _failedShifts.length,
       itemBuilder: (context, index) {
         final failed = _failedShifts[index];
         final isMorning = failed.shiftType == 'morning';
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: EdgeInsets.only(bottom: 10.h),
           decoration: BoxDecoration(
             color: Colors.red.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.red.withOpacity(0.3)),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка с предупреждением
@@ -1176,7 +1149,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                   child: Stack(
                     alignment: Alignment.center,
@@ -1187,21 +1160,21 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         size: 24,
                       ),
                       Positioned(
-                        right: 0,
-                        bottom: 0,
+                        right: 0.w,
+                        bottom: 0.h,
                         child: Container(
-                          padding: const EdgeInsets.all(2),
+                          padding: EdgeInsets.all(2.w),
                           decoration: BoxDecoration(
                             color: _emeraldDark,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.error, color: Colors.red, size: 14),
+                          child: Icon(Icons.error, color: Colors.red, size: 14),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Информация
                 Expanded(
                   child: Column(
@@ -1211,41 +1184,41 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         failed.shopAddress,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               color: isMorning ? Colors.orange.withOpacity(0.2) : Colors.indigo.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6.r),
                             ),
                             child: Text(
                               failed.shiftLabel,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 fontWeight: FontWeight.bold,
                                 color: isMorning ? Colors.orange : Colors.indigo.shade300,
                               ),
                             ),
                           ),
-                          const Spacer(),
+                          Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               color: Colors.red,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6.r),
                             ),
-                            child: const Text(
+                            child: Text(
                               'ПРОСРОЧЕНО',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 10.sp,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -1253,27 +1226,27 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(Icons.access_time, size: 14, color: Colors.red[400]),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'Дедлайн: ${failed.deadline}',
-                            style: TextStyle(fontSize: 12, color: Colors.red[400]),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.red[400]),
                           ),
                           if (_shiftSettings != null) ...[
-                            const Spacer(),
+                            Spacer(),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.deepOrange.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(4.r),
                               ),
                               child: Text(
                                 '${_shiftSettings!.missedPenalty.toStringAsFixed(1)} б.',
-                                style: const TextStyle(
-                                  fontSize: 11,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.deepOrange,
                                 ),
@@ -1318,15 +1291,15 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.thumb_up, size: 64, color: Colors.white.withOpacity(0.5)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Нет не подтверждённых отчётов',
-              style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18),
+              style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18.sp),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Все отчёты были проверены вовремя',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp),
             ),
           ],
         ),
@@ -1334,7 +1307,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: reports.length,
       itemBuilder: (context, index) {
         final report = reports[index];
@@ -1343,10 +1316,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         final isFromExpiredList = report.isExpired || report.expiredAt != null;
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: EdgeInsets.only(bottom: 12.h),
           decoration: BoxDecoration(
             color: Colors.red.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.red.withOpacity(0.2)),
           ),
           child: ListTile(
@@ -1365,20 +1338,23 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Сотрудник: ${report.employeeName}', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                Text(
-                  'Сдан: ${report.createdAt.day}.${report.createdAt.month}.${report.createdAt.year} '
-                  '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
-                ),
+                Builder(builder: (_) {
+                  final lc = report.createdAt.toLocal();
+                  return Text(
+                    'Сдан: ${lc.day}.${lc.month}.${lc.year} '
+                    '${lc.hour}:${lc.minute.toString().padLeft(2, '0')}',
+                    style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  );
+                }),
                 if (isFromExpiredList && report.expiredAt != null)
                   Text(
                     'Просрочен: ${report.expiredAt!.day}.${report.expiredAt!.month}.${report.expiredAt!.year}',
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                   )
                 else
                   Text(
                     'Ожидает: $waitingHours ч. (более 5 часов)',
-                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
                 Text('Вопросов: ${report.answers.length}', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               ],
@@ -1387,7 +1363,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.visibility, color: Colors.white.withOpacity(0.5)),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.5)),
               ],
             ),
@@ -1420,13 +1396,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       return Center(
         child: Text(
           isPending ? 'Нет отчётов, ожидающих подтверждения' : 'Нет подтверждённых отчётов',
-          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18),
+          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 18.sp),
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: reports.length,
       itemBuilder: (context, index) {
         final report = reports[index];
@@ -1434,13 +1410,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
         Widget statusIcon;
         if (status == 'confirmed') {
-          statusIcon = const Icon(
+          statusIcon = Icon(
             Icons.check_circle,
             color: Colors.green,
             size: 24,
           );
         } else if (status == 'not_verified') {
-          statusIcon = const Row(
+          statusIcon = Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
@@ -1453,14 +1429,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 'не проверено',
                 style: TextStyle(
                   color: Colors.red,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           );
         } else {
-          statusIcon = const Icon(
+          statusIcon = Icon(
             Icons.hourglass_empty,
             color: Colors.orange,
             size: 24,
@@ -1468,10 +1444,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         }
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: EdgeInsets.only(bottom: 12.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: ListTile(
@@ -1490,16 +1466,19 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Сотрудник: ${report.employeeName}', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                Text(
-                  '${report.createdAt.day}.${report.createdAt.month}.${report.createdAt.year} '
-                  '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
-                ),
+                Builder(builder: (_) {
+                  final lc = report.createdAt.toLocal();
+                  return Text(
+                    '${lc.day}.${lc.month}.${lc.year} '
+                    '${lc.hour}:${lc.minute.toString().padLeft(2, '0')}',
+                    style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  );
+                }),
                 Text('Вопросов: ${report.answers.length}', style: TextStyle(color: Colors.white.withOpacity(0.5))),
                 if (report.isConfirmed && report.confirmedAt != null) ...[
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Подтверждено: ',
                         style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                       ),
@@ -1507,7 +1486,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         child: Text(
                           '${report.confirmedAt!.day}.${report.confirmedAt!.month}.${report.confirmedAt!.year} '
                           '${report.confirmedAt!.hour}:${report.confirmedAt!.minute.toString().padLeft(2, '0')}',
-                          style: const TextStyle(color: Colors.green),
+                          style: TextStyle(color: Colors.green),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1522,19 +1501,19 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Оценка: ', style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5))),
+                            Text('Оценка: ', style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5))),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: _getRatingColor(report.rating!),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Text(
                                 '${report.rating}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontSize: 13.sp,
                                 ),
                               ),
                             ),
@@ -1543,7 +1522,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         if (report.confirmedByAdmin != null)
                           Text(
                             'Проверил: ${report.confirmedByAdmin}',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
                             overflow: TextOverflow.ellipsis,
                           ),
                       ],
@@ -1555,7 +1534,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 statusIcon,
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.5)),
               ],
             ),
@@ -1592,13 +1571,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   // ============================================================
 
   /// Названия месяцев в родительном падеже
-  static const _monthNamesGenitive = [
+  static final _monthNamesGenitive = [
     '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
   ];
 
   /// Названия месяцев в именительном падеже
-  static const _monthNamesNominative = [
+  static final _monthNamesNominative = [
     '', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
   ];
@@ -1620,15 +1599,16 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
+    final yesterday = today.subtract(Duration(days: 1));
+    final weekAgo = today.subtract(Duration(days: 7));
 
     List<ReportGroup> result = [];
 
-    // Группируем по дням
+    // Группируем по дням (конвертируем UTC в локальное время)
     Map<DateTime, List<ShiftReport>> byDay = {};
     for (final report in reports) {
-      final day = DateTime(report.createdAt.year, report.createdAt.month, report.createdAt.day);
+      final local = report.createdAt.toLocal();
+      final day = DateTime(local.year, local.month, local.day);
       byDay.putIfAbsent(day, () => []).add(report);
     }
 
@@ -1637,7 +1617,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
     // Сегодня - по умолчанию развёрнуто
     if (byDay.containsKey(today)) {
-      const key = 'today';
+      final key = 'today';
       _expandedGroups.putIfAbsent(key, () => true); // По умолчанию развёрнуто
       result.add(ReportGroup(
         type: ReportGroupType.today,
@@ -1651,7 +1631,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
     // Вчера
     if (byDay.containsKey(yesterday)) {
-      const key = 'yesterday';
+      final key = 'yesterday';
       _expandedGroups.putIfAbsent(key, () => false);
       result.add(ReportGroup(
         type: ReportGroupType.yesterday,
@@ -1726,7 +1706,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           }).toList();
 
           final weekStart = _getWeekStart(sortedWeekDays.last);
-          final weekEnd = weekStart.add(const Duration(days: 6));
+          final weekEnd = weekStart.add(Duration(days: 6));
           final totalCount = dayGroups.fold(0, (sum, d) => sum + d.count);
 
           final wKey = 'week_$weekKey';
@@ -1763,7 +1743,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           }).toList();
 
           final weekStart = _getWeekStart(sortedWeekDays.last);
-          final weekEnd = weekStart.add(const Duration(days: 6));
+          final weekEnd = weekStart.add(Duration(days: 6));
           final totalCount = dayGroups.fold(0, (sum, d) => sum + d.count);
 
           final wKey = 'month_${monthKey}_week_$weekKey';
@@ -1844,7 +1824,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: groups.length,
       itemBuilder: (context, index) => _buildGroupTile(groups[index], 0),
     );
@@ -1865,16 +1845,16 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           ...group.children.map((child) {
             if (child is ReportGroup) {
               return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
                 child: _buildGroupTile(child, depth + 1),
               );
             } else if (child is ShiftReport) {
               return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
                 child: _buildReportCard(child),
               );
             }
-            return const SizedBox();
+            return SizedBox();
           }),
       ],
     );
@@ -1893,11 +1873,11 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         });
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
         decoration: BoxDecoration(
           color: isExpanded ? color.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
             color: isExpanded ? color : Colors.white.withOpacity(0.1),
             width: isExpanded ? 2 : 1,
@@ -1908,48 +1888,48 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
             // Стрелка разворачивания
             AnimatedRotation(
               turns: isExpanded ? 0.25 : 0,
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               child: Icon(
                 Icons.chevron_right,
                 color: isExpanded ? color : Colors.white.withOpacity(0.5),
                 size: 24,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             // Иконка типа
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: EdgeInsets.all(6.w),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Icon(icon, color: color, size: 18),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             // Название
             Expanded(
               child: Text(
                 group.title,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: isExpanded ? color : Colors.white.withOpacity(0.9),
                 ),
               ),
             ),
             // Счётчик
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Text(
                 '${group.count}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 13,
+                  fontSize: 13.sp,
                 ),
               ),
             ),
@@ -1982,11 +1962,11 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         ).then((_) => _loadData());
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: isConfirmed ? Colors.green.withOpacity(0.3) : Colors.white.withOpacity(0.1),
           ),
@@ -1999,7 +1979,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               height: 40,
               decoration: BoxDecoration(
                 color: isConfirmed ? Colors.green.withOpacity(0.15) : Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 isConfirmed ? Icons.check_circle : Icons.receipt_long,
@@ -2007,7 +1987,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 size: 22,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             // Информация
             Expanded(
               child: Column(
@@ -2017,55 +1997,58 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                     report.shopAddress,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.person, size: 14, color: Colors.white.withOpacity(0.5)),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           report.employeeName,
-                          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+                          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
-                      ),
+                      Builder(builder: (_) {
+                        final lc = report.createdAt.toLocal();
+                        return Text(
+                          '${lc.hour}:${lc.minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
+                        );
+                      }),
                     ],
                   ),
                   if (isConfirmed && report.rating != null) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Row(
                       children: [
-                        Text('Оценка: ', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5))),
+                        Text('Оценка: ', style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5))),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: _getRatingColor(report.rating!),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Text(
                             '${report.rating}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 11,
+                              fontSize: 11.sp,
                             ),
                           ),
                         ),
                         if (report.confirmedByAdmin != null) ...[
-                          const Spacer(),
+                          Spacer(),
                           Text(
                             report.confirmedByAdmin!,
-                            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -2105,7 +2088,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: _summaryItems.length,
       itemBuilder: (context, index) {
         final item = _summaryItems[index];
@@ -2115,14 +2098,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         final isMorning = item.shiftType == 'morning';
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: 8.h),
           decoration: BoxDecoration(
             color: allPassed
                 ? Colors.green.withOpacity(0.08)
                 : nonePassed
                     ? Colors.red.withOpacity(0.08)
                     : Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(
               color: allPassed
                   ? Colors.green.withOpacity(0.3)
@@ -2134,12 +2117,12 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             child: InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               onTap: () => _openSummaryReport(item),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12.w),
                 child: Row(
                   children: [
                     // Иконка смены
@@ -2154,7 +2137,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Icon(
                         isMorning ? Icons.wb_sunny : Icons.nights_stay,
@@ -2162,7 +2145,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Информация
                     Expanded(
                       child: Column(
@@ -2172,11 +2155,11 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                             item.displayTitle,
                             style: TextStyle(
                               fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
-                              fontSize: 14,
+                              fontSize: 14.sp,
                               color: Colors.white.withOpacity(0.9),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             allPassed
                                 ? 'Все магазины прошли'
@@ -2184,7 +2167,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                                     ? 'Никто не прошёл'
                                     : 'Не прошли: ${item.totalCount - item.passedCount}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: allPassed
                                   ? Colors.green
                                   : nonePassed
@@ -2198,25 +2181,25 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                     ),
                     // Бейдж с количеством
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: allPassed
                             ? Colors.green
                             : nonePassed
                                 ? Colors.red.shade400
                                 : Colors.deepPurple,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Text(
                         '${item.passedCount}/${item.totalCount}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white.withOpacity(0.5)),
                   ],
                 ),

@@ -6,6 +6,7 @@ import 'employee_registration_page.dart';
 import '../services/employee_service.dart';
 import 'unverified_employees_page.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Модель сотрудника
 class Employee {
@@ -282,7 +283,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: Duration(milliseconds: 800),
     );
     _employeesFuture = _loadEmployees();
     _loadVerificationStatuses();
@@ -358,7 +359,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -387,19 +388,19 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 12.h),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Сотрудники',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 22,
+                fontSize: 22.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -408,15 +409,15 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: IconButton(
-              icon: const Icon(Icons.person_add, color: Colors.white),
+              icon: Icon(Icons.person_add, color: Colors.white),
               onPressed: () async {
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const EmployeeRegistrationPage(),
+                    builder: (context) => EmployeeRegistrationPage(),
                   ),
                 );
                 if (result == true && mounted) {
@@ -426,35 +427,35 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
               tooltip: 'Добавить сотрудника',
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Кнопка "Не верифицированные"
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: IconButton(
-              icon: const Icon(Icons.person_off, color: Colors.white),
+              icon: Icon(Icons.person_off, color: Colors.white),
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const UnverifiedEmployeesPage(),
+                    builder: (context) => UnverifiedEmployeesPage(),
                   ),
                 );
               },
               tooltip: 'Не верифицированные сотрудники',
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Кнопка обновления
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
+              icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: () {
                 setState(() {
                   _employeesFuture = _loadEmployees();
@@ -483,28 +484,28 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
   Widget _buildEmployeesTab() {
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      decoration: const BoxDecoration(
+      margin: EdgeInsets.only(top: 8.h),
+      decoration: BoxDecoration(
         color: Color(0xFFF5F5F5),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+          topLeft: Radius.circular(24.r),
+          topRight: Radius.circular(24.r),
         ),
       ),
       child: Column(
         children: [
           // Поиск
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
-                    offset: const Offset(0, 2),
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
@@ -512,7 +513,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                 decoration: InputDecoration(
                   hintText: 'Поиск сотрудника...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: Icon(Icons.search, color: const Color(0xFF004D40).withOpacity(0.7)),
+                  prefixIcon: Icon(Icons.search, color: Color(0xFF004D40).withOpacity(0.7)),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: Icon(Icons.clear, color: Colors.grey[400]),
@@ -526,10 +527,10 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -549,10 +550,10 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(
+                        CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Text(
                           'Загрузка сотрудников...',
                           style: TextStyle(color: Colors.grey[600]),
@@ -565,37 +566,37 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                 if (snapshot.hasError) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(24.w),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(20),
+                            padding: EdgeInsets.all(20.w),
                             decoration: BoxDecoration(
                               color: Colors.red.withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.error_outline,
                               size: 48,
                               color: Colors.red,
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
+                          SizedBox(height: 16),
+                          Text(
                             'Ошибка загрузки данных',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             '${snapshot.error}',
                             style: TextStyle(color: Colors.grey[600]),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                           ElevatedButton.icon(
                             onPressed: () {
                               setState(() {
@@ -604,14 +605,14 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                               _animationController.reset();
                               _animationController.forward();
                             },
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Повторить'),
+                            icon: Icon(Icons.refresh),
+                            label: Text('Повторить'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF004D40),
+                              backgroundColor: Color(0xFF004D40),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
                             ),
                           ),
@@ -629,10 +630,10 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(
+                        CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Text(
                           'Проверка верификации...',
                           style: TextStyle(color: Colors.grey[600]),
@@ -675,7 +676,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: EdgeInsets.all(24.w),
                           decoration: BoxDecoration(
                             color: Colors.grey.withOpacity(0.1),
                             shape: BoxShape.circle,
@@ -686,20 +687,20 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                             color: Colors.grey[400],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Text(
                           'Сотрудники не найдены',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
                             color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           'Попробуйте изменить параметры поиска',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             color: Colors.grey[400],
                           ),
                         ),
@@ -717,9 +718,9 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     _animationController.reset();
                     _animationController.forward();
                   },
-                  color: const Color(0xFF004D40),
+                  color: Color(0xFF004D40),
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
                     itemCount: filteredEmployees.length,
                     itemBuilder: (context, index) {
                       final employee = filteredEmployees[index];
@@ -768,27 +769,27 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
   Widget _buildEmployeeCard(Employee employee, bool isVerified) {
     // Определяем цвета в зависимости от статуса
-    final Color primaryColor = isVerified ? const Color(0xFF004D40) : const Color(0xFF78909C);
-    final Color accentColor = isVerified ? const Color(0xFF00897B) : const Color(0xFF90A4AE);
+    final Color primaryColor = isVerified ? Color(0xFF004D40) : Color(0xFF78909C);
+    final Color accentColor = isVerified ? Color(0xFF00897B) : Color(0xFF90A4AE);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         boxShadow: [
           BoxShadow(
             color: primaryColor.withOpacity(0.06),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           onTap: employee.phone != null && employee.phone!.isNotEmpty
               ? () async {
                   final navigator = Navigator.of(context);
@@ -807,11 +808,11 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                 }
               : null,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             decoration: BoxDecoration(
               border: Border(
                 left: BorderSide(
-                  color: isVerified ? const Color(0xFF4CAF50) : Colors.orange,
+                  color: isVerified ? Color(0xFF4CAF50) : Colors.orange,
                   width: 3,
                 ),
               ),
@@ -828,22 +829,22 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                       end: Alignment.bottomRight,
                       colors: [primaryColor, accentColor],
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Center(
                     child: Text(
                       employee.name.isNotEmpty
                           ? employee.name[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                        fontSize: 18.sp,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 // Информация о сотруднике
                 Expanded(
                   child: Column(
@@ -853,41 +854,41 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                       // Имя
                       Text(
                         employee.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: Color(0xFF1A1A1A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       // Телефон и статус в одну строку
                       Row(
                         children: [
                           if (employee.phone != null && employee.phone!.isNotEmpty) ...[
                             Icon(Icons.phone, size: 12, color: Colors.grey[500]),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 employee.phone!,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: Colors.grey[600],
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                           ],
                           // Компактный статус
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                             decoration: BoxDecoration(
                               color: isVerified
                                   ? Colors.green.withOpacity(0.1)
                                   : Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -897,12 +898,12 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                                   color: isVerified ? Colors.green[700] : Colors.orange[700],
                                   size: 10,
                                 ),
-                                const SizedBox(width: 3),
+                                SizedBox(width: 3),
                                 Text(
                                   isVerified ? 'Верифицирован' : 'Ожидает',
                                   style: TextStyle(
                                     color: isVerified ? Colors.green[700] : Colors.orange[700],
-                                    fontSize: 10,
+                                    fontSize: 10.sp,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),

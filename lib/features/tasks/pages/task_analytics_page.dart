@@ -6,6 +6,7 @@ import '../widgets/task_common_widgets.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/models/user_role_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница аналитики по задачам за 3 месяца
 class TaskAnalyticsPage extends StatefulWidget {
@@ -17,10 +18,10 @@ class TaskAnalyticsPage extends StatefulWidget {
 
 class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
   // Dark Emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   String? _error;
@@ -110,7 +111,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
   }
 
   String _getShortMonthName(int month) {
-    const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    final months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     return months[month - 1];
   }
 
@@ -119,7 +120,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -132,28 +133,28 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                           border: Border.all(color: Colors.white.withOpacity(0.08)),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+                        child: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Аналитика задач',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -161,13 +162,13 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                     GestureDetector(
                       onTap: _loadData,
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8.w),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                           border: Border.all(color: Colors.white.withOpacity(0.08)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 18),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 18),
                       ),
                     ),
                   ],
@@ -188,8 +189,8 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(color: _gold),
-            const SizedBox(height: 16),
+            CircularProgressIndicator(color: _gold),
+            SizedBox(height: 16),
             Text(
               'Загрузка аналитики...',
               style: TextStyle(color: Colors.white.withOpacity(0.6)),
@@ -205,20 +206,20 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               _error!,
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white.withOpacity(0.7)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _emerald,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Повторить'),
+              child: Text('Повторить'),
             ),
           ],
         ),
@@ -226,7 +227,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
     }
 
     if (_monthsData.isEmpty) {
-      return const TaskEmptyState(
+      return TaskEmptyState(
         message: 'Нет данных',
         subtitle: 'Данные по задачам не найдены',
       );
@@ -237,17 +238,17 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
       color: _gold,
       backgroundColor: _emeraldDark,
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        physics: AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSummaryChart(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildCompletionRateChart(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildMonthsTable(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildStatusBreakdown(),
           ],
         ),
@@ -271,31 +272,31 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Динамика задач',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: _gold,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 _buildLegendItem('Всего', _gold),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 _buildLegendItem('Выполнено', _emerald),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SizedBox(
               height: 200,
               child: LineChart(
@@ -317,7 +318,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                         getTitlesWidget: (value, meta) {
                           return Text(
                             value.toInt().toString(),
-                            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
                           );
                         },
                       ),
@@ -329,19 +330,19 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                           final index = value.toInt();
                           if (index >= 0 && index < _monthsData.length) {
                             return Padding(
-                              padding: const EdgeInsets.only(top: 8),
+                              padding: EdgeInsets.only(top: 8.h),
                               child: Text(
                                 _monthsData[index].shortName,
-                                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                                style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
                               ),
                             );
                           }
-                          return const SizedBox();
+                          return SizedBox();
                         },
                       ),
                     ),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
                   borderData: FlBorderData(show: false),
                   minX: 0,
@@ -355,7 +356,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                       isCurved: true,
                       color: _gold,
                       barWidth: 3,
-                      dotData: const FlDotData(show: true),
+                      dotData: FlDotData(show: true),
                       belowBarData: BarAreaData(
                         show: true,
                         color: _gold.withOpacity(0.15),
@@ -367,7 +368,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                       isCurved: true,
                       color: _emerald,
                       barWidth: 3,
-                      dotData: const FlDotData(show: true),
+                      dotData: FlDotData(show: true),
                       belowBarData: BarAreaData(
                         show: true,
                         color: _emerald.withOpacity(0.15),
@@ -392,11 +393,11 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
           height: 12,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(2.r),
           ),
         ),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
+        SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
       ],
     );
   }
@@ -406,29 +407,29 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Процент выполнения',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: _gold,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ..._monthsData.map((data) {
               final rate = data.completionRate;
               final color = rate >= 80 ? Colors.green : (rate >= 50 ? Colors.orange : Colors.red);
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: 12.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -451,9 +452,9 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(4.r),
                       child: LinearProgressIndicator(
                         value: rate / 100,
                         backgroundColor: Colors.white.withOpacity(0.1),
@@ -476,25 +477,25 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Сравнение по месяцам',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: _gold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Table(
-              columnWidths: const {
+              columnWidths: {
                 0: FlexColumnWidth(2),
                 1: FlexColumnWidth(1),
                 2: FlexColumnWidth(1),
@@ -508,20 +509,20 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                   ),
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text('Месяц', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.9))),
+                      padding: EdgeInsets.all(8.w),
+                      child: Text('Месяц', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.9))),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text('Всего', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.center),
+                      padding: EdgeInsets.all(8.w),
+                      child: Text('Всего', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.center),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text('Выполн.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.center),
+                      padding: EdgeInsets.all(8.w),
+                      child: Text('Выполн.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.center),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text('Просроч.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.center),
+                      padding: EdgeInsets.all(8.w),
+                      child: Text('Просроч.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.white.withOpacity(0.9)), textAlign: TextAlign.center),
                     ),
                   ],
                 ),
@@ -531,27 +532,27 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                   ),
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(data.shortName, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9))),
+                      padding: EdgeInsets.all(8.w),
+                      child: Text(data.shortName, style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9))),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(data.total.toString(), textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9))),
+                      padding: EdgeInsets.all(8.w),
+                      child: Text(data.total.toString(), textAlign: TextAlign.center, style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9))),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8.w),
                       child: Text(
                         data.approved.toString(),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 13, color: Colors.green, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 13.sp, color: Colors.green, fontWeight: FontWeight.w500),
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8.w),
                       child: Text(
                         data.expired.toString(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, color: data.expired > 0 ? Colors.red[300] : Colors.white.withOpacity(0.3), fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 13.sp, color: data.expired > 0 ? Colors.red[300] : Colors.white.withOpacity(0.3), fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],
@@ -566,30 +567,30 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
 
   /// Разбивка по статусам за текущий месяц
   Widget _buildStatusBreakdown() {
-    if (_monthsData.isEmpty) return const SizedBox();
+    if (_monthsData.isEmpty) return SizedBox();
 
     final currentMonth = _monthsData.last;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Статусы за ${currentMonth.name}',
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
                 color: _gold,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _buildStatusRow('Ожидают', currentMonth.pending, TaskStyles.orangeGradient[0]),
             Divider(height: 1, color: Colors.white.withOpacity(0.1)),
             _buildStatusRow('На проверке', currentMonth.submitted, TaskStyles.blueGradient[0]),
@@ -609,7 +610,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
 
   Widget _buildStatusRow(String label, int count, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: 6.h),
       child: Row(
         children: [
           Container(
@@ -617,10 +618,10 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
             height: 12,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(3.r),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               label,

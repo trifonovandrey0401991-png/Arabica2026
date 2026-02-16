@@ -196,7 +196,7 @@ async function notifyQuestionCreated(question) {
   }
 
   // Определить данные из вопроса или сообщения
-  const clientName = question.clientName || question.senderName || 'Client';
+  const clientName = question.clientName || question.senderName || 'Клиент';
   const questionText = question.questionText || question.text || '';
   const questionId = question.id || '';
   const shopAddress = question.shopAddress || question.originalShopAddress || '';
@@ -206,8 +206,8 @@ async function notifyQuestionCreated(question) {
     ? questionText.substring(0, 50) + '...'
     : questionText;
 
-  const title = 'New product question';
-  const body = `${clientName} asks: "${shortText}"`;
+  const title = 'Новый вопрос о товаре';
+  const body = `${clientName}: "${shortText}"`;
 
   const data = {
     type: 'product_question_created',
@@ -238,7 +238,7 @@ async function notifyQuestionAnswered(question, answer) {
   }
 
   // Определить данные из ответа
-  const shopName = answer.shopAddress || 'Employee';
+  const shopName = answer.shopAddress || 'Сотрудник';
   const answerText = answer.text || '';
 
   // Обрезать текст ответа если он длинный
@@ -246,7 +246,7 @@ async function notifyQuestionAnswered(question, answer) {
     ? answerText.substring(0, 50) + '...'
     : answerText;
 
-  const title = 'Answer to your question';
+  const title = 'Ответ на ваш вопрос';
   const body = `${shopName}: ${shortText}`;
 
   const data = {
@@ -276,15 +276,15 @@ async function notifyPersonalDialogClientMessage(dialog, message) {
   }
 
   const shopAddress = dialog.shopAddress;
-  const clientName = message.senderName || dialog.clientName || 'Client';
+  const clientName = message.senderName || dialog.clientName || 'Клиент';
   const messageText = message.text || '';
 
   const shortText = messageText.length > 50
     ? messageText.substring(0, 50) + '...'
     : messageText;
 
-  const title = 'Message in product search';
-  const body = `${shopAddress}: ${clientName} - "${shortText}"`;
+  const title = 'Сообщение в поиске товара';
+  const body = `${shopAddress}: ${clientName} — "${shortText}"`;
 
   const data = {
     type: 'personal_dialog_client_message',
@@ -312,14 +312,14 @@ async function notifyPersonalDialogEmployeeMessage(dialog, message) {
     return;
   }
 
-  const shopName = message.shopAddress || dialog.shopAddress || 'Shop';
+  const shopName = message.shopAddress || dialog.shopAddress || 'Магазин';
   const messageText = message.text || '';
 
   const shortText = messageText.length > 50
     ? messageText.substring(0, 50) + '...'
     : messageText;
 
-  const title = 'Response from shop';
+  const title = 'Ответ от магазина';
   const body = `${shopName}: ${shortText}`;
 
   const data = {

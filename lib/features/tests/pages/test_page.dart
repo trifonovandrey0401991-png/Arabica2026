@@ -8,6 +8,7 @@ import '../models/test_model.dart';
 import '../models/test_result_model.dart';
 import '../services/test_question_service.dart';
 import '../services/test_result_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница тестирования
 class TestPage extends StatefulWidget {
@@ -37,11 +38,11 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   late Animation<double> _pointsScaleAnimation;
 
   // Единая палитра приложения
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-  static const Color _goldLight = Color(0xFFE8C860);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+  static final Color _goldLight = Color(0xFFE8C860);
 
   @override
   void initState() {
@@ -50,18 +51,18 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     _loadDuration();
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: Duration(milliseconds: 300),
     );
     _questionAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: Duration(milliseconds: 400),
     );
     _questionFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _questionAnimController, curve: Curves.easeInOut),
     );
     _pointsAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 600),
     );
     _pointsScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _pointsAnimController, curve: Curves.elasticOut),
@@ -108,7 +109,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
           _timeRemaining--;
@@ -255,44 +256,44 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       barrierDismissible: false,
       builder: (ctx) => Dialog(
         backgroundColor: _emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: EdgeInsets.all(28.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: EdgeInsets.all(18.w),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.15),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.orange.withOpacity(0.3)),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.timer_off_rounded,
                   size: 44,
                   color: Colors.orange,
                 ),
               ),
-              const SizedBox(height: 22),
-              const Text(
+              SizedBox(height: 22),
+              Text(
                 'Время закончено',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 22.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Text(
                 'К сожалению, время для теста истекло',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: Colors.white.withOpacity(0.6),
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -303,16 +304,16 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _gold.withOpacity(0.2),
                     foregroundColor: _gold,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       side: BorderSide(color: _gold.withOpacity(0.4)),
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: Text(
                     'Понятно',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -336,7 +337,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
 
   void _showResultsDialog() {
     _pointsAnimController.reset();
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(Duration(milliseconds: 300), () {
       if (mounted) {
         _pointsAnimController.forward();
       }
@@ -348,7 +349,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     IconData resultIcon;
 
     if (percentage >= 80) {
-      resultColor = const Color(0xFF4CAF50);
+      resultColor = Color(0xFF4CAF50);
       resultMessage = 'Отличный результат!';
       resultIcon = Icons.emoji_events_rounded;
     } else if (percentage >= 60) {
@@ -356,7 +357,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       resultMessage = 'Хороший результат!';
       resultIcon = Icons.thumb_up_rounded;
     } else {
-      resultColor = const Color(0xFFEF5350);
+      resultColor = Color(0xFFEF5350);
       resultMessage = 'Нужно подучить материал';
       resultIcon = Icons.school_rounded;
     }
@@ -366,15 +367,15 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       barrierDismissible: false,
       builder: (ctx) => Dialog(
         backgroundColor: _emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: EdgeInsets.all(28.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Иконка результата
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: EdgeInsets.all(18.w),
                 decoration: BoxDecoration(
                   color: resultColor.withOpacity(0.15),
                   shape: BoxShape.circle,
@@ -386,22 +387,22 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   color: resultColor,
                 ),
               ),
-              const SizedBox(height: 22),
-              const Text(
+              SizedBox(height: 22),
+              Text(
                 'Тест завершён',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 22.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               // Счёт
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 18.h),
                 decoration: BoxDecoration(
                   color: resultColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(18.r),
                   border: Border.all(color: resultColor.withOpacity(0.3)),
                 ),
                 child: Column(
@@ -409,16 +410,16 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                     Text(
                       '$_score / ${_questions.length}',
                       style: TextStyle(
-                        fontSize: 40,
+                        fontSize: 40.sp,
                         fontWeight: FontWeight.w800,
                         color: resultColor,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       '$percentage%',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: resultColor.withOpacity(0.8),
                         fontWeight: FontWeight.w500,
                       ),
@@ -426,25 +427,25 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Text(
                 resultMessage,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   color: Colors.white.withOpacity(0.7),
                   fontWeight: FontWeight.w500,
                 ),
               ),
               // Начисленные баллы
               if (_testResult?.points != null) ...[
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
                 ScaleTransition(
                   scale: _pointsScaleAnimation,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                     decoration: BoxDecoration(
                       color: (_testResult!.points! >= 0 ? _gold : Colors.red).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       border: Border.all(
                         color: (_testResult!.points! >= 0 ? _gold : Colors.red).withOpacity(0.4),
                         width: 1.5,
@@ -458,11 +459,11 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                           color: _testResult!.points! >= 0 ? _gold : Colors.red,
                           size: 22,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           '${_testResult!.points! >= 0 ? "+" : ""}${_testResult!.points!.toStringAsFixed(1)} ${_getBallsWordForm(_testResult!.points!)}',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 17.sp,
                             fontWeight: FontWeight.w700,
                             color: _testResult!.points! >= 0 ? _goldLight : Colors.red[300],
                           ),
@@ -472,7 +473,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   ),
                 ),
               ],
-              const SizedBox(height: 26),
+              SizedBox(height: 26),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -483,16 +484,16 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _gold.withOpacity(0.2),
                     foregroundColor: _gold,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                       side: BorderSide(color: _gold.withOpacity(0.4)),
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: Text(
                     'Готово',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -512,7 +513,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     if (_testFinished) {
       return Scaffold(
         backgroundColor: _night,
-        body: const Center(child: CircularProgressIndicator(color: _gold)),
+        body: Center(child: CircularProgressIndicator(color: _gold)),
       );
     }
 
@@ -537,7 +538,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -550,7 +551,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
             children: [
               // AppBar
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
                 child: Row(
                   children: [
                     IconButton(
@@ -561,19 +562,19 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                         size: 22,
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Тестирование',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.w400,
                           letterSpacing: 1,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    SizedBox(width: 48),
                   ],
                 ),
               ),
@@ -581,7 +582,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(32),
+                    padding: EdgeInsets.all(32.w),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -595,7 +596,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                             border: Border.all(color: _gold.withOpacity(0.2), width: 2),
                           ),
                           child: Container(
-                            margin: const EdgeInsets.all(15),
+                            margin: EdgeInsets.all(15.w),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: _gold.withOpacity(0.12),
@@ -608,27 +609,27 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 36),
+                        SizedBox(height: 36),
                         // Заголовок
-                        const Text(
+                        Text(
                           'Готовы к тесту?',
                           style: TextStyle(
-                            fontSize: 26,
+                            fontSize: 26.sp,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                             letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10),
                         Text(
                           '20 вопросов • $_durationMinutes минут',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             color: Colors.white.withOpacity(0.5),
                             letterSpacing: 0.3,
                           ),
                         ),
-                        const SizedBox(height: 36),
+                        SizedBox(height: 36),
                         // Информационные карточки
                         Row(
                           children: [
@@ -639,7 +640,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                                 subtitle: 'вопросов',
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: 14),
                             Expanded(
                               child: _buildInfoCard(
                                 icon: Icons.timer_outlined,
@@ -649,7 +650,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 44),
+                        SizedBox(height: 44),
                         // Кнопка старта
                         SizedBox(
                           width: double.infinity,
@@ -660,9 +661,9 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                               foregroundColor: _gold,
                               disabledBackgroundColor: Colors.white.withOpacity(0.05),
                               disabledForegroundColor: Colors.white.withOpacity(0.3),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              padding: EdgeInsets.symmetric(vertical: 18.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(16.r),
                                 side: BorderSide(
                                   color: _questions.isNotEmpty
                                       ? _gold.withOpacity(0.5)
@@ -679,11 +680,11 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                                   size: 26,
                                   color: _questions.isNotEmpty ? _gold : Colors.white.withOpacity(0.3),
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Text(
                                   _questions.isNotEmpty ? 'Начать тест' : 'Загрузка...',
-                                  style: const TextStyle(
-                                    fontSize: 17,
+                                  style: TextStyle(
+                                    fontSize: 17.sp,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -709,29 +710,29 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     required String subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         children: [
           Icon(icon, color: _gold.withOpacity(0.7), size: 26),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 28,
+            style: TextStyle(
+              fontSize: 28.sp,
               fontWeight: FontWeight.w800,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
@@ -752,7 +753,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -765,14 +766,14 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
             children: [
               // Хедер с таймером
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 12, 6),
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 12.w, 6.h),
                 child: Row(
                   children: [
                     // Кнопка выхода
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
                       child: IconButton(
@@ -784,29 +785,29 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Номер вопроса
                     Expanded(
                       child: Text(
                         'Вопрос ${_currentQuestionIndex + 1} / ${_questions.length}',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
                           color: Colors.white.withOpacity(0.6),
                           letterSpacing: 0.5,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     // Таймер
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: isTimeWarning
                             ? Colors.red.withOpacity(0.15)
                             : _gold.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(
                           color: isTimeWarning
                               ? Colors.red.withOpacity(0.3)
@@ -821,11 +822,11 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                             size: 16,
                             color: isTimeWarning ? Colors.red[300] : _gold,
                           ),
-                          const SizedBox(width: 5),
+                          SizedBox(width: 5),
                           Text(
                             _formatTime(_timeRemaining),
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 15.sp,
                               fontWeight: FontWeight.w700,
                               fontFamily: 'monospace',
                               color: isTimeWarning ? Colors.red[300] : _goldLight,
@@ -840,9 +841,9 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
 
               // Прогресс-бар
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(4.r),
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.white.withOpacity(0.1),
@@ -851,21 +852,21 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // Карточка вопроса
               Expanded(
                 child: FadeTransition(
                   opacity: _questionFadeAnimation,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                    padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 20.h),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Текст вопроса
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(20.w),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
@@ -875,7 +876,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                                 _gold.withOpacity(0.04),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(18.r),
                             border: Border.all(color: _gold.withOpacity(0.25)),
                           ),
                           child: Column(
@@ -883,26 +884,26 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                             children: [
                               // Бейдж номера вопроса
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
                                 decoration: BoxDecoration(
                                   color: _gold.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(10.r),
                                 ),
                                 child: Text(
                                   'Вопрос ${_currentQuestionIndex + 1}',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 11.sp,
                                     fontWeight: FontWeight.w600,
                                     color: _gold,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              SizedBox(height: 14),
                               Text(
                                 question.question,
                                 style: TextStyle(
-                                  fontSize: 17,
+                                  fontSize: 17.sp,
                                   fontWeight: FontWeight.w600,
                                   height: 1.5,
                                   color: Colors.white.withOpacity(0.95),
@@ -911,7 +912,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         // Варианты ответов
                         ...question.options.asMap().entries.map((entry) {
                           final index = entry.key;
@@ -957,13 +958,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       if (isSelected) {
         if (isCorrect) {
           // Правильный ответ
-          bgColor = const Color(0xFF4CAF50).withOpacity(0.12);
-          borderColor = const Color(0xFF4CAF50).withOpacity(0.5);
-          textColor = const Color(0xFF81C784);
-          letterBgColor = const Color(0xFF4CAF50).withOpacity(0.2);
-          letterColor = const Color(0xFF81C784);
+          bgColor = Color(0xFF4CAF50).withOpacity(0.12);
+          borderColor = Color(0xFF4CAF50).withOpacity(0.5);
+          textColor = Color(0xFF81C784);
+          letterBgColor = Color(0xFF4CAF50).withOpacity(0.2);
+          letterColor = Color(0xFF81C784);
           trailingIcon = Icons.check_circle_rounded;
-          iconColor = const Color(0xFF4CAF50);
+          iconColor = Color(0xFF4CAF50);
         } else {
           // Неправильный ответ
           bgColor = Colors.red.withOpacity(0.12);
@@ -976,13 +977,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
         }
       } else if (isCorrectOption) {
         // Подсветка правильного (когда выбран неправильный)
-        bgColor = const Color(0xFF4CAF50).withOpacity(0.12);
-        borderColor = const Color(0xFF4CAF50).withOpacity(0.5);
-        textColor = const Color(0xFF81C784);
-        letterBgColor = const Color(0xFF4CAF50).withOpacity(0.2);
-        letterColor = const Color(0xFF81C784);
+        bgColor = Color(0xFF4CAF50).withOpacity(0.12);
+        borderColor = Color(0xFF4CAF50).withOpacity(0.5);
+        textColor = Color(0xFF81C784);
+        letterBgColor = Color(0xFF4CAF50).withOpacity(0.2);
+        letterColor = Color(0xFF81C784);
         trailingIcon = Icons.check_circle_rounded;
-        iconColor = const Color(0xFF4CAF50);
+        iconColor = Color(0xFF4CAF50);
       } else {
         // Неактивные варианты после выбора
         bgColor = Colors.white.withOpacity(0.03);
@@ -997,16 +998,16 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     final letter = index < letters.length ? letters[index] : '';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10.h),
       child: InkWell(
         onTap: hasSelected ? null : () => _selectAnswer(option),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.all(15),
+          duration: Duration(milliseconds: 250),
+          padding: EdgeInsets.all(15.w),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: borderColor, width: 1.5),
           ),
           child: Row(
@@ -1017,26 +1018,26 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                 height: 36,
                 decoration: BoxDecoration(
                   color: letterBgColor,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Center(
                   child: Text(
                     letter,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w700,
                       color: letterColor,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // Текст ответа
               Expanded(
                 child: Text(
                   option,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 14.sp,
                     color: textColor,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     height: 1.4,
@@ -1044,7 +1045,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                 ),
               ),
               if (trailingIcon != null) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(trailingIcon, color: iconColor, size: 22),
               ],
             ],
@@ -1059,14 +1060,14 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: _emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14.w),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.12),
                   shape: BoxShape.circle,
@@ -1074,24 +1075,24 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                 ),
                 child: Icon(Icons.exit_to_app_rounded, size: 32, color: Colors.red[300]),
               ),
-              const SizedBox(height: 18),
-              const Text(
+              SizedBox(height: 18),
+              Text(
                 'Выйти из теста?',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Прогресс не будет сохранён',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
-              const SizedBox(height: 22),
+              SizedBox(height: 22),
               Row(
                 children: [
                   Expanded(
@@ -1100,15 +1101,15 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white.withOpacity(0.7),
                         side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                       ),
-                      child: const Text('Отмена', style: TextStyle(fontSize: 14)),
+                      child: Text('Отмена', style: TextStyle(fontSize: 14.sp)),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
@@ -1118,16 +1119,16 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.withOpacity(0.2),
                         foregroundColor: Colors.red[300],
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           side: BorderSide(color: Colors.red.withOpacity(0.3)),
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Выйти',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),

@@ -7,6 +7,7 @@ import '../../employees/pages/employees_page.dart';
 import 'employee_chat_page.dart';
 import 'new_chat_page.dart';
 import 'shop_chat_members_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка чатов сотрудников
 class EmployeeChatsListPage extends StatefulWidget {
@@ -19,9 +20,9 @@ class EmployeeChatsListPage extends StatefulWidget {
 class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
     with SingleTickerProviderStateMixin {
   // Dark emerald palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   List<EmployeeChat> _chats = [];
   bool _isLoading = true;
@@ -36,7 +37,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
     super.initState();
     _fabAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: Duration(milliseconds: 300),
     );
     _loadUserData();
   }
@@ -67,7 +68,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _refreshTimer = Timer.periodic(Duration(seconds: 10), (_) {
       if (mounted) _loadChats(silent: true);
     });
   }
@@ -99,7 +100,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
               content: Text('Ошибка загрузки: $e'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
           );
         }
@@ -120,7 +121,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
+              begin: Offset(1.0, 0.0),
               end: Offset.zero,
             ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
             child: child,
@@ -158,7 +159,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
             opacity: animation,
             child: SlideTransition(
               position: Tween<Offset>(
-                begin: const Offset(0.0, 0.1),
+                begin: Offset(0.0, 0.1),
                 end: Offset.zero,
               ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
               child: child,
@@ -182,7 +183,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -196,11 +197,11 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
               _buildAppBar(),
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    ? Center(child: CircularProgressIndicator(color: Colors.white))
                     : _chats.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                            padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 80.h),
                             itemCount: _chats.length,
                             itemBuilder: (context, index) => _buildChatCard(_chats[index], index),
                           ),
@@ -214,9 +215,9 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
         child: GestureDetector(
           onTap: _openNewChat,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14.r),
               color: _emerald,
               border: Border.all(color: Colors.white.withOpacity(0.2)),
             ),
@@ -224,13 +225,13 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.edit_note, color: Colors.white.withOpacity(0.9), size: 22),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Text(
                   'Новый чат',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontWeight: FontWeight.w500,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ],
@@ -244,7 +245,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 8.h),
       child: Row(
         children: [
           IconButton(
@@ -259,28 +260,28 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   'Чаты',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.w400,
                     letterSpacing: 1,
                   ),
                 ),
                 if (_totalUnread > 0) ...[
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       color: Colors.red,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
                       '$_totalUnread',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -312,7 +313,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
             height: 64,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(18.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
@@ -321,22 +322,22 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
               color: Colors.white.withOpacity(0.4),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             'Нет активных чатов',
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Начните общение с коллегами\nнажав кнопку ниже',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withOpacity(0.4),
-              fontSize: 13,
+              fontSize: 13.sp,
             ),
           ),
         ],
@@ -358,10 +359,10 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
       child: GestureDetector(
         onTap: () => _openChat(chat),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: EdgeInsets.only(bottom: 6.h),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             color: hasUnread
                 ? Colors.white.withOpacity(0.08)
                 : Colors.white.withOpacity(0.04),
@@ -374,7 +375,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
           child: Row(
             children: [
               _buildChatAvatar(chat),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,31 +386,31 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
                           child: Text(
                             chat.displayName,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 15.sp,
                               fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
                               color: Colors.white.withOpacity(0.95),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           chat.lastMessageTime,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             color: Colors.white.withOpacity(hasUnread ? 0.6 : 0.35),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Row(
                       children: [
                         Expanded(
                           child: Text(
                             chat.lastMessagePreview,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.white.withOpacity(hasUnread ? 0.6 : 0.4),
                             ),
                             maxLines: 1,
@@ -417,18 +418,18 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
                           ),
                         ),
                         if (hasUnread) ...[
-                          const SizedBox(width: 10),
+                          SizedBox(width: 10),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               color: Colors.red,
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10.r),
                             ),
                             child: Text(
                               '${chat.unreadCount}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -440,7 +441,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
                 ),
               ),
               if (showMembersButton) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => _openShopChatMembers(chat),
                   child: Container(
@@ -448,7 +449,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
                     height: 34,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: Icon(Icons.group, color: Colors.white.withOpacity(0.6), size: 18),
@@ -485,7 +486,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
           : Center(
               child: Text(
                 chat.typeIcon,
-                style: const TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: 18.sp),
               ),
             ),
     );

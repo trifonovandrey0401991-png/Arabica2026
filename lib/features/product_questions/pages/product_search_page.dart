@@ -8,6 +8,7 @@ import '../../../core/widgets/shop_icon.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_products_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Режимы отображения страницы
 enum _SearchMode {
@@ -25,11 +26,11 @@ class ProductSearchPage extends StatefulWidget {
 
 class _ProductSearchPageState extends State<ProductSearchPage> {
   // Цветовая схема
-  static const _primaryColor = Color(0xFF004D40);
-  static const _blueGradient = [Color(0xFF2196F3), Color(0xFF21CBF3)];
+  static final _primaryColor = Color(0xFF004D40);
+  static final _blueGradient = [Color(0xFF2196F3), Color(0xFF21CBF3)];
 
   /// Таймаут для определения устаревших данных (5 минут)
-  static const Duration _staleDataTimeout = Duration(minutes: 5);
+  static final Duration _staleDataTimeout = Duration(minutes: 5);
 
   // Состояние
   _SearchMode _mode = _SearchMode.shopsList;
@@ -155,7 +156,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   /// Выполнить поиск с debounce
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+    _debounceTimer = Timer(Duration(milliseconds: 300), () {
       _performSearch(query);
     });
   }
@@ -367,13 +368,13 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         elevation: 0,
         leading: _mode == _SearchMode.search
             ? IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: Icon(Icons.arrow_back),
                 onPressed: _backToShopsList,
               )
             : null,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _mode == _SearchMode.shopsList
               ? _buildShopsListMode()
               : _buildSearchMode(),
@@ -394,25 +395,25 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       children: [
         // Кнопка "Искать везде"
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: InkWell(
             onTap: () => _startSearch(),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: _blueGradient),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16.r),
                 boxShadow: [
                   BoxShadow(
                     color: _blueGradient[0].withOpacity(0.4),
                     blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.search, color: Colors.white, size: 28),
@@ -421,7 +422,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                     'Искать везде',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -433,13 +434,13 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
 
         // Заголовок списка магазинов
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Row(
             children: [
               Text(
                 'Или выберите магазин:',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: Colors.grey[600],
                   fontWeight: FontWeight.w500,
                 ),
@@ -447,12 +448,12 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // Список магазинов
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
             itemCount: _shops.length,
             itemBuilder: (context, index) {
               final shop = _shops[index];
@@ -470,42 +471,42 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     final isStale = hasDbf && _isDbfDataStale(shop.id);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8.h),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         side: hasDbf
             ? BorderSide(color: isStale ? Colors.red : Colors.green, width: 2)
             : BorderSide.none,
       ),
       child: InkWell(
         onTap: () => _startSearch(shopId: shop.id, shopName: shop.address),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           child: Row(
             children: [
-              const ShopIcon(size: 48),
-              const SizedBox(width: 12),
+              ShopIcon(size: 48),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       shop.address,
-                      style: const TextStyle(
-                        fontSize: 15,
+                      style: TextStyle(
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (hasDbf) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                         decoration: BoxDecoration(
                           color: isStale ? Colors.red : Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -515,12 +516,12 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                               color: Colors.white,
                               size: 12,
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               isStale ? 'DBF: ${_getTimeSinceSync(shop.id)}' : 'Остатки из DBF',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -531,7 +532,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
         ),
@@ -546,16 +547,16 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         // Поле поиска
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           child: TextField(
             controller: _searchController,
             autofocus: true,
             decoration: InputDecoration(
               hintText: 'Поиск (поддерживает опечатки)...',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: Icon(Icons.search),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: Icon(Icons.clear),
                       onPressed: () {
                         _searchController.clear();
                         _performSearch('');
@@ -563,12 +564,12 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                     )
                   : null,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: Colors.grey[300]!),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _primaryColor, width: 2),
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: _primaryColor, width: 2),
               ),
               filled: true,
               fillColor: Colors.grey[50],
@@ -581,25 +582,25 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         if (_searchQuery.length >= 2)
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: Row(
               children: [
                 Text(
                   'Найдено: ${_searchResults.length}',
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
                 if (_selectedShopId != null) ...[
                   Text(
                     ' в магазине',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13.sp),
                   ),
                 ] else ...[
                   Text(
                     ' по всем магазинам',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13.sp),
                   ),
                 ],
               ],
@@ -609,7 +610,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         // Результаты поиска
         Expanded(
           child: _isSearching
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator())
               : _searchQuery.length < 2
                   ? _buildSearchHint()
                   : _searchResults.isEmpty
@@ -627,10 +628,10 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.search, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Введите минимум 2 символа',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
           ),
         ],
       ),
@@ -644,15 +645,15 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Ничего не найдено',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Попробуйте изменить запрос',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 14.sp, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -662,7 +663,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   /// Список результатов поиска
   Widget _buildSearchResults() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
         final product = _searchResults[index];
@@ -677,15 +678,15 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     final photoUrl = _getProductPhotoUrl(product.kod);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: EdgeInsets.only(bottom: 8.h),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         child: Row(
           children: [
             // Фото или иконка товара
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               child: SizedBox(
                 width: 48,
                 height: 48,
@@ -704,7 +705,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                       ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             // Информация о товаре
             Expanded(
               child: Column(
@@ -712,22 +713,22 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                 children: [
                   Text(
                     product.name,
-                    style: const TextStyle(
-                      fontSize: 15,
+                    style: TextStyle(
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.store, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           shopName,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 13.sp, color: Colors.grey[600]),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -738,15 +739,15 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
             ),
             // Количество
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: product.stock > 0 ? Colors.green[100] : Colors.red[100],
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
                 '${product.stock} шт.',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
                   color: product.stock > 0 ? Colors.green[700] : Colors.red[700],
                 ),

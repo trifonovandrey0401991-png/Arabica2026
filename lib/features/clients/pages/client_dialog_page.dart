@@ -4,6 +4,7 @@ import '../models/client_dialog_model.dart';
 import '../services/client_dialog_service.dart';
 import '../../../shared/models/unified_dialog_message_model.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ClientDialogPage extends StatefulWidget {
   final String shopAddress;
@@ -36,7 +37,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
   }
 
   void _startAutoRefresh() {
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(Duration(seconds: 5), () {
       if (mounted) {
         _loadDialog();
         _startAutoRefresh();
@@ -69,7 +70,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
           }
@@ -120,11 +121,11 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
     return Align(
       alignment: isFromClient ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isFromClient ? Colors.grey[300] : const Color(0xFF004D40),
-          borderRadius: BorderRadius.circular(12),
+          color: isFromClient ? Colors.grey[300] : Color(0xFF004D40),
+          borderRadius: BorderRadius.circular(12.r),
         ),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.7,
@@ -141,18 +142,18 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                     size: 16,
                     color: message.data['reviewType'] == 'positive' ? Colors.green : Colors.red,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Text(
                     message.data['reviewType'] == 'positive' ? 'Положительный отзыв' : 'Отрицательный отзыв',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                       color: isFromClient ? Colors.black54 : Colors.white70,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
             ],
             
             // Заголовок для ответов сотрудников
@@ -160,12 +161,12 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
               Text(
                 'Ответ от магазина ${message.shopAddress}',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.white70,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
             ],
             
             // Текст сообщения
@@ -178,9 +179,9 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
             
             // Изображение, если есть
             if (message.getImageUrl() != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 child: AppCachedImage(
                   imageUrl: message.getImageUrl()!,
                   width: double.infinity,
@@ -190,11 +191,11 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
             ],
             
             // Время
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               _formatTimestamp(message.timestamp),
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 10.sp,
                 color: isFromClient ? Colors.black54 : Colors.white70,
               ),
             ),
@@ -248,40 +249,40 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
     }
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       child: Card(
         elevation: 2,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Icon(statusIcon, color: statusColor, size: 20),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       message.data['orderNumber'] != null
                           ? 'Заказ ${message.data['orderNumber']}'
                           : 'Заказ ${orderId.toString().substring(orderId.toString().length - 6)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 16.sp,
                       ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
                       statusText,
                       style: TextStyle(
                         color: statusColor,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -289,10 +290,10 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                 ],
               ),
               if (items.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Divider(),
+                SizedBox(height: 8),
+                Divider(),
                 ...items.map<Widget>((item) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: EdgeInsets.symmetric(vertical: 4.h),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -303,56 +304,56 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                       ),
                       Text(
                         '${item['total'] ?? 0} руб',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 )),
               ],
-              const Divider(),
+              Divider(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Итого:',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
                     '$totalPrice руб',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 16.sp,
                     ),
                   ),
                 ],
               ),
               if (orderData['comment'] != null && orderData['comment'].toString().isNotEmpty) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Комментарий: ${orderData['comment']}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.grey[600],
                     fontStyle: FontStyle.italic,
                   ),
                 ),
               ],
               if (orderData['acceptedBy'] != null) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   'Принят: ${orderData['acceptedBy']}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.green[700],
                   ),
                 ),
               ],
               if (orderData['rejectedBy'] != null) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   'Отклонен: ${orderData['rejectedBy']}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.red[700],
                   ),
                 ),
@@ -360,17 +361,17 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                   Text(
                     'Причина: ${orderData['rejectionReason']}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.red[600],
                       fontStyle: FontStyle.italic,
                     ),
                   ),
               ],
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 _formatTimestamp(message.timestamp),
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   color: Colors.grey[600],
                 ),
               ),
@@ -386,19 +387,19 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_dialog?.shopAddress ?? widget.shopAddress),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadDialog,
             tooltip: 'Обновить',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _dialog == null || _dialog!.messages.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     'Нет сообщений',
                     style: TextStyle(color: Colors.grey),
@@ -406,7 +407,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                 )
               : ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   itemCount: _dialog!.messages.length,
                   itemBuilder: (context, index) {
                     final message = _dialog!.messages[index];

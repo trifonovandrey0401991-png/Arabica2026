@@ -16,6 +16,7 @@ class ProductQuestion {
   final String? lastAnswerTime;
   final bool isNetworkWide;
   final List<ProductQuestionMessage> messages;
+  final bool hasUnreadFromClient;
   final List<Map<String, dynamic>> rawShops; // Сырые данные shops[] для эффективности
 
   ProductQuestion({
@@ -32,6 +33,7 @@ class ProductQuestion {
     this.answeredByName,
     this.lastAnswerTime,
     this.isNetworkWide = false,
+    this.hasUnreadFromClient = false,
     required this.messages,
     this.rawShops = const [],
   });
@@ -50,6 +52,7 @@ class ProductQuestion {
     if (answeredByName != null) 'answeredByName': answeredByName,
     if (lastAnswerTime != null) 'lastAnswerTime': lastAnswerTime,
     'isNetworkWide': isNetworkWide,
+    'hasUnreadFromClient': hasUnreadFromClient,
     'messages': messages.map((m) => m.toJson()).toList(),
   };
 
@@ -104,6 +107,7 @@ class ProductQuestion {
       answeredByName: answeredByName,
       lastAnswerTime: lastAnswerTime,
       isNetworkWide: json['isNetworkWide'] ?? false,
+      hasUnreadFromClient: json['hasUnreadFromClient'] ?? false,
       messages: (json['messages'] as List<dynamic>?)
           ?.map((m) => ProductQuestionMessage.fromJson(m as Map<String, dynamic>))
           .toList() ?? [],

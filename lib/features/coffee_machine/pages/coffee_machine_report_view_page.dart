@@ -7,6 +7,7 @@ import '../../../core/constants/api_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Детальный просмотр отчёта по счётчику кофемашин
 class CoffeeMachineReportViewPage extends StatefulWidget {
@@ -19,10 +20,10 @@ class CoffeeMachineReportViewPage extends StatefulWidget {
 }
 
 class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isConfirming = false;
   int _selectedRating = 0;
@@ -41,7 +42,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -55,19 +56,19 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               _buildHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildInfoCard(report),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildReadingsSection(report),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildComputerSection(report),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildVerificationSection(report),
                       if (report.status == 'pending') ...[
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildConfirmSection(),
                       ],
                     ],
@@ -83,31 +84,31 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
-          const Icon(Icons.coffee_outlined, color: _gold, size: 22),
-          const SizedBox(width: 8),
-          const Expanded(
+          Icon(Icons.coffee_outlined, color: _gold, size: 22),
+          SizedBox(width: 8),
+          Expanded(
             child: Text(
               'Отчёт по счётчику',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
             ),
           ),
           // Статус
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
             decoration: BoxDecoration(
               color: _getStatusColor().withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text(
               widget.report.statusText,
-              style: TextStyle(color: _getStatusColor(), fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(color: _getStatusColor(), fontSize: 12.sp, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -131,10 +132,10 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
   Widget _buildInfoCard(CoffeeMachineReport report) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -154,17 +155,17 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         children: [
           Icon(icon, color: Colors.white.withOpacity(0.4), size: 18),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
-          const Spacer(),
+          SizedBox(width: 8),
+          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp)),
+          Spacer(),
           Flexible(
             child: Text(
               value,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w500),
               textAlign: TextAlign.right,
               overflow: TextOverflow.ellipsis,
             ),
@@ -180,9 +181,9 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
       children: [
         Text(
           'Показания машин',
-          style: TextStyle(color: _gold, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         ...report.readings.map((reading) => _buildReadingCard(reading)),
       ],
     );
@@ -194,11 +195,11 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
         (reading.wasManuallyEdited || reading.selectedRegion != null);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: 10.h),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: canTrain
               ? Colors.orange.withOpacity(0.3)
@@ -211,67 +212,67 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
           Row(
             children: [
               Icon(Icons.coffee, color: _gold, size: 20),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   reading.machineName,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
                 ),
               ),
               Text(
                 '${reading.confirmedNumber}',
-                style: TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(color: _gold, fontSize: 20.sp, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           if (reading.wasManuallyEdited) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(6.r),
                 border: Border.all(color: Colors.orange.withOpacity(0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.edit, color: Colors.orange, size: 14),
-                  const SizedBox(width: 4),
+                  Icon(Icons.edit, color: Colors.orange, size: 14),
+                  SizedBox(width: 4),
                   Text(
                     reading.aiReadNumber != null
                         ? 'Исправлено вручную (ИИ: ${reading.aiReadNumber})'
                         : 'Введено вручную',
-                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                    style: TextStyle(color: Colors.orange, fontSize: 12.sp),
                   ),
                 ],
               ),
             ),
           ],
           if (reading.selectedRegion != null && !reading.wasManuallyEdited) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.blue.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(6.r),
                 border: Border.all(color: Colors.blue.withOpacity(0.3)),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.crop_free, color: Colors.blue, size: 14),
                   SizedBox(width: 4),
-                  Text('Область выделена сотрудником', style: TextStyle(color: Colors.blue, fontSize: 12)),
+                  Text('Область выделена сотрудником', style: TextStyle(color: Colors.blue, fontSize: 12.sp)),
                 ],
               ),
             ),
           ],
           // Фото с красным квадратом (selectedRegion)
           if (reading.photoUrl != null) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               child: reading.selectedRegion != null
                   ? _buildPhotoWithRegion(reading.photoUrl!, reading.selectedRegion!)
                   : AppCachedImage(
@@ -282,35 +283,35 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                       errorWidget: (_, __, ___) => Container(
                         height: 80,
                         color: Colors.white.withOpacity(0.04),
-                        child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
+                        child: Center(child: Icon(Icons.broken_image, color: Colors.white24)),
                       ),
                     ),
             ),
           ],
           // Кнопка "Обучить ИИ" — если есть что обучать
           if (canTrain && !isTrained) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _trainOcr(reading),
-                icon: const Icon(Icons.school, color: _gold, size: 18),
-                label: const Text('Обучить ИИ', style: TextStyle(color: _gold, fontSize: 13)),
+                icon: Icon(Icons.school, color: _gold, size: 18),
+                label: Text('Обучить ИИ', style: TextStyle(color: _gold, fontSize: 13.sp)),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: _gold.withOpacity(0.4)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                  padding: EdgeInsets.symmetric(vertical: 8.h),
                 ),
               ),
             ),
           ],
           if (isTrained) ...[
-            const SizedBox(height: 8),
-            const Row(
+            SizedBox(height: 8),
+            Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.green, size: 16),
                 SizedBox(width: 4),
-                Text('Обучено', style: TextStyle(color: Colors.green, fontSize: 12)),
+                Text('Обучено', style: TextStyle(color: Colors.green, fontSize: 12.sp)),
               ],
             ),
           ],
@@ -324,7 +325,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        const height = 150.0;
+        final height = 150.0;
         return SizedBox(
           width: width,
           height: height,
@@ -338,7 +339,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                 errorWidget: (_, __, ___) => Container(
                   height: 80,
                   color: Colors.white.withOpacity(0.04),
-                  child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
+                  child: Center(child: Icon(Icons.broken_image, color: Colors.white24)),
                 ),
               ),
               // Красный квадрат
@@ -395,13 +396,13 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
         if (data['success'] == true) {
           setState(() => _trainedReadings.add(reading.templateId));
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Фото отправлено на обучение'), backgroundColor: Colors.green),
+            SnackBar(content: Text('Фото отправлено на обучение'), backgroundColor: Colors.green),
           );
           return;
         }
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка обучения'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Ошибка обучения'), backgroundColor: Colors.red),
       );
     } catch (e) {
       if (!mounted) return;
@@ -413,10 +414,10 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
   Widget _buildComputerSection(CoffeeMachineReport report) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -424,23 +425,23 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
         children: [
           Row(
             children: [
-              const Icon(Icons.computer, color: Colors.blue, size: 20),
-              const SizedBox(width: 8),
-              const Text(
+              Icon(Icons.computer, color: Colors.blue, size: 20),
+              SizedBox(width: 8),
+              Text(
                 'Компьютер',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
               ),
-              const Spacer(),
+              Spacer(),
               Text(
                 report.computerNumber.toStringAsFixed(2),
-                style: const TextStyle(color: Colors.blue, fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.blue, fontSize: 20.sp, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           if (report.computerPhotoUrl != null) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8.r),
               child: AppCachedImage(
                 imageUrl: _photoUrl(report.computerPhotoUrl),
                 height: 150,
@@ -449,7 +450,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                 errorWidget: (_, __, ___) => Container(
                   height: 80,
                   color: Colors.white.withOpacity(0.04),
-                  child: const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
+                  child: Center(child: Icon(Icons.broken_image, color: Colors.white24)),
                 ),
               ),
             ),
@@ -461,12 +462,12 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
   Widget _buildVerificationSection(CoffeeMachineReport report) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: report.hasDiscrepancy
             ? Colors.orange.withOpacity(0.1)
             : Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: report.hasDiscrepancy
               ? Colors.orange.withOpacity(0.3)
@@ -478,23 +479,23 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Сумма машин', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              Text('Сумма машин', style: TextStyle(color: Colors.white70, fontSize: 13.sp)),
               Text('+${report.sumOfMachines}', style: TextStyle(color: _gold, fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Компьютер', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              Text(report.computerNumber.toStringAsFixed(2), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+              Text('Компьютер', style: TextStyle(color: Colors.white70, fontSize: 13.sp)),
+              Text(report.computerNumber.toStringAsFixed(2), style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Итого', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              Text('Итого', style: TextStyle(color: Colors.white70, fontSize: 13.sp)),
               Text(
                 (report.computerNumber + report.sumOfMachines).toStringAsFixed(2),
                 style: TextStyle(
@@ -504,7 +505,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               ),
             ],
           ),
-          const Divider(color: Colors.white24, height: 16),
+          Divider(color: Colors.white24, height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -513,7 +514,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                 color: report.hasDiscrepancy ? Colors.orange : Colors.green,
                 size: 22,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 report.hasDiscrepancy
                     ? 'Не сходится: ${report.discrepancyAmount.toStringAsFixed(2)}'
@@ -521,7 +522,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                 style: TextStyle(
                   color: report.hasDiscrepancy ? Colors.orange : Colors.green,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                 ),
               ),
             ],
@@ -533,17 +534,17 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
   Widget _buildConfirmSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: _gold.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Оценка', style: TextStyle(color: _gold, fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
+          Text('Оценка', style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
           // Рейтинг
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -552,7 +553,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               return GestureDetector(
                 onTap: () => setState(() => _selectedRating = starNum),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
                   child: Icon(
                     starNum <= _selectedRating ? Icons.star : Icons.star_border,
                     color: _gold,
@@ -562,7 +563,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               );
             }),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Кнопки
           Row(
             children: [
@@ -570,26 +571,26 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                 child: OutlinedButton(
                   onPressed: _isConfirming ? null : _rejectReport,
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    side: BorderSide(color: Colors.red),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                   ),
-                  child: const Text('Отклонить', style: TextStyle(color: Colors.red)),
+                  child: Text('Отклонить', style: TextStyle(color: Colors.red)),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
                   onPressed: _isConfirming || _selectedRating == 0 ? null : _confirmReport,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                   ),
                   child: _isConfirming
-                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Подтвердить', style: TextStyle(color: Colors.white)),
+                      ? SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text('Подтвердить', style: TextStyle(color: Colors.white)),
                 ),
               ),
             ],
@@ -628,12 +629,12 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
       if (!mounted) return;
       if (result != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Отчёт подтверждён'), backgroundColor: Colors.green),
+          SnackBar(content: Text('Отчёт подтверждён'), backgroundColor: Colors.green),
         );
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка подтверждения'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка подтверждения'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -671,7 +672,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
       if (!mounted) return;
       if (result) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Отчёт отклонён'), backgroundColor: Colors.orange),
+          SnackBar(content: Text('Отчёт отклонён'), backgroundColor: Colors.orange),
         );
         Navigator.pop(context);
       }

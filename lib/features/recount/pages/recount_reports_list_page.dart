@@ -14,6 +14,7 @@ import '../../efficiency/services/points_settings_service.dart';
 import 'recount_report_view_page.dart';
 import 'recount_summary_report_page.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Модель строки сводного отчёта (дата + смена) - аналог ShiftSummaryItem
 class RecountSummaryItem {
@@ -34,7 +35,7 @@ class RecountSummaryItem {
   });
 
   String get displayTitle {
-    const months = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    final months = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
                    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     return '${date.day} ${months[date.month]}, $shiftName ($passedCount/$totalCount)';
   }
@@ -72,10 +73,10 @@ class RecountReportsListPage extends StatefulWidget {
 
 class _RecountReportsListPageState extends State<RecountReportsListPage>
     with SingleTickerProviderStateMixin {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   String? _selectedShop;
@@ -102,7 +103,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   RecountPointsSettings? _recountSettings;
 
   // Названия месяцев в родительном падеже
-  static const _monthNamesGenitive = [
+  static final _monthNamesGenitive = [
     '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
   ];
@@ -217,7 +218,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       final serverReports = await RecountService.getReportsForCurrentUser();
       Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
 
-      _allReports = serverReports;
+      // Исключаем pending файлы шедулера (они не являются отчётами сотрудников)
+      _allReports = serverReports.where((r) => r.status != 'pending').toList();
       _allReports.sort((a, b) => b.completedAt.compareTo(a.completedAt));
 
       // Загружаем pending и failed пересчёты
@@ -500,7 +502,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Вычислить сводные данные за последние 30 дней
   void _calculateSummaryItems() {
     final now = DateTime.now();
-    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    final thirtyDaysAgo = now.subtract(Duration(days: 30));
 
     _summaryItems = [];
 
@@ -585,27 +587,29 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return filtered;
   }
 
-  /// Не оценённые отчёты (ожидают проверки) - только менее 5 часов
+  /// Не оценённые отчёты (ожидают проверки) - только со статусом review
   List<RecountReport> get _awaitingReports {
-    final now = DateTime.now();
     final pending = _allReports.where((r) {
+      // Только отчёты со статусом review (реально отправленные сотрудником)
+      if (r.status != 'review') return false;
       if (r.isRated) return false;
-      if (r.isExpired) return false;
-      // Показываем только отчёты, которые ожидают менее 5 часов
-      final hours = now.difference(r.completedAt).inHours;
-      return hours < 5;
+      return true;
     }).toList();
     return _applyFilters(pending);
   }
 
-  /// Отчёты, которые ожидают более 5 часов (не оценённые)
+  /// Отклонённые отчёты (rejected или expired, исключая pending от шедулера)
   List<RecountReport> get _overdueUnratedReports {
-    final now = DateTime.now();
     return _allReports.where((r) {
       if (r.isRated) return false;
-      if (r.isExpired) return true; // Просроченные тоже включаем
-      final hours = now.difference(r.completedAt).inHours;
-      return hours >= 5;
+      // Только отчёты со статусом rejected или те что реально были отправлены
+      if (r.status == 'rejected') return true;
+      if (r.status == 'expired') return true;
+      // Не показываем pending от шедулера
+      if (r.status == 'pending') return false;
+      // Для старых отчётов без явного статуса — проверяем по времени
+      if (r.status == null || r.status == 'review') return false;
+      return false;
     }).toList();
   }
 
@@ -654,7 +658,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      firstDate: DateTime.now().subtract(Duration(days: 30)),
       lastDate: DateTime.now(),
     );
     if (picked != null) {
@@ -669,7 +673,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -682,7 +686,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -692,19 +696,19 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Отчеты по пересчету',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -716,10 +720,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -757,29 +761,29 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Построение кастомных вкладок 3+2+1 (аналогично пересменкам)
   Widget _buildCustomTabs() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 8.h),
       child: Column(
         children: [
           // Первый ряд: 3 вкладки
           Row(
             children: [
               _buildTabButton(0, Icons.schedule_rounded, 'Ожидают', _pendingRecounts.length, Colors.orange),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(1, Icons.warning_amber_rounded, 'Не прошли', _failedRecounts.length, Colors.red, badge: _failedRecountsBadgeCount),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(2, Icons.hourglass_empty_rounded, 'Проверка', _awaitingReports.length, Colors.blue),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Второй ряд: 2 вкладки
           Row(
             children: [
               _buildTabButton(3, Icons.check_circle_rounded, 'Проверено', _allReports.where((r) => r.isRated).length, Colors.green),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               _buildTabButton(4, Icons.cancel_rounded, 'Отклонённые', _expiredReports.length + _overdueUnratedReports.length, Colors.grey),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           // Третий ряд: 1 вкладка "Отчёт" (pivot-таблица)
           Row(
             children: [
@@ -803,9 +807,9 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             _tabController.animateTo(index);
             setState(() {});
           },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
             decoration: BoxDecoration(
               gradient: isSelected
                   ? LinearGradient(
@@ -815,7 +819,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     )
                   : null,
               color: isSelected ? null : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(
                 color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
                 width: isSelected ? 2 : 1,
@@ -829,46 +833,46 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   size: 14,
                   color: isSelected ? Colors.white : Colors.white70,
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       color: isSelected ? Colors.white : Colors.white70,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
                   decoration: BoxDecoration(
                     color: isSelected ? Colors.white.withOpacity(0.3) : accentColor.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                       color: isSelected ? Colors.white : accentColor,
                     ),
                   ),
                 ),
                 if (badge > 0) ...[
-                  const SizedBox(width: 2),
+                  SizedBox(width: 2),
                   Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
+                    padding: EdgeInsets.all(4.w),
+                    decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
                       '$badge',
-                      style: const TextStyle(
-                        fontSize: 8,
+                      style: TextStyle(
+                        fontSize: 8.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -886,11 +890,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Построение секции фильтров
   Widget _buildFiltersSection() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.symmetric(horizontal: 12.w),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
@@ -900,14 +904,14 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             value: _selectedShop,
             isExpanded: true,
             dropdownColor: _emeraldDark,
-            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
             decoration: InputDecoration(
               labelText: 'Магазин',
               labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _gold)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _gold)),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
             ),
             iconEnabledColor: _gold,
             items: [
@@ -926,7 +930,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               });
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           // Сотрудник и Дата в одном ряду
           Row(
             children: [
@@ -935,14 +939,14 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   value: _selectedEmployee,
                   isExpanded: true,
                   dropdownColor: _emeraldDark,
-                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
                   decoration: InputDecoration(
                     labelText: 'Сотрудник',
                     labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _gold)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _gold)),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   ),
                   iconEnabledColor: _gold,
                   items: [
@@ -962,15 +966,15 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   },
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: InkWell(
                   onTap: () => _selectDate(context),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                     child: Row(
@@ -979,12 +983,12 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Дата', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                              Text('Дата', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp)),
                               Text(
                                 _selectedDate != null
                                     ? '${_selectedDate!.day}.${_selectedDate!.month}'
                                     : 'Все',
-                                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
+                                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
                               ),
                             ],
                           ),
@@ -1000,7 +1004,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
           // Сброс фильтров
           if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null)
             Padding(
-              padding: const EdgeInsets.only(top: 10),
+              padding: EdgeInsets.only(top: 10.h),
               child: GestureDetector(
                 onTap: () {
                   setState(() {
@@ -1010,18 +1014,18 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   });
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     border: Border.all(color: Colors.red.withOpacity(0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.clear, size: 18, color: Colors.red),
-                      const SizedBox(width: 6),
-                      const Text('Сбросить фильтры', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+                      Icon(Icons.clear, size: 18, color: Colors.red),
+                      SizedBox(width: 6),
+                      Text('Сбросить фильтры', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ),
@@ -1052,21 +1056,21 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             ),
             child: Icon(icon, size: 40, color: Colors.white.withOpacity(0.3)),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             subtitle,
             style: TextStyle(
               color: Colors.white.withOpacity(0.5),
-              fontSize: 14,
+              fontSize: 14.sp,
             ),
           ),
         ],
@@ -1089,23 +1093,23 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     final todayStr = '${today.day}.${today.month}.${today.year}';
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: _pendingRecounts.length,
       itemBuilder: (context, index) {
         final pending = _pendingRecounts[index];
         final isMorning = pending.shiftType == 'morning';
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: EdgeInsets.only(bottom: 10.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(
               color: isMorning ? Colors.orange.withOpacity(0.3) : Colors.purple.withOpacity(0.3),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка смены
@@ -1120,7 +1124,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                   child: Icon(
                     isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
@@ -1128,7 +1132,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Информация
                 Expanded(
                   child: Column(
@@ -1138,13 +1142,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         pending.shopAddress,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(
@@ -1152,20 +1156,20 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                             size: 14,
                             color: Colors.white.withOpacity(0.4),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             todayStr,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.5),
-                              fontSize: 13,
+                              fontSize: 13.sp,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          SizedBox(width: 10),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               color: isMorning ? Colors.blue.withOpacity(0.15) : Colors.purple.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                               border: Border.all(
                                 color: isMorning ? Colors.blue.withOpacity(0.3) : Colors.purple.withOpacity(0.3),
                               ),
@@ -1175,30 +1179,30 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                               style: TextStyle(
                                 color: isMorning ? Colors.blue.shade300 : Colors.purple.shade300,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 11,
+                                fontSize: 11.sp,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                         decoration: BoxDecoration(
                           color: Colors.orange.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
-                            const SizedBox(width: 4),
-                            const Text(
+                            Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
+                            SizedBox(width: 4),
+                            Text(
                               'Пересчёт не проведён',
                               style: TextStyle(
                                 color: Colors.orange,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                                fontSize: 12.sp,
                               ),
                             ),
                           ],
@@ -1213,9 +1217,9 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   height: 36,
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.schedule_rounded,
                     color: Colors.orange,
                     size: 22,
@@ -1241,7 +1245,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       itemCount: _failedRecounts.length,
       itemBuilder: (context, index) {
         final failed = _failedRecounts[index];
@@ -1253,14 +1257,14 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             : (_recountSettings?.eveningEndTime ?? '23:00');
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: EdgeInsets.only(bottom: 10.h),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.red.withOpacity(0.3)),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка с предупреждением
@@ -1273,7 +1277,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                   child: Stack(
                     alignment: Alignment.center,
@@ -1284,21 +1288,21 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         size: 24,
                       ),
                       Positioned(
-                        right: 0,
-                        bottom: 0,
+                        right: 0.w,
+                        bottom: 0.h,
                         child: Container(
-                          padding: const EdgeInsets.all(2),
+                          padding: EdgeInsets.all(2.w),
                           decoration: BoxDecoration(
                             color: _emeraldDark,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.error, color: Colors.red, size: 14),
+                          child: Icon(Icons.error, color: Colors.red, size: 14),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Информация
                 Expanded(
                   child: Column(
@@ -1308,41 +1312,41 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         failed.shopAddress,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               color: isMorning ? Colors.orange.withOpacity(0.15) : Colors.indigo.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6.r),
                             ),
                             child: Text(
                               failed.shiftName,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 fontWeight: FontWeight.bold,
                                 color: isMorning ? Colors.orange : Colors.indigo.shade300,
                               ),
                             ),
                           ),
-                          const Spacer(),
+                          Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               color: Colors.red,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6.r),
                             ),
-                            child: const Text(
+                            child: Text(
                               'ПРОСРОЧЕНО',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 10.sp,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -1350,27 +1354,27 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(Icons.access_time, size: 14, color: Colors.red[400]),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'Дедлайн: $deadline',
-                            style: TextStyle(fontSize: 12, color: Colors.red[400]),
+                            style: TextStyle(fontSize: 12.sp, color: Colors.red[400]),
                           ),
                           if (_recountSettings != null) ...[
-                            const Spacer(),
+                            Spacer(),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                               decoration: BoxDecoration(
                                 color: Colors.deepOrange.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(4.r),
                               ),
                               child: Text(
                                 '${_recountSettings!.missedPenalty.toStringAsFixed(1)} б.',
-                                style: const TextStyle(
-                                  fontSize: 11,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.deepOrange,
                                 ),
@@ -1430,7 +1434,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
         itemBuilder: (context, index) {
           return _buildExpiredGroupTile(groups[index], 0);
@@ -1453,11 +1457,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               return _buildExpiredGroupTile(child, depth + 1);
             } else if (child is RecountReport) {
               return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
                 child: _buildExpiredReportCard(child),
               );
             }
-            return const SizedBox.shrink();
+            return SizedBox.shrink();
           }),
       ],
     );
@@ -1486,16 +1490,16 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10, right: 8),
+        margin: EdgeInsets.only(bottom: 10.h, right: 8.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: statusColor.withOpacity(0.3),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1513,7 +1517,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Icon(
                       isFromExpiredList ? Icons.cancel_rounded : Icons.access_time_rounded,
@@ -1521,7 +1525,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1530,18 +1534,18 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                           report.shopAddress,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             color: Colors.white.withOpacity(0.9),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           report.employeeName,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.5),
-                            fontSize: 13,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ],
@@ -1554,7 +1558,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               // Информация о дате и времени
               Row(
                 children: [
@@ -1563,13 +1567,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     '${report.completedAt.day}.${report.completedAt.month}.${report.completedAt.year}',
                     Colors.blue,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.access_time_rounded,
                     '${report.completedAt.hour.toString().padLeft(2, '0')}:${report.completedAt.minute.toString().padLeft(2, '0')}',
                     Colors.indigo,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.timer_outlined,
                     report.formattedDuration,
@@ -1577,13 +1581,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               // Статус просрочки
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                   border: Border.all(color: statusColor.withOpacity(0.3)),
                 ),
                 child: Row(
@@ -1594,7 +1598,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                       size: 16,
                       color: isFromExpiredList ? Colors.red.shade700 : Colors.orange.shade700,
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text(
                       isFromExpiredList && report.expiredAt != null
                           ? 'Просрочен: ${report.expiredAt!.day}.${report.expiredAt!.month}.${report.expiredAt!.year}'
@@ -1602,7 +1606,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                       style: TextStyle(
                         color: isFromExpiredList ? Colors.red.shade700 : Colors.orange.shade700,
                         fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        fontSize: 12.sp,
                       ),
                     ),
                   ],
@@ -1671,8 +1675,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
+    final yesterday = today.subtract(Duration(days: 1));
+    final weekAgo = today.subtract(Duration(days: 7));
 
     List<RecountReportGroup> result = [];
 
@@ -1740,11 +1744,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     }
 
     final sortedWeeks = byWeek.keys.toList()..sort((a, b) => b.compareTo(a));
-    final monthAgo = today.subtract(const Duration(days: 30));
+    final monthAgo = today.subtract(Duration(days: 30));
 
     for (final weekStart in sortedWeeks) {
       if (weekStart.isAfter(monthAgo) || weekStart.isAtSameMomentAs(monthAgo)) {
-        final weekEnd = weekStart.add(const Duration(days: 6));
+        final weekEnd = weekStart.add(Duration(days: 6));
         final key = '${prefix}_week_${weekStart.toIso8601String()}';
         _expandedGroups.putIfAbsent(key, () => false);
         result.add(RecountReportGroup(
@@ -1802,47 +1806,47 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       },
       child: Container(
         margin: EdgeInsets.only(
-          left: 12.0 * depth,
-          right: 8,
-          top: 4,
-          bottom: 4,
+          left: 12.0.w * depth,
+          right: 8.w,
+          top: 4.h,
+          bottom: 4.h,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         decoration: BoxDecoration(
           color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: color.withOpacity(0.4)),
         ),
         child: Row(
           children: [
             Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 group.title,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: color,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                 ),
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Text(
                 '${group.count}',
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: 12.sp,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Icon(
               isExpanded ? Icons.expand_less : Icons.expand_more,
               color: color,
@@ -1867,11 +1871,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               return _buildRecountGroupTile(child, depth + 1);
             } else if (child is RecountReport) {
               return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
                 child: _buildRecountReportCard(child),
               );
             }
-            return const SizedBox.shrink();
+            return SizedBox.shrink();
           }),
       ],
     );
@@ -1898,16 +1902,16 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10, right: 8),
+        margin: EdgeInsets.only(bottom: 10.h, right: 8.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: statusColor.withOpacity(0.3),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1925,11 +1929,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Icon(statusIcon, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1938,18 +1942,18 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                           report.shopAddress,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             color: Colors.white.withOpacity(0.9),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           report.employeeName,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.5),
-                            fontSize: 13,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ],
@@ -1962,7 +1966,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               // Информация о дате и времени
               Row(
                 children: [
@@ -1971,13 +1975,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     '${report.completedAt.day}.${report.completedAt.month}.${report.completedAt.year}',
                     Colors.blue,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.access_time_rounded,
                     '${report.completedAt.hour.toString().padLeft(2, '0')}:${report.completedAt.minute.toString().padLeft(2, '0')}',
                     Colors.indigo,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.timer_outlined,
                     report.formattedDuration,
@@ -1987,11 +1991,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               ),
               // Оценка (если есть)
               if (report.isRated) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -1999,38 +2003,38 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                             _getRatingColor(report.adminRating!),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         boxShadow: [
                           BoxShadow(
                             color: _getRatingColor(report.adminRating!).withOpacity(0.3),
                             blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star_rounded, color: Colors.white, size: 18),
-                          const SizedBox(width: 4),
+                          Icon(Icons.star_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 4),
                           Text(
                             '${report.adminRating}/10',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ],
                       ),
                     ),
                     if (report.adminName != null) ...[
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Проверил: ${report.adminName}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -2040,25 +2044,25 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   ],
                 ),
               ] else ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                   decoration: BoxDecoration(
                     color: Colors.amber.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                     border: Border.all(color: Colors.amber.withOpacity(0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.hourglass_empty_rounded, size: 14, color: Colors.amber.shade700),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         statusText,
                         style: TextStyle(
                           color: Colors.amber.shade700,
                           fontWeight: FontWeight.w600,
-                          fontSize: 12,
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],
@@ -2075,22 +2079,22 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Вспомогательный чип для отображения информации
   Widget _buildInfoChip(IconData icon, String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 12, color: color.withOpacity(0.8)),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
               color: color,
-              fontSize: 11,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -2115,7 +2119,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
         itemBuilder: (context, index) {
           return _buildRecountGroupTile(groups[index], 0);
@@ -2150,7 +2154,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
         itemBuilder: (context, index) {
           return _buildLateGroupTile(groups[index], 0);
@@ -2173,11 +2177,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               return _buildLateGroupTile(child, depth + 1);
             } else if (child is RecountReport) {
               return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
                 child: _buildLateReportCard(child),
               );
             }
-            return const SizedBox.shrink();
+            return SizedBox.shrink();
           }),
       ],
     );
@@ -2219,16 +2223,16 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10, right: 8),
+        margin: EdgeInsets.only(bottom: 10.h, right: 8.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: Colors.deepPurple.withOpacity(0.3),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2244,15 +2248,15 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.timer_off_rounded,
                       color: Colors.white,
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2261,18 +2265,18 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                           report.shopAddress,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             color: Colors.white.withOpacity(0.9),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           report.employeeName,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.5),
-                            fontSize: 13,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ],
@@ -2285,7 +2289,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               // Информация о дате и времени
               Row(
                 children: [
@@ -2294,13 +2298,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     '${report.completedAt.day}.${report.completedAt.month}.${report.completedAt.year}',
                     Colors.blue,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.access_time_rounded,
                     '${report.completedAt.hour.toString().padLeft(2, '0')}:${report.completedAt.minute.toString().padLeft(2, '0')}',
                     Colors.indigo,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   _buildInfoChip(
                     isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
                     shiftName,
@@ -2308,51 +2312,51 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               // Информация о дедлайне и опоздании
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.schedule_rounded, size: 14, color: Colors.white.withOpacity(0.5)),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           'Дедлайн: $deadline',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.5),
                             fontWeight: FontWeight.w500,
-                            fontSize: 12,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                     decoration: BoxDecoration(
                       color: Colors.deepPurple.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.deepPurple.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.timer_off_rounded, size: 14, color: Colors.deepPurple.shade700),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           lateText,
                           style: TextStyle(
                             color: Colors.deepPurple.shade700,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ],
@@ -2362,11 +2366,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               ),
               // Оценка (если есть)
               if (report.isRated) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -2374,38 +2378,38 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                             _getRatingColor(report.adminRating!),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10.r),
                         boxShadow: [
                           BoxShadow(
                             color: _getRatingColor(report.adminRating!).withOpacity(0.3),
                             blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star_rounded, color: Colors.white, size: 18),
-                          const SizedBox(width: 4),
+                          Icon(Icons.star_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 4),
                           Text(
                             '${report.adminRating}/10',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ],
                       ),
                     ),
                     if (report.adminName != null) ...[
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Проверил: ${report.adminName}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: Colors.white.withOpacity(0.5),
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -2438,8 +2442,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
+    final yesterday = today.subtract(Duration(days: 1));
+    final weekAgo = today.subtract(Duration(days: 7));
 
     List<RecountReportGroup> result = [];
 
@@ -2507,11 +2511,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     }
 
     final sortedWeeks = byWeek.keys.toList()..sort((a, b) => b.compareTo(a));
-    final monthAgo = today.subtract(const Duration(days: 30));
+    final monthAgo = today.subtract(Duration(days: 30));
 
     for (final weekStart in sortedWeeks) {
       if (weekStart.isAfter(monthAgo) || weekStart.isAtSameMomentAs(monthAgo)) {
-        final weekEnd = weekStart.add(const Duration(days: 6));
+        final weekEnd = weekStart.add(Duration(days: 6));
         final key = '${prefix}_week_${weekStart.toIso8601String()}';
         _expandedGroups.putIfAbsent(key, () => false);
         result.add(RecountReportGroup(
@@ -2573,7 +2577,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       color: _gold,
       backgroundColor: _emeraldDark,
       child: ListView.builder(
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
         itemBuilder: (context, index) {
           return _buildSummaryGroupTile(groups[index], 0);
@@ -2596,11 +2600,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               return _buildSummaryGroupTile(child, depth + 1);
             } else if (child is RecountSummaryItem) {
               return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
                 child: _buildSummaryItemCard(child),
               );
             }
-            return const SizedBox.shrink();
+            return SizedBox.shrink();
           }),
       ],
     );
@@ -2615,10 +2619,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return GestureDetector(
       onTap: () => _openSummaryReport(item),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8, right: 8),
+        margin: EdgeInsets.only(bottom: 8.h, right: 8.w),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: allPassed
                 ? Colors.green.withOpacity(0.3)
@@ -2628,7 +2632,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.w),
           child: Row(
             children: [
               // Иконка смены
@@ -2643,7 +2647,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Icon(
                   isMorning ? Icons.wb_sunny : Icons.nights_stay,
@@ -2651,7 +2655,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // Информация
               Expanded(
                 child: Column(
@@ -2661,11 +2665,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                       item.shiftName,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         color: Colors.white.withOpacity(0.9),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       allPassed
                           ? 'Все магазины прошли'
@@ -2673,7 +2677,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                               ? 'Никто не прошёл'
                               : 'Не прошли: ${item.totalCount - item.passedCount}',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: allPassed
                             ? Colors.green
                             : nonePassed
@@ -2687,25 +2691,25 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               ),
               // Бейдж с количеством
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                 decoration: BoxDecoration(
                   color: allPassed
                       ? Colors.green
                       : nonePassed
                           ? Colors.red.shade400
                           : Colors.deepPurple,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Text(
                   '${item.passedCount}/${item.totalCount}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white.withOpacity(0.3)),
             ],
           ),
@@ -2733,20 +2737,20 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Построить ячейку с разницей
   Widget _buildDifferenceCell(int? difference) {
     if (difference == null) {
-      return const Center(
-        child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 14)),
+      return Center(
+        child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 14.sp)),
       );
     }
     if (difference == 0) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
         decoration: BoxDecoration(
           color: Colors.green.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(6.r),
         ),
-        child: const Text(
+        child: Text(
           '0',
-          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
+          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13.sp),
           textAlign: TextAlign.center,
         ),
       );
@@ -2757,14 +2761,14 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     final sign = isPositive ? '+' : '';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(6.r),
       ),
       child: Text(
         '$sign$difference',
-        style: TextStyle(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 13),
+        style: TextStyle(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 13.sp),
         textAlign: TextAlign.center,
       ),
     );
@@ -2808,10 +2812,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text(
             productName,
-            style: const TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16.sp),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -2822,7 +2826,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               children: [
                 // Магазин
                 _buildDetailRow('Магазин', shop.shopAddress ?? shop.shopName),
-                const Divider(),
+                Divider(),
 
                 if (foundReport != null) ...[
                   // Сотрудник
@@ -2830,7 +2834,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   _buildDetailRow('Время', DateFormat('HH:mm').format(foundReport.completedAt)),
                   _buildDetailRow('Смена', foundReport.shiftType == 'morning' ? 'Утро' : 'Вечер'),
                   _buildDetailRow('Статус', _getStatusLabel(foundReport.status ?? '')),
-                  const Divider(),
+                  Divider(),
                 ],
 
                 if (foundAnswer != null) ...[
@@ -2841,9 +2845,9 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
                   // Фото если есть
                   if (foundAnswer.photoUrl != null && foundAnswer.photoUrl!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                       child: AppCachedImage(
                         imageUrl: foundAnswer.photoUrl!,
                         height: 150,
@@ -2860,8 +2864,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     ),
                   ],
                 ] else
-                  const Padding(
-                    padding: EdgeInsets.all(8.0),
+                  Padding(
+                    padding: EdgeInsets.all(8.0.w),
                     child: Text('Данные не найдены', style: TextStyle(color: Colors.grey)),
                   ),
               ],
@@ -2870,7 +2874,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Закрыть'),
+              child: Text('Закрыть'),
             ),
           ],
         ),
@@ -2887,17 +2891,17 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Построить строку деталей
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          const SizedBox(width: 8),
+          Text(label, style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+          SizedBox(width: 8),
           Flexible(
             child: Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
               textAlign: TextAlign.right,
             ),
           ),
@@ -2937,14 +2941,14 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 20.sp,
             fontWeight: FontWeight.bold,
             color: color,
           ),
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
         ),
       ],
     );
@@ -2955,18 +2959,18 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
           decoration: BoxDecoration(
             color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.r),
           ),
           child: Text(
             symbol,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11.sp),
           ),
         ),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5))),
+        SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.5))),
       ],
     );
   }

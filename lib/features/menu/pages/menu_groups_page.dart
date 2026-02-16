@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'menu_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница категорий меню в минималистичном стиле
 class MenuGroupsPage extends StatelessWidget {
@@ -7,9 +8,9 @@ class MenuGroupsPage extends StatelessWidget {
   final String? selectedShop;
 
   // Минималистичная палитра
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
 
   const MenuGroupsPage({
     super.key,
@@ -110,7 +111,7 @@ class MenuGroupsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -124,7 +125,7 @@ class MenuGroupsPage extends StatelessWidget {
               _buildAppBar(context),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
                   itemCount: groups.length,
                   itemBuilder: (context, index) {
                     final category = groups[index];
@@ -141,7 +142,7 @@ class MenuGroupsPage extends StatelessWidget {
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 24.w, 16.h),
       child: Row(
         children: [
           IconButton(
@@ -152,19 +153,19 @@ class MenuGroupsPage extends StatelessWidget {
               size: 22,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Меню',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(width: 48),
         ],
       ),
     );
@@ -174,10 +175,10 @@ class MenuGroupsPage extends StatelessWidget {
     final icon = getCategoryIcon(category);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12.h),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: () {
             Navigator.push(
@@ -190,13 +191,13 @@ class MenuGroupsPage extends StatelessWidget {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           splashColor: Colors.white.withOpacity(0.1),
           highlightColor: Colors.white.withOpacity(0.05),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.15)),
             ),
             child: Row(
@@ -206,7 +207,7 @@ class MenuGroupsPage extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     color: Colors.white.withOpacity(0.1),
                   ),
                   child: Icon(
@@ -215,7 +216,7 @@ class MenuGroupsPage extends StatelessWidget {
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
 
                 // Название категории
                 Expanded(
@@ -223,7 +224,7 @@ class MenuGroupsPage extends StatelessWidget {
                     category,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w400,
                     ),
                     maxLines: 2,

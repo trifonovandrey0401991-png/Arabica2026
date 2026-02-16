@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/network_message_model.dart';
 import '../services/network_message_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница диалога "Сообщение от Всей Сети"
 class NetworkDialogPage extends StatefulWidget {
@@ -64,7 +65,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
         if (_scrollController.hasClients && _messages.isNotEmpty) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
         }
@@ -104,7 +105,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
         }
@@ -112,7 +113,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка отправки'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка отправки'), backgroundColor: Colors.red),
         );
       }
     }
@@ -145,28 +146,28 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
         margin: EdgeInsets.only(
           left: isFromAdmin ? 8 : 48,
           right: isFromAdmin ? 48 : 8,
-          bottom: 8,
+          bottom: 8.h,
         ),
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
-          color: isFromAdmin ? Colors.grey[200] : const Color(0xFF004D40),
-          borderRadius: BorderRadius.circular(16),
+          color: isFromAdmin ? Colors.grey[200] : Color(0xFF004D40),
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (isFromAdmin)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(bottom: 4.h),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.language, size: 14, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       'Сообщение от Всей Сети',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.grey[600],
                         fontWeight: FontWeight.bold,
                       ),
@@ -182,14 +183,14 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
                 ),
               ),
             if (message.imageUrl != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               MediaMessageWidget(mediaUrl: message.imageUrl, maxHeight: 200),
             ],
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               _formatTimestamp(message.timestamp),
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 10.sp,
                 color: isFromAdmin ? Colors.grey : Colors.white70,
               ),
             ),
@@ -205,15 +206,15 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.language, size: 24),
-            const SizedBox(width: 8),
-            const Text('Сообщение от Всей Сети'),
+            Icon(Icons.language, size: 24),
+            SizedBox(width: 8),
+            Text('Сообщение от Всей Сети'),
           ],
         ),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: Color(0xFF004D40),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadMessages,
           ),
         ],
@@ -222,37 +223,37 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
         children: [
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               'Нет сообщений',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 18),
+                              style: TextStyle(color: Colors.grey[600], fontSize: 18.sp),
                             ),
                           ],
                         ),
                       )
                     : ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) => _buildMessage(_messages[index]),
                       ),
           ),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
                   blurRadius: 4,
-                  offset: const Offset(0, -2),
+                  offset: Offset(0, -2),
                 ),
               ],
             ),
@@ -264,27 +265,27 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
                     decoration: InputDecoration(
                       hintText: 'Написать ответ...',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(24.r),
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
                       fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                     ),
                     maxLines: 3,
                     minLines: 1,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 IconButton(
                   onPressed: _isSending ? null : _sendMessage,
                   icon: _isSending
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.send, color: Color(0xFF004D40)),
+                      : Icon(Icons.send, color: Color(0xFF004D40)),
                 ),
               ],
             ),

@@ -8,6 +8,7 @@ import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../recount/services/recount_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../../core/utils/logger.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора типа РКО
 class RKOTypeSelectionPage extends StatefulWidget {
@@ -18,7 +19,7 @@ class RKOTypeSelectionPage extends StatefulWidget {
 }
 
 class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
-  static const _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = Color(0xFF004D40);
 
   List<Shop> _shops = [];
   String? _employeeName;
@@ -71,7 +72,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
   Future<void> _openShopSelectionForShift() async {
     if (_shops.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Загрузка списка магазинов...'),
           backgroundColor: Colors.orange,
         ),
@@ -110,7 +111,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('РКО'),
+        title: Text('РКО'),
         backgroundColor: _primaryColor,
         elevation: 0,
       ),
@@ -127,16 +128,16 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: Column(
               children: [
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 // Заголовок
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: Column(
                     children: [
@@ -145,36 +146,36 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                         height: 70,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(20.r),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.receipt_long_rounded,
                           size: 36,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
+                      SizedBox(height: 16),
+                      Text(
                         'Расходный кассовый ордер',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Выберите тип выплаты',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 15.sp,
                           color: Colors.white.withOpacity(0.8),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
                 // Карточка "ЗП после смены"
                 _buildTypeCard(
                   context: context,
@@ -185,7 +186,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                   description: 'Оформить РКО на зарплату сотруднику после завершения рабочей смены',
                   onTap: _openShopSelectionForShift,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 // Карточка "ЗП за месяц"
                 _buildTypeCard(
                   context: context,
@@ -198,20 +199,20 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const RKOAmountInputPage(
+                        builder: (context) => RKOAmountInputPage(
                           rkoType: 'ЗП за месяц',
                         ),
                       ),
                     );
                   },
                 ),
-                const Spacer(),
+                Spacer(),
                 // Подсказка внизу
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                   child: Row(
                     children: [
@@ -220,12 +221,12 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                         color: Colors.white.withOpacity(0.7),
                         size: 22,
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'После оформления РКО будет сформирован PDF документ',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.white.withOpacity(0.7),
                           ),
                         ),
@@ -233,7 +234,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
               ],
             ),
           ),
@@ -254,12 +255,12 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 12,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -267,9 +268,9 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             child: Row(
               children: [
                 // Иконка
@@ -278,7 +279,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                   height: 64,
                   decoration: BoxDecoration(
                     color: iconColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16.r),
                   ),
                   child: Icon(
                     icon,
@@ -286,7 +287,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                     color: iconColor,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 // Текст
                 Expanded(
                   child: Column(
@@ -294,26 +295,26 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2D2D2D),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
                           color: iconColor,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         description,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.grey[600],
                         ),
                         maxLines: 2,
@@ -322,14 +323,14 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Стрелка
                 Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
@@ -352,7 +353,7 @@ class _RKOShopSelectionPage extends StatefulWidget {
   final Color primaryColor;
   final String? employeeName;
 
-  const _RKOShopSelectionPage({
+  _RKOShopSelectionPage({
     required this.shops,
     required this.primaryColor,
     this.employeeName,
@@ -370,7 +371,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
     if (widget.employeeName == null) return [];
 
     final now = DateTime.now();
-    final yesterday = now.subtract(const Duration(hours: 24));
+    final yesterday = now.subtract(Duration(hours: 24));
     final activities = <_ActivityRecord>[];
 
     try {
@@ -449,8 +450,8 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            const SizedBox(width: 12),
-            const Text('Внимание'),
+            SizedBox(width: 12),
+            Text('Внимание'),
           ],
         ),
         content: SingleChildScrollView(
@@ -458,19 +459,19 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Вы уверены что ваш выбор правильный?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
               ),
-              const SizedBox(height: 16),
-              const Text('За последние 24 часа у вас была активность на другом магазине:'),
-              const SizedBox(height: 12),
+              SizedBox(height: 16),
+              Text('За последние 24 часа у вас была активность на другом магазине:'),
+              SizedBox(height: 12),
               ...shopActivities.entries.map((entry) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
+                margin: EdgeInsets.only(bottom: 8.h),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: Colors.orange.withOpacity(0.3)),
                 ),
                 child: Column(
@@ -479,7 +480,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                     Row(
                       children: [
                         Icon(Icons.store, size: 18, color: Colors.orange[700]),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             entry.key,
@@ -488,12 +489,12 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     ...entry.value.map((a) => Padding(
-                      padding: const EdgeInsets.only(left: 26),
+                      padding: EdgeInsets.only(left: 26.w),
                       child: Text(
                         '• ${a.type}',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        style: TextStyle(fontSize: 13.sp, color: Colors.grey[700]),
                       ),
                     )),
                   ],
@@ -505,12 +506,12 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
+            child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: widget.primaryColor),
-            child: const Text('Да, продолжить', style: TextStyle(color: Colors.white)),
+            child: Text('Да, продолжить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -538,7 +539,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('РКО'),
+        title: Text('РКО'),
         backgroundColor: widget.primaryColor,
         elevation: 0,
       ),
@@ -560,12 +561,12 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Заголовок
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
                     child: Text(
                       'Выберите магазин:',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -575,7 +576,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                   // Список магазинов
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
                       itemCount: widget.shops.length,
                       itemBuilder: (context, index) {
                         final shop = widget.shops[index];
@@ -591,7 +592,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
           if (_isValidating)
             Container(
               color: Colors.black.withOpacity(0.3),
-              child: const Center(
+              child: Center(
                 child: CircularProgressIndicator(color: Colors.white),
               ),
             ),
@@ -602,10 +603,10 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
 
   Widget _buildShopCard(Shop shop) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: widget.primaryColor.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.3),
           width: 1.5,
@@ -615,9 +616,9 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: _isValidating ? null : () => _onShopTap(shop),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
                 // Иконка магазина
@@ -626,21 +627,21 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                   height: 56,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.storefront_rounded,
                     color: Colors.white,
                     size: 28,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Название магазина
                 Expanded(
                   child: Text(
                     shop.address,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
@@ -648,7 +649,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 // Стрелка
                 Icon(
                   Icons.chevron_right_rounded,

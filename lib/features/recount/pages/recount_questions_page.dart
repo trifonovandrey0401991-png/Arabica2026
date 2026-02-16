@@ -14,10 +14,13 @@ import '../models/recount_answer_model.dart';
 import '../models/recount_report_model.dart';
 import '../services/recount_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import '../models/recount_settings_model.dart';
 import '../services/recount_points_service.dart';
 import '../services/recount_question_service.dart';
 import '../../shops/services/shop_service.dart';
 import '../../ai_training/services/cigarette_vision_service.dart';
+import '../../coffee_machine/widgets/counter_region_selector.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница с вопросами пересчета
 class RecountQuestionsPage extends StatefulWidget {
@@ -38,11 +41,11 @@ class RecountQuestionsPage extends StatefulWidget {
 
 class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   // Dark emerald palette (единый стиль приложения)
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-  static const Color _goldLight = Color(0xFFE8C860);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
+  static final Color _goldLight = Color(0xFFE8C860);
 
   List<RecountQuestion>? _selectedQuestions; // 30 выбранных вопросов
   Set<int> _photoRequiredIndices = {}; // Индексы вопросов, для которых требуется фото
@@ -59,7 +62,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   DateTime? _startedAt;
   DateTime? _completedAt;
   bool _answerSaved = false; // Флаг, что ответ сохранен и заблокирован для изменения
-  int _photoAttempts = 0; // Счётчик попыток фото для текущего вопроса (для кнопки "ИИ ошибся")
+  bool _isModelTrained = false; // Обучена ли модель ИИ
+  Map<String, double>? _selectedRegion; // Выделенная область для текущего вопроса
 
   @override
   void initState() {
@@ -70,6 +74,40 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
   Future<void> _loadQuestions() async {
     try {
+      // СНАЧАЛА загружаем настройки (лёгкий запрос) — до тяжёлых запросов товаров
+      int requiredPhotos = 3;
+      int questionsCount = 30;
+
+      RecountSettings? settings;
+      for (int attempt = 0; attempt < 2; attempt++) {
+        try {
+          settings = await RecountPointsService.getSettings();
+          questionsCount = settings.questionsCount;
+          Logger.debug('📦 [RECOUNT] Настройки загружены: questionsCount=$questionsCount');
+          break;
+        } catch (e) {
+          if (attempt == 0) {
+            Logger.warning('Ошибка загрузки настроек (попытка 1), повтор...');
+            await Future.delayed(Duration(seconds: 1));
+          } else {
+            Logger.warning('Ошибка загрузки настроек (попытка 2), дефолт: $questionsCount');
+          }
+        }
+      }
+
+      // Загружаем баллы сотрудника для расчёта кол-ва фото
+      if (settings != null && widget.employeePhone != null && widget.employeePhone!.isNotEmpty) {
+        try {
+          final points = await RecountPointsService.getPointsByPhone(widget.employeePhone!);
+          if (points != null) {
+            requiredPhotos = settings.calculateRequiredPhotos(points.points);
+            Logger.debug('Баллы сотрудника: ${points.points}, требуется фото: $requiredPhotos, вопросов: $questionsCount');
+          }
+        } catch (e) {
+          Logger.warning('Ошибка загрузки баллов сотрудника: $e');
+        }
+      }
+
       // Пытаемся найти магазин по адресу и загрузить с остатками из DBF
       List<RecountQuestion> allQuestions;
 
@@ -86,14 +124,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
         if (hasProducts) {
           Logger.debug('📦 [RECOUNT] Загружаем товары из DBF каталога магазина...');
-          // Используем товары напрямую из DBF (реальные баркоды, названия, остатки)
-          // onlyWithStock: true - показываем только товары с остатком > 0
           allQuestions = await RecountQuestionService.getQuestionsFromShopProducts(
             shopId: shopId,
             onlyWithStock: true,
           );
 
-          // Статистика по остаткам
           final withStock = allQuestions.where((q) => q.stock > 0).length;
           Logger.debug('📦 [RECOUNT] Загружено из DBF: ${allQuestions.length} товаров, с остатком > 0: $withStock');
         } else {
@@ -106,33 +141,6 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       }
 
       Logger.debug('📦 [RECOUNT] ========================================');
-
-      // Получаем настройки для определения кол-ва вопросов и фото
-      int requiredPhotos = 3; // По умолчанию
-      int questionsCount = 30; // По умолчанию
-
-      if (widget.employeePhone != null && widget.employeePhone!.isNotEmpty) {
-        try {
-          final settings = await RecountPointsService.getSettings();
-          questionsCount = settings.questionsCount;
-          final points = await RecountPointsService.getPointsByPhone(widget.employeePhone!);
-
-          if (points != null) {
-            requiredPhotos = settings.calculateRequiredPhotos(points.points);
-            Logger.debug('Баллы сотрудника: ${points.points}, требуется фото: $requiredPhotos, вопросов: $questionsCount');
-          }
-        } catch (e) {
-          Logger.warning('Ошибка загрузки настроек, используем значения по умолчанию: $e');
-        }
-      } else {
-        // Если нет телефона, всё равно загружаем настройки для кол-ва вопросов
-        try {
-          final settings = await RecountPointsService.getSettings();
-          questionsCount = settings.questionsCount;
-        } catch (e) {
-          Logger.warning('Ошибка загрузки настроек: $e');
-        }
-      }
 
       // Выбираем вопросы по алгоритму с учетом настройки
       Logger.debug('📦 [RECOUNT] Вызов selectQuestions с totalCount=$questionsCount, всего вопросов: ${allQuestions.length}');
@@ -154,6 +162,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       while (photoIndices.length < maxPhotos) {
         photoIndices.add(random.nextInt(selectedQuestions.length));
       }
+
+      // Проверяем обучена ли модель ИИ (не блокируем загрузку)
+      CigaretteVisionService.isModelTrained().then((trained) {
+        if (mounted) setState(() => _isModelTrained = trained);
+      });
 
       setState(() {
         _selectedQuestions = selectedQuestions;
@@ -233,16 +246,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           // Проверяем товар с помощью ИИ сразу после фото
           final question = _selectedQuestions![_currentQuestionIndex];
           if (question.isAiActive) {
-            final needRetake = await _verifyWithAI(_currentQuestionIndex);
-            if (needRetake && mounted) {
-              // Пользователь выбрал "Повторное фото" - очищаем и открываем камеру снова
-              setState(() {
-                _photoPath = null;
-              });
-              _answers[_currentQuestionIndex] = answer.copyWith(photoPath: null);
-              // Рекурсивно вызываем для повторного фото
-              await _takePhoto();
-            }
+            await _verifyWithAI(_currentQuestionIndex);
           }
         }
       }
@@ -306,61 +310,55 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     });
   }
 
-  /// Проверка ответа с помощью ИИ
-  /// Возвращает true если нужно сделать повторное фото
-  Future<bool> _verifyWithAI(int questionIndex) async {
-    if (_selectedQuestions == null || questionIndex >= _selectedQuestions!.length) return false;
+  /// Новый интерактивный поток проверки с ИИ (по паттерну кофемашины)
+  /// Фото → ИИ → "Верно?" → (Обвести область) → Повторный ИИ → Подтвердить/Ввести вручную
+  Future<void> _verifyWithAI(int questionIndex) async {
+    if (_selectedQuestions == null || questionIndex >= _selectedQuestions!.length) return;
 
     final question = _selectedQuestions![questionIndex];
     final answer = _answers[questionIndex];
 
-    // Проверяем что товар активен для ИИ и есть фото
     if (!question.isAiActive || answer.photoPath == null) {
       Logger.debug('ИИ проверка пропущена: isAiActive=${question.isAiActive}, hasPhoto=${answer.photoPath != null}');
-      return false;
+      return;
     }
 
-    // Проверяем не отключен ли ИИ для этого товара (после многих ошибок)
+    // Проверяем не отключен ли ИИ для этого товара
     final isAiDisabled = await CigaretteVisionService.isProductAiDisabled(question.barcode);
     if (isAiDisabled) {
-      Logger.warning('ИИ отключен для товара ${question.barcode} (слишком много ошибок)');
+      Logger.warning('ИИ отключен для товара ${question.barcode}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.warning_amber, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
+                Icon(Icons.warning_amber, color: Colors.white, size: 20),
+                SizedBox(width: 8),
                 Flexible(child: Text('ИИ отключен для "${question.productName}" (требуется переобучение)')),
               ],
             ),
             backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
       }
-      return false;
+      return;
     }
 
-    setState(() {
-      _isVerifyingAI = true;
-    });
+    setState(() => _isVerifyingAI = true);
 
     try {
-      // Загружаем фото
+      // Читаем фото
       Uint8List imageBytes;
       if (kIsWeb) {
-        // Для веба - декодируем base64
         final base64Data = answer.photoPath!.split(',').last;
         imageBytes = base64Decode(base64Data);
       } else {
-        // Для мобильных - читаем файл
         imageBytes = await File(answer.photoPath!).readAsBytes();
       }
 
-      // Отправляем на ИИ (с сохранением в counting датасет для дообучения)
-      // isAiActive=true сохраняет фото для обучения независимо от результата детекции
-      Logger.info('🤖 Отправка фото на ИИ проверку для товара: ${question.productName}');
+      // Первый вызов ИИ (без региона)
+      Logger.info('🤖 Отправка фото на ИИ для товара: ${question.productName}');
       final result = await CigaretteVisionService.detectAndCountWithTraining(
         imageBytes: imageBytes,
         productId: question.barcode,
@@ -369,289 +367,454 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         isAiActive: question.isAiActive,
       );
 
-      if (!mounted) return false;
+      if (!mounted) return;
 
-      if (result.success) {
-        // Сравниваем с остатком из DBF (или введённым вручную)
-        final expectedCount = question.stock; // Остаток по программе (DBF)
+      if (result.success && result.count > 0) {
+        // ИИ успешно — показываем диалог "ИИ насчитал X. Верно?"
         final aiCount = result.count;
-        final mismatchThreshold = 2; // Порог расхождения
-        final mismatch = (expectedCount - aiCount).abs() > mismatchThreshold;
+        Logger.info('🤖 ИИ насчитал: $aiCount');
 
-        Logger.info('🤖 ИИ насчитал: $aiCount, по программе (DBF): $expectedCount, расхождение: $mismatch');
-
-        // Обновляем ответ с данными ИИ
         _answers[questionIndex] = answer.copyWith(
           aiVerified: true,
           aiQuantity: aiCount,
           aiConfidence: result.confidence,
-          aiMismatch: mismatch,
           aiAnnotatedImageUrl: result.annotatedImageUrl,
         );
 
-        // Показываем результат
-        if (mismatch) {
-          // Увеличиваем счётчик попыток фото
-          _photoAttempts++;
-
-          // Показываем диалог с выбором: повторное фото, далее или "ИИ ошибся" (после 3 попыток)
-          final dialogResult = await _showAIMismatchDialog(
-            expectedCount: expectedCount,
-            aiCount: aiCount,
-            question: question,
-            imageBytes: imageBytes,
-            showReportButton: _photoAttempts >= 3, // Кнопка появляется после 3 попыток
-          );
-          return dialogResult == 'retake';
-        } else {
-          // Если расхождения нет - показываем короткое сообщение
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.smart_toy, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text('✓ ИИ подтвердил: $aiCount шт (совпадает с программой)'),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        await _showAiResultDialog(
+          questionIndex: questionIndex,
+          aiCount: aiCount,
+          question: question,
+          imageBytes: imageBytes,
+        );
       } else {
-        Logger.warning('Ошибка ИИ проверки: ${result.error}');
-        // Помечаем что ИИ не смог проверить
-        _answers[questionIndex] = answer.copyWith(
-          aiVerified: false,
+        // ИИ не смог — "Перефотографировать" / "Обвести товар"
+        Logger.warning('ИИ не смог определить количество: ${result.error}');
+        _answers[questionIndex] = answer.copyWith(aiVerified: false);
+        await _showAiFailedDialog(
+          questionIndex: questionIndex,
+          question: question,
+          imageBytes: imageBytes,
         );
       }
     } catch (e) {
       Logger.error('Ошибка ИИ проверки', e);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isVerifyingAI = false;
-        });
-      }
+      if (mounted) setState(() => _isVerifyingAI = false);
     }
-    return false;
   }
 
-  /// Показать диалог о расхождении с ИИ
-  /// Возвращает: 'retake' - повторное фото, 'continue' - продолжить, 'error_reported' - ИИ ошибся
-  /// [showReportButton] - показывать кнопку "ИИ ошибся" (появляется после 3 попыток)
-  Future<String> _showAIMismatchDialog({
-    required int expectedCount,
+  /// Диалог "ИИ насчитал X шт. Верно?"
+  Future<void> _showAiResultDialog({
+    required int questionIndex,
     required int aiCount,
     required RecountQuestion question,
     required Uint8List imageBytes,
-    bool showReportButton = false,
   }) async {
     final result = await showDialog<String>(
       context: context,
-      barrierDismissible: false, // Нельзя закрыть тапом вне диалога
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
-            Icon(Icons.warning_amber, color: Colors.orange, size: 28),
-            const SizedBox(width: 8),
-            const Flexible(child: Text('Расхождение')),
+            Icon(Icons.smart_toy, color: _gold, size: 28),
+            SizedBox(width: 8),
+            Flexible(child: Text('Результат ИИ', style: TextStyle(color: Colors.white))),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Что показывает программа (DBF)
             Container(
-              padding: const EdgeInsets.all(12),
+              width: double.infinity,
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: const Color(0xFF004D40).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.blue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  const Icon(Icons.inventory_2, size: 20, color: Color(0xFF004D40)),
-                  const SizedBox(width: 8),
                   Text(
-                    'По программе: $expectedCount шт',
-                    style: const TextStyle(fontSize: 16),
+                    '$aiCount шт.',
+                    style: TextStyle(fontSize: 32.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'ИИ насчитал',
+                    style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.6)),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            // Что насчитал ИИ
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.smart_toy, size: 20, color: Colors.blue),
-                  const SizedBox(width: 8),
-                  Text(
-                    'ИИ насчитал: $aiCount шт',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Подсказка в зависимости от количества попыток
+            SizedBox(height: 16),
             Text(
-              showReportButton
-                  ? 'Попытка $_photoAttempts. Если ИИ постоянно ошибается - нажмите "ИИ ошибся".'
-                  : 'Попытка $_photoAttempts из 3. Попробуйте сделать более чёткое фото.',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              'Количество верное?',
+              style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.9)),
             ),
           ],
         ),
-        actionsAlignment: MainAxisAlignment.spaceBetween,
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
-          // Кнопка "ИИ ошибся" - появляется только после 3 попыток
-          if (showReportButton)
-            TextButton.icon(
-              onPressed: () async {
-                // Закрываем диалог и отправляем отчёт об ошибке
-                Navigator.pop(ctx, 'error_reported');
-              },
-              icon: const Icon(Icons.report_problem, size: 18, color: Colors.red),
-              label: const Text('ИИ ошибся', style: TextStyle(color: Colors.red)),
-            )
-          else
-            const SizedBox.shrink(), // Пустой виджет если кнопка не показывается
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Кнопка "Далее" - продолжить без повторного фото
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, 'continue'),
-                child: const Text('Далее'),
-              ),
-              const SizedBox(width: 8),
-              // Кнопка "Повторное фото"
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(ctx, 'retake'),
-                icon: const Icon(Icons.camera_alt, size: 18),
-                label: const Text('Повторить'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                ),
-              ),
-            ],
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'wrong'),
+            icon: Icon(Icons.close, color: Colors.red[300], size: 18),
+            label: Text('Неверно', style: TextStyle(color: Colors.red[300])),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'correct'),
+            icon: Icon(Icons.check, size: 18),
+            label: Text('Верно'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
           ),
         ],
       ),
     );
 
-    // Обработка "ИИ ошибся"
-    if (result == 'error_reported') {
-      await _reportAiError(
+    if (!mounted) return;
+
+    if (result == 'correct') {
+      // Сотрудник подтвердил — сохраняем employeeConfirmedQuantity
+      _answers[questionIndex] = _answers[questionIndex].copyWith(
+        employeeConfirmedQuantity: aiCount,
+        aiMismatch: false,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Подтверждено: $aiCount шт.'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      // Неверно → предлагаем обвести область или ввести вручную
+      await _openRegionAndRetry(
+        questionIndex: questionIndex,
         question: question,
-        expectedCount: expectedCount,
-        aiCount: aiCount,
         imageBytes: imageBytes,
       );
-      return 'continue'; // После отчёта продолжаем
     }
-
-    return result ?? 'continue';
   }
 
-  /// Отправить отчёт об ошибке ИИ
-  Future<void> _reportAiError({
+  /// Диалог "ИИ не смог определить"
+  Future<void> _showAiFailedDialog({
+    required int questionIndex,
     required RecountQuestion question,
-    required int expectedCount,
-    required int aiCount,
     required Uint8List imageBytes,
   }) async {
-    // Показываем индикатор загрузки
-    showDialog(
+    final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Row(
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Отправка отчёта...'),
+            Icon(Icons.smart_toy_outlined, color: Colors.orange, size: 28),
+            SizedBox(width: 8),
+            Flexible(child: Text('ИИ не смог определить', style: TextStyle(color: Colors.white))),
           ],
         ),
+        content: Text(
+          'Попробуйте обвести товар на фото или сделать новое фото.',
+          style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.8)),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'retake'),
+            icon: Icon(Icons.camera_alt, color: Colors.white70, size: 18),
+            label: Text('Перефотографировать', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'region'),
+            icon: Icon(Icons.crop, size: 18),
+            label: Text('Обвести товар'),
+            style: ElevatedButton.styleFrom(backgroundColor: _gold),
+          ),
+        ],
       ),
     );
 
+    if (!mounted) return;
+
+    if (result == 'retake') {
+      // Перефото — очищаем и открываем камеру
+      setState(() => _photoPath = null);
+      _answers[questionIndex] = _answers[questionIndex].copyWith(photoPath: null);
+      await _takePhoto();
+    } else if (result == 'region') {
+      await _openRegionAndRetry(
+        questionIndex: questionIndex,
+        question: question,
+        imageBytes: imageBytes,
+      );
+    }
+  }
+
+  /// Открыть CounterRegionSelector → повторный ИИ с регионом → подтвердить/ввести вручную
+  Future<void> _openRegionAndRetry({
+    required int questionIndex,
+    required RecountQuestion question,
+    required Uint8List imageBytes,
+  }) async {
+    final answer = _answers[questionIndex];
+    if (answer.photoPath == null) return;
+
+    // Открываем выбор области
+    final region = await CounterRegionSelector.show(
+      context,
+      imageFile: File(answer.photoPath!),
+      initialRegion: _selectedRegion,
+    );
+
+    if (region == null || !mounted) return;
+
+    // Сохраняем выбранную область
+    setState(() => _selectedRegion = region);
+    _answers[questionIndex] = _answers[questionIndex].copyWith(selectedRegion: region);
+
+    // Повторный ИИ с регионом
+    setState(() => _isVerifyingAI = true);
     try {
-      final report = await CigaretteVisionService.reportAiError(
+      Logger.info('🤖 Повторная проверка ИИ с регионом для: ${question.productName}');
+      final result = await CigaretteVisionService.detectAndCountWithTraining(
+        imageBytes: imageBytes,
         productId: question.barcode,
         productName: question.productName,
-        expectedCount: expectedCount,
-        aiCount: aiCount,
-        imageBytes: imageBytes,
         shopAddress: widget.shopAddress,
-        employeeName: widget.employeeName,
+        isAiActive: question.isAiActive,
+        selectedRegion: region,
       );
-
-      // Закрываем индикатор
-      if (mounted) Navigator.pop(context);
 
       if (!mounted) return;
 
-      if (report.success) {
-        // Показываем результат
-        String message;
-        Color backgroundColor;
+      if (result.success && result.count > 0) {
+        final aiCount = result.count;
+        Logger.info('🤖 Повторный ИИ с регионом: $aiCount');
 
-        if (report.isDisabled) {
-          message = 'ИИ отключен для "${question.productName}" (${report.consecutiveErrors}/${report.threshold} ошибок)';
-          backgroundColor = Colors.red;
-        } else {
-          message = 'Отчёт отправлен (${report.consecutiveErrors}/${report.threshold})';
-          backgroundColor = Colors.green;
-        }
+        _answers[questionIndex] = _answers[questionIndex].copyWith(
+          aiVerified: true,
+          aiQuantity: aiCount,
+          aiConfidence: result.confidence,
+          aiAnnotatedImageUrl: result.annotatedImageUrl,
+        );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(
-                  report.isDisabled ? Icons.warning : Icons.check_circle,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Flexible(child: Text(message)),
-              ],
-            ),
-            backgroundColor: backgroundColor,
-            duration: const Duration(seconds: 3),
-          ),
+        // Показываем повторный результат с возможностью ввести вручную
+        await _showRetryResultDialog(
+          questionIndex: questionIndex,
+          aiCount: aiCount,
+          question: question,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка отправки: ${report.error}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // ИИ снова не смог — ручной ввод
+        Logger.warning('Повторный ИИ не смог определить');
+        await _promptManualQuantity(questionIndex: questionIndex, question: question);
       }
     } catch (e) {
-      // Закрываем индикатор
-      if (mounted) Navigator.pop(context);
+      Logger.error('Ошибка повторной ИИ проверки', e);
+      await _promptManualQuantity(questionIndex: questionIndex, question: question);
+    } finally {
+      if (mounted) setState(() => _isVerifyingAI = false);
+    }
+  }
 
-      Logger.error('Ошибка отправки отчёта об ошибке ИИ', e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+  /// Диалог повторного результата после региона: "ИИ насчитал Y. Верно?" + "Ввести вручную"
+  Future<void> _showRetryResultDialog({
+    required int questionIndex,
+    required int aiCount,
+    required RecountQuestion question,
+  }) async {
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Row(
+          children: [
+            Icon(Icons.smart_toy, color: _gold, size: 28),
+            SizedBox(width: 8),
+            Flexible(child: Text('Повторный результат', style: TextStyle(color: Colors.white))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '$aiCount шт.',
+                    style: TextStyle(fontSize: 32.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'ИИ насчитал (с выделенной областью)',
+                    style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6)),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Количество верное?',
+              style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.9)),
+            ),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'manual'),
+            child: Text('Ввести вручную', style: TextStyle(color: Colors.orange[300])),
           ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'correct'),
+            icon: Icon(Icons.check, size: 18),
+            label: Text('Верно'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result == 'correct') {
+      _answers[questionIndex] = _answers[questionIndex].copyWith(
+        employeeConfirmedQuantity: aiCount,
+        aiMismatch: false,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Подтверждено: $aiCount шт.'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      await _promptManualQuantity(questionIndex: questionIndex, question: question);
+    }
+  }
+
+  /// Диалог ручного ввода количества
+  Future<void> _promptManualQuantity({
+    required int questionIndex,
+    required RecountQuestion question,
+  }) async {
+    final controller = TextEditingController();
+    final result = await showDialog<int?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text('Введите количество', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              question.productName,
+              style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.7)),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              style: TextStyle(color: Colors.white, fontSize: 24.sp),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                hintText: '0',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.08),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: _gold.withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: _gold),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: Text('Пропустить', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text.trim());
+              Navigator.pop(ctx, value);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: _gold),
+            child: Text('Подтвердить'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result != null) {
+      _answers[questionIndex] = _answers[questionIndex].copyWith(
+        employeeConfirmedQuantity: result,
+        aiMismatch: true,
+      );
+      // Отправляем employeeAnswer на сервер для pending sample
+      try {
+        await CigaretteVisionService.detectAndCountWithTraining(
+          imageBytes: await File(_answers[questionIndex].photoPath!).readAsBytes(),
+          productId: question.barcode,
+          productName: question.productName,
+          shopAddress: widget.shopAddress,
+          isAiActive: question.isAiActive,
+          employeeAnswer: result,
+          selectedRegion: _selectedRegion,
         );
-      }
+      } catch (_) {}
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.edit, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Записано: $result шт.'),
+            ],
+          ),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -703,7 +866,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     if (!_answerSaved) {
       if (!_canProceed()) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Пожалуйста, заполните все поля'),
             backgroundColor: Colors.orange,
           ),
@@ -716,7 +879,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       final isPhotoRequired = _photoRequiredIndices.contains(_currentQuestionIndex);
       if (isPhotoRequired) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Пожалуйста, сделайте фото для подтверждения'),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 3),
@@ -728,7 +891,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       // Ответ сохранен, проверяем фото (если требуется)
       if (!_canProceed()) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Пожалуйста, сделайте фото для подтверждения'),
             backgroundColor: Colors.orange,
           ),
@@ -754,7 +917,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         _lessByController.clear();
         _photoPath = null;
         _answerSaved = false; // Сбрасываем флаг для нового вопроса
-        _photoAttempts = 0; // Сбрасываем счётчик попыток для нового вопроса
+        _selectedRegion = null; // Сбрасываем регион для нового вопроса
 
         // Загружаем сохраненный ответ, если есть
         if (_currentQuestionIndex < _answers.length) {
@@ -780,7 +943,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   Future<void> _submitReport() async {
     if (!_canProceed()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Пожалуйста, заполните все поля'),
           backgroundColor: Colors.orange,
         ),
@@ -842,7 +1005,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           );
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Отчет успешно отправлен'),
               backgroundColor: Colors.green,
             ),
@@ -850,7 +1013,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           Navigator.of(context).popUntil((route) => route.isFirst);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка отправки отчета. Попробуйте позже'),
               backgroundColor: Colors.red,
             ),
@@ -878,13 +1041,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
   Widget _buildAppBar(BuildContext context, String title, {String? subtitle}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
       child: Row(
         children: [
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
@@ -892,14 +1055,14 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                Text(title, style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w600)),
                 if (subtitle != null)
-                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp)),
               ],
             ),
           ),
@@ -914,7 +1077,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       return Scaffold(
         backgroundColor: _night,
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -926,7 +1089,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             child: Column(
               children: [
                 _buildAppBar(context, 'Пересчет товаров'),
-                const Expanded(
+                Expanded(
                   child: Center(child: CircularProgressIndicator(color: _gold)),
                 ),
               ],
@@ -940,7 +1103,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       return Scaffold(
         backgroundColor: _night,
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -958,10 +1121,10 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.inventory_2_outlined, size: 64, color: Colors.white.withOpacity(0.3)),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Text(
                           'Вопросы не найдены',
-                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 18),
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 18.sp),
                         ),
                       ],
                     ),
@@ -980,15 +1143,15 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     // Цвета грейда
     final gradeColor = question.grade == 1
-        ? const Color(0xFFEF5350)
+        ? Color(0xFFEF5350)
         : question.grade == 2
             ? Colors.orange
-            : const Color(0xFF42A5F5);
+            : Color(0xFF42A5F5);
 
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -1007,9 +1170,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               ),
               // Прогресс-бар
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(4.r),
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.white.withOpacity(0.1),
@@ -1018,11 +1181,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               // Контент
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 16.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1037,11 +1200,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               _gold.withOpacity(0.04),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(18.r),
                           border: Border.all(color: _gold.withOpacity(0.25)),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(18),
+                          padding: EdgeInsets.all(18.w),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1049,10 +1212,10 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
                                     decoration: BoxDecoration(
                                       color: gradeColor.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10.r),
                                       border: Border.all(color: gradeColor.withOpacity(0.3)),
                                     ),
                                     child: Text(
@@ -1060,51 +1223,68 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       style: TextStyle(
                                         color: gradeColor,
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         letterSpacing: 0.5,
                                       ),
                                     ),
                                   ),
                                   if (question.isAiActive) ...[
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: Colors.blue.withOpacity(0.25)),
+                                        color: _isModelTrained
+                                            ? Colors.green.withOpacity(0.12)
+                                            : Colors.orange.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(10.r),
+                                        border: Border.all(
+                                          color: _isModelTrained
+                                              ? Colors.green.withOpacity(0.25)
+                                              : Colors.orange.withOpacity(0.25),
+                                        ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.smart_toy, size: 12, color: Colors.blue[300]),
-                                          const SizedBox(width: 4),
-                                          Text('AI', style: TextStyle(color: Colors.blue[300], fontSize: 11, fontWeight: FontWeight.w600)),
+                                          Icon(
+                                            _isModelTrained ? Icons.smart_toy : Icons.smart_toy_outlined,
+                                            size: 12,
+                                            color: _isModelTrained ? Colors.green[300] : Colors.orange[300],
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            _isModelTrained ? 'AI проверит' : 'AI не обучен',
+                                            style: TextStyle(
+                                              color: _isModelTrained ? Colors.green[300] : Colors.orange[300],
+                                              fontSize: 11.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                   ],
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               // Остаток из DBF
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
                                 decoration: BoxDecoration(
                                   color: _gold.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14.r),
                                   border: Border.all(color: _gold.withOpacity(0.25)),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.inventory_2_rounded, color: _gold, size: 22),
-                                    const SizedBox(width: 10),
+                                    SizedBox(width: 10),
                                     Text(
                                       'По программе: ${question.stock} шт',
                                       style: TextStyle(
-                                        fontSize: 20,
+                                        fontSize: 20.sp,
                                         fontWeight: FontWeight.w700,
                                         color: _goldLight,
                                       ),
@@ -1112,13 +1292,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               // Название товара + фото / заглушка
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(10.r),
                                     child: question.productPhotoUrl != null
                                         ? AppCachedImage(
                                             imageUrl: question.productPhotoUrl!,
@@ -1131,7 +1311,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                             height: 60,
                                             decoration: BoxDecoration(
                                               color: _gold.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(10),
+                                              borderRadius: BorderRadius.circular(10.r),
                                               border: Border.all(color: _gold.withOpacity(0.2)),
                                             ),
                                             child: Icon(
@@ -1141,12 +1321,12 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                             ),
                                           ),
                                   ),
-                                  const SizedBox(width: 14),
+                                  SizedBox(width: 14),
                                   Expanded(
                                     child: Text(
                                       question.question,
                                       style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 18.sp,
                                         fontWeight: FontWeight.w600,
                                         height: 1.4,
                                         color: Colors.white.withOpacity(0.95),
@@ -1159,29 +1339,29 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Выбор ответа
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(
                                 'Ответ:',
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 15.sp,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white.withOpacity(0.6),
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Row(
                                 children: [
                                   Expanded(
@@ -1189,7 +1369,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       label: 'Сходится',
                                       icon: Icons.check_circle_rounded,
                                       isSelected: _selectedAnswer == 'сходится',
-                                      color: const Color(0xFF4CAF50),
+                                      color: Color(0xFF4CAF50),
                                       onPressed: _answerSaved ? null : () {
                                         setState(() {
                                           _selectedAnswer = 'сходится';
@@ -1197,13 +1377,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       },
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12),
                                   Expanded(
                                     child: _buildAnswerButton(
                                       label: 'Не сходится',
                                       icon: Icons.cancel_rounded,
                                       isSelected: _selectedAnswer == 'не сходится',
-                                      color: const Color(0xFFEF5350),
+                                      color: Color(0xFFEF5350),
                                       onPressed: _answerSaved ? null : () {
                                         setState(() {
                                           _selectedAnswer = 'не сходится';
@@ -1217,25 +1397,25 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       // При "Сходится" - подтверждение
                       if (_selectedAnswer == 'сходится')
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16.w),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.25)),
+                            color: Color(0xFF4CAF50).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(14.r),
+                            border: Border.all(color: Color(0xFF4CAF50).withOpacity(0.25)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 28),
-                              const SizedBox(width: 12),
+                              Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 28),
+                              SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   'Количество ${question.stock} шт подтверждено',
-                                  style: const TextStyle(
-                                    fontSize: 15,
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFF4CAF50),
                                   ),
@@ -1249,30 +1429,30 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(16.r),
                             border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Text(
                                   'Укажите расхождение (заполните ОДНО поле):',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 13.sp,
                                     color: Colors.white.withOpacity(0.5),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 // Поле "Больше на"
                                 _buildDiscrepancyField(
                                   icon: Icons.add_circle_rounded,
-                                  iconColor: const Color(0xFF42A5F5),
+                                  iconColor: Color(0xFF42A5F5),
                                   label: 'Больше на:',
                                   controller: _moreByController,
                                   enabled: !_answerSaved,
-                                  fillColor: const Color(0xFF42A5F5),
+                                  fillColor: Color(0xFF42A5F5),
                                   onChanged: (value) {
                                     if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
                                       _lessByController.clear();
@@ -1280,15 +1460,15 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                     setState(() {});
                                   },
                                 ),
-                                const SizedBox(height: 14),
+                                SizedBox(height: 14),
                                 // Поле "Меньше на"
                                 _buildDiscrepancyField(
                                   icon: Icons.remove_circle_rounded,
-                                  iconColor: const Color(0xFFEF5350),
+                                  iconColor: Color(0xFFEF5350),
                                   label: 'Меньше на:',
                                   controller: _lessByController,
                                   enabled: !_answerSaved,
-                                  fillColor: const Color(0xFFEF5350),
+                                  fillColor: Color(0xFFEF5350),
                                   onChanged: (value) {
                                     if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
                                       _moreByController.clear();
@@ -1298,12 +1478,12 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 ),
                                 // Предпросмотр результата
                                 if (_moreByController.text.isNotEmpty || _lessByController.text.isNotEmpty) ...[
-                                  const SizedBox(height: 14),
+                                  SizedBox(height: 14),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
                                     decoration: BoxDecoration(
                                       color: _gold.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12.r),
                                       border: Border.all(color: _gold.withOpacity(0.25)),
                                     ),
                                     child: Builder(
@@ -1315,11 +1495,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             Icon(Icons.summarize_rounded, size: 18, color: _gold),
-                                            const SizedBox(width: 8),
+                                            SizedBox(width: 8),
                                             Text(
                                               'По факту: $actualBalance шт',
                                               style: TextStyle(
-                                                fontSize: 16,
+                                                fontSize: 16.sp,
                                                 fontWeight: FontWeight.w700,
                                                 color: _goldLight,
                                               ),
@@ -1336,27 +1516,27 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                         ),
                       // Фото (показываем только после сохранения ответа, если требуется)
                       if (_answerSaved && isPhotoRequired) ...[
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.orange.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(16.r),
                             border: Border.all(color: Colors.orange.withOpacity(0.25)),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16.w),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Row(
                                   children: [
                                     Icon(Icons.camera_alt_rounded, color: Colors.orange[300], size: 22),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     Flexible(
                                       child: Text(
                                         'Требуется фото для подтверждения',
                                         style: TextStyle(
-                                          fontSize: 15,
+                                          fontSize: 15.sp,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.orange[300],
                                         ),
@@ -1364,16 +1544,16 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 if (_photoPath != null)
                                   Container(
                                     height: 200,
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12.r),
                                       border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
                                     ),
                                     child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12.r),
                                       child: kIsWeb
                                           ? AppCachedImage(imageUrl: _photoPath!, fit: BoxFit.cover)
                                           : Image.file(File(_photoPath!), fit: BoxFit.cover),
@@ -1382,14 +1562,14 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 else
                                   ElevatedButton.icon(
                                     onPressed: _takePhoto,
-                                    icon: const Icon(Icons.camera_alt_rounded, size: 20),
-                                    label: const Text('Сделать фото', style: TextStyle(fontWeight: FontWeight.w600)),
+                                    icon: Icon(Icons.camera_alt_rounded, size: 20),
+                                    label: Text('Сделать фото', style: TextStyle(fontWeight: FontWeight.w600)),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.orange.withOpacity(0.2),
                                       foregroundColor: Colors.orange[300],
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      padding: EdgeInsets.symmetric(vertical: 14.h),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12.r),
                                         side: BorderSide(color: Colors.orange.withOpacity(0.3)),
                                       ),
                                       elevation: 0,
@@ -1406,7 +1586,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               ),
               // Кнопки навигации
               Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
                 decoration: BoxDecoration(
                   color: _night.withOpacity(0.9),
                   border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
@@ -1417,7 +1597,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
                         child: IconButton(
@@ -1447,7 +1627,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                           icon: Icon(Icons.arrow_back_rounded, color: Colors.white.withOpacity(0.7)),
                         ),
                       ),
-                    if (_currentQuestionIndex > 0) const SizedBox(width: 12),
+                    if (_currentQuestionIndex > 0) SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: (_isSubmitting || _isVerifyingAI) ? null : _nextQuestion,
@@ -1460,9 +1640,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               : _gold,
                           disabledBackgroundColor: Colors.white.withOpacity(0.05),
                           disabledForegroundColor: Colors.white.withOpacity(0.3),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(14.r),
                             side: BorderSide(
                               color: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
                                   ? Colors.orange.withOpacity(0.4)
@@ -1484,8 +1664,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                     ),
                                   ),
                                   if (_isVerifyingAI) ...[
-                                    const SizedBox(width: 10),
-                                    Text('ИИ проверяет...', style: TextStyle(color: _goldLight, fontSize: 14)),
+                                    SizedBox(width: 10),
+                                    Text('ИИ проверяет...', style: TextStyle(color: _goldLight, fontSize: 14.sp)),
                                   ],
                                 ],
                               )
@@ -1497,8 +1677,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                         : _currentQuestionIndex < _selectedQuestions!.length - 1
                                             ? 'Следующий вопрос'
                                             : 'Завершить пересчет',
-                                style: const TextStyle(
-                                  fontSize: 16,
+                                style: TextStyle(
+                                  fontSize: 16.sp,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1525,11 +1705,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     return GestureDetector(
       onTap: onPressed,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 8.w),
         decoration: BoxDecoration(
           color: isSelected ? color.withOpacity(0.15) : Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: isSelected ? color.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
@@ -1538,13 +1718,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         child: Column(
           children: [
             Icon(icon, color: isSelected ? color : Colors.white.withOpacity(0.4), size: 28),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 15.sp,
                   fontWeight: FontWeight.w600,
                   color: isSelected ? color : Colors.white.withOpacity(0.5),
                 ),
@@ -1569,13 +1749,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     return Row(
       children: [
         Icon(icon, color: iconColor, size: 24),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
           flex: 2,
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 15.sp,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.8),
             ),
@@ -1588,29 +1768,29 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             keyboardType: TextInputType.number,
             enabled: enabled,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               hintText: '0',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
               suffixText: 'шт',
               suffixStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: fillColor, width: 2),
               ),
               filled: true,
               fillColor: controller.text.isNotEmpty
                   ? fillColor.withOpacity(0.08)
                   : Colors.white.withOpacity(0.04),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
             ),
             onChanged: onChanged,
           ),

@@ -5,6 +5,7 @@ import '../../shops/services/shop_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../services/store_manager_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка заведующих с привязкой магазинов
 class StoreManagersPage extends StatefulWidget {
@@ -15,10 +16,10 @@ class StoreManagersPage extends StatefulWidget {
 }
 
 class _StoreManagersPageState extends State<StoreManagersPage> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   List<Employee> _managers = [];
   Map<String, StoreManagerInfo> _shopAssignments = {};
@@ -110,7 +111,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Магазины обновлены'),
               backgroundColor: Colors.green,
             ),
@@ -120,7 +121,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Ошибка обновления магазинов'),
               backgroundColor: Colors.red,
             ),
@@ -136,7 +137,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
     return Scaffold(
       backgroundColor: _night,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -149,7 +150,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
             children: [
               // Custom AppBar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -159,19 +160,19 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
                         'Заведующие',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -183,10 +184,10 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                        child: Icon(Icons.refresh, color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -215,22 +216,22 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 64, color: Colors.white.withOpacity(0.3)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             _errorMessage!,
-            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16),
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16.sp),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           GestureDetector(
             onTap: _loadData,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               decoration: BoxDecoration(
                 color: _emerald,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10.r),
               ),
-              child: const Text('Повторить', style: TextStyle(color: Colors.white)),
+              child: Text('Повторить', style: TextStyle(color: Colors.white)),
             ),
           ),
         ],
@@ -252,17 +253,17 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
             ),
             child: Icon(Icons.people_outline, size: 40, color: Colors.white.withOpacity(0.3)),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Нет заведующих',
-            style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5)),
+            style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5)),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
+            padding: EdgeInsets.symmetric(horizontal: 40.w),
             child: Text(
               'Отметьте сотрудников как заведующих в разделе Сотрудники',
-              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.3)),
+              style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.3)),
               textAlign: TextAlign.center,
             ),
           ),
@@ -273,7 +274,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
 
   Widget _buildManagersList() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: _managers.length,
       itemBuilder: (context, index) {
         final employee = _managers[index];
@@ -284,14 +285,14 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
         final hasShops = managedShopIds.isNotEmpty;
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: 12.h),
           child: GestureDetector(
             onTap: () => _openShopAssignment(employee),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Row(
@@ -304,14 +305,14 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                       employee.name.isNotEmpty
                           ? employee.name[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: TextStyle(
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   // Информация
                   Expanded(
                     child: Column(
@@ -320,22 +321,22 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                         Text(
                           employee.name,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w600,
                             color: Colors.white.withOpacity(0.9),
                           ),
                         ),
                         if (phone.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             _formatPhone(phone),
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: Colors.white.withOpacity(0.4),
                             ),
                           ),
                         ],
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         // Привязанные магазины
                         Row(
                           children: [
@@ -344,12 +345,12 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                               size: 14,
                               color: hasShops ? _gold : Colors.white.withOpacity(0.3),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 shopNames,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: hasShops
                                       ? _gold.withOpacity(0.8)
                                       : Colors.white.withOpacity(0.3),
@@ -392,7 +393,7 @@ class _ShopAssignmentDialog extends StatefulWidget {
   final List<Shop> allShops;
   final Set<String> selectedShopIds;
 
-  const _ShopAssignmentDialog({
+  _ShopAssignmentDialog({
     required this.managerName,
     required this.allShops,
     required this.selectedShopIds,
@@ -403,10 +404,10 @@ class _ShopAssignmentDialog extends StatefulWidget {
 }
 
 class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
+  static final Color _emerald = Color(0xFF1A4D4D);
+  static final Color _emeraldDark = Color(0xFF0D2E2E);
+  static final Color _night = Color(0xFF051515);
+  static final Color _gold = Color(0xFFD4AF37);
 
   late Set<String> _selected;
 
@@ -437,7 +438,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: _night,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       child: Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.7,
@@ -448,9 +449,9 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [_emerald, _emeraldDark, _night],
-            stops: const [0.0, 0.3, 1.0],
+            stops: [0.0, 0.3, 1.0],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Column(
@@ -458,30 +459,30 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 children: [
                   Text(
                     'Магазины для',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Colors.white.withOpacity(0.5),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     widget.managerName,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'Выбрано: ${_selected.length} из ${widget.allShops.length}',
-                    style: TextStyle(fontSize: 13, color: _gold),
+                    style: TextStyle(fontSize: 13.sp, color: _gold),
                   ),
                 ],
               ),
@@ -491,7 +492,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 8.h),
                 itemCount: widget.allShops.length,
                 itemBuilder: (context, index) {
                   final shop = widget.allShops[index];
@@ -499,7 +500,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
                   return InkWell(
                     onTap: () => _toggleShop(shop),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                       color: selected ? _emerald.withOpacity(0.5) : Colors.transparent,
                       child: Row(
                         children: [
@@ -508,22 +509,22 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
                             height: 24,
                             decoration: BoxDecoration(
                               color: selected ? _gold : Colors.transparent,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6.r),
                               border: Border.all(
                                 color: selected ? _gold : Colors.white.withOpacity(0.3),
                                 width: 2,
                               ),
                             ),
                             child: selected
-                                ? const Icon(Icons.check, size: 16, color: Colors.black)
+                                ? Icon(Icons.check, size: 16, color: Colors.black)
                                 : null,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               shop.address,
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 14.sp,
                                 color: selected
                                     ? Colors.white
                                     : Colors.white.withOpacity(0.7),
@@ -541,20 +542,20 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
             Divider(height: 1, color: Colors.white.withOpacity(0.1)),
             // Buttons
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.w),
               child: Row(
                 children: [
                   Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                           border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'Отмена',
                             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
@@ -563,17 +564,17 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(context, _selected),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
                         decoration: BoxDecoration(
                           color: _gold,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'Сохранить',
                             style: TextStyle(

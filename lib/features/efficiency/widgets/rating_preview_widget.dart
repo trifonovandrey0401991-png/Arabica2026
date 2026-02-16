@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет предпросмотра расчёта баллов для рейтинговых настроек
 ///
@@ -58,22 +59,22 @@ class RatingPreviewWidget extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         child: Column(
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -86,10 +87,10 @@ class RatingPreviewWidget extends StatelessWidget {
                   Expanded(
                     child: Text(
                       ratingColumnTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -97,10 +98,10 @@ class RatingPreviewWidget extends StatelessWidget {
                   Expanded(
                     child: Text(
                       pointsColumnTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -123,26 +124,26 @@ class RatingPreviewWidget extends StatelessWidget {
                       ? null
                       : Border(bottom: BorderSide(color: Colors.grey[200]!)),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: EdgeInsets.symmetric(vertical: 14.h),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
                         _formatRating(rating),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 15,
+                        style: TextStyle(
+                          fontSize: 15.sp,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     Expanded(
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                        margin: EdgeInsets.symmetric(horizontal: 20.w),
+                        padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 12.w),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
                           _formatPoints(points),
@@ -150,7 +151,7 @@ class RatingPreviewWidget extends StatelessWidget {
                           style: TextStyle(
                             color: color,
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 15.sp,
                           ),
                         ),
                       ),
@@ -208,22 +209,22 @@ class BinaryPreviewWidget extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         child: Column(
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -236,10 +237,10 @@ class BinaryPreviewWidget extends StatelessWidget {
                   Expanded(
                     child: Text(
                       valueColumnTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -247,10 +248,10 @@ class BinaryPreviewWidget extends StatelessWidget {
                   Expanded(
                     child: Text(
                       pointsColumnTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -264,7 +265,7 @@ class BinaryPreviewWidget extends StatelessWidget {
                 color: Colors.grey[50],
                 border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14.h),
               child: Row(
                 children: [
                   Expanded(
@@ -272,11 +273,11 @@ class BinaryPreviewWidget extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.check_circle, color: Colors.green[700], size: 20),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           positiveLabel,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.green[700],
                           ),
@@ -286,11 +287,11 @@ class BinaryPreviewWidget extends StatelessWidget {
                   ),
                   Expanded(
                     child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                      margin: EdgeInsets.symmetric(horizontal: 20.w),
+                      padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 12.w),
                       decoration: BoxDecoration(
                         color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
                         _formatPoints(positivePoints),
@@ -298,7 +299,7 @@ class BinaryPreviewWidget extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.green[700],
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                         ),
                       ),
                     ),
@@ -311,7 +312,7 @@ class BinaryPreviewWidget extends StatelessWidget {
               builder: (context) {
                 final negColor = negativeIconColor ?? Colors.red[700]!;
                 return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
                   child: Row(
                     children: [
                       Expanded(
@@ -319,11 +320,11 @@ class BinaryPreviewWidget extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(negativeIcon, color: negColor, size: 20),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(
                               negativeLabel,
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 15.sp,
                                 fontWeight: FontWeight.w500,
                                 color: negColor,
                               ),
@@ -333,11 +334,11 @@ class BinaryPreviewWidget extends StatelessWidget {
                       ),
                       Expanded(
                         child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                          margin: EdgeInsets.symmetric(horizontal: 20.w),
+                          padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 12.w),
                           decoration: BoxDecoration(
                             color: negColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             _formatPoints(negativePoints),
@@ -345,7 +346,7 @@ class BinaryPreviewWidget extends StatelessWidget {
                             style: TextStyle(
                               color: negColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                              fontSize: 15.sp,
                             ),
                           ),
                         ),

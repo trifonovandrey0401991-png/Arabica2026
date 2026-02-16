@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'pin_setup_page.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ввода номера телефона
 ///
@@ -88,16 +89,16 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Регистрация'),
+        title: Text('Регистрация'),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // Иконка
               Icon(
@@ -105,7 +106,7 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                 size: 80,
                 color: Theme.of(context).primaryColor,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Заголовок
               Text(
@@ -115,7 +116,7 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                     ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // Описание
               Text(
@@ -125,7 +126,7 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                     ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // Поле имени
               TextField(
@@ -133,9 +134,9 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                 decoration: InputDecoration(
                   labelText: 'Ваше имя',
                   hintText: 'Иван',
-                  prefixIcon: const Icon(Icons.person_outline),
+                  prefixIcon: Icon(Icons.person_outline),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   filled: true,
                   fillColor: Colors.grey[50],
@@ -143,7 +144,7 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                 textCapitalization: TextCapitalization.words,
                 onChanged: (_) => setState(() {}),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Поле телефона
               TextField(
@@ -151,10 +152,10 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                 decoration: InputDecoration(
                   labelText: 'Номер телефона',
                   hintText: '9001234567',
-                  prefixIcon: const Icon(Icons.phone_outlined),
+                  prefixIcon: Icon(Icons.phone_outlined),
                   prefixText: '+7 ',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   filled: true,
                   fillColor: Colors.grey[50],
@@ -166,36 +167,36 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                   _errorMessage = null;
                 }),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Кнопка продолжения
               ElevatedButton(
                 onPressed: _canSubmit ? _continue : null,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Продолжить',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 16.sp),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Информация о безопасности
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: Colors.green[200]!),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.security, color: Colors.green[700], size: 32),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,11 +208,11 @@ class _PhoneEntryPageState extends State<PhoneEntryPage> {
                               color: Colors.green[900],
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             'На следующем шаге вы создадите PIN-код для защиты аккаунта',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               color: Colors.green[700],
                             ),
                           ),
