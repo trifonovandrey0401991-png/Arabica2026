@@ -14,6 +14,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { getMoscowTime } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
+const { dbInsertPenalty } = require('./efficiency_penalties_api');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -675,6 +676,8 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
 
         penalties.push(penalty);
         await writeJsonFile(penaltiesFile, penalties);
+        // DB dual-write
+        await dbInsertPenalty(penalty);
         console.log(`✅ Баллы эффективности сохранены: ${efficiencyPoints} для ${report.employeeName}`);
       }
 

@@ -9,6 +9,9 @@ const path = require('path');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 const { getTaskPointsConfig } = require('./task_points_settings_api');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const { dbInsertPenalty } = require('./efficiency_penalties_api');
 
 const dataCache = require('../utils/data_cache');
 
@@ -18,16 +21,6 @@ const TASKS_DIR = `${DATA_DIR}/tasks`;
 const TASK_ASSIGNMENTS_DIR = `${DATA_DIR}/task-assignments`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Ensure directories exist
 async function ensureDir(dir) {
@@ -117,7 +110,9 @@ async function savePenalty(penalty) {
 
     penalties.push(penalty);
     // Сохраняем в формате массива (как используется в других частях системы)
-    await fsp.writeFile(filePath, JSON.stringify(penalties, null, 2), 'utf8');
+    await writeJsonFile(filePath, penalties);
+    // DB dual-write
+    await dbInsertPenalty(penalty);
 
     console.log(`✅ Penalty saved: ${penalty.employeeName}, ${penalty.points} points, reason: ${penalty.reason}`);
     return true;
@@ -149,7 +144,7 @@ async function saveMonthTasks(monthKey, data) {
   await ensureDir(TASKS_DIR);
   const filePath = path.join(TASKS_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
-  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+  await writeJsonFile(filePath, data);
 }
 
 // Load assignments for a month
@@ -174,7 +169,7 @@ async function saveMonthAssignments(monthKey, data) {
   await ensureDir(TASK_ASSIGNMENTS_DIR);
   const filePath = path.join(TASK_ASSIGNMENTS_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
-  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+  await writeJsonFile(filePath, data);
 }
 
 // Get all tasks (across months)

@@ -18,7 +18,9 @@ const {
 
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 const { compressUpload } = require('../utils/image_compress');
+const { dbInsertPenalty } = require('./efficiency_penalties_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -95,7 +97,9 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
     penalties.push(bonus);
 
-    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await writeJsonFile(penaltiesFile, penalties);
+    // DB dual-write
+    await dbInsertPenalty(bonus);
     console.log(`✅ Bonus assigned: ${senderName} (+${points} points) for question ${questionId}`);
   }
 

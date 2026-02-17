@@ -328,6 +328,7 @@ CREATE TABLE IF NOT EXISTS efficiency_penalties (
   shop_address TEXT,
   employee_name TEXT,
   employee_phone TEXT,
+  employee_id TEXT,
   category TEXT NOT NULL,
   category_name TEXT,
   date DATE NOT NULL,
@@ -337,7 +338,10 @@ CREATE TABLE IF NOT EXISTS efficiency_penalties (
   source_id TEXT,
   source_type TEXT,
   late_minutes INTEGER,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  task_id TEXT,
+  assignment_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_eff_penalties_date ON efficiency_penalties(date);
 CREATE INDEX IF NOT EXISTS idx_eff_penalties_employee ON efficiency_penalties(entity_id);

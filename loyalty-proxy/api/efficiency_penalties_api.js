@@ -3,15 +3,18 @@
  * Штрафы/бонусы эффективности + batch загрузка отчётов
  *
  * REWRITTEN: Exact match with index.js inline code (2026-02-08)
- * Utility functions (addPenalty, penaltyExists, loadMonthPenalties) preserved for other modules.
+ * REFACTORED: Added PostgreSQL support (2026-02-17)
+ * Utility functions (addPenalty, penaltyExists, loadMonthPenalties, dbInsertPenalty) preserved for other modules.
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const USE_DB = process.env.USE_DB_EFFICIENCY === 'true';
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
 const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
@@ -66,10 +69,26 @@ async function addPenalty(penalty) {
   data.penalties.push(penalty);
   await saveMonthPenalties(monthKey, data);
 
+  // DB dual-write
+  await dbInsertPenalty(penalty);
+
   return penalty;
 }
 
 async function penaltyExists(date, shiftType, shopAddress, type) {
+  // DB check first
+  if (USE_DB) {
+    try {
+      const result = await db.query(
+        'SELECT COUNT(*) as cnt FROM efficiency_penalties WHERE date = $1 AND shift_type = $2 AND shop_address = $3 AND type = $4',
+        [date, shiftType, shopAddress, type]
+      );
+      if (parseInt(result.rows[0].cnt) > 0) return true;
+    } catch (e) {
+      console.error('DB penaltyExists error:', e.message);
+    }
+  }
+
   const monthKey = getMonthKey(date);
   const data = await loadMonthPenalties(monthKey);
 
@@ -79,6 +98,87 @@ async function penaltyExists(date, shiftType, shopAddress, type) {
     p.shopAddress === shopAddress &&
     p.type === type
   );
+}
+
+// ===== DB helpers (used by all 11 penalty writer modules) =====
+
+function camelToDbPenalty(p) {
+  return {
+    id: p.id,
+    type: p.type || 'employee',
+    entity_id: p.entityId || null,
+    entity_name: p.entityName || null,
+    shop_address: p.shopAddress || null,
+    employee_name: p.employeeName || null,
+    employee_phone: p.employeePhone || null,
+    employee_id: p.employeeId || null,
+    category: p.category,
+    category_name: p.categoryName || null,
+    date: p.date || null,
+    shift_type: p.shiftType || null,
+    points: p.points != null ? p.points : 0,
+    reason: p.reason || null,
+    source_id: p.sourceId || null,
+    source_type: p.sourceType || null,
+    late_minutes: p.lateMinutes != null ? p.lateMinutes : null,
+    task_id: p.taskId || null,
+    assignment_id: p.assignmentId || null,
+    created_at: p.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function dbPenaltyToCamel(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    entityId: row.entity_id,
+    entityName: row.entity_name,
+    shopAddress: row.shop_address,
+    employeeName: row.employee_name,
+    employeePhone: row.employee_phone,
+    employeeId: row.employee_id,
+    category: row.category,
+    categoryName: row.category_name,
+    date: row.date,
+    shiftType: row.shift_type,
+    points: row.points != null ? parseFloat(row.points) : 0,
+    reason: row.reason,
+    sourceId: row.source_id,
+    sourceType: row.source_type,
+    lateMinutes: row.late_minutes,
+    taskId: row.task_id,
+    assignmentId: row.assignment_id,
+    createdAt: row.created_at
+  };
+}
+
+/**
+ * DB dual-write helper — used by ALL penalty writer modules.
+ * Call after JSON write to also insert into PostgreSQL.
+ * Safe to call when USE_DB is false (no-op).
+ */
+async function dbInsertPenalty(penalty) {
+  if (!USE_DB) return;
+  try {
+    await db.upsert('efficiency_penalties', camelToDbPenalty(penalty));
+  } catch (e) {
+    console.error('DB penalty insert error:', e.message);
+  }
+}
+
+/**
+ * DB bulk insert helper — for batch penalty writers.
+ */
+async function dbInsertPenalties(penalties) {
+  if (!USE_DB || !penalties || penalties.length === 0) return;
+  for (const p of penalties) {
+    try {
+      await db.upsert('efficiency_penalties', camelToDbPenalty(p));
+    } catch (e) {
+      console.error(`DB penalty insert error (${p.id}):`, e.message);
+    }
+  }
 }
 
 // ===== Helper functions for reports-batch (from inline code) =====
@@ -285,14 +385,26 @@ function setupEfficiencyPenaltiesAPI(app) {
 
       console.log(`📊 GET /api/efficiency-penalties?month=${month}`);
 
-      const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
-      const penaltiesFile = path.join(penaltiesDir, `${month}.json`);
-
       let penalties = [];
-      if (await fileExists(penaltiesFile)) {
-        const content = await fsp.readFile(penaltiesFile, 'utf8');
-        penalties = JSON.parse(content);
-        if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+
+      if (USE_DB) {
+        // PostgreSQL path
+        const [year, monthNum] = month.split('-').map(Number);
+        const startDate = `${month}-01`;
+        const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
+        const result = await db.query(
+          'SELECT * FROM efficiency_penalties WHERE date >= $1 AND date <= $2 ORDER BY created_at',
+          [startDate, endDate]
+        );
+        penalties = result.rows.map(dbPenaltyToCamel);
+      } else {
+        // File path
+        const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${month}.json`);
+        if (await fileExists(penaltiesFile)) {
+          const content = await fsp.readFile(penaltiesFile, 'utf8');
+          penalties = JSON.parse(content);
+          if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+        }
       }
 
       console.log(`  ✅ Загружено ${penalties.length} штрафов за ${month}`);
@@ -341,15 +453,26 @@ function setupEfficiencyPenaltiesAPI(app) {
         return d >= startDate && d <= endDate;
       };
 
-      // Загружаем penalty файл
-      const penaltiesFile = path.join(`${DATA_DIR}/efficiency-penalties`, `${month}.json`);
+      // Загружаем penalties
       let penalties = [];
-      if (await fileExists(penaltiesFile)) {
-        try {
-          const content = await fsp.readFile(penaltiesFile, 'utf8');
-          penalties = JSON.parse(content);
-          if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
-        } catch (e) { /* skip */ }
+      if (USE_DB) {
+        const [year, monthNum] = month.split('-').map(Number);
+        const startDate = `${month}-01`;
+        const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
+        const result = await db.query(
+          'SELECT * FROM efficiency_penalties WHERE date >= $1 AND date <= $2 ORDER BY created_at',
+          [startDate, endDate]
+        );
+        penalties = result.rows.map(dbPenaltyToCamel);
+      } else {
+        const penaltiesFile = path.join(`${DATA_DIR}/efficiency-penalties`, `${month}.json`);
+        if (await fileExists(penaltiesFile)) {
+          try {
+            const content = await fsp.readFile(penaltiesFile, 'utf8');
+            penalties = JSON.parse(content);
+            if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+          } catch (e) { /* skip */ }
+        }
       }
 
       // Загружаем остальные данные параллельно
@@ -434,7 +557,7 @@ function setupEfficiencyPenaltiesAPI(app) {
     }
   });
 
-  console.log('✅ Efficiency Penalties API initialized');
+  console.log(`✅ Efficiency Penalties API initialized (DB: ${USE_DB ? 'ON' : 'OFF'})`);
 }
 
-module.exports = { setupEfficiencyPenaltiesAPI, addPenalty, penaltyExists, loadMonthPenalties };
+module.exports = { setupEfficiencyPenaltiesAPI, addPenalty, penaltyExists, loadMonthPenalties, dbInsertPenalty, dbInsertPenalties };

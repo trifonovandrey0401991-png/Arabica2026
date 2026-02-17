@@ -2,6 +2,7 @@
 // ORDER TIMEOUT API - Штрафы за просроченные заказы
 //
 // REFACTORED: Converted from sync to async I/O (2026-02-05)
+// REFACTORED: Added PostgreSQL support with USE_DB_ORDERS flag (2026-02-17)
 // =====================================================
 
 const fsp = require('fs').promises;
@@ -9,9 +10,13 @@ const path = require('path');
 const { sendPushNotification } = require('./report_notifications_api');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+const { dbOrderToCamel } = require('../modules/orders');
+const { dbInsertPenalties } = require('./efficiency_penalties_api');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const USE_DB = process.env.USE_DB_ORDERS === 'true';
 
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
@@ -183,6 +188,8 @@ async function savePenalties(penalties) {
 
   existingPenalties = existingPenalties.concat(penalties);
   await writeJsonFile(penaltiesFile, existingPenalties);
+  // DB dual-write
+  await dbInsertPenalties(penalties);
 
   console.log(`Saved ${penalties.length} order penalties`);
 }
@@ -195,60 +202,113 @@ async function checkExpiredOrders() {
   const now = new Date();
   const timeoutMs = settings.timeoutMinutes * 60 * 1000;
 
-  if (!(await fileExists(ORDERS_DIR))) {
-    console.log('Orders directory does not exist');
-    return;
-  }
-
-  const files = await fsp.readdir(ORDERS_DIR);
   let expiredCount = 0;
   const allPenalties = [];
 
-  for (const file of files) {
-    if (!file.endsWith('.json') || file === 'order-counter.json') continue;
+  if (USE_DB) {
+    // PostgreSQL path: query pending orders older than timeout
+    try {
+      const cutoff = new Date(now.getTime() - timeoutMs).toISOString();
+      const result = await db.query(
+        'SELECT * FROM orders WHERE status = $1 AND created_at < $2',
+        ['pending', cutoff]
+      );
 
-    const filePath = path.join(ORDERS_DIR, file);
-    const order = await loadJsonFile(filePath, null);
+      for (const row of result.rows) {
+        // Обновляем статус на unconfirmed
+        await db.updateById('orders', row.id, {
+          status: 'unconfirmed',
+          expired_at: now.toISOString()
+        });
 
-    if (!order) continue;
-    if (order.status !== 'pending') continue;
+        const order = dbOrderToCamel({ ...row, status: 'unconfirmed', expired_at: now.toISOString() });
+        console.log(`Order #${order.orderNumber} expired (created: ${order.createdAt})`);
 
-    const createdAt = new Date(order.createdAt);
-    const expiresAt = new Date(createdAt.getTime() + timeoutMs);
+        // Push-уведомление админам о неподтверждённом заказе
+        try {
+          const clientName = order.clientName || order.clientPhone || 'Клиент';
+          sendPushNotification(
+            'Неподтверждённый заказ',
+            `Заказ от ${clientName} не был принят вовремя`,
+            { type: 'order_unconfirmed', orderId: order.id }
+          ).catch(err => console.error('Ошибка push о неподтверждённом заказе:', err.message));
+          console.log(`✅ Push о неподтверждённом заказе #${order.orderNumber} отправлен админам`);
+        } catch (pushErr) {
+          console.error('❌ Ошибка отправки push о неподтверждённом заказе:', pushErr.message);
+        }
 
-    if (now >= expiresAt) {
-      console.log(`Order #${order.orderNumber} expired (created: ${order.createdAt})`);
+        // Находим сотрудников на смене
+        const createdAt = new Date(order.createdAt);
+        const employees = await findEmployeesOnShift(order.shopAddress, createdAt);
+        console.log(`Found ${employees.length} employees on shift at ${order.shopAddress}`);
 
-      // Меняем статус на unconfirmed
-      order.status = 'unconfirmed';
-      order.expiredAt = now.toISOString();
-      await writeJsonFile(filePath, order);
+        // Создаем штрафы для каждого
+        for (const emp of employees) {
+          const penalty = createOrderPenalty(emp, order, settings);
+          allPenalties.push(penalty);
+          console.log(`- Penalty for ${emp.name}: ${settings.missedOrderPenalty} points`);
+        }
 
-      // Push-уведомление админам о неподтверждённом заказе
-      try {
-        const clientName = order.clientName || order.clientPhone || 'Клиент';
-        sendPushNotification(
-          'Неподтверждённый заказ',
-          `Заказ от ${clientName} не был принят вовремя`,
-          { type: 'order_unconfirmed', orderId: order.id }
-        ).catch(err => console.error('Ошибка push о неподтверждённом заказе:', err.message));
-        console.log(`✅ Push о неподтверждённом заказе #${order.orderNumber} отправлен админам`);
-      } catch (pushErr) {
-        console.error('❌ Ошибка отправки push о неподтверждённом заказе:', pushErr.message);
+        expiredCount++;
       }
+    } catch (err) {
+      console.error('[OrderTimeout] DB error:', err.message);
+    }
+  } else {
+    // JSON files path
+    if (!(await fileExists(ORDERS_DIR))) {
+      console.log('Orders directory does not exist');
+      return;
+    }
 
-      // Находим сотрудников на смене
-      const employees = await findEmployeesOnShift(order.shopAddress, createdAt);
-      console.log(`Found ${employees.length} employees on shift at ${order.shopAddress}`);
+    const files = await fsp.readdir(ORDERS_DIR);
 
-      // Создаем штрафы для каждого
-      for (const emp of employees) {
-        const penalty = createOrderPenalty(emp, order, settings);
-        allPenalties.push(penalty);
-        console.log(`- Penalty for ${emp.name}: ${settings.missedOrderPenalty} points`);
+    for (const file of files) {
+      if (!file.endsWith('.json') || file === 'order-counter.json') continue;
+
+      const filePath = path.join(ORDERS_DIR, file);
+      const order = await loadJsonFile(filePath, null);
+
+      if (!order) continue;
+      if (order.status !== 'pending') continue;
+
+      const createdAt = new Date(order.createdAt);
+      const expiresAt = new Date(createdAt.getTime() + timeoutMs);
+
+      if (now >= expiresAt) {
+        console.log(`Order #${order.orderNumber} expired (created: ${order.createdAt})`);
+
+        // Меняем статус на unconfirmed
+        order.status = 'unconfirmed';
+        order.expiredAt = now.toISOString();
+        await writeJsonFile(filePath, order);
+
+        // Push-уведомление админам о неподтверждённом заказе
+        try {
+          const clientName = order.clientName || order.clientPhone || 'Клиент';
+          sendPushNotification(
+            'Неподтверждённый заказ',
+            `Заказ от ${clientName} не был принят вовремя`,
+            { type: 'order_unconfirmed', orderId: order.id }
+          ).catch(err => console.error('Ошибка push о неподтверждённом заказе:', err.message));
+          console.log(`✅ Push о неподтверждённом заказе #${order.orderNumber} отправлен админам`);
+        } catch (pushErr) {
+          console.error('❌ Ошибка отправки push о неподтверждённом заказе:', pushErr.message);
+        }
+
+        // Находим сотрудников на смене
+        const employees = await findEmployeesOnShift(order.shopAddress, createdAt);
+        console.log(`Found ${employees.length} employees on shift at ${order.shopAddress}`);
+
+        // Создаем штрафы для каждого
+        for (const emp of employees) {
+          const penalty = createOrderPenalty(emp, order, settings);
+          allPenalties.push(penalty);
+          console.log(`- Penalty for ${emp.name}: ${settings.missedOrderPenalty} points`);
+        }
+
+        expiredCount++;
       }
-
-      expiredCount++;
     }
   }
 

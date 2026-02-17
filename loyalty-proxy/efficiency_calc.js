@@ -25,6 +25,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('./utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -44,16 +45,6 @@ const RECURRING_INSTANCES_DIR = `${DATA_DIR}/recurring-task-instances`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 const COFFEE_MACHINE_REPORTS_DIR = `${DATA_DIR}/coffee-machine-reports`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // =====================================================
 // OPTIMIZATION: Cache for batch operations
@@ -165,6 +156,8 @@ async function loadPenaltiesForMonth(month) {
 
   try {
     const content = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+    // Support both formats: ARRAY [...] and OBJECT {penalties: [...]}
+    if (Array.isArray(content)) return content;
     return content.penalties || [];
   } catch (e) {
     return [];

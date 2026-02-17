@@ -9,6 +9,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { getTaskPointsConfig } = require('./task_points_settings_api');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
+const { dbInsertPenalties } = require('./efficiency_penalties_api');
 
 // Директории хранения
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -289,6 +290,8 @@ async function checkExpiredTasks() {
     let existingPenalties = await loadJsonFile(penaltiesFile, []);
     existingPenalties = existingPenalties.concat(penalties);
     await writeJsonFile(penaltiesFile, existingPenalties);
+    // DB dual-write
+    await dbInsertPenalties(penalties);
 
     console.log('Expired', expiredCount, 'recurring task instances, created', penalties.length, 'penalties');
 

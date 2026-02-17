@@ -7,7 +7,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, loadJsonFile } = require('../utils/file_helpers');
+const { dbInsertPenalties } = require('./efficiency_penalties_api');
 
 // Directories
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -40,22 +41,6 @@ async function getTimeoutMinutes() {
     }
   }
   return 30; // Default timeout
-}
-
-// ============================================
-// Helper: Load JSON file safely
-// ============================================
-async function loadJsonFile(filePath, defaultValue) {
-  if (!(await fileExists(filePath))) {
-    return defaultValue;
-  }
-  try {
-    const data = await fsp.readFile(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    console.error(`Error loading JSON from ${filePath}:`, e.message);
-    return defaultValue;
-  }
 }
 
 // ============================================
@@ -305,6 +290,8 @@ async function savePenalties(penalties) {
       }
 
       await writeJsonFile(filePath, existingPenalties);
+      // DB dual-write
+      await dbInsertPenalties(penaltiesByMonth[monthKey]);
       console.log(`  Saved ${penaltiesByMonth[monthKey].length} penalties to ${monthKey}.json`);
     } catch (e) {
       console.error(`  Error saving penalties for ${monthKey}:`, e.message);

@@ -8,7 +8,9 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { dbInsertPenalty } = require('./efficiency_penalties_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
@@ -199,7 +201,9 @@ async function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftTy
     }
 
     penalties.push(penaltyRecord);
-    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await writeJsonFile(penaltiesFile, penalties);
+    // DB dual-write
+    await dbInsertPenalty(penaltyRecord);
 
     console.log(`Штраф создан: ${penalty} баллов за опоздание ${lateMinutes} мин для ${employeeName}`);
     return penaltyRecord;
@@ -256,7 +260,9 @@ async function createOnTimeBonus(employeeName, shopAddress, shiftType) {
     }
 
     penalties.push(bonusRecord);
-    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await writeJsonFile(penaltiesFile, penalties);
+    // DB dual-write
+    await dbInsertPenalty(bonusRecord);
 
     console.log(`Бонус создан: +${bonus} баллов за своевременный приход для ${employeeName}`);
     return bonusRecord;

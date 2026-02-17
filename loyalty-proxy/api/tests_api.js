@@ -7,6 +7,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const { dbInsertPenalty } = require('./efficiency_penalties_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const TEST_QUESTIONS_DIR = `${DATA_DIR}/test-questions`;
@@ -115,7 +117,9 @@ async function assignTestPoints(result) {
     };
 
     penalties.push(entry);
-    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await writeJsonFile(penaltiesFile, penalties);
+    // DB dual-write
+    await dbInsertPenalty(entry);
 
     console.log(`✅ Test points assigned: ${result.employeeName} (${points >= 0 ? '+' : ''}${points} points)`);
     return { success: true, points: points };

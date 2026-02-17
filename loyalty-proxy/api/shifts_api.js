@@ -15,6 +15,7 @@ const { isPaginationRequested, createPaginatedResponse } = require('../utils/pag
 const { withLock } = require('../utils/file_lock');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { dbInsertPenalty } = require('./efficiency_penalties_api');
 
 const USE_DB_HANDOVER = process.env.USE_DB_SHIFT_HANDOVER === 'true';
 const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
@@ -687,6 +688,8 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
               penalties.push(penalty);
               await writeJsonFile(penaltiesFile, penalties);
+              // DB dual-write
+              await dbInsertPenalty(penalty);
               console.log(`✅ Баллы эффективности (пересменка) сохранены: ${efficiencyPoints} для ${existingReport.employeeName}`);
             }
           });
