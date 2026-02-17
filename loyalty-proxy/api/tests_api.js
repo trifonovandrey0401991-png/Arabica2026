@@ -9,6 +9,9 @@ const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_TESTS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const TEST_QUESTIONS_DIR = `${DATA_DIR}/test-questions`;
@@ -134,6 +137,11 @@ function setupTestsAPI(app) {
 
   app.get('/api/test-questions', async (req, res) => {
     try {
+      if (USE_DB) {
+        const rows = await db.findAll('test_questions', { orderBy: 'created_at', orderDir: 'ASC' });
+        return res.json({ success: true, questions: rows.map(r => r.data) });
+      }
+
       const questions = [];
       if (await fileExists(TEST_QUESTIONS_DIR)) {
         const files = (await fsp.readdir(TEST_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
@@ -171,7 +179,13 @@ function setupTestsAPI(app) {
         createdAt: new Date().toISOString(),
       };
       const questionFile = path.join(TEST_QUESTIONS_DIR, `${question.id}.json`);
-      await fsp.writeFile(questionFile, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(questionFile, question);
+
+      if (USE_DB) {
+        try { await db.upsert('test_questions', { id: question.id, data: question, created_at: question.createdAt }); }
+        catch (dbErr) { console.error('DB save test_question error:', dbErr.message); }
+      }
+
       res.json({ success: true, question });
     } catch (error) {
       console.error('Ошибка создания вопроса тестирования:', error);
@@ -198,7 +212,13 @@ function setupTestsAPI(app) {
       delete question.answerB;
       delete question.answerC;
       question.updatedAt = new Date().toISOString();
-      await fsp.writeFile(questionFile, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(questionFile, question);
+
+      if (USE_DB) {
+        try { await db.upsert('test_questions', { id: question.id, data: question, updated_at: question.updatedAt }); }
+        catch (dbErr) { console.error('DB update test_question error:', dbErr.message); }
+      }
+
       res.json({ success: true, question });
     } catch (error) {
       console.error('Ошибка обновления вопроса тестирования:', error);
@@ -217,6 +237,12 @@ function setupTestsAPI(app) {
         return res.status(404).json({ success: false, error: 'Вопрос не найден' });
       }
       await fsp.unlink(questionFile);
+
+      if (USE_DB) {
+        try { await db.deleteById('test_questions', safeId); }
+        catch (dbErr) { console.error('DB delete test_question error:', dbErr.message); }
+      }
+
       res.json({ success: true });
     } catch (error) {
       console.error('Ошибка удаления вопроса тестирования:', error);
@@ -229,6 +255,14 @@ function setupTestsAPI(app) {
   app.get('/api/test-results', async (req, res) => {
     try {
       console.log('GET /api/test-results');
+
+      if (USE_DB) {
+        const rows = await db.findAll('test_results', { orderBy: 'created_at', orderDir: 'DESC' });
+        const results = rows.map(r => r.data);
+        console.log(`✅ Найдено результатов тестов: ${results.length}`);
+        return res.json({ success: true, results });
+      }
+
       const results = [];
       if (await fileExists(TEST_RESULTS_DIR)) {
         const files = (await fsp.readdir(TEST_RESULTS_DIR)).filter(f => f.endsWith('.json'));
@@ -267,7 +301,12 @@ function setupTestsAPI(app) {
       };
 
       const resultFile = path.join(TEST_RESULTS_DIR, `${result.id}.json`);
-      await fsp.writeFile(resultFile, JSON.stringify(result, null, 2), 'utf8');
+      await writeJsonFile(resultFile, result);
+
+      if (USE_DB) {
+        try { await db.upsert('test_results', { id: result.id, data: result, created_at: result.completedAt }); }
+        catch (dbErr) { console.error('DB save test_result error:', dbErr.message); }
+      }
 
       console.log(`✅ Результат теста сохранен: ${result.employeeName} - ${result.score}/${result.totalQuestions}`);
 
@@ -291,6 +330,13 @@ function setupTestsAPI(app) {
   app.get('/api/test-settings', async (req, res) => {
     try {
       let settings = { durationMinutes: 7 };
+
+      if (USE_DB) {
+        const row = await db.findById('app_settings', 'test_settings', 'key');
+        if (row) settings = row.data;
+        return res.json({ success: true, settings });
+      }
+
       if (await fileExists(TEST_SETTINGS_FILE)) {
         try {
           const data = await fsp.readFile(TEST_SETTINGS_FILE, 'utf8');
@@ -316,7 +362,13 @@ function setupTestsAPI(app) {
         durationMinutes,
         updatedAt: new Date().toISOString(),
       };
-      await fsp.writeFile(TEST_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await writeJsonFile(TEST_SETTINGS_FILE, settings);
+
+      if (USE_DB) {
+        try { await db.upsert('app_settings', { key: 'test_settings', data: settings, updated_at: settings.updatedAt }, 'key'); }
+        catch (dbErr) { console.error('DB save test_settings error:', dbErr.message); }
+      }
+
       console.log(`✅ Test settings updated: ${durationMinutes} minutes`);
       res.json({ success: true, settings });
     } catch (error) {
@@ -325,7 +377,7 @@ function setupTestsAPI(app) {
     }
   });
 
-  console.log('✅ Tests API initialized');
+  console.log(`✅ Tests API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupTestsAPI };

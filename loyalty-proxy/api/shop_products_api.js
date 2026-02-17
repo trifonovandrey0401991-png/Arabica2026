@@ -8,6 +8,11 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_SHOP_PRODUCTS === 'true';
 
 // Импортируем функции мастер-каталога для детекции новых кодов и подстановки названий
 const { addPendingCode, loadProducts } = require('./master_catalog_api');
@@ -23,16 +28,6 @@ const API_KEYS_FILE = `${DATA_DIR}/dbf-sync-settings/api-keys.json`;
 
 // Кэш товаров магазинов
 const shopProductsCache = new Map();
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Загрузить API ключи (async)
@@ -55,7 +50,7 @@ async function loadApiKeys() {
       console.log(`[Shop Products API] ⚠️ Сгенерирован новый API ключ: ${randomKey.substring(0, 8)}...`);
       const dir = path.dirname(API_KEYS_FILE);
       await fsp.mkdir(dir, { recursive: true });
-      await fsp.writeFile(API_KEYS_FILE, JSON.stringify(defaultKeys, null, 2));
+      await writeJsonFile(API_KEYS_FILE, defaultKeys);
       return defaultKeys.keys;
     }
 
@@ -127,10 +122,15 @@ async function saveShopProducts(shopId, products) {
       productCount: products.length,
     };
 
-    await fsp.writeFile(filePath, JSON.stringify(data, null, 2));
+    await writeJsonFile(filePath, data);
 
     // Обновляем кэш
     shopProductsCache.set(shopId, data);
+
+    if (USE_DB) {
+      try { await db.upsert('shop_products', { id: shopId, data: data, updated_at: data.lastSync }); }
+      catch (dbErr) { console.error('DB save shop_products error:', dbErr.message); }
+    }
 
     console.log(`[Shop Products API] Сохранено ${products.length} товаров для магазина ${shopId}`);
     return true;
@@ -552,7 +552,7 @@ function setupShopProductsAPI(app) {
 
       const dir = path.dirname(API_KEYS_FILE);
       await fsp.mkdir(dir, { recursive: true });
-      await fsp.writeFile(API_KEYS_FILE, JSON.stringify({ keys }, null, 2));
+      await writeJsonFile(API_KEYS_FILE, { keys });
 
       res.json({ success: true, key, shopId });
     } catch (error) {
@@ -561,7 +561,7 @@ function setupShopProductsAPI(app) {
     }
   });
 
-  console.log('[Shop Products API] Готово');
+  console.log(`[Shop Products API] Готово ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = {

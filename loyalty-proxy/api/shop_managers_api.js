@@ -26,20 +26,15 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_SHOP_MANAGERS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Инициализация файла shop-managers.json
@@ -51,7 +46,7 @@ async function initShopManagersFile() {
       managers: [],
       storeManagers: []
     };
-    await fsp.writeFile(SHOP_MANAGERS_FILE, JSON.stringify(defaultData, null, 2), 'utf8');
+    await writeJsonFile(SHOP_MANAGERS_FILE, defaultData);
     console.log('Created shop-managers.json with default structure');
   }
 }
@@ -61,6 +56,12 @@ async function initShopManagersFile() {
  */
 async function loadShopManagers() {
   try {
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'shop_managers', 'key');
+      if (row && row.data) return row.data;
+      return { developers: [], managers: [], storeManagers: [] };
+    }
+
     await initShopManagersFile();
     const content = await fsp.readFile(SHOP_MANAGERS_FILE, 'utf8');
     return JSON.parse(content);
@@ -75,7 +76,13 @@ async function loadShopManagers() {
  */
 async function saveShopManagers(data) {
   try {
-    await fsp.writeFile(SHOP_MANAGERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    await writeJsonFile(SHOP_MANAGERS_FILE, data);
+
+    if (USE_DB) {
+      try { await db.upsert('app_settings', { key: 'shop_managers', data: data, updated_at: new Date().toISOString() }, 'key'); }
+      catch (dbErr) { console.error('DB save shop_managers error:', dbErr.message); }
+    }
+
     return true;
   } catch (error) {
     console.error('Error saving shop-managers.json:', error);
@@ -522,7 +529,7 @@ function setupShopManagersAPI(app) {
     }
   });
 
-  console.log('Shop Managers API initialized');
+  console.log(`✅ Shop Managers API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 // Экспорт функций для использования в других модулях

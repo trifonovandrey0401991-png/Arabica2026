@@ -10,6 +10,9 @@ const path = require('path');
 const { fileExists, sanitizeId, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_WITHDRAWALS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
@@ -253,6 +256,19 @@ function setupWithdrawalsAPI(app) {
     try {
       const { shopAddress, type, fromDate, toDate } = req.query;
 
+      if (USE_DB) {
+        const rows = await db.findAll('withdrawals', { orderBy: 'created_at', orderDir: 'DESC' });
+        let withdrawals = rows.map(r => r.data);
+        if (shopAddress) withdrawals = withdrawals.filter(w => w.shopAddress === shopAddress);
+        if (type) withdrawals = withdrawals.filter(w => w.type === type);
+        if (fromDate) { const from = new Date(fromDate); withdrawals = withdrawals.filter(w => new Date(w.createdAt) >= from); }
+        if (toDate) { const to = new Date(toDate); withdrawals = withdrawals.filter(w => new Date(w.createdAt) <= to); }
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(withdrawals, req.query, 'withdrawals'));
+        }
+        return res.json({ success: true, withdrawals });
+      }
+
       const files = await fsp.readdir(WITHDRAWALS_DIR);
       let withdrawals = [];
 
@@ -371,6 +387,11 @@ function setupWithdrawalsAPI(app) {
       const filePath = path.join(WITHDRAWALS_DIR, `${withdrawal.id}.json`);
       await writeJsonFile(filePath, withdrawal);
 
+      if (USE_DB) {
+        try { await db.upsert('withdrawals', { id: withdrawal.id, data: withdrawal, created_at: withdrawal.createdAt }); }
+        catch (dbErr) { console.error('DB save withdrawal error:', dbErr.message); }
+      }
+
       // Обновить баланс главной кассы
       await updateMainCashBalance(shopAddress, type, totalAmount);
 
@@ -405,6 +426,11 @@ function setupWithdrawalsAPI(app) {
       // Сохранить обратно
       await writeJsonFile(filePath, withdrawal);
 
+      if (USE_DB) {
+        try { await db.upsert('withdrawals', { id: withdrawal.id, data: withdrawal }); }
+        catch (dbErr) { console.error('DB update withdrawal confirm error:', dbErr.message); }
+      }
+
       // Отправить push-уведомления о подтверждении
       await sendWithdrawalConfirmationNotifications(withdrawal);
 
@@ -427,6 +453,11 @@ function setupWithdrawalsAPI(app) {
       }
 
       await fsp.unlink(filePath);
+
+      if (USE_DB) {
+        try { await db.deleteById('withdrawals', id); }
+        catch (dbErr) { console.error('DB delete withdrawal error:', dbErr.message); }
+      }
 
       res.json({ success: true, message: 'Выемка удалена' });
     } catch (err) {
@@ -465,6 +496,11 @@ function setupWithdrawalsAPI(app) {
 
       await writeJsonFile(filePath, withdrawal);
 
+      if (USE_DB) {
+        try { await db.upsert('withdrawals', { id: withdrawal.id, data: withdrawal }); }
+        catch (dbErr) { console.error('DB update withdrawal cancel error:', dbErr.message); }
+      }
+
       res.json({ success: true, withdrawal });
     } catch (error) {
       console.error('Error cancelling withdrawal:', error);
@@ -472,7 +508,7 @@ function setupWithdrawalsAPI(app) {
     }
   });
 
-  console.log('✅ Withdrawals API initialized');
+  console.log(`✅ Withdrawals API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupWithdrawalsAPI, loadAllEmployeesForWithdrawals };

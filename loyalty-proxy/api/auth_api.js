@@ -23,6 +23,9 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { maskPhone } = require('../utils/file_helpers');
 const { isAdminPhone } = require('../utils/admin_cache');
 const dataCache = require('../utils/data_cache');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_AUTH === 'true';
 
 // Конфигурация
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -149,6 +152,11 @@ function normalizePhone(phone) {
  * Получает данные PIN по номеру телефона
  */
 async function getPinData(phone) {
+  if (USE_DB) {
+    const row = await db.findById('auth_pins', phone, 'phone');
+    return row ? row.data : null;
+  }
+
   const filePath = path.join(PINS_DIR, `${phone}.json`);
   try {
     const data = await fs.readFile(filePath, 'utf8');
@@ -165,6 +173,11 @@ async function getPinData(phone) {
 async function savePinData(phone, data) {
   const filePath = path.join(PINS_DIR, `${phone}.json`);
   await writeJsonFile(filePath, data);
+
+  if (USE_DB) {
+    try { await db.upsert('auth_pins', { phone: phone, data: data, updated_at: new Date().toISOString() }, 'phone'); }
+    catch (dbErr) { console.error('DB save auth_pin error:', dbErr.message); }
+  }
 }
 
 /**
@@ -172,6 +185,14 @@ async function savePinData(phone, data) {
  */
 async function getSessionByToken(token) {
   try {
+    if (USE_DB) {
+      const result = await db.query('SELECT data FROM auth_sessions WHERE data->>\'sessionToken\' = $1 LIMIT 1', [token]);
+      if (result.rows && result.rows.length > 0) {
+        return result.rows[0].data;
+      }
+      return null;
+    }
+
     const files = await fs.readdir(SESSIONS_DIR);
     for (const file of files) {
       if (file.endsWith('.json')) {
@@ -194,6 +215,11 @@ async function getSessionByToken(token) {
 async function saveSession(phone, session) {
   const filePath = path.join(SESSIONS_DIR, `${phone}.json`);
   await writeJsonFile(filePath, session);
+
+  if (USE_DB) {
+    try { await db.upsert('auth_sessions', { phone: phone, session_token: session.sessionToken || '', data: session, updated_at: new Date().toISOString() }, 'phone'); }
+    catch (dbErr) { console.error('DB save auth_session error:', dbErr.message); }
+  }
 }
 
 /**
@@ -205,6 +231,11 @@ async function deleteSession(phone) {
     await fs.unlink(filePath);
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
+  }
+
+  if (USE_DB) {
+    try { await db.query('DELETE FROM auth_sessions WHERE phone = $1', [phone]); }
+    catch (dbErr) { console.error('DB delete auth_session error:', dbErr.message); }
   }
 }
 

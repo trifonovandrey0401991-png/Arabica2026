@@ -6,7 +6,11 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_REFERRALS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -16,16 +20,6 @@ const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const REFERRALS_VIEWED_FILE = `${DATA_DIR}/referrals-viewed.json`;
 const REFERRALS_CACHE_FILE = `${DATA_DIR}/cache/referral-stats/stats.json`;
 const CACHE_VALIDITY_MINUTES = 5; // Кэш актуален 5 минут
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Initialize directories on module load
 (async () => {
@@ -246,6 +240,14 @@ function calculateReferralStats(referralCode, clients) {
 // Получить дату последнего просмотра приглашений
 async function getLastViewedAt() {
   try {
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'referrals_viewed', 'key');
+      if (row && row.data && row.data.lastViewedAt) {
+        return new Date(row.data.lastViewedAt);
+      }
+      return null;
+    }
+
     if (await fileExists(REFERRALS_VIEWED_FILE)) {
       const content = await fsp.readFile(REFERRALS_VIEWED_FILE, 'utf8');
       const data = JSON.parse(content);
@@ -261,9 +263,14 @@ async function getLastViewedAt() {
 // Сохранить дату последнего просмотра
 async function saveLastViewedAt(date) {
   try {
-    await fsp.writeFile(REFERRALS_VIEWED_FILE, JSON.stringify({
-      lastViewedAt: date.toISOString()
-    }, null, 2), 'utf8');
+    const data = { lastViewedAt: date.toISOString() };
+    await writeJsonFile(REFERRALS_VIEWED_FILE, data);
+
+    if (USE_DB) {
+      try { await db.upsert('app_settings', { key: 'referrals_viewed', data: data, updated_at: data.lastViewedAt }, 'key'); }
+      catch (dbErr) { console.error('DB save referrals_viewed error:', dbErr.message); }
+    }
+
     return true;
   } catch (error) {
     console.error('Ошибка записи lastViewedAt:', error);
@@ -433,7 +440,7 @@ async function rebuildStatsCache() {
       unassignedCount: clients.filter(c => !c.referredBy).length
     };
 
-    await fsp.writeFile(REFERRALS_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf8');
+    await writeJsonFile(REFERRALS_CACHE_FILE, cache);
     console.log(`✅ Кэш статистики обновлен: ${Object.keys(statsMap).length} сотрудников`);
 
     return cache;
@@ -778,7 +785,12 @@ function setupReferralsAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+      await writeJsonFile(settingsFile, settings);
+
+      if (USE_DB) {
+        try { await db.upsert('points_settings', { id: 'referrals', category: 'referrals', data: settings, updated_at: settings.updatedAt }, 'category'); }
+        catch (dbErr) { console.error('DB save referrals settings error:', dbErr.message); }
+      }
 
       console.log(`✅ Настройки сохранены: base=${settings.basePoints}, threshold=${settings.milestoneThreshold}, milestone=${settings.milestonePoints}`);
       res.json({ success: true, settings });
@@ -923,7 +935,12 @@ function setupReferralsAPI(app) {
         date: new Date().toISOString()
       });
 
-      await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
+      await writeJsonFile(clientFile, client);
+
+      if (USE_DB) {
+        try { await db.upsert('clients', { phone: normalizedPhone, data: client, updated_at: client.updatedAt }); }
+        catch (dbErr) { console.error('DB update client referral-status error:', dbErr.message); }
+      }
 
       console.log(`✅ Статус реферала обновлен: ${maskPhone(phone)} -> ${status}`);
       res.json({ success: true, client });
@@ -933,7 +950,7 @@ function setupReferralsAPI(app) {
     }
   });
 
-  console.log('Referrals API initialized');
+  console.log(`✅ Referrals API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 // =====================================================
