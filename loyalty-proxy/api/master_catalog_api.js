@@ -10,6 +10,11 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_MASTER_CATALOG === 'true';
 
 // Модуль машинного зрения для подсчёта counting photos
 const cigaretteVision = require('../modules/cigarette-vision');
@@ -31,16 +36,6 @@ let pendingCodesCache = null;
 // Структура: { key: { data, timestamp } }
 const trainingDataCache = new Map();
 const TRAINING_CACHE_TTL = 30000; // 30 секунд
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Получить данные из кэша training
@@ -78,6 +73,12 @@ async function loadProducts() {
       return productsCache;
     }
 
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'master_catalog_products', 'key');
+      productsCache = (row && row.data) || [];
+      return productsCache;
+    }
+
     if (!(await fileExists(PRODUCTS_FILE))) {
       return [];
     }
@@ -100,9 +101,15 @@ async function saveProducts(products) {
       await fsp.mkdir(MASTER_CATALOG_DIR, { recursive: true });
     }
 
-    await fsp.writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+    await writeJsonFile(PRODUCTS_FILE, products);
     productsCache = products;
-    clearTrainingCache(); // Очищаем кэш training данных
+    clearTrainingCache();
+
+    if (USE_DB) {
+      try { await db.upsert('app_settings', { key: 'master_catalog_products', data: products, updated_at: new Date().toISOString() }, 'key'); }
+      catch (dbErr) { console.error('DB save master_catalog_products error:', dbErr.message); }
+    }
+
     return true;
   } catch (error) {
     console.error('[Master Catalog API] Ошибка сохранения продуктов:', error);
@@ -116,6 +123,12 @@ async function saveProducts(products) {
 async function loadMappings() {
   try {
     if (mappingsCache !== null) {
+      return mappingsCache;
+    }
+
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'master_catalog_mappings', 'key');
+      mappingsCache = (row && row.data) || {};
       return mappingsCache;
     }
 
@@ -141,8 +154,14 @@ async function saveMappings(mappings) {
       await fsp.mkdir(MASTER_CATALOG_DIR, { recursive: true });
     }
 
-    await fsp.writeFile(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
+    await writeJsonFile(MAPPINGS_FILE, mappings);
     mappingsCache = mappings;
+
+    if (USE_DB) {
+      try { await db.upsert('app_settings', { key: 'master_catalog_mappings', data: mappings, updated_at: new Date().toISOString() }, 'key'); }
+      catch (dbErr) { console.error('DB save master_catalog_mappings error:', dbErr.message); }
+    }
+
     return true;
   } catch (error) {
     console.error('[Master Catalog API] Ошибка сохранения маппингов:', error);
@@ -156,6 +175,12 @@ async function saveMappings(mappings) {
 async function loadPendingCodes() {
   try {
     if (pendingCodesCache !== null) {
+      return pendingCodesCache;
+    }
+
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'master_catalog_pending_codes', 'key');
+      pendingCodesCache = (row && row.data) || [];
       return pendingCodesCache;
     }
 
@@ -181,8 +206,14 @@ async function savePendingCodes(codes) {
       await fsp.mkdir(MASTER_CATALOG_DIR, { recursive: true });
     }
 
-    await fsp.writeFile(PENDING_CODES_FILE, JSON.stringify(codes, null, 2));
+    await writeJsonFile(PENDING_CODES_FILE, codes);
     pendingCodesCache = codes;
+
+    if (USE_DB) {
+      try { await db.upsert('app_settings', { key: 'master_catalog_pending_codes', data: codes, updated_at: new Date().toISOString() }, 'key'); }
+      catch (dbErr) { console.error('DB save master_catalog_pending_codes error:', dbErr.message); }
+    }
+
     return true;
   } catch (error) {
     console.error('[Master Catalog API] Ошибка сохранения pending-codes:', error);
@@ -1531,7 +1562,7 @@ function setupMasterCatalogAPI(app) {
     }
   });
 
-  console.log('[Master Catalog API] Готово (с кэшированием TTL 30s)');
+  console.log(`[Master Catalog API] Готово ${USE_DB ? '(DB mode)' : '(file mode)'} (с кэшированием TTL 30s)`);
 }
 
 module.exports = {

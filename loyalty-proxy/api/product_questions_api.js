@@ -21,6 +21,9 @@ const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { compressUpload } = require('../utils/image_compress');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_PRODUCT_QUESTIONS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -109,6 +112,22 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     try {
       console.log('GET /api/product-questions');
       const { shopAddress } = req.query;
+
+      if (USE_DB) {
+        const rows = await db.findAll('product_questions', { orderBy: 'created_at', orderDir: 'DESC' });
+        let questions = rows.map(r => r.data);
+        if (shopAddress) {
+          questions = questions.filter(q => {
+            if (q.shops && Array.isArray(q.shops)) return q.shops.some(s => s.shopAddress === shopAddress);
+            return q.shopAddress === shopAddress;
+          });
+        }
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(questions, req.query, 'questions'));
+        }
+        return res.json({ success: true, questions });
+      }
+
       const questions = [];
 
       if (await fileExists(PRODUCT_QUESTIONS_DIR)) {
@@ -262,7 +281,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       };
 
       const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(filePath, question);
+      if (USE_DB) {
+        try { await db.upsert('product_questions', { id: question.id, data: question, created_at: question.timestamp || question.createdAt }); }
+        catch (dbErr) { console.error('DB save product_question error:', dbErr.message); }
+      }
 
       console.log('✅ Question created:', questionId);
 
@@ -332,7 +355,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const question = JSON.parse(content);
       const updated = { ...question, ...updates, updatedAt: new Date().toISOString() };
 
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await writeJsonFile(filePath, updated);
+      if (USE_DB) {
+        try { await db.upsert('product_questions', { id: updated.id, data: updated, created_at: updated.timestamp || updated.createdAt }); }
+        catch (dbErr) { console.error('DB save product_question error:', dbErr.message); }
+      }
       res.json({ success: true, question: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -348,6 +375,10 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       if (await fileExists(filePath)) {
         await fsp.unlink(filePath);
+        if (USE_DB) {
+          try { await db.deleteById('product_questions', questionId); }
+          catch (dbErr) { console.error('DB delete product_question error:', dbErr.message); }
+        }
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Question not found' });
@@ -428,7 +459,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         });
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(filePath, question);
+      if (USE_DB) {
+        try { await db.upsert('product_questions', { id: question.id, data: question, created_at: question.timestamp || question.createdAt }); }
+        catch (dbErr) { console.error('DB save product_question error:', dbErr.message); }
+      }
 
       console.log('✅ Answer added to question:', questionId, 'by shop:', shopAddress);
 
@@ -511,7 +546,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         question.hasUnreadFromClient = false;
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(filePath, question);
+      if (USE_DB) {
+        try { await db.upsert('product_questions', { id: question.id, data: question, created_at: question.timestamp || question.createdAt }); }
+        catch (dbErr) { console.error('DB save product_question error:', dbErr.message); }
+      }
       console.log('✅ Messages marked as read for question:', questionId);
 
       res.json({ success: true });
@@ -552,7 +591,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
               }
 
               if (hasChanges) {
-                await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+                await writeJsonFile(filePath, question);
+                if (USE_DB) {
+                  try { await db.upsert('product_questions', { id: question.id, data: question, created_at: question.timestamp || question.createdAt }); }
+                  catch (dbErr) { console.error('DB save product_question error:', dbErr.message); }
+                }
                 markedCount++;
               }
             }
@@ -609,7 +652,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       message.id = message.id || `msg_${Date.now()}`;
       dialog.messages.push(message);
 
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      await writeJsonFile(filePath, dialog);
+      if (USE_DB) {
+        try { await db.upsert('product_question_dialogs', { id: dialog.id || dialog.questionId, data: dialog, created_at: dialog.createdAt || new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB save product_question_dialog error:', dbErr.message); }
+      }
       res.json({ success: true, message });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -668,7 +715,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       }
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
+      await writeJsonFile(filePath, dialog);
+      if (USE_DB) {
+        try { await db.upsert('product_question_dialogs', { id: dialog.id, data: dialog, created_at: dialog.createdAt || new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB save product_question_dialog error:', dbErr.message); }
+      }
 
       // Отправить push сотрудникам только если есть сообщение
       if (text && dialog.messages.length > 0) {
@@ -727,6 +778,14 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.get('/api/product-question-dialogs/all', async (req, res) => {
     try {
       console.log('GET /api/product-question-dialogs/all');
+
+      if (USE_DB) {
+        const rows = await db.findAll('product_question_dialogs', { orderBy: 'created_at', orderDir: 'DESC' });
+        const dialogs = rows.map(r => r.data);
+        dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+        console.log(`✅ Found ${dialogs.length} total dialogs (DB)`);
+        return res.json({ success: true, dialogs });
+      }
 
       const dialogs = [];
 
@@ -938,7 +997,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         dialog.answeredAt = timestamp;
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
+      await writeJsonFile(filePath, dialog);
+      if (USE_DB) {
+        try { await db.upsert('product_question_dialogs', { id: dialog.id, data: dialog, created_at: dialog.createdAt || new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB save product_question_dialog error:', dbErr.message); }
+      }
 
       // Отправить push уведомления для персонального диалога
       try {
@@ -995,7 +1058,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         });
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
+      await writeJsonFile(filePath, dialog);
+      if (USE_DB) {
+        try { await db.upsert('product_question_dialogs', { id: dialog.id, data: dialog, created_at: dialog.createdAt || new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB save product_question_dialog error:', dbErr.message); }
+      }
 
       console.log('✅ Dialog marked as read:', dialogId, 'by', readerType);
       res.json({ success: true, dialog });
@@ -1023,7 +1090,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       dialog.viewedByAdmin = true;
       dialog.viewedByAdminAt = new Date().toISOString();
 
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
+      await writeJsonFile(filePath, dialog);
+      if (USE_DB) {
+        try { await db.upsert('product_question_dialogs', { id: dialog.id, data: dialog, created_at: dialog.createdAt || new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB save product_question_dialog error:', dbErr.message); }
+      }
 
       console.log('✅ Dialog marked as viewed by admin:', dialogId);
       res.json({ success: true, dialog });
@@ -1061,7 +1132,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
             if (dialog.shopAddress === shopAddress && dialog.isAnswered && !dialog.viewedByAdmin) {
               dialog.viewedByAdmin = true;
               dialog.viewedByAdminAt = timestamp;
-              await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2));
+              await writeJsonFile(filePath, dialog);
+              if (USE_DB) {
+                try { await db.upsert('product_question_dialogs', { id: dialog.id, data: dialog, created_at: dialog.createdAt || new Date().toISOString() }); }
+                catch (dbErr) { console.error('DB save product_question_dialog error:', dbErr.message); }
+              }
               markedDialogsCount++;
             }
           } catch (e) {
@@ -1096,7 +1171,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
             }
 
             if (questionModified) {
-              await fsp.writeFile(filePath, JSON.stringify(question, null, 2));
+              await writeJsonFile(filePath, question);
+              if (USE_DB) {
+                try { await db.upsert('product_questions', { id: question.id, data: question, created_at: question.timestamp || question.createdAt }); }
+                catch (dbErr) { console.error('DB save product_question error:', dbErr.message); }
+              }
             }
           } catch (e) {
             console.error(`Error processing question ${file}:`, e);
@@ -1225,7 +1304,11 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       question.messages.push(newMessage);
       question.hasUnreadFromClient = true;
 
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2));
+      await writeJsonFile(filePath, question);
+      if (USE_DB) {
+        try { await db.upsert('product_questions', { id: question.id, data: question, created_at: question.timestamp || question.createdAt }); }
+        catch (dbErr) { console.error('DB save product_question error:', dbErr.message); }
+      }
       console.log(`✅ Client reply added to question ${questionId}`);
 
       // Уведомляем сотрудников о новом сообщении от клиента
@@ -1386,7 +1469,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     });
   }
 
-  console.log('✅ Product Questions API initialized');
+  console.log(`✅ Product Questions API initialized (DB mode: ${USE_DB ? 'ON' : 'OFF'})`);
 }
 
 module.exports = { setupProductQuestionsAPI };

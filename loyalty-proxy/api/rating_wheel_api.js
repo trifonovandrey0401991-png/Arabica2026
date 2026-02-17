@@ -6,9 +6,14 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('../efficiency_calc');
 const { withLock } = require('../utils/file_lock');
+
+const USE_DB = process.env.USE_DB_RATING_WHEEL === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -17,16 +22,6 @@ const FORTUNE_WHEEL_DIR = path.join(DATA_DIR, 'fortune-wheel');
 const EMPLOYEES_DIR = path.join(DATA_DIR, 'employees');
 const ATTENDANCE_DIR = path.join(DATA_DIR, 'attendance');
 const EFFICIENCY_DIR = path.join(DATA_DIR, 'efficiency-penalties');
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Хелпер: текущий месяц YYYY-MM
 function getCurrentMonth() {
@@ -385,6 +380,16 @@ function getDefaultWheelSectors() {
 // Вспомогательная функция: получить настройки колеса
 async function getWheelSettings() {
   try {
+    // DB read branch
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'fortune_wheel_settings', 'key');
+      if (row) {
+        const settings = row.data;
+        if (!settings.topEmployeesCount) settings.topEmployeesCount = 3;
+        return settings;
+      }
+    }
+
     const settingsPath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
 
     if (await fileExists(settingsPath)) {
@@ -419,16 +424,26 @@ async function recalculateCurrentMonthSpins(month, topCount) {
     console.log(`🔄 Пересчёт прокруток для месяца ${month}, топ-${topCount} сотрудников`);
 
     // Читаем текущий рейтинг
-    const ratingsPath = path.join(RATINGS_DIR, `${month}.json`);
+    let ratings = null;
 
-    if (!(await fileExists(ratingsPath))) {
-      console.log(`⚠️ Рейтинг за ${month} не найден, пересчёт прокруток невозможен`);
-      return;
+    // DB read branch
+    if (USE_DB) {
+      const row = await db.findById('employee_ratings', month);
+      if (row) ratings = row.data.ratings || [];
     }
 
-    const content = await fsp.readFile(ratingsPath, 'utf8');
-    const data = JSON.parse(content);
-    const ratings = data.ratings || [];
+    if (!ratings) {
+      const ratingsPath = path.join(RATINGS_DIR, `${month}.json`);
+
+      if (!(await fileExists(ratingsPath))) {
+        console.log(`⚠️ Рейтинг за ${month} не найден, пересчёт прокруток невозможен`);
+        return;
+      }
+
+      const content = await fsp.readFile(ratingsPath, 'utf8');
+      const data = JSON.parse(content);
+      ratings = data.ratings || [];
+    }
 
     if (ratings.length === 0) {
       console.log(`⚠️ Рейтинг за ${month} пустой, пересчёт прокруток невозможен`);
@@ -480,7 +495,15 @@ async function assignWheelSpins(month, top3) {
       spins
     };
 
-    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await writeJsonFile(filePath, data);
+
+    // DB dual-write
+    if (USE_DB) {
+      const dbKey = `fortune_wheel_spins_${month}`;
+      try { await db.upsert('app_settings', { key: dbKey, data: data, updated_at: new Date().toISOString() }, 'key'); }
+      catch (dbErr) { console.error('DB save fortune_wheel_spins error:', dbErr.message); }
+    }
+
     console.log(`✅ Прокрутки выданы топ-3 за ${month} (истекают: ${expiresAt})`);
   } catch (e) {
     console.error('Ошибка выдачи прокруток:', e);
@@ -511,18 +534,36 @@ module.exports = function setupRatingWheelAPI(app) {
       const shouldCache = month !== currentMonth; // Кэшируем только завершённые месяцы
 
       // Проверяем есть ли сохраненный рейтинг (если не forceRefresh)
-      if (!forceRefresh && (await fileExists(filePath))) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const data = JSON.parse(content);
-        console.log(`✅ Рейтинг загружен из кэша (calculatedAt: ${data.calculatedAt})`);
-        return res.json({
-          success: true,
-          ratings: data.ratings,
-          month,
-          monthName: getMonthName(month),
-          cached: true,
-          calculatedAt: data.calculatedAt
-        });
+      if (!forceRefresh) {
+        // DB read branch
+        if (USE_DB) {
+          const row = await db.findById('employee_ratings', month);
+          if (row) {
+            console.log(`✅ Рейтинг загружен из DB (month: ${month})`);
+            return res.json({
+              success: true,
+              ratings: row.data.ratings,
+              month,
+              monthName: getMonthName(month),
+              cached: true,
+              calculatedAt: row.data.calculatedAt
+            });
+          }
+        }
+
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          const data = JSON.parse(content);
+          console.log(`✅ Рейтинг загружен из кэша (calculatedAt: ${data.calculatedAt})`);
+          return res.json({
+            success: true,
+            ratings: data.ratings,
+            month,
+            monthName: getMonthName(month),
+            cached: true,
+            calculatedAt: data.calculatedAt
+          });
+        }
       }
 
       // Рассчитываем рейтинг
@@ -536,8 +577,14 @@ module.exports = function setupRatingWheelAPI(app) {
           calculatedAt: new Date().toISOString(),
           ratings
         };
-        await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+        await writeJsonFile(filePath, data);
         console.log(`💾 Рейтинг сохранён в кэш: ${filePath}`);
+
+        // DB dual-write
+        if (USE_DB) {
+          try { await db.upsert('employee_ratings', { id: month, data: data, updated_at: new Date().toISOString() }); }
+          catch (dbErr) { console.error('DB save employee_ratings error:', dbErr.message); }
+        }
       }
 
       res.json({
@@ -571,11 +618,21 @@ module.exports = function setupRatingWheelAPI(app) {
         let ratings;
         const filePath = path.join(RATINGS_DIR, `${month}.json`);
 
-        if (await fileExists(filePath)) {
+        // DB read branch
+        let foundInDb = false;
+        if (USE_DB) {
+          const row = await db.findById('employee_ratings', month);
+          if (row) {
+            ratings = row.data.ratings;
+            foundInDb = true;
+          }
+        }
+
+        if (!foundInDb && (await fileExists(filePath))) {
           const content = await fsp.readFile(filePath, 'utf8');
           const data = JSON.parse(content);
           ratings = data.ratings;
-        } else {
+        } else if (!foundInDb) {
           ratings = await calculateRatings(month);
         }
 
@@ -625,11 +682,14 @@ module.exports = function setupRatingWheelAPI(app) {
         const filePath = path.join(RATINGS_DIR, `${month}.json`);
         if (await fileExists(filePath)) {
           await fsp.unlink(filePath);
-          console.log(`✅ Кэш рейтинга за ${month} удалён`);
-          return res.json({ success: true, message: `Кэш за ${month} удалён` });
-        } else {
-          return res.json({ success: true, message: `Кэш за ${month} не найден` });
         }
+        // DB delete
+        if (USE_DB) {
+          try { await db.deleteById('employee_ratings', month); }
+          catch (dbErr) { console.error('DB delete employee_ratings error:', dbErr.message); }
+        }
+        console.log(`✅ Кэш рейтинга за ${month} удалён`);
+        return res.json({ success: true, message: `Кэш за ${month} удалён` });
       } else {
         // Удалить весь кэш
         const files = await fsp.readdir(RATINGS_DIR);
@@ -637,6 +697,12 @@ module.exports = function setupRatingWheelAPI(app) {
         for (const file of files) {
           if (file.endsWith('.json')) {
             await fsp.unlink(path.join(RATINGS_DIR, file));
+            const monthKey = file.replace('.json', '');
+            // DB delete
+            if (USE_DB) {
+              try { await db.deleteById('employee_ratings', monthKey); }
+              catch (dbErr) { console.error('DB delete employee_ratings error:', dbErr.message); }
+            }
             deletedCount++;
           }
         }
@@ -666,7 +732,13 @@ module.exports = function setupRatingWheelAPI(app) {
         ratings
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(filePath, data);
+
+      // DB dual-write
+      if (USE_DB) {
+        try { await db.upsert('employee_ratings', { id: month, data: data, updated_at: new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB save employee_ratings error:', dbErr.message); }
+      }
 
       // Читаем topEmployeesCount из настроек и выдаем прокрутки топ-N
       const wheelSettings = await getWheelSettings();
@@ -693,6 +765,20 @@ module.exports = function setupRatingWheelAPI(app) {
       console.log('🎡 GET /api/fortune-wheel/settings');
 
       await fsp.mkdir(FORTUNE_WHEEL_DIR, { recursive: true });
+
+      // DB read branch
+      if (USE_DB) {
+        const row = await db.findById('app_settings', 'fortune_wheel_settings', 'key');
+        if (row) {
+          const settings = row.data;
+          if (!settings.topEmployeesCount) settings.topEmployeesCount = 3;
+          return res.json({
+            success: true,
+            sectors: settings.sectors,
+            topEmployeesCount: settings.topEmployeesCount
+          });
+        }
+      }
 
       const filePath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
 
@@ -748,7 +834,13 @@ module.exports = function setupRatingWheelAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(filePath, data);
+
+      // DB dual-write
+      if (USE_DB) {
+        try { await db.upsert('app_settings', { key: 'fortune_wheel_settings', data: data, updated_at: data.updatedAt }, 'key'); }
+        catch (dbErr) { console.error('DB save fortune_wheel_settings error:', dbErr.message); }
+      }
 
       console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
 
@@ -790,7 +882,13 @@ module.exports = function setupRatingWheelAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(filePath, data);
+
+      // DB dual-write
+      if (USE_DB) {
+        try { await db.upsert('app_settings', { key: 'fortune_wheel_settings', data: data, updated_at: data.updatedAt }, 'key'); }
+        catch (dbErr) { console.error('DB save fortune_wheel_settings error:', dbErr.message); }
+      }
 
       console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
 
@@ -811,17 +909,38 @@ module.exports = function setupRatingWheelAPI(app) {
       const { employeeId } = req.params;
       console.log(`🎡 GET /api/fortune-wheel/spins/${employeeId}`);
 
+      const now = new Date();
+      let totalSpins = 0;
+      let latestMonth = null;
+
+      // DB read branch
+      if (USE_DB) {
+        const rows = await db.query(
+          `SELECT "key", "data" FROM "app_settings" WHERE "key" LIKE 'fortune_wheel_spins_%' ORDER BY "key" DESC`
+        );
+        for (const row of rows.rows) {
+          const data = row.data;
+          const expiresAt = data.expiresAt || data.spins?.[employeeId]?.expiresAt;
+          if (expiresAt && new Date(expiresAt) < now) continue;
+          if (data.spins && data.spins[employeeId]) {
+            const empSpins = data.spins[employeeId];
+            if (empSpins.available > 0) {
+              totalSpins += empSpins.available;
+              const monthKey = row.key.replace('fortune_wheel_spins_', '');
+              if (!latestMonth || monthKey > latestMonth) latestMonth = monthKey;
+            }
+          }
+        }
+        return res.json({ success: true, availableSpins: totalSpins, month: latestMonth });
+      }
+
       const spinsDir = path.join(FORTUNE_WHEEL_DIR, 'spins');
       if (!(await fileExists(spinsDir))) {
         return res.json({ success: true, availableSpins: 0, month: null });
       }
 
-      const now = new Date();
-
       // Ищем прокрутки для этого сотрудника
       const files = await fsp.readdir(spinsDir);
-      let totalSpins = 0;
-      let latestMonth = null;
 
       for (const file of files) {
         if (!file.endsWith('.json')) continue;
@@ -936,7 +1055,14 @@ module.exports = function setupRatingWheelAPI(app) {
         // Уменьшаем количество прокруток (атомарно внутри lock)
         spinData.spins[employeeId].available--;
         spinData.spins[employeeId].used = (spinData.spins[employeeId].used || 0) + 1;
-        await fsp.writeFile(spinFilePath, JSON.stringify(spinData, null, 2), 'utf8');
+        await writeJsonFile(spinFilePath, spinData, { useLock: false });
+
+        // DB dual-write (spins)
+        if (USE_DB) {
+          const dbSpinKey = `fortune_wheel_spins_${spinMonth}`;
+          try { await db.upsert('app_settings', { key: dbSpinKey, data: spinData, updated_at: new Date().toISOString() }, 'key'); }
+          catch (dbErr) { console.error('DB save fortune_wheel_spins error:', dbErr.message); }
+        }
 
         // Сохраняем в историю
         const historyDir = path.join(FORTUNE_WHEEL_DIR, 'history');
@@ -965,7 +1091,14 @@ module.exports = function setupRatingWheelAPI(app) {
         };
 
         historyData.records.push(spinRecord);
-        await fsp.writeFile(historyPath, JSON.stringify(historyData, null, 2), 'utf8');
+        await writeJsonFile(historyPath, historyData, { useLock: false });
+
+        // DB dual-write (history)
+        if (USE_DB) {
+          const dbHistKey = `fortune_wheel_history_${currentMonth}`;
+          try { await db.upsert('app_settings', { key: dbHistKey, data: historyData, updated_at: new Date().toISOString() }, 'key'); }
+          catch (dbErr) { console.error('DB save fortune_wheel_history error:', dbErr.message); }
+        }
 
         console.log(`✅ Прокрутка: ${employeeName} выиграл "${selectedSector.text}"`);
 
@@ -992,6 +1125,18 @@ module.exports = function setupRatingWheelAPI(app) {
     try {
       const month = req.query.month || getCurrentMonth();
       console.log(`🎡 GET /api/fortune-wheel/history month=${month}`);
+
+      // DB read branch
+      if (USE_DB) {
+        const dbHistKey = `fortune_wheel_history_${month}`;
+        const row = await db.findById('app_settings', dbHistKey, 'key');
+        if (row) {
+          const records = (row.data.records || []).sort((a, b) =>
+            new Date(b.spunAt) - new Date(a.spunAt)
+          );
+          return res.json({ success: true, records, month, monthName: getMonthName(month) });
+        }
+      }
 
       const historyPath = path.join(FORTUNE_WHEEL_DIR, 'history', `${month}.json`);
 
@@ -1041,7 +1186,14 @@ module.exports = function setupRatingWheelAPI(app) {
       record.processedBy = adminName || 'Администратор';
       record.processedAt = new Date().toISOString();
 
-      await fsp.writeFile(historyPath, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(historyPath, data);
+
+      // DB dual-write
+      if (USE_DB) {
+        const dbHistKey = `fortune_wheel_history_${targetMonth}`;
+        try { await db.upsert('app_settings', { key: dbHistKey, data: data, updated_at: new Date().toISOString() }, 'key'); }
+        catch (dbErr) { console.error('DB save fortune_wheel_history error:', dbErr.message); }
+      }
 
       console.log(`✅ Приз ${id} отмечен как обработанный`);
       res.json({ success: true, record });
@@ -1051,5 +1203,5 @@ module.exports = function setupRatingWheelAPI(app) {
     }
   });
 
-  console.log('✅ Rating & Fortune Wheel API initialized');
+  console.log(`✅ Rating & Fortune Wheel API initialized${USE_DB ? ' [DB mode]' : ''}`);
 };

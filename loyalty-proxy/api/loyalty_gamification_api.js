@@ -9,7 +9,11 @@ const path = require('path');
 const multer = require('multer');
 const crypto = require('crypto');
 const { isAdminPhone } = require('../utils/admin_cache');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_LOYALTY_GAMIFICATION === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -39,16 +43,6 @@ try {
 } catch (e) {
   console.log('Firebase not initialized for gamification API');
   firebaseInitialized = false;
-}
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // Ensure directories exist
@@ -197,7 +191,7 @@ async function loadPrize(prizeId) {
 // Save prize
 async function savePrize(prize) {
   const filePath = path.join(CLIENT_PRIZES_DIR, `${prize.id}.json`);
-  await fsp.writeFile(filePath, JSON.stringify(prize, null, 2), 'utf8');
+  await writeJsonFile(filePath, prize);
 }
 
 // Find prize by QR token
@@ -260,6 +254,11 @@ function getDefaultSettings() {
 // Load settings
 async function loadSettings() {
   try {
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'loyalty_gamification_settings', 'key');
+      if (row && row.data) return row.data;
+      return getDefaultSettings();
+    }
     if (await fileExists(SETTINGS_FILE)) {
       const content = await fsp.readFile(SETTINGS_FILE, 'utf8');
       return JSON.parse(content);
@@ -273,7 +272,11 @@ async function loadSettings() {
 // Save settings
 async function saveSettings(settings) {
   settings.updatedAt = new Date().toISOString();
-  await fsp.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+  await writeJsonFile(SETTINGS_FILE, settings);
+  if (USE_DB) {
+    try { await db.upsert('app_settings', { key: 'loyalty_gamification_settings', data: settings, updated_at: settings.updatedAt }, 'key'); }
+    catch (dbErr) { console.error('DB save loyalty_gamification_settings error:', dbErr.message); }
+  }
 }
 
 // Calculate client's level based on freeDrinksGiven
@@ -545,7 +548,11 @@ function setupLoyaltyGamificationAPI(app) {
       client.lastWheelSpin = new Date().toISOString();
       client.updatedAt = new Date().toISOString();
 
-      await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
+      await writeJsonFile(clientPath, client);
+      if (USE_DB) {
+        try { await db.upsert('clients', { phone: normalizedPhone, data: client }, 'phone'); }
+        catch (dbErr) { console.error('DB save client error:', dbErr.message); }
+      }
 
       // Create prize record for client (all prizes now require manual issuance)
       const prizeId = generatePrizeId();
@@ -594,7 +601,16 @@ function setupLoyaltyGamificationAPI(app) {
         history = JSON.parse(historyContent);
       }
       history.push(spinRecord);
-      await fsp.writeFile(historyPath, JSON.stringify(history, null, 2), 'utf8');
+      await writeJsonFile(historyPath, history);
+      if (USE_DB) {
+        try {
+          await db.insert('fortune_wheel_results', {
+            client_phone: normalizedPhone,
+            data: spinRecord,
+            created_at: spinRecord.spunAt
+          });
+        } catch (dbErr) { console.error('DB save fortune_wheel_result error:', dbErr.message); }
+      }
 
       // Send push notification to admins/developers
       const pushTitle = 'Клиент выиграл приз!';
@@ -675,7 +691,7 @@ function setupLoyaltyGamificationAPI(app) {
           record.processedBy = processedBy;
           record.processedAt = new Date().toISOString();
 
-          await fsp.writeFile(historyPath, JSON.stringify(history, null, 2), 'utf8');
+          await writeJsonFile(historyPath, history);
           return res.json({ success: true, record });
         }
       }
@@ -874,7 +890,11 @@ function setupLoyaltyGamificationAPI(app) {
           // discount and merch are noted but don't change client fields
 
           client.updatedAt = new Date().toISOString();
-          await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
+          await writeJsonFile(clientPath, client);
+          if (USE_DB) {
+            try { await db.upsert('clients', { phone: prize.clientPhone, data: client }, 'phone'); }
+            catch (dbErr) { console.error('DB save client error:', dbErr.message); }
+          }
         }
       } catch (clientError) {
         // Rollback: возвращаем приз в pending
@@ -901,7 +921,7 @@ function setupLoyaltyGamificationAPI(app) {
             record.isProcessed = true;
             record.processedBy = employeeName || employeePhone;
             record.processedAt = prize.issuedAt;
-            await fsp.writeFile(historyPath, JSON.stringify(history, null, 2), 'utf8');
+            await writeJsonFile(historyPath, history);
             break;
           }
         }
@@ -1025,7 +1045,7 @@ function setupLoyaltyGamificationAPI(app) {
     }
   });
 
-  console.log('✅ Loyalty Gamification API initialized (with client prizes)');
+  console.log(`✅ Loyalty Gamification API initialized (with client prizes)${USE_DB ? ' [DB mode]' : ''}`);
 }
 
 module.exports = { setupLoyaltyGamificationAPI };
