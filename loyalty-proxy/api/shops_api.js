@@ -8,6 +8,7 @@ const path = require('path');
 const dataCache = require('../utils/data_cache');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHOPS_DIR = `${DATA_DIR}/shops`;
@@ -22,7 +23,7 @@ async function initShopsDir() {
     // Создаем дефолтные магазины
     for (const shop of DEFAULT_SHOPS) {
       const shopFile = path.join(SHOPS_DIR, `${shop.id}.json`);
-      await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
+      await writeJsonFile(shopFile, shop);
     }
     console.log('✅ Директория магазинов создана с дефолтными данными');
   }
@@ -101,7 +102,7 @@ function setupShopsAPI(app) {
       };
 
       const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-      await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
+      await writeJsonFile(shopFile, shop);
       dataCache.invalidateShops();
 
       console.log('✅ Магазин создан:', id);
@@ -135,7 +136,7 @@ function setupShopsAPI(app) {
       if (updates.icon !== undefined) shop.icon = updates.icon;
       shop.updatedAt = new Date().toISOString();
 
-      await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
+      await writeJsonFile(shopFile, shop);
       dataCache.invalidateShops();
 
       console.log('✅ Магазин обновлен:', id);

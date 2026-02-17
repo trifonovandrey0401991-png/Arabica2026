@@ -7,7 +7,8 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
@@ -48,7 +49,7 @@ async function loadSchedule(month) {
 async function saveSchedule(schedule) {
   const filePath = getScheduleFilePath(schedule.month);
   try {
-    await fsp.writeFile(filePath, JSON.stringify(schedule, null, 2), 'utf8');
+    await writeJsonFile(filePath, schedule);
     return true;
   } catch (error) {
     console.error('Ошибка сохранения графика:', error);
@@ -209,7 +210,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   app.delete('/api/work-schedule/:entryId', async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-      const entryId = req.params.entryId;
+      const entryId = sanitizeId(req.params.entryId);
       const month = req.query.month;
 
       if (!month) {
@@ -363,7 +364,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
         }
 
         const templateFile = path.join(WORK_SCHEDULE_TEMPLATES_DIR, `${template.id}.json`);
-        await fsp.writeFile(templateFile, JSON.stringify(template, null, 2), 'utf8');
+        await writeJsonFile(templateFile, template);
 
         res.json({ success: true, template });
       } else if (action === 'apply') {

@@ -9,6 +9,7 @@ const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, isPathSafe } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const rkoReportsDir = `${DATA_DIR}/rko-reports`;
@@ -38,7 +39,7 @@ async function loadRKOMetadata() {
 // Сохранить метаданные РКО
 async function saveRKOMetadata(metadata) {
   try {
-    await fsp.writeFile(rkoMetadataFile, JSON.stringify(metadata, null, 2), 'utf8');
+    await writeJsonFile(rkoMetadataFile, metadata);
   } catch (e) {
     console.error('Ошибка сохранения метаданных РКО:', e);
     throw e;

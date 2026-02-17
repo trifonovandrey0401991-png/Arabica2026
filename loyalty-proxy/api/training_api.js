@@ -11,6 +11,7 @@ const multer = require('multer');
 const express = require('express');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const TRAINING_ARTICLES_DIR = `${DATA_DIR}/training-articles`;
@@ -107,7 +108,7 @@ function setupTrainingAPI(app) {
         article.contentBlocks = req.body.contentBlocks;
       }
       const articleFile = path.join(TRAINING_ARTICLES_DIR, `${article.id}.json`);
-      await fsp.writeFile(articleFile, JSON.stringify(article, null, 2), 'utf8');
+      await writeJsonFile(articleFile, article);
       res.json({ success: true, article });
     } catch (error) {
       console.error('Ошибка создания статьи обучения:', error);
@@ -138,7 +139,7 @@ function setupTrainingAPI(app) {
         article.contentBlocks = req.body.contentBlocks;
       }
       article.updatedAt = new Date().toISOString();
-      await fsp.writeFile(articleFile, JSON.stringify(article, null, 2), 'utf8');
+      await writeJsonFile(articleFile, article);
       res.json({ success: true, article });
     } catch (error) {
       console.error('Ошибка обновления статьи обучения:', error);

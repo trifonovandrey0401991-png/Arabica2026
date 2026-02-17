@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId, maskPhone } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
@@ -236,7 +237,7 @@ async function updateMainCashBalance(shopAddress, type, amount) {
     if (!await fileExists(MAIN_CASH_DIR)) {
       await fsp.mkdir(MAIN_CASH_DIR, { recursive: true, mode: 0o755 });
     }
-    await fsp.writeFile(filePath, JSON.stringify(balance, null, 2), 'utf8');
+    await writeJsonFile(filePath, balance);
 
     console.log(`Обновлён баланс ${shopAddress}: ${type}Balance -= ${amount}`);
   } catch (err) {
@@ -364,7 +365,7 @@ function setupWithdrawalsAPI(app) {
 
       // Сохранить в файл
       const filePath = path.join(WITHDRAWALS_DIR, `${withdrawal.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+      await writeJsonFile(filePath, withdrawal);
 
       // Обновить баланс главной кассы
       await updateMainCashBalance(shopAddress, type, totalAmount);
@@ -398,7 +399,7 @@ function setupWithdrawalsAPI(app) {
       withdrawal.confirmedAt = new Date().toISOString();
 
       // Сохранить обратно
-      await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+      await writeJsonFile(filePath, withdrawal);
 
       // Отправить push-уведомления о подтверждении
       await sendWithdrawalConfirmationNotifications(withdrawal);
@@ -458,7 +459,7 @@ function setupWithdrawalsAPI(app) {
       withdrawal.cancelledBy = cancelledBy || 'unknown';
       withdrawal.cancelReason = cancelReason || 'No reason provided';
 
-      await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+      await writeJsonFile(filePath, withdrawal);
 
       res.json({ success: true, withdrawal });
     } catch (error) {

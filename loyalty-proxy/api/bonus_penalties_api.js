@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const BONUS_PENALTIES_DIR = `${DATA_DIR}/bonus-penalties`;
@@ -136,7 +137,7 @@ function setupBonusPenaltiesAPI(app) {
       data.records.push(newRecord);
 
       // Сохраняем
-      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(filePath, data);
 
       console.log(`✅ Создана запись ${type}: ${amount} для ${employeeName}`);
       res.json({ success: true, record: newRecord });
@@ -170,7 +171,7 @@ function setupBonusPenaltiesAPI(app) {
       }
 
       data.records.splice(index, 1);
-      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(filePath, data);
 
       console.log(`✅ Запись ${id} удалена`);
       res.json({ success: true });

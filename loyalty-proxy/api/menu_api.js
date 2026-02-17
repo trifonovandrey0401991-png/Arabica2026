@@ -6,6 +6,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const MENU_DIR = `${DATA_DIR}/menu`;
@@ -98,7 +99,7 @@ function setupMenuAPI(app) {
       }
 
       const itemFile = path.join(MENU_DIR, `${item.id}.json`);
-      await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
+      await writeJsonFile(itemFile, item);
 
       res.json({ success: true, item });
     } catch (error) {
@@ -131,7 +132,7 @@ function setupMenuAPI(app) {
       Object.assign(item, updates);
       item.id = id; // Сохраняем оригинальный ID
 
-      await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
+      await writeJsonFile(itemFile, item);
 
       res.json({ success: true, item });
     } catch (error) {
