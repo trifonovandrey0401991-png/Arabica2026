@@ -3,16 +3,88 @@
  * POST (с TIME_EXPIRED), GET, GET /expired, GET /pending, POST /rating, POST /notify
  *
  * REWRITTEN: Exact match with index.js inline code (2026-02-08)
+ * REFACTORED: Added PostgreSQL support for recount_reports (2026-02-17)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
 const fetch = require('node-fetch');
+const { writeJsonFile } = require('../utils/async_fs');
 const { fileExists } = require('../utils/file_helpers');
+const { getMoscowTime } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const db = require('../utils/db');
 
+const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SCRIPT_URL = process.env.SCRIPT_URL;
+
+// ==================== DB CONVERSION ====================
+
+function dbRecountToCamel(row) {
+  return {
+    id: row.id,
+    employeeName: row.employee_name,
+    employeePhone: row.employee_phone,
+    employeeId: row.employee_id,
+    shopAddress: row.shop_address,
+    shopName: row.shop_name,
+    shiftType: row.shift_type,
+    status: row.status,
+    answers: typeof row.answers === 'string' ? JSON.parse(row.answers) : (row.answers || []),
+    adminRating: row.admin_rating,
+    adminName: row.admin_name,
+    ratedAt: row.rated_at,
+    date: row.date,
+    createdAt: row.created_at,
+    deadline: row.deadline,
+    submittedAt: row.submitted_at,
+    reviewDeadline: row.review_deadline,
+    failedAt: row.failed_at,
+    rejectedAt: row.rejected_at,
+    completedBy: row.completed_by,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    duration: row.duration,
+    expiredAt: row.expired_at,
+    photoVerifications: typeof row.photo_verifications === 'string'
+      ? JSON.parse(row.photo_verifications)
+      : (row.photo_verifications || []),
+    savedAt: row.saved_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function camelToDbRecount(body) {
+  const data = {};
+  if (body.id !== undefined) data.id = body.id;
+  if (body.employeeName !== undefined) data.employee_name = body.employeeName;
+  if (body.employeePhone !== undefined) data.employee_phone = body.employeePhone;
+  if (body.employeeId !== undefined) data.employee_id = body.employeeId;
+  if (body.shopAddress !== undefined) data.shop_address = body.shopAddress;
+  if (body.shopName !== undefined) data.shop_name = body.shopName;
+  if (body.shiftType !== undefined) data.shift_type = body.shiftType;
+  if (body.status !== undefined) data.status = body.status;
+  if (body.answers !== undefined) data.answers = JSON.stringify(body.answers);
+  if (body.adminRating != null) data.admin_rating = body.adminRating;
+  if (body.adminName !== undefined) data.admin_name = body.adminName;
+  if (body.ratedAt !== undefined) data.rated_at = body.ratedAt;
+  if (body.date !== undefined) data.date = body.date;
+  if (body.createdAt !== undefined) data.created_at = body.createdAt;
+  if (body.deadline !== undefined) data.deadline = body.deadline;
+  if (body.submittedAt !== undefined) data.submitted_at = body.submittedAt;
+  if (body.reviewDeadline !== undefined) data.review_deadline = body.reviewDeadline;
+  if (body.failedAt !== undefined) data.failed_at = body.failedAt;
+  if (body.rejectedAt !== undefined) data.rejected_at = body.rejectedAt;
+  if (body.completedBy !== undefined) data.completed_by = body.completedBy;
+  if (body.startedAt !== undefined) data.started_at = body.startedAt;
+  if (body.completedAt !== undefined) data.completed_at = body.completedAt;
+  if (body.duration != null) data.duration = body.duration;
+  if (body.expiredAt !== undefined) data.expired_at = body.expiredAt;
+  if (body.photoVerifications !== undefined) data.photo_verifications = body.photoVerifications ? JSON.stringify(body.photoVerifications) : null;
+  if (body.savedAt !== undefined) data.saved_at = body.savedAt;
+  return data;
+}
 
 function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) {
 
@@ -45,9 +117,8 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
           }
         }
 
-        // Получаем московское время (UTC+3)
-        const now = new Date();
-        const moscowTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+        // Boy Scout: getMoscowTime вместо ручного UTC+3
+        const moscowTime = getMoscowTime();
         const currentHours = moscowTime.getUTCHours();
         const currentMinutes = moscowTime.getUTCMinutes();
         const currentTimeMinutes = currentHours * 60 + currentMinutes;
@@ -113,8 +184,21 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         reviewDeadline: reviewDeadline.toISOString()
       };
 
+      // DB + dual-write
+      if (USE_DB) {
+        try {
+          const dbData = camelToDbRecount(reportData);
+          dbData.updated_at = now.toISOString();
+          await db.upsert('recount_reports', dbData);
+          console.log('✅ Отчет пересчёта сохранен в DB:', reportId);
+        } catch (dbErr) {
+          console.error('[Recount] DB write error:', dbErr.message);
+        }
+      }
+
+      // Всегда пишем в файл (dual-write для внешних потребителей)
       try {
-        await fsp.writeFile(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
+        await writeJsonFile(reportFile, reportData);
         console.log('✅ Отчет пересчёта сохранен:', reportFile);
       } catch (writeError) {
         console.error('Ошибка записи файла:', writeError);
@@ -189,6 +273,39 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
     try {
       console.log('GET /api/recount-reports:', req.query);
 
+      if (USE_DB) {
+        try {
+          let sql = 'SELECT * FROM recount_reports WHERE 1=1';
+          const params = [];
+          let paramIdx = 1;
+
+          if (req.query.shopAddress) {
+            sql += ` AND shop_address ILIKE $${paramIdx++}`;
+            params.push(`%${req.query.shopAddress}%`);
+          }
+          if (req.query.employeeName) {
+            sql += ` AND employee_name ILIKE $${paramIdx++}`;
+            params.push(`%${req.query.employeeName}%`);
+          }
+          if (req.query.date) {
+            sql += ` AND created_at::date = $${paramIdx++}`;
+            params.push(req.query.date);
+          }
+
+          sql += ' ORDER BY created_at DESC';
+
+          const result = await db.query(sql, params);
+          const reports = result.rows.map(dbRecountToCamel);
+
+          if (isPaginationRequested(req.query)) {
+            return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+          }
+          return res.json({ success: true, reports });
+        } catch (dbErr) {
+          console.error('[Recount] DB read error, falling back to files:', dbErr.message);
+        }
+      }
+
       const reportsDir = `${DATA_DIR}/recount-reports`;
       const reports = [];
 
@@ -254,6 +371,21 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
     try {
       console.log('GET /api/recount-reports/expired');
 
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            `SELECT * FROM recount_reports
+             WHERE status IN ('expired', 'failed', 'rejected')
+             ORDER BY COALESCE(expired_at, failed_at, rejected_at, completed_at) DESC`
+          );
+          const reports = result.rows.map(dbRecountToCamel);
+          console.log(`Найдено просроченных отчетов: ${reports.length} (DB)`);
+          return res.json({ success: true, reports });
+        } catch (dbErr) {
+          console.error('[Recount] DB read error (expired), falling back to files:', dbErr.message);
+        }
+      }
+
       const reportsDir = `${DATA_DIR}/recount-reports`;
       const reports = [];
 
@@ -300,24 +432,37 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       const reportId = decodeURIComponent(req.params.id);
       console.log(`GET /api/recount-reports/${reportId}`);
 
-      const reportsDir = `${DATA_DIR}/recount-reports`;
-      const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
-
       let report = null;
 
-      if (await fileExists(reportFile)) {
-        const content = await fsp.readFile(reportFile, 'utf8');
-        report = JSON.parse(content);
+      if (USE_DB) {
+        try {
+          const row = await db.findById('recount_reports', reportId);
+          if (row) {
+            report = dbRecountToCamel(row);
+          }
+        } catch (dbErr) {
+          console.error('[Recount] DB read error (by id), falling back to files:', dbErr.message);
+        }
       }
 
-      // Попробуем найти по частичному совпадению (как в rating endpoint)
-      if (!report && await fileExists(reportsDir)) {
-        const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
-        const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
-        if (matchingFile) {
-          const content = await fsp.readFile(path.join(reportsDir, matchingFile), 'utf8');
+      if (!report) {
+        const reportsDir = `${DATA_DIR}/recount-reports`;
+        const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
+
+        if (await fileExists(reportFile)) {
+          const content = await fsp.readFile(reportFile, 'utf8');
           report = JSON.parse(content);
+        }
+
+        // Попробуем найти по частичному совпадению (как в rating endpoint)
+        if (!report && await fileExists(reportsDir)) {
+          const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
+          const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
+          if (matchingFile) {
+            const content = await fsp.readFile(path.join(reportsDir, matchingFile), 'utf8');
+            report = JSON.parse(content);
+          }
         }
       }
 
@@ -339,6 +484,8 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   });
 
   // GET /api/pending-recount-reports - ожидающие (pending) пересчёты
+  // ПРИМЕЧАНИЕ: pending файлы хранятся ТОЛЬКО в файловой системе (эфемерные, scheduler)
+  // Но если pending отчёт был обновлён через scheduler → его статус в DB тоже pending
   app.get('/api/pending-recount-reports', async (req, res) => {
     try {
       console.log('GET /api/pending-recount-reports');
@@ -399,26 +546,47 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
       console.log(`Санитизированный ID: ${sanitizedId}`);
 
-      const reportsDir = `${DATA_DIR}/recount-reports`;
-      let reportFile = path.join(reportsDir, `${sanitizedId}.json`);
-      let actualFile = reportFile;
+      let report = null;
+      let actualFile = null;
 
-      if (!await fileExists(reportFile)) {
-        console.error(`Файл не найден: ${reportFile}`);
-        // Попробуем найти файл по частичному совпадению
-        const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
-        const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
-        if (matchingFile) {
-          console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
-          actualFile = path.join(reportsDir, matchingFile);
-        } else {
-          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+      // Загрузка из DB или файла
+      if (USE_DB) {
+        try {
+          const row = await db.findById('recount_reports', reportId);
+          if (row) report = dbRecountToCamel(row);
+        } catch (dbErr) {
+          console.error('[Recount] DB read error in rating:', dbErr.message);
         }
       }
 
-      // Читаем отчет
-      const content = await fsp.readFile(actualFile, 'utf8');
-      const report = JSON.parse(content);
+      const reportsDir = `${DATA_DIR}/recount-reports`;
+      if (!report) {
+        const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
+        actualFile = reportFile;
+
+        if (!await fileExists(reportFile)) {
+          console.error(`Файл не найден: ${reportFile}`);
+          const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
+          const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
+          if (matchingFile) {
+            console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
+            actualFile = path.join(reportsDir, matchingFile);
+          } else {
+            return res.status(404).json({ success: false, error: 'Отчет не найден' });
+          }
+        }
+
+        const content = await fsp.readFile(actualFile, 'utf8');
+        report = JSON.parse(content);
+      } else {
+        // Определяем путь к файлу для dual-write
+        actualFile = path.join(reportsDir, `${sanitizedId}.json`);
+        if (!await fileExists(actualFile)) {
+          const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
+          const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
+          if (matchingFile) actualFile = path.join(reportsDir, matchingFile);
+        }
+      }
 
       // Обновляем оценку и статус
       report.adminRating = rating;
@@ -426,8 +594,26 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       report.ratedAt = new Date().toISOString();
       report.status = 'confirmed';
 
-      // Сохраняем обновленный отчет
-      await fsp.writeFile(actualFile, JSON.stringify(report, null, 2), 'utf8');
+      // DB dual-write
+      if (USE_DB) {
+        try {
+          await db.updateById('recount_reports', reportId, {
+            admin_rating: rating,
+            admin_name: adminName,
+            rated_at: report.ratedAt,
+            status: 'confirmed',
+            updated_at: new Date().toISOString()
+          });
+          console.log('✅ Оценка сохранена в DB:', reportId);
+        } catch (dbErr) {
+          console.error('[Recount] DB update error in rating:', dbErr.message);
+        }
+      }
+
+      // Всегда пишем в файл (dual-write)
+      if (actualFile && await fileExists(actualFile)) {
+        await writeJsonFile(actualFile, report);
+      }
       console.log('✅ Оценка сохранена для отчета:', reportId);
 
       // Загружаем настройки баллов пересчёта
@@ -488,7 +674,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         };
 
         penalties.push(penalty);
-        await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+        await writeJsonFile(penaltiesFile, penalties);
         console.log(`✅ Баллы эффективности сохранены: ${efficiencyPoints} для ${report.employeeName}`);
       }
 
@@ -535,7 +721,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
     }
   });
 
-  console.log('✅ Recount API initialized');
+  console.log(`✅ Recount API initialized (storage: ${USE_DB ? 'PostgreSQL' : 'JSON files'})`);
 }
 
 module.exports = { setupRecountAPI };

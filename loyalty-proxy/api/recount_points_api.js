@@ -2,11 +2,16 @@
 // RECOUNT POINTS API (Баллы пересчёта)
 //
 // REFACTORED: Converted from sync to async I/O (2026-02-05)
+// REFACTORED: Added PostgreSQL dual-write for photo_verifications (2026-02-17)
 // =====================================================
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { writeJsonFile } = require('../utils/async_fs');
+const { fileExists } = require('../utils/file_helpers');
+const db = require('../utils/db');
 
+const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RECOUNT_POINTS_DIR = `${DATA_DIR}/recount-points`;
@@ -23,16 +28,6 @@ const DEFAULT_SETTINGS = {
   incorrectPhotoPenalty: 2.5,
   questionsCount: 30
 };
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Убедиться что директории существуют
 async function ensureDirectories() {
@@ -155,7 +150,7 @@ module.exports = function setupRecountPointsAPI(app) {
           updatedBy: null
         };
 
-        await fsp.writeFile(filePath, JSON.stringify(newPoints, null, 2), 'utf8');
+        await writeJsonFile(filePath, newPoints);
         return res.json({ success: true, points: newPoints });
       }
 
@@ -235,7 +230,7 @@ module.exports = function setupRecountPointsAPI(app) {
         });
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(filePath, data);
 
       console.log(`✅ Баллы обновлены: ${normalizedPhone} -> ${numPoints}`);
       res.json({ success: true, points: data });
@@ -288,7 +283,7 @@ module.exports = function setupRecountPointsAPI(app) {
             updatedBy: 'Система (инициализация)'
           };
 
-          await fsp.writeFile(pointsFile, JSON.stringify(pointsData, null, 2), 'utf8');
+          await writeJsonFile(pointsFile, pointsData);
           count++;
         } catch (e) {
           console.error(`Error processing ${file}:`, e);
@@ -365,7 +360,7 @@ module.exports = function setupRecountPointsAPI(app) {
         await fsp.mkdir(settingsDir, { recursive: true });
       }
 
-      await fsp.writeFile(RECOUNT_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await writeJsonFile(RECOUNT_SETTINGS_FILE, settings);
 
       console.log('✅ Настройки обновлены');
       res.json({ success: true, settings });
@@ -445,8 +440,20 @@ module.exports = function setupRecountPointsAPI(app) {
         report.photoVerifications.push(verification);
       }
 
-      // Сохраняем отчёт
-      await fsp.writeFile(reportFile, JSON.stringify(report, null, 2), 'utf8');
+      // Сохраняем отчёт (файл + DB dual-write)
+      await writeJsonFile(reportFile, report);
+
+      if (USE_DB) {
+        try {
+          await db.updateById('recount_reports', id, {
+            photo_verifications: JSON.stringify(report.photoVerifications),
+            updated_at: new Date().toISOString()
+          });
+          console.log(`✅ photo_verifications обновлены в DB для ${id}`);
+        } catch (dbErr) {
+          console.error('[RecountPoints] DB update error:', dbErr.message);
+        }
+      }
 
       // Обновляем баллы сотрудника
       if (employeePhone) {
@@ -472,7 +479,7 @@ module.exports = function setupRecountPointsAPI(app) {
             date: new Date().toISOString()
           });
 
-          await fsp.writeFile(pointsFile, JSON.stringify(pointsData, null, 2), 'utf8');
+          await writeJsonFile(pointsFile, pointsData);
           console.log(`✅ Баллы изменены: ${normalizedPhone} ${pointsChange > 0 ? '+' : ''}${pointsChange} -> ${newPoints}`);
         }
       }
