@@ -3,13 +3,21 @@
  * Пересменка + Сдача смены
  *
  * REWRITTEN: Exact match with index.js inline code (2026-02-08)
+ * REFACTORED: Added PostgreSQL support for shift_handover_reports (2026-02-17)
+ * REFACTORED: Added PostgreSQL support for shift_reports (2026-02-17)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { getMoscowTime } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { withLock } = require('../utils/file_lock');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB_HANDOVER = process.env.USE_DB_SHIFT_HANDOVER === 'true';
+const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
@@ -112,6 +120,122 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
   }
 }
 
+// ==================== DB CONVERSION (shift_reports) ====================
+
+function dbShiftReportToCamel(row) {
+  return {
+    id: row.id,
+    employeeName: row.employee_name,
+    employeeId: row.employee_id,
+    employeePhone: row.employee_phone,
+    shopAddress: row.shop_address,
+    shopName: row.shop_name,
+    shiftType: row.shift_type,
+    status: row.status,
+    answers: typeof row.answers === 'string' ? JSON.parse(row.answers) : (row.answers || []),
+    rating: row.rating,
+    date: row.date,
+    createdAt: row.created_at,
+    submittedAt: row.submitted_at,
+    deadline: row.deadline,
+    reviewDeadline: row.review_deadline,
+    confirmedAt: row.confirmed_at,
+    confirmedByAdmin: row.confirmed_by_admin,
+    failedAt: row.failed_at,
+    rejectedAt: row.rejected_at,
+    expiredAt: row.expired_at,
+    completedBy: row.completed_by,
+    isSynced: row.is_synced,
+    savedAt: row.saved_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function camelToDbShift(body) {
+  const data = {};
+  if (body.id !== undefined) data.id = body.id;
+  if (body.employeeName !== undefined) data.employee_name = body.employeeName;
+  if (body.employeeId !== undefined) data.employee_id = body.employeeId;
+  if (body.employeePhone !== undefined) data.employee_phone = body.employeePhone;
+  if (body.phone !== undefined && !data.employee_phone) data.employee_phone = body.phone;
+  if (body.shopAddress !== undefined) data.shop_address = body.shopAddress;
+  if (body.shopName !== undefined) data.shop_name = body.shopName;
+  if (body.shiftType !== undefined) data.shift_type = body.shiftType;
+  if (body.status !== undefined) data.status = body.status;
+  if (body.answers !== undefined) data.answers = JSON.stringify(body.answers);
+  if (body.rating != null) data.rating = body.rating;
+  if (body.date !== undefined) data.date = body.date;
+  if (body.createdAt !== undefined) data.created_at = body.createdAt;
+  if (body.timestamp !== undefined && !data.created_at) data.created_at = body.timestamp;
+  if (body.submittedAt !== undefined) data.submitted_at = body.submittedAt;
+  if (body.deadline !== undefined) data.deadline = body.deadline;
+  if (body.reviewDeadline !== undefined) data.review_deadline = body.reviewDeadline;
+  if (body.confirmedAt !== undefined) data.confirmed_at = body.confirmedAt;
+  if (body.confirmedByAdmin !== undefined) data.confirmed_by_admin = body.confirmedByAdmin;
+  if (body.failedAt !== undefined) data.failed_at = body.failedAt;
+  if (body.rejectedAt !== undefined) data.rejected_at = body.rejectedAt;
+  if (body.expiredAt !== undefined) data.expired_at = body.expiredAt;
+  if (body.isSynced !== undefined) data.is_synced = body.isSynced;
+  if (body.savedAt !== undefined) data.saved_at = body.savedAt;
+  return data;
+}
+
+// ==================== DB CONVERSION (shift_handover_reports) ====================
+
+function dbHandoverReportToCamel(row) {
+  return {
+    id: row.id,
+    employeeName: row.employee_name,
+    employeePhone: row.employee_phone,
+    shopAddress: row.shop_address,
+    shopName: row.shop_name,
+    shiftType: row.shift_type,
+    status: row.status,
+    answers: typeof row.answers === 'string' ? JSON.parse(row.answers) : (row.answers || []),
+    rating: row.rating,
+    date: row.date,
+    createdAt: row.created_at,
+    submittedAt: row.submitted_at,
+    reviewDeadline: row.review_deadline,
+    confirmedAt: row.confirmed_at,
+    confirmedByAdmin: row.confirmed_by_admin,
+    failedAt: row.failed_at,
+    rejectedAt: row.rejected_at,
+    expiredAt: row.expired_at,
+    completedBy: row.completed_by,
+    aiVerificationSkipped: row.ai_verification_skipped,
+    isSynced: row.is_synced,
+    updatedAt: row.updated_at,
+  };
+}
+
+function camelToDbHandover(body) {
+  const data = {};
+  if (body.id !== undefined) data.id = body.id;
+  if (body.employeeName !== undefined) data.employee_name = body.employeeName;
+  if (body.employeePhone !== undefined) data.employee_phone = body.employeePhone;
+  if (body.shopAddress !== undefined) data.shop_address = body.shopAddress;
+  if (body.shopName !== undefined) data.shop_name = body.shopName;
+  if (body.shiftType !== undefined) data.shift_type = body.shiftType;
+  if (body.status !== undefined) data.status = body.status;
+  if (body.answers !== undefined) data.answers = JSON.stringify(body.answers);
+  if (body.rating != null) data.rating = body.rating;
+  if (body.date !== undefined) data.date = body.date;
+  if (body.createdAt !== undefined) data.created_at = body.createdAt;
+  if (body.confirmedAt !== undefined) data.confirmed_at = body.confirmedAt;
+  if (body.confirmedByAdmin !== undefined) data.confirmed_by_admin = body.confirmedByAdmin;
+  if (body.failedAt !== undefined) data.failed_at = body.failedAt;
+  if (body.rejectedAt !== undefined) data.rejected_at = body.rejectedAt;
+  if (body.expiredAt !== undefined) data.expired_at = body.expiredAt;
+  if (body.completedBy !== undefined) data.completed_by = body.completedBy;
+  if (body.aiVerificationSkipped !== undefined) data.ai_verification_skipped = body.aiVerificationSkipped;
+  if (body.isSynced !== undefined) data.is_synced = body.isSynced;
+  if (body.updatedAt !== undefined) data.updated_at = body.updatedAt;
+  return data;
+}
+
+// ====================================================================================
+
 function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingCompleted, sendShiftHandoverNewReportNotification, getPendingShiftHandoverReports, getFailedShiftHandoverReports, calculateShiftPoints } = {}) {
 
   // ========== SHIFT REPORTS (Пересменка) ==========
@@ -119,6 +243,49 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   app.get('/api/shift-reports', async (req, res) => {
     try {
       const { employeeName, shopAddress, date, status, shiftType } = req.query;
+
+      if (USE_DB_SHIFTS) {
+        try {
+          let sql = 'SELECT * FROM shift_reports WHERE 1=1';
+          const params = [];
+          let paramIdx = 1;
+
+          if (employeeName) {
+            sql += ` AND employee_name = $${paramIdx++}`;
+            params.push(employeeName);
+          }
+          if (shopAddress) {
+            sql += ` AND shop_address = $${paramIdx++}`;
+            params.push(shopAddress);
+          }
+          if (date) {
+            sql += ` AND (date = $${paramIdx} OR created_at::date = $${paramIdx}::date)`;
+            params.push(date);
+            paramIdx++;
+          }
+          if (status) {
+            sql += ` AND status = $${paramIdx++}`;
+            params.push(status);
+          }
+          if (shiftType) {
+            sql += ` AND shift_type = $${paramIdx++}`;
+            params.push(shiftType);
+          }
+
+          sql += ' ORDER BY created_at DESC';
+
+          const result = await db.query(sql, params);
+          const reports = result.rows.map(dbShiftReportToCamel);
+
+          if (isPaginationRequested(req.query)) {
+            return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+          }
+          return res.json({ success: true, reports });
+        } catch (dbErr) {
+          console.error('[Shifts] DB read error, falling back to files:', dbErr.message);
+        }
+      }
+
       const reports = [];
 
       // Читаем из daily-файлов (формат scheduler'а: YYYY-MM-DD.json)
@@ -204,8 +371,8 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       // Функция для проверки активного интервала
       function isWithinInterval(shiftType) {
-        // UTC+3 (Moscow timezone)
-        const moscowNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+        // Boy Scout: getMoscowTime вместо ручного UTC+3
+        const moscowNow = getMoscowTime();
         const currentHour = moscowNow.getUTCHours();
         const currentMinute = moscowNow.getUTCMinutes();
         const currentMinutes = currentHour * 60 + currentMinute;
@@ -268,6 +435,19 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           };
           result = reports[pendingIndex];
           await saveTodayReports(reports);
+
+          // DB dual-write
+          if (USE_DB_SHIFTS) {
+            try {
+              const dbData = camelToDbShift(result);
+              dbData.updated_at = new Date().toISOString();
+              await db.upsert('shift_reports', dbData);
+              console.log(`[ShiftReports] DB upsert: ${result.id}`);
+            } catch (dbErr) {
+              console.error('[ShiftReports] DB write error:', dbErr.message);
+            }
+          }
+
           console.log(`[ShiftReports] Pending отчёт обновлён до review: ${result.id}`);
         } else {
           // Нет pending отчёта - создаём новый (для обратной совместимости)
@@ -290,6 +470,19 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           reports.push(report);
           await saveTodayReports(reports);
           result = report;
+
+          // DB dual-write
+          if (USE_DB_SHIFTS) {
+            try {
+              const dbData = camelToDbShift(result);
+              dbData.updated_at = new Date().toISOString();
+              await db.upsert('shift_reports', dbData);
+              console.log(`[ShiftReports] DB upsert (new): ${result.id}`);
+            } catch (dbErr) {
+              console.error('[ShiftReports] DB write error:', dbErr.message);
+            }
+          }
+
           console.log(`[ShiftReports] Новый отчёт создан (без pending): ${report.id}`);
         }
 
@@ -309,8 +502,18 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const reportId = decodeURIComponent(req.params.id);
       let report = null;
 
+      // DB lookup
+      if (USE_DB_SHIFTS) {
+        try {
+          const row = await db.findById('shift_reports', reportId);
+          if (row) report = dbShiftReportToCamel(row);
+        } catch (dbErr) {
+          console.error('[Shifts] DB read error (by id), falling back to files:', dbErr.message);
+        }
+      }
+
       // 1. Ищем в daily-файлах (формат scheduler'а: YYYY-MM-DD.json)
-      if (await fileExists(SHIFT_REPORTS_DIR)) {
+      if (!report && await fileExists(SHIFT_REPORTS_DIR)) {
         const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f));
         for (const file of files) {
           try {
@@ -483,7 +686,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
               };
 
               penalties.push(penalty);
-              await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+              await writeJsonFile(penaltiesFile, penalties);
               console.log(`✅ Баллы эффективности (пересменка) сохранены: ${efficiencyPoints} для ${existingReport.employeeName}`);
             }
           });
@@ -504,6 +707,18 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       updatedReport.updatedAt = new Date().toISOString();
 
+      // DB dual-write
+      if (USE_DB_SHIFTS) {
+        try {
+          const dbData = camelToDbShift(updatedReport);
+          dbData.updated_at = updatedReport.updatedAt;
+          await db.upsert('shift_reports', dbData);
+          console.log(`[ShiftReports] DB upsert (update): ${reportId} → ${updatedReport.status}`);
+        } catch (dbErr) {
+          console.error('[ShiftReports] DB write error in PUT:', dbErr.message);
+        }
+      }
+
       // Сохраняем в соответствующий формат (под блокировкой для daily файлов)
       if (reportSource === 'daily' && dailyReports && reportIndex !== -1) {
         await withLock(dailyFilePath, async () => {
@@ -516,11 +731,11 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           } else {
             freshReports.push(updatedReport);
           }
-          await fsp.writeFile(dailyFilePath, JSON.stringify(freshReports, null, 2), 'utf8');
+          await writeJsonFile(dailyFilePath, freshReports);
         });
       } else {
         const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
-        await fsp.writeFile(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+        await writeJsonFile(reportFile, updatedReport);
       }
 
       console.log(`Отчет пересменки обновлен: ${reportId}, статус: ${updatedReport.status}, оценка: ${updatedReport.rating}`);
@@ -538,49 +753,75 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
     try {
       console.log('GET /api/shift-handover-reports:', req.query);
 
-      const reports = [];
+      let reports;
 
-      if (!await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
-        return res.json({ success: true, reports: [] });
-      }
+      if (USE_DB_HANDOVER) {
+        let query = 'SELECT * FROM shift_handover_reports WHERE 1=1';
+        const params = [];
+        let paramIdx = 1;
 
-      const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
+        if (req.query.employeeName) {
+          query += ` AND employee_name = $${paramIdx++}`;
+          params.push(req.query.employeeName);
+        }
+        if (req.query.shopAddress) {
+          query += ` AND shop_address = $${paramIdx++}`;
+          params.push(req.query.shopAddress);
+        }
+        if (req.query.date) {
+          query += ` AND date = $${paramIdx++}`;
+          params.push(req.query.date);
+        }
 
-      for (const file of files) {
-        try {
-          const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, file);
-          const content = await fsp.readFile(filePath, 'utf8');
-          const report = JSON.parse(content);
+        query += ' ORDER BY created_at DESC';
 
-          // Фильтрация по параметрам запроса
-          let include = true;
-          if (req.query.employeeName && report.employeeName !== req.query.employeeName) {
-            include = false;
-          }
-          if (req.query.shopAddress && report.shopAddress !== req.query.shopAddress) {
-            include = false;
-          }
-          if (req.query.date) {
-            const reportDate = new Date(report.createdAt).toISOString().split('T')[0];
-            if (reportDate !== req.query.date) {
+        const result = await db.query(query, params);
+        reports = result.rows.map(dbHandoverReportToCamel);
+      } else {
+        reports = [];
+
+        if (!await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
+          return res.json({ success: true, reports: [] });
+        }
+
+        const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, file);
+            const content = await fsp.readFile(filePath, 'utf8');
+            const report = JSON.parse(content);
+
+            // Фильтрация по параметрам запроса
+            let include = true;
+            if (req.query.employeeName && report.employeeName !== req.query.employeeName) {
               include = false;
             }
-          }
+            if (req.query.shopAddress && report.shopAddress !== req.query.shopAddress) {
+              include = false;
+            }
+            if (req.query.date) {
+              const reportDate = new Date(report.createdAt).toISOString().split('T')[0];
+              if (reportDate !== req.query.date) {
+                include = false;
+              }
+            }
 
-          if (include) {
-            reports.push(report);
+            if (include) {
+              reports.push(report);
+            }
+          } catch (e) {
+            console.error(`Ошибка чтения файла ${file}:`, e);
           }
-        } catch (e) {
-          console.error(`Ошибка чтения файла ${file}:`, e);
         }
-      }
 
-      // Сортируем по дате (новые первыми)
-      reports.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-      });
+        // Сортируем по дате (новые первыми)
+        reports.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
+      }
 
       res.json({ success: true, reports });
     } catch (error) {
@@ -595,17 +836,24 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const id = sanitizeId(req.params.id);
       console.log('GET /api/shift-handover-reports/:id', id);
 
-      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+      let report;
 
-      if (!await fileExists(reportFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Отчет не найден'
-        });
+      if (USE_DB_HANDOVER) {
+        const row = await db.findById('shift_handover_reports', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        report = dbHandoverReportToCamel(row);
+      } else {
+        const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+
+        if (!await fileExists(reportFile)) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+
+        const content = await fsp.readFile(reportFile, 'utf8');
+        report = JSON.parse(content);
       }
-
-      const content = await fsp.readFile(reportFile, 'utf8');
-      const report = JSON.parse(content);
 
       res.json({ success: true, report });
     } catch (error) {
@@ -620,14 +868,25 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const report = req.body;
       console.log('POST /api/shift-handover-reports:', report.id);
 
-      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${report.id}.json`);
-      await fsp.writeFile(reportFile, JSON.stringify(report, null, 2), 'utf8');
-
       // Определяем тип смены по времени создания
       const createdAt = new Date(report.createdAt || Date.now());
       // UTC+3 (Moscow timezone)
       const createdHour = (createdAt.getUTCHours() + 3) % 24;
       const shiftType = createdHour >= 14 ? 'evening' : 'morning';
+
+      if (USE_DB_HANDOVER) {
+        const dbData = camelToDbHandover(report);
+        dbData.id = report.id;
+        dbData.date = report.date || (report.createdAt ? report.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+        if (!dbData.shift_type) dbData.shift_type = shiftType;
+        dbData.updated_at = new Date().toISOString();
+        await db.upsert('shift_handover_reports', dbData);
+      }
+
+      // Dual-write: всегда сохраняем в файл (efficiency_penalties_api, execution_chain_api читают файлы)
+      const safeId = sanitizeId(report.id);
+      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${safeId}.json`);
+      await writeJsonFile(reportFile, report);
 
       // Отмечаем pending как выполненный
       if (markShiftHandoverPendingCompleted) {
@@ -653,18 +912,24 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const updatedData = req.body;
       console.log('PUT /api/shift-handover-reports/:id', id, 'status:', updatedData.status);
 
-      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+      let existingReport;
 
-      if (!await fileExists(reportFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Отчет не найден'
-        });
+      if (USE_DB_HANDOVER) {
+        const row = await db.findById('shift_handover_reports', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        existingReport = dbHandoverReportToCamel(row);
+      } else {
+        const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+
+        if (!await fileExists(reportFile)) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+
+        existingReport = JSON.parse(await fsp.readFile(reportFile, 'utf8'));
       }
 
-      // Загружаем существующий отчёт
-      const existingData = await fsp.readFile(reportFile, 'utf8');
-      const existingReport = JSON.parse(existingData);
       const previousStatus = existingReport.status;
 
       // Объединяем данные
@@ -674,8 +939,15 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         updatedAt: new Date().toISOString()
       };
 
-      // Сохраняем обновлённый отчёт
-      await fsp.writeFile(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+      if (USE_DB_HANDOVER) {
+        const dbData = camelToDbHandover(updatedData);
+        dbData.updated_at = new Date().toISOString();
+        await db.updateById('shift_handover_reports', id, dbData);
+      }
+
+      // Dual-write: всегда сохраняем в файл
+      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+      await writeJsonFile(reportFile, updatedReport);
       console.log('Отчет сдачи смены обновлен:', id, 'статус:', updatedReport.status);
 
       // Отправляем push-уведомление сотруднику при изменении статуса на approved/rejected
@@ -720,16 +992,21 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/shift-handover-reports:', id);
 
-      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
-
-      if (!await fileExists(reportFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Отчет не найден'
-        });
+      if (USE_DB_HANDOVER) {
+        const row = await db.findById('shift_handover_reports', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        await db.deleteById('shift_handover_reports', id);
       }
 
-      await fsp.unlink(reportFile);
+      // Dual-write: удаляем файл тоже
+      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+      if (await fileExists(reportFile)) {
+        await fsp.unlink(reportFile);
+      } else if (!USE_DB_HANDOVER) {
+        return res.status(404).json({ success: false, error: 'Отчет не найден' });
+      }
 
       res.json({ success: true, message: 'Отчет успешно удален' });
     } catch (error) {
@@ -770,7 +1047,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
     }
   });
 
-  console.log('✅ Shifts API initialized');
+  console.log(`✅ Shifts API initialized (shifts: ${USE_DB_SHIFTS ? 'PostgreSQL' : 'JSON files'}, handover: ${USE_DB_HANDOVER ? 'PostgreSQL' : 'JSON files'})`);
 }
 
 module.exports = { setupShiftsAPI };
