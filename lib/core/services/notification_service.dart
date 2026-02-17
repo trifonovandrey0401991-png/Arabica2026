@@ -84,10 +84,13 @@ class NotificationService {
       return;
     }
 
-    final order = orderProvider.orders.firstWhere(
-      (o) => o.id == orderId,
-      orElse: () => orderProvider.orders.first,
-    );
+    // BUG-003 fix: если заказ не найден — не показываем чужой заказ
+    final matchingOrders = orderProvider.orders.where((o) => o.id == orderId);
+    if (matchingOrders.isEmpty) {
+      debugPrint('⚠️ Order $orderId not found in orders list, ignoring notification');
+      return;
+    }
+    final order = matchingOrders.first;
 
     // Используем текущего пользователя (из роли или имени)
     final employeeName = await _getCurrentEmployeeName();

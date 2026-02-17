@@ -1983,7 +1983,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             // SECURITY: Получаем phone для верификации на сервере
             final prefs = await SharedPreferences.getInstance();
             final phone = prefs.getString('user_phone') ?? prefs.getString('userPhone');
-            await ShiftTransferService.markAsRead(request.id, phone: phone, isAdmin: true);
+            await ShiftTransferService.markAsRead(request.id, phone: phone);
             _loadAdminNotifications();
           }
         },

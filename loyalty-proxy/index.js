@@ -22,6 +22,7 @@ async function fileExists(filePath) {
 const { spawn } = require('child_process');
 const { preloadAdminCache, startPeriodicRebuild, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
+const { writeJsonFile } = require('./utils/async_fs');
 const dataCache = require('./utils/data_cache');
 const { maskPhone } = require('./utils/file_helpers');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -928,33 +929,18 @@ app.get("/api/app-version", async (req, res) => {
 // POST /api/app-version - обновить информацию о версии (только админ)
 app.post("/api/app-version", async (req, res) => {
   try {
-    const { employeePhone, ...versionData } = req.body;
-    
-    // Проверка админа
-    if (!employeePhone) {
-      return res.status(403).json({ error: "Требуется авторизация" });
+    // B-10: isAdmin from req.user.isAdmin, not from body
+    if (!req.user) {
+      return res.status(401).json({ error: "Требуется авторизация" });
     }
-    
-    const normalizedPhone = employeePhone.replace(/[^\d]/g, "");
-    let isAdminOrDev = false;
-
-    const employeeFiles = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith(".json"));
-    for (const file of employeeFiles) {
-      try {
-        const emp = JSON.parse(await fsp.readFile(path.join(EMPLOYEES_DIR, file), "utf8"));
-        if (emp.phone && emp.phone.replace(/[^\d]/g, "") === normalizedPhone && (emp.isAdmin || emp.role === 'developer')) {
-          isAdminOrDev = true;
-          break;
-        }
-      } catch (e) {}
-    }
-
-    if (!isAdminOrDev) {
+    if (!req.user.isAdmin) {
       return res.status(403).json({ error: "Доступ только для администраторов" });
     }
-    
-    // Сохраняем версию
-    await fsp.writeFile(APP_VERSION_FILE, JSON.stringify(versionData, null, 2));
+
+    const versionData = req.body;
+
+    // B-01: writeJsonFile with file locking
+    await writeJsonFile(APP_VERSION_FILE, versionData);
     return res.json({ success: true });
   } catch (e) {
     console.error("Ошибка сохранения версии:", e);

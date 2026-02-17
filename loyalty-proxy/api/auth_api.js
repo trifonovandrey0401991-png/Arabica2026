@@ -19,7 +19,10 @@ const path = require('path');
 const router = express.Router();
 const { addTokenToIndex, removeTokenFromIndex, removePhoneFromIndex } = require('../utils/session_middleware');
 const { withLock } = require('../utils/file_lock');
+const { writeJsonFile } = require('../utils/async_fs');
 const { maskPhone } = require('../utils/file_helpers');
+const { isAdminPhone } = require('../utils/admin_cache');
+const dataCache = require('../utils/data_cache');
 
 // Конфигурация
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -161,7 +164,7 @@ async function getPinData(phone) {
  */
 async function savePinData(phone, data) {
   const filePath = path.join(PINS_DIR, `${phone}.json`);
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+  await writeJsonFile(filePath, data);
 }
 
 /**
@@ -190,7 +193,7 @@ async function getSessionByToken(token) {
  */
 async function saveSession(phone, session) {
   const filePath = path.join(SESSIONS_DIR, `${phone}.json`);
-  await fs.writeFile(filePath, JSON.stringify(session, null, 2));
+  await writeJsonFile(filePath, session);
 }
 
 /**
@@ -225,6 +228,37 @@ router.post('/register', async (req, res) => {
 
     if (pin.length < 4 || pin.length > 6) {
       return res.status(400).json({ error: 'PIN должен быть от 4 до 6 цифр' });
+    }
+
+    // SECURITY: Регистрация только для сотрудников из списка
+    const employees = dataCache.getEmployees();
+    let phoneInEmployees = false;
+    if (employees) {
+      phoneInEmployees = employees.some(e => {
+        const empPhone = (e.phone || '').replace(/[^\d]/g, '');
+        return empPhone === normalizedPhone;
+      });
+    } else {
+      // Fallback: кэш не готов, проверяем файлы напрямую
+      const EMPLOYEES_DIR = path.join(DATA_DIR, 'employees');
+      try {
+        const files = (await fs.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+        for (const file of files) {
+          try {
+            const emp = JSON.parse(await fs.readFile(path.join(EMPLOYEES_DIR, file), 'utf8'));
+            if (emp.phone && emp.phone.replace(/[^\d]/g, '') === normalizedPhone) {
+              phoneInEmployees = true;
+              break;
+            }
+          } catch (e) { /* skip broken files */ }
+        }
+      } catch (e) {
+        console.error('[Auth] Error checking employees directory:', e.message);
+      }
+    }
+
+    if (!phoneInEmployees) {
+      return res.status(403).json({ error: 'Регистрация доступна только для сотрудников. Обратитесь к администратору.' });
     }
 
     // Проверяем, не зарегистрирован ли уже пользователь
@@ -587,23 +621,50 @@ router.post('/validate-session', async (req, res) => {
 /**
  * POST /api/auth/logout
  * Выход из системы
+ * SECURITY: Logout by sessionToken — token is proof of ownership (secure).
+ * Logout by phone — requires caller to authenticate via Authorization header
+ * and be the same user or admin (prevents forced logout of other users).
  */
 router.post('/logout', async (req, res) => {
   try {
     const { sessionToken, phone } = req.body;
 
     if (sessionToken) {
+      // Logout by sessionToken — token itself is proof of ownership
       const session = await getSessionByToken(sessionToken);
       if (session) {
         removeTokenFromIndex(sessionToken);
         await deleteSession(session.phone);
         console.log(`✅ User logged out: ${maskPhone(session.phone)}`);
       }
-    } else if (phone) {
+      return res.json({ success: true, message: 'Выход выполнен' });
+    }
+
+    if (phone) {
+      // Logout by phone — requires caller authentication
+      const authHeader = req.headers['authorization'];
+      const callerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+      if (!callerToken) {
+        return res.status(401).json({ error: 'Требуется авторизация для выхода по номеру телефона' });
+      }
+
+      const callerSession = await getSessionByToken(callerToken);
+      if (!callerSession || (callerSession.expiresAt && Date.now() > callerSession.expiresAt)) {
+        return res.status(401).json({ error: 'Недействительная сессия' });
+      }
+
       const normalizedPhone = normalizePhone(phone);
+
+      // Only allow: logout yourself OR admin can logout anyone
+      if (callerSession.phone !== normalizedPhone && !isAdminPhone(callerSession.phone)) {
+        return res.status(403).json({ error: 'Можно выйти только из своего аккаунта' });
+      }
+
       removePhoneFromIndex(normalizedPhone);
       await deleteSession(normalizedPhone);
-      console.log(`✅ User logged out: ${normalizedPhone}`);
+      console.log(`✅ User logged out by ${callerSession.phone === normalizedPhone ? 'self' : 'admin'}: ${maskPhone(normalizedPhone)}`);
+      return res.json({ success: true, message: 'Выход выполнен' });
     }
 
     res.json({ success: true, message: 'Выход выполнен' });

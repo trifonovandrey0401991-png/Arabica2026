@@ -610,18 +610,15 @@ function setupShiftTransfersAPI(app) {
   app.put('/api/shift-transfers/:requestId/read', async (req, res) => {
     try {
       const { requestId } = req.params;
-      const { phone, isAdmin } = req.body;
+      const { phone } = req.body;
 
-      // SECURITY FIX: Проверяем isAdmin по базе данных если передан phone
-      // Если phone не передан - используем isAdmin из body (для обратной совместимости)
-      let isAdminUser = false;
-      if (phone) {
-        isAdminUser = isAdminPhone(phone);
-        console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'phone:', maskPhone(phone), 'isAdmin:', isAdminUser, '(verified from DB)');
-      } else {
-        isAdminUser = isAdmin === true || isAdmin === 'true';
-        console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'isAdmin:', isAdminUser, '(from body - DEPRECATED)');
+      if (!phone) {
+        return res.status(400).json({ success: false, error: 'Phone is required' });
       }
+
+      // B-10: isAdmin only from DB, never from body
+      const isAdminUser = isAdminPhone(phone);
+      console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'phone:', maskPhone(phone), 'isAdmin:', isAdminUser);
 
       const requests = await loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);

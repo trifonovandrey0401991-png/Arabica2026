@@ -89,15 +89,17 @@ class ShiftTransferService {
   }
 
   /// Отметить запрос как прочитанный
-  /// [phone] - телефон текущего пользователя для безопасной проверки прав на сервере
-  /// [isAdmin] - DEPRECATED: используется только для обратной совместимости
-  static Future<bool> markAsRead(String requestId, {String? phone, bool isAdmin = false}) async {
-    Logger.debug('Отметка запроса $requestId как прочитанного (phone: ${Logger.maskPhone(phone)}, isAdmin: $isAdmin)');
+  /// [phone] - телефон текущего пользователя (обязателен для проверки прав на сервере)
+  static Future<bool> markAsRead(String requestId, {required String? phone}) async {
+    if (phone == null || phone.isEmpty) {
+      Logger.debug('⚠️ markAsRead: phone is null, skipping');
+      return false;
+    }
+    Logger.debug('Отметка запроса $requestId как прочитанного (phone: ${Logger.maskPhone(phone)})');
     return await BaseHttpService.simplePut(
       endpoint: '$baseEndpoint/$requestId/read',
       body: {
-        if (phone != null) 'phone': phone,
-        'isAdmin': isAdmin,
+        'phone': phone,
       },
     );
   }
