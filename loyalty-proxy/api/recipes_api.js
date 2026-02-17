@@ -8,7 +8,11 @@ const fsp = require('fs').promises;
 const path = require('path');
 const multer = require('multer');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_RECIPES === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const RECIPES_DIR = `${DATA_DIR}/recipes`;
@@ -83,11 +87,21 @@ function setupRecipesAPI(app) {
   app.get('/api/recipes', async (req, res) => {
     try {
       console.log('GET /api/recipes');
+
+      if (USE_DB) {
+        const rows = await db.findAll('recipes', { orderBy: 'created_at', orderDir: 'DESC' });
+        const recipes = rows.map(r => r.data);
+        console.log(`✅ Найдено рецептов: ${recipes.length} (DB)`);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(recipes, req.query, 'recipes'));
+        }
+        return res.json({ success: true, recipes });
+      }
+
       const recipes = [];
 
       if (await fileExists(RECIPES_DIR)) {
         const files = (await fsp.readdir(RECIPES_DIR)).filter(f => f.endsWith('.json'));
-        // Параллельное чтение всех файлов (вместо последовательного)
         const results = await Promise.allSettled(
           files.map(async (file) => {
             const content = await fsp.readFile(path.join(RECIPES_DIR, file), 'utf8');
@@ -116,6 +130,13 @@ function setupRecipesAPI(app) {
   app.get('/api/recipes/:id', async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
+
+      if (USE_DB) {
+        const row = await db.findById('recipes', safeId);
+        if (!row) return res.status(404).json({ success: false, error: 'Рецепт не найден' });
+        return res.json({ success: true, recipe: row.data });
+      }
+
       const recipeFile = path.join(RECIPES_DIR, `${safeId}.json`);
       if (!isPathSafe(RECIPES_DIR, recipeFile)) {
         return res.status(400).json({ success: false, error: 'Invalid recipe ID' });
@@ -174,7 +195,12 @@ function setupRecipesAPI(app) {
       };
 
       const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
-      await fsp.writeFile(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
+      await writeJsonFile(recipeFile, recipe);
+
+      if (USE_DB) {
+        try { await db.upsert('recipes', { id, data: recipe, created_at: recipe.createdAt, updated_at: recipe.updatedAt }); }
+        catch (dbErr) { console.error('DB save recipe error:', dbErr.message); }
+      }
 
       res.json({ success: true, recipe });
     } catch (error) {
@@ -208,7 +234,12 @@ function setupRecipesAPI(app) {
       if (updates.photoUrl !== undefined) recipe.photoUrl = updates.photoUrl;
       recipe.updatedAt = new Date().toISOString();
 
-      await fsp.writeFile(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
+      await writeJsonFile(recipeFile, recipe);
+
+      if (USE_DB) {
+        try { await db.upsert('recipes', { id, data: recipe, updated_at: recipe.updatedAt }); }
+        catch (dbErr) { console.error('DB update recipe error:', dbErr.message); }
+      }
 
       res.json({ success: true, recipe });
     } catch (error) {
@@ -238,6 +269,11 @@ function setupRecipesAPI(app) {
         await fsp.unlink(photoPath);
       }
 
+      if (USE_DB) {
+        try { await db.deleteById('recipes', id); }
+        catch (dbErr) { console.error('DB delete recipe error:', dbErr.message); }
+      }
+
       res.json({ success: true, message: 'Рецепт успешно удален' });
     } catch (error) {
       console.error('Ошибка удаления рецепта:', error);
@@ -245,7 +281,7 @@ function setupRecipesAPI(app) {
     }
   });
 
-  console.log('✅ Recipes API initialized');
+  console.log(`✅ Recipes API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupRecipesAPI };

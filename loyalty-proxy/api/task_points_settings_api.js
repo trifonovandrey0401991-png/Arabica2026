@@ -6,6 +6,11 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_TASK_POINTS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -25,20 +30,15 @@ const DEFAULT_CONFIG = {
   updatedBy: null
 };
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // ==================== УТИЛИТЫ ====================
 
 async function loadConfig() {
   try {
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'task_points_config', 'key');
+      if (row) return row.data;
+      return { ...DEFAULT_CONFIG };
+    }
     if (await fileExists(CONFIG_FILE)) {
       const data = await fsp.readFile(CONFIG_FILE, 'utf8');
       return JSON.parse(data);
@@ -51,7 +51,13 @@ async function loadConfig() {
 
 async function saveConfig(config) {
   try {
-    await fsp.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+    await writeJsonFile(CONFIG_FILE, config);
+
+    if (USE_DB) {
+      try { await db.upsert('app_settings', { key: 'task_points_config', data: config, updated_at: config.updatedAt || new Date().toISOString() }, 'key'); }
+      catch (dbErr) { console.error('DB save task_points_config error:', dbErr.message); }
+    }
+
     console.log('Task points config saved');
   } catch (e) {
     console.error('Error saving task points config:', e);

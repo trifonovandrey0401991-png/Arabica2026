@@ -8,6 +8,10 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_SHIFT_QUESTIONS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHIFT_QUESTIONS_DIR = `${DATA_DIR}/shift-questions`;
@@ -25,18 +29,22 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
     try {
       console.log('GET /api/shift-questions:', req.query);
 
-      const files = await fsp.readdir(SHIFT_QUESTIONS_DIR);
-      const questions = [];
-
-      for (const file of files) {
-        if (file.endsWith('.json')) {
-          try {
-            const filePath = path.join(SHIFT_QUESTIONS_DIR, file);
-            const data = await fsp.readFile(filePath, 'utf8');
-            const question = JSON.parse(data);
-            questions.push(question);
-          } catch (error) {
-            console.error(`Ошибка чтения вопроса ${file}:`, error);
+      let questions;
+      if (USE_DB) {
+        const rows = await db.findAll('shift_questions', { orderBy: 'created_at', orderDir: 'ASC' });
+        questions = rows.map(r => r.data);
+      } else {
+        questions = [];
+        const files = await fsp.readdir(SHIFT_QUESTIONS_DIR);
+        for (const file of files) {
+          if (file.endsWith('.json')) {
+            try {
+              const filePath = path.join(SHIFT_QUESTIONS_DIR, file);
+              const data = await fsp.readFile(filePath, 'utf8');
+              questions.push(JSON.parse(data));
+            } catch (error) {
+              console.error(`Ошибка чтения вопроса ${file}:`, error);
+            }
           }
         }
       }
@@ -52,9 +60,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
       let filteredQuestions = questions;
       if (req.query.shopAddress) {
         filteredQuestions = questions.filter(q => {
-          // Если shops === null, вопрос для всех магазинов
           if (!q.shops || q.shops.length === 0) return true;
-          // Иначе проверяем, есть ли магазин в списке
           return q.shops.includes(req.query.shopAddress);
         });
       }
@@ -76,6 +82,13 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
   app.get('/api/shift-questions/:questionId', async (req, res) => {
     try {
       const { questionId } = req.params;
+
+      if (USE_DB) {
+        const row = await db.findById('shift_questions', questionId);
+        if (!row) return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+        return res.json({ success: true, question: row.data });
+      }
+
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
@@ -139,7 +152,13 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(questionData, null, 2), 'utf8');
+      await writeJsonFile(filePath, questionData);
+
+      if (USE_DB) {
+        try { await db.upsert('shift_questions', { id: questionId, data: questionData, created_at: questionData.createdAt, updated_at: questionData.updatedAt }); }
+        catch (dbErr) { console.error('DB save shift_question error:', dbErr.message); }
+      }
+
       console.log('Вопрос сохранен:', filePath);
 
       res.json({
@@ -187,7 +206,13 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
+      await writeJsonFile(filePath, updatedQuestion);
+
+      if (USE_DB) {
+        try { await db.upsert('shift_questions', { id: questionId, data: updatedQuestion, updated_at: updatedQuestion.updatedAt }); }
+        catch (dbErr) { console.error('DB update shift_question error:', dbErr.message); }
+      }
+
       console.log('Вопрос обновлен:', filePath);
 
       res.json({
@@ -243,7 +268,13 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
           question.referencePhotos[shopAddress] = photoUrl;
           question.updatedAt = new Date().toISOString();
 
-          await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+          await writeJsonFile(filePath, question);
+
+          if (USE_DB) {
+            try { await db.upsert('shift_questions', { id: questionId, data: question, updated_at: question.updatedAt }); }
+            catch (dbErr) { console.error('DB update shift_question photo error:', dbErr.message); }
+          }
+
           console.log('Эталонное фото добавлено в вопрос:', questionId);
         }
 
@@ -281,7 +312,13 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
           const question = JSON.parse(data);
           question.order = item.order;
           question.updatedAt = new Date().toISOString();
-          await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+          await writeJsonFile(filePath, question);
+
+          if (USE_DB) {
+            try { await db.upsert('shift_questions', { id: item.id, data: question, updated_at: question.updatedAt }); }
+            catch (dbErr) { console.error('DB reorder shift_question error:', dbErr.message); }
+          }
+
           updated++;
         }
       }
@@ -308,6 +345,12 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
       }
 
       await fsp.unlink(filePath);
+
+      if (USE_DB) {
+        try { await db.deleteById('shift_questions', questionId); }
+        catch (dbErr) { console.error('DB delete shift_question error:', dbErr.message); }
+      }
+
       console.log('Вопрос удален:', filePath);
 
       res.json({
@@ -323,7 +366,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
     }
   });
 
-  console.log('✅ Shift Questions API initialized');
+  console.log(`✅ Shift Questions API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupShiftQuestionsAPI };

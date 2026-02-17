@@ -8,6 +8,10 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_SHOP_SETTINGS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -17,6 +21,11 @@ function setupShopSettingsAPI(app) {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('GET /api/shop-settings:', shopAddress);
+
+      if (USE_DB) {
+        const row = await db.findById('shop_settings', shopAddress, 'shop_address');
+        return res.json({ success: true, settings: row ? row.data : null });
+      }
 
       const settingsDir = `${DATA_DIR}/shop-settings`;
       if (!await fileExists(settingsDir)) {
@@ -136,8 +145,13 @@ function setupShopSettingsAPI(app) {
       console.log('   Сохранение настроек:', JSON.stringify(settings, null, 2));
 
       try {
-        await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+        await writeJsonFile(settingsFile, settings);
         console.log('   ✅ Настройки магазина сохранены:', settingsFile);
+
+        if (USE_DB) {
+          try { await db.upsert('shop_settings', { shop_address: shopAddress, data: settings, created_at: settings.createdAt, updated_at: settings.updatedAt }, 'shop_address'); }
+          catch (dbErr) { console.error('DB save shop_settings error:', dbErr.message); }
+        }
 
         res.json({
           success: true,
@@ -163,6 +177,14 @@ function setupShopSettingsAPI(app) {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('GET /api/shop-settings/:shopAddress/document-number:', shopAddress);
+
+      if (USE_DB) {
+        const row = await db.findById('shop_settings', shopAddress, 'shop_address');
+        const lastNum = row?.data?.lastDocumentNumber || 0;
+        let nextNumber = lastNum + 1;
+        if (nextNumber > 50000) nextNumber = 1;
+        return res.json({ success: true, documentNumber: nextNumber });
+      }
 
       const settingsDir = `${DATA_DIR}/shop-settings`;
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -223,7 +245,13 @@ function setupShopSettingsAPI(app) {
       settings.lastDocumentNumber = documentNumber || 0;
       settings.updatedAt = new Date().toISOString();
 
-      await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+      await writeJsonFile(settingsFile, settings);
+
+      if (USE_DB) {
+        try { await db.upsert('shop_settings', { shop_address: shopAddress, data: settings, updated_at: settings.updatedAt }, 'shop_address'); }
+        catch (dbErr) { console.error('DB update shop_settings doc number error:', dbErr.message); }
+      }
+
       console.log('Номер документа обновлен:', settingsFile);
 
       res.json({
@@ -239,7 +267,7 @@ function setupShopSettingsAPI(app) {
     }
   });
 
-  console.log('✅ Shop Settings API initialized');
+  console.log(`✅ Shop Settings API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupShopSettingsAPI };

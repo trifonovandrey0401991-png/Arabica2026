@@ -8,6 +8,9 @@ const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_MENU === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const MENU_DIR = `${DATA_DIR}/menu`;
@@ -28,6 +31,21 @@ function setupMenuAPI(app) {
   app.get('/api/menu', async (req, res) => {
     try {
       console.log('GET /api/menu');
+
+      if (USE_DB) {
+        const rows = await db.findAll('menu_items', { orderBy: 'created_at', orderDir: 'ASC' });
+        const items = rows.map(r => r.data);
+        // Сортируем по категории и названию
+        items.sort((a, b) => {
+          const catCompare = (a.category || '').localeCompare(b.category || '');
+          if (catCompare !== 0) return catCompare;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(items, req.query, 'items'));
+        }
+        return res.json({ success: true, items });
+      }
 
       const items = [];
 
@@ -71,6 +89,12 @@ function setupMenuAPI(app) {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/menu/:id', id);
 
+      if (USE_DB) {
+        const row = await db.findById('menu_items', id);
+        if (!row) return res.status(404).json({ success: false, error: 'Позиция меню не найдена' });
+        return res.json({ success: true, item: row.data });
+      }
+
       const itemFile = path.join(MENU_DIR, `${id}.json`);
 
       if (!await fileExists(itemFile)) {
@@ -105,6 +129,11 @@ function setupMenuAPI(app) {
       const itemFile = path.join(MENU_DIR, `${item.id}.json`);
       await writeJsonFile(itemFile, item);
 
+      if (USE_DB) {
+        try { await db.upsert('menu_items', { id: item.id, data: item, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB save menu_item error:', dbErr.message); }
+      }
+
       res.json({ success: true, item });
     } catch (error) {
       console.error('Ошибка создания позиции меню:', error);
@@ -138,6 +167,11 @@ function setupMenuAPI(app) {
 
       await writeJsonFile(itemFile, item);
 
+      if (USE_DB) {
+        try { await db.upsert('menu_items', { id, data: item, updated_at: new Date().toISOString() }); }
+        catch (dbErr) { console.error('DB update menu_item error:', dbErr.message); }
+      }
+
       res.json({ success: true, item });
     } catch (error) {
       console.error('Ошибка обновления позиции меню:', error);
@@ -163,6 +197,11 @@ function setupMenuAPI(app) {
 
       await fsp.unlink(itemFile);
 
+      if (USE_DB) {
+        try { await db.deleteById('menu_items', id); }
+        catch (dbErr) { console.error('DB delete menu_item error:', dbErr.message); }
+      }
+
       res.json({ success: true, message: 'Позиция меню удалена' });
     } catch (error) {
       console.error('Ошибка удаления позиции меню:', error);
@@ -170,7 +209,7 @@ function setupMenuAPI(app) {
     }
   });
 
-  console.log('✅ Menu API initialized');
+  console.log(`✅ Menu API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupMenuAPI };

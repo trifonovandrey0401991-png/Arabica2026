@@ -8,6 +8,10 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_RECOUNT_QUESTIONS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
@@ -24,6 +28,11 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   app.get('/api/recount-questions', async (req, res) => {
     try {
       console.log('GET /api/recount-questions:', req.query);
+
+      if (USE_DB) {
+        const rows = await db.findAll('recount_questions', { orderBy: 'created_at', orderDir: 'ASC' });
+        return res.json({ success: true, questions: rows.map(r => r.data) });
+      }
 
       const files = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
       const questions = [];
@@ -72,7 +81,13 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(questionData, null, 2), 'utf8');
+      await writeJsonFile(filePath, questionData);
+
+      if (USE_DB) {
+        try { await db.upsert('recount_questions', { id: questionId, data: questionData, created_at: questionData.createdAt }); }
+        catch (dbErr) { console.error('DB save recount_question error:', dbErr.message); }
+      }
+
       console.log('Вопрос пересчета сохранен:', filePath);
 
       res.json({
@@ -114,7 +129,13 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
+      await writeJsonFile(filePath, updatedQuestion);
+
+      if (USE_DB) {
+        try { await db.upsert('recount_questions', { id: questionId, data: updatedQuestion, created_at: updatedQuestion.createdAt || existingQuestion.createdAt }); }
+        catch (dbErr) { console.error('DB update recount_question error:', dbErr.message); }
+      }
+
       console.log('Вопрос пересчета обновлен:', filePath);
 
       res.json({
@@ -168,7 +189,13 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
           question.referencePhotos[shopAddress] = photoUrl;
           question.updatedAt = new Date().toISOString();
 
-          await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+          await writeJsonFile(filePath, question);
+
+          if (USE_DB) {
+            try { await db.upsert('recount_questions', { id: questionId, data: question, created_at: question.createdAt }); }
+            catch (dbErr) { console.error('DB update recount_question photo error:', dbErr.message); }
+          }
+
           console.log('Эталонное фото добавлено в вопрос пересчета:', questionId);
         }
 
@@ -202,6 +229,12 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
       }
 
       await fsp.unlink(filePath);
+
+      if (USE_DB) {
+        try { await db.deleteById('recount_questions', questionId); }
+        catch (dbErr) { console.error('DB delete recount_question error:', dbErr.message); }
+      }
+
       console.log('Вопрос пересчета удален:', filePath);
 
       res.json({
@@ -239,6 +272,12 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
       }
       console.log(`Удалено ${existingFiles.length} существующих файлов`);
 
+      // DB: удаляем все записи
+      if (USE_DB) {
+        try { await db.query('DELETE FROM "recount_questions"'); }
+        catch (dbErr) { console.error('DB delete all recount_questions error:', dbErr.message); }
+      }
+
       // Создаем новые файлы
       const createdProducts = [];
       for (const product of products) {
@@ -259,7 +298,13 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
           updatedAt: new Date().toISOString()
         };
 
-        await fsp.writeFile(filePath, JSON.stringify(productData, null, 2), 'utf8');
+        await writeJsonFile(filePath, productData);
+
+        if (USE_DB) {
+          try { await db.upsert('recount_questions', { id: productId, data: productData, created_at: productData.createdAt }); }
+          catch (dbErr) { /* bulk - skip errors */ }
+        }
+
         createdProducts.push(productData);
       }
 
@@ -339,7 +384,13 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
           updatedAt: new Date().toISOString()
         };
 
-        await fsp.writeFile(filePath, JSON.stringify(productData, null, 2), 'utf8');
+        await writeJsonFile(filePath, productData);
+
+        if (USE_DB) {
+          try { await db.upsert('recount_questions', { id: productId, data: productData, created_at: productData.createdAt }); }
+          catch (dbErr) { /* bulk - skip errors */ }
+        }
+
         addedProducts.push(productData);
         existingBarcodes.add(barcode);
       }
@@ -363,7 +414,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
     }
   });
 
-  console.log('✅ Recount Questions API initialized');
+  console.log(`✅ Recount Questions API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupRecountQuestionsAPI };

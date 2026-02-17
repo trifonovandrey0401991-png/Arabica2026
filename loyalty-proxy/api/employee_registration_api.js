@@ -8,6 +8,10 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_EMPLOYEE_REGISTRATION === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -53,7 +57,13 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
         registrationData.createdAt = new Date().toISOString();
       }
 
-      await fsp.writeFile(registrationFile, JSON.stringify(registrationData, null, 2), 'utf8');
+      await writeJsonFile(registrationFile, registrationData);
+
+      if (USE_DB) {
+        try { await db.upsert('employee_registrations', { id: sanitizedPhone, data: registrationData, created_at: registrationData.createdAt }); }
+        catch (dbErr) { console.error('DB save employee_registration error:', dbErr.message); }
+      }
+
       console.log('Регистрация сохранена:', registrationFile);
 
       res.json({
@@ -74,6 +84,12 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
     try {
       const phone = decodeURIComponent(req.params.phone);
       console.log('GET /api/employee-registration:', maskPhone(phone));
+
+      if (USE_DB) {
+        const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const row = await db.findById('employee_registrations', sanitizedPhone);
+        return res.json({ success: true, registration: row ? row.data : null });
+      }
 
       const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
@@ -135,7 +151,13 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
       }
       registration.updatedAt = new Date().toISOString();
 
-      await fsp.writeFile(registrationFile, JSON.stringify(registration, null, 2), 'utf8');
+      await writeJsonFile(registrationFile, registration);
+
+      if (USE_DB) {
+        try { await db.upsert('employee_registrations', { id: sanitizedPhone, data: registration, created_at: registration.createdAt }); }
+        catch (dbErr) { console.error('DB update employee_registration verify error:', dbErr.message); }
+      }
+
       console.log('Статус верификации обновлен:', registrationFile);
 
       // Если верификация снята - отправляем push уведомление сотруднику
@@ -175,6 +197,11 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
     try {
       console.log('GET /api/employee-registrations');
 
+      if (USE_DB) {
+        const rows = await db.findAll('employee_registrations', { orderBy: 'created_at', orderDir: 'DESC' });
+        return res.json({ success: true, registrations: rows.map(r => r.data) });
+      }
+
       const registrations = [];
 
       if (await fileExists(registrationDir)) {
@@ -191,7 +218,6 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
           }
         }
 
-        // Сортируем по дате создания (новые первыми)
         registrations.sort((a, b) => {
           const dateA = new Date(a.createdAt || 0);
           const dateB = new Date(b.createdAt || 0);
@@ -209,7 +235,7 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
     }
   });
 
-  console.log('✅ Employee Registration API initialized');
+  console.log(`✅ Employee Registration API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupEmployeeRegistrationAPI };

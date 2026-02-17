@@ -7,6 +7,10 @@
 
 const fsp = require('fs').promises;
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_LOYALTY_PROMO === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const LOYALTY_PROMO_FILE = `${DATA_DIR}/loyalty-promo.json`;
@@ -22,7 +26,10 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
         success: true
       };
 
-      if (await fileExists(LOYALTY_PROMO_FILE)) {
+      if (USE_DB) {
+        const row = await db.findById('app_settings', 'loyalty_promo', 'key');
+        if (row) settings = { ...settings, ...row.data, success: true };
+      } else if (await fileExists(LOYALTY_PROMO_FILE)) {
         const data = JSON.parse(await fsp.readFile(LOYALTY_PROMO_FILE, 'utf8'));
         settings = { ...settings, ...data, success: true };
       }
@@ -58,7 +65,13 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
         updatedBy: normalizedPhone
       };
 
-      await fsp.writeFile(LOYALTY_PROMO_FILE, JSON.stringify(settings, null, 2), 'utf8');
+      await writeJsonFile(LOYALTY_PROMO_FILE, settings);
+
+      if (USE_DB) {
+        try { await db.upsert('app_settings', { key: 'loyalty_promo', data: settings, updated_at: settings.updatedAt }, 'key'); }
+        catch (dbErr) { console.error('DB save loyalty_promo error:', dbErr.message); }
+      }
+
       console.log('POST /api/loyalty-promo:', settings.pointsRequired + '+' + settings.drinksToGive, 'by', normalizedPhone);
       res.json({ success: true, ...settings });
     } catch (e) {
@@ -67,7 +80,7 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
     }
   });
 
-  console.log('✅ Loyalty Promo API initialized');
+  console.log(`✅ Loyalty Promo API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupLoyaltyPromoAPI };

@@ -6,20 +6,15 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_JOB_APPLICATIONS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const JOB_APPLICATIONS_DIR = `${DATA_DIR}/job-applications`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Ensure directory exists (async IIFE)
 (async () => {
@@ -27,6 +22,44 @@ async function fileExists(filePath) {
     await fsp.mkdir(JOB_APPLICATIONS_DIR, { recursive: true });
   }
 })();
+
+// ==================== DB converters ====================
+
+function jobAppToDb(app) {
+  return {
+    id: app.id,
+    full_name: app.fullName || null,
+    phone: app.phone || null,
+    preferred_shift: app.preferredShift || null,
+    shop_addresses: app.shopAddresses || null,
+    is_viewed: app.isViewed === true,
+    viewed_at: app.viewedAt || null,
+    viewed_by: app.viewedBy || null,
+    status: app.status || 'new',
+    admin_notes: app.adminNotes || null,
+    status_updated_at: app.statusUpdatedAt || null,
+    notes_updated_at: app.notesUpdatedAt || null,
+    created_at: app.createdAt || new Date().toISOString()
+  };
+}
+
+function dbToJobApp(row) {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    phone: row.phone,
+    preferredShift: row.preferred_shift,
+    shopAddresses: row.shop_addresses,
+    isViewed: row.is_viewed,
+    viewedAt: row.viewed_at ? new Date(row.viewed_at).toISOString() : null,
+    viewedBy: row.viewed_by,
+    status: row.status,
+    adminNotes: row.admin_notes,
+    statusUpdatedAt: row.status_updated_at ? new Date(row.status_updated_at).toISOString() : null,
+    notesUpdatedAt: row.notes_updated_at ? new Date(row.notes_updated_at).toISOString() : null,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+  };
+}
 
 // Нормализация телефонного номера (убираем все кроме цифр и +)
 function normalizePhone(phone) {
@@ -47,11 +80,21 @@ function normalizePhone(phone) {
 // Проверка дубликата по телефону (за последние 24 часа)
 async function checkDuplicateApplication(phone) {
   try {
+    const normalizedPhone = normalizePhone(phone);
+    const oneDayAgo = new Date(Date.now() - (24 * 60 * 60 * 1000));
+
+    if (USE_DB) {
+      const result = await db.query(
+        `SELECT * FROM "job_applications" WHERE "phone" = $1 AND "created_at" > $2 ORDER BY "created_at" DESC LIMIT 1`,
+        [normalizedPhone, oneDayAgo.toISOString()]
+      );
+      if (result.rows.length > 0) return dbToJobApp(result.rows[0]);
+      return null;
+    }
+
     if (!(await fileExists(JOB_APPLICATIONS_DIR))) return null;
 
     const files = await fsp.readdir(JOB_APPLICATIONS_DIR);
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-    const normalizedPhone = normalizePhone(phone);
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
@@ -63,8 +106,7 @@ async function checkDuplicateApplication(phone) {
         const appNormalizedPhone = normalizePhone(appData.phone);
         const appCreatedTime = new Date(appData.createdAt).getTime();
 
-        // Если номер совпадает и заявка создана менее 24 часов назад
-        if (appNormalizedPhone === normalizedPhone && appCreatedTime > oneDayAgo) {
+        if (appNormalizedPhone === normalizedPhone && appCreatedTime > oneDayAgo.getTime()) {
           return appData;
         }
       } catch (e) {
@@ -135,6 +177,13 @@ module.exports = function setupJobApplicationsAPI(app) {
   app.get('/api/job-applications', async (req, res) => {
     try {
       console.log('📥 GET /api/job-applications');
+
+      if (USE_DB) {
+        const rows = await db.findAll('job_applications', { orderBy: 'created_at', orderDir: 'DESC' });
+        const applications = rows.map(dbToJobApp);
+        const unviewedCount = rows.filter(r => !r.is_viewed).length;
+        return res.json({ success: true, applications, unviewedCount });
+      }
 
       if (!(await fileExists(JOB_APPLICATIONS_DIR))) {
         await fsp.mkdir(JOB_APPLICATIONS_DIR, { recursive: true });
@@ -227,7 +276,12 @@ module.exports = function setupJobApplicationsAPI(app) {
       };
 
       const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await writeJsonFile(filePath, application);
+
+      if (USE_DB) {
+        try { await db.upsert('job_applications', jobAppToDb(application)); }
+        catch (dbErr) { console.error('DB save job_application error:', dbErr.message); }
+      }
 
       console.log(`✅ Заявка создана: ${id}`);
 
@@ -248,6 +302,11 @@ module.exports = function setupJobApplicationsAPI(app) {
   // GET /api/job-applications/unviewed-count - получить количество непросмотренных
   app.get('/api/job-applications/unviewed-count', async (req, res) => {
     try {
+      if (USE_DB) {
+        const cnt = await db.count('job_applications', { is_viewed: false });
+        return res.json({ success: true, count: cnt });
+      }
+
       if (!(await fileExists(JOB_APPLICATIONS_DIR))) {
         return res.json({ success: true, count: 0 });
       }
@@ -299,7 +358,12 @@ module.exports = function setupJobApplicationsAPI(app) {
         application.status = 'viewed';
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await writeJsonFile(filePath, application);
+
+      if (USE_DB) {
+        try { await db.upsert('job_applications', jobAppToDb(application)); }
+        catch (dbErr) { console.error('DB update job_application error:', dbErr.message); }
+      }
 
       console.log(`✅ Заявка ${id} отмечена как просмотренная`);
       res.json({ success: true, application });
@@ -329,7 +393,12 @@ module.exports = function setupJobApplicationsAPI(app) {
       application.status = status;
       application.statusUpdatedAt = new Date().toISOString();
 
-      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await writeJsonFile(filePath, application);
+
+      if (USE_DB) {
+        try { await db.upsert('job_applications', jobAppToDb(application)); }
+        catch (dbErr) { console.error('DB update job_application status error:', dbErr.message); }
+      }
 
       console.log(`✅ Статус заявки ${id} обновлен: ${status}`);
       res.json({ success: true, application });
@@ -359,7 +428,12 @@ module.exports = function setupJobApplicationsAPI(app) {
       application.adminNotes = adminNotes;
       application.notesUpdatedAt = new Date().toISOString();
 
-      await fsp.writeFile(filePath, JSON.stringify(application, null, 2), 'utf8');
+      await writeJsonFile(filePath, application);
+
+      if (USE_DB) {
+        try { await db.upsert('job_applications', jobAppToDb(application)); }
+        catch (dbErr) { console.error('DB update job_application notes error:', dbErr.message); }
+      }
 
       console.log(`✅ Комментарии к заявке ${id} обновлены`);
       res.json({ success: true, application });
@@ -369,5 +443,5 @@ module.exports = function setupJobApplicationsAPI(app) {
     }
   });
 
-  console.log('✅ Job Applications API initialized');
+  console.log(`✅ Job Applications API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 };

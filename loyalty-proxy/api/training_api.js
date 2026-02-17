@@ -12,6 +12,9 @@ const express = require('express');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_TRAINING === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const TRAINING_ARTICLES_DIR = `${DATA_DIR}/training-articles`;
@@ -64,6 +67,15 @@ function setupTrainingAPI(app) {
   // GET /api/training-articles
   app.get('/api/training-articles', async (req, res) => {
     try {
+      if (USE_DB) {
+        const rows = await db.findAll('training_articles', { orderBy: 'created_at', orderDir: 'DESC' });
+        const articles = rows.map(r => r.data);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(articles, req.query, 'articles'));
+        }
+        return res.json({ success: true, articles });
+      }
+
       const articles = [];
       if (await fileExists(TRAINING_ARTICLES_DIR)) {
         const files = (await fsp.readdir(TRAINING_ARTICLES_DIR)).filter(f => f.endsWith('.json'));
@@ -109,6 +121,12 @@ function setupTrainingAPI(app) {
       }
       const articleFile = path.join(TRAINING_ARTICLES_DIR, `${article.id}.json`);
       await writeJsonFile(articleFile, article);
+
+      if (USE_DB) {
+        try { await db.upsert('training_articles', { id: article.id, data: article, created_at: article.createdAt, updated_at: article.createdAt }); }
+        catch (dbErr) { console.error('DB save training_article error:', dbErr.message); }
+      }
+
       res.json({ success: true, article });
     } catch (error) {
       console.error('Ошибка создания статьи обучения:', error);
@@ -140,6 +158,12 @@ function setupTrainingAPI(app) {
       }
       article.updatedAt = new Date().toISOString();
       await writeJsonFile(articleFile, article);
+
+      if (USE_DB) {
+        try { await db.upsert('training_articles', { id: safeId, data: article, updated_at: article.updatedAt }); }
+        catch (dbErr) { console.error('DB update training_article error:', dbErr.message); }
+      }
+
       res.json({ success: true, article });
     } catch (error) {
       console.error('Ошибка обновления статьи обучения:', error);
@@ -160,6 +184,12 @@ function setupTrainingAPI(app) {
         return res.status(404).json({ success: false, error: 'Статья не найдена' });
       }
       await fsp.unlink(articleFile);
+
+      if (USE_DB) {
+        try { await db.deleteById('training_articles', safeId); }
+        catch (dbErr) { console.error('DB delete training_article error:', dbErr.message); }
+      }
+
       res.json({ success: true });
     } catch (error) {
       console.error('Ошибка удаления статьи обучения:', error);
@@ -213,7 +243,7 @@ function setupTrainingAPI(app) {
   // Статические файлы для изображений статей обучения
   app.use('/training-articles-media', express.static(TRAINING_ARTICLES_MEDIA_DIR));
 
-  console.log('✅ Training API initialized');
+  console.log(`✅ Training API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
 module.exports = { setupTrainingAPI };
