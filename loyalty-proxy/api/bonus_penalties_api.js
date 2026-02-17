@@ -10,9 +10,40 @@ const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const db = require('../utils/db');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const USE_DB = process.env.USE_DB_BONUS_PENALTIES === 'true';
 const BONUS_PENALTIES_DIR = `${DATA_DIR}/bonus-penalties`;
+
+// DB conversion helpers
+function camelToDb(r) {
+  return {
+    id: r.id,
+    employee_id: r.employeeId || null,
+    employee_name: r.employeeName || null,
+    type: r.type || 'bonus',
+    amount: r.amount != null ? r.amount : 0,
+    comment: r.comment || null,
+    admin_name: r.adminName || null,
+    month: r.month || null,
+    created_at: r.createdAt || new Date().toISOString()
+  };
+}
+
+function dbToCamel(row) {
+  return {
+    id: row.id,
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    type: row.type,
+    amount: row.amount != null ? parseFloat(row.amount) : 0,
+    comment: row.comment,
+    adminName: row.admin_name,
+    month: row.month,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+  };
+}
 
 // Вспомогательная функция для получения месяца в формате YYYY-MM
 function getCurrentMonth() {
@@ -40,7 +71,43 @@ function setupBonusPenaltiesAPI(app) {
 
       console.log(`📥 GET /api/bonus-penalties month=${month}, employeeId=${employeeId || 'all'}`);
 
-      // Создаем директорию, если её нет
+      // DB path
+      if (USE_DB) {
+        try {
+          const conditions = ['month = $1'];
+          const params = [month];
+          let paramIdx = 2;
+
+          if (employeeId) {
+            conditions.push(`employee_id = $${paramIdx++}`);
+            params.push(employeeId);
+          }
+
+          const sql = `SELECT * FROM bonus_penalties WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`;
+          const result = await db.query(sql, params);
+          const records = result.rows.map(dbToCamel);
+
+          let total = 0;
+          records.forEach(r => {
+            if (r.type === 'bonus') {
+              total += r.amount;
+            } else {
+              total -= r.amount;
+            }
+          });
+
+          if (isPaginationRequested(req.query)) {
+            const paginated = createPaginatedResponse(records, req.query, 'records');
+            paginated.total = total;
+            return res.json(paginated);
+          }
+          return res.json({ success: true, records, total });
+        } catch (dbErr) {
+          console.error('DB bonus-penalties read error:', dbErr.message);
+        }
+      }
+
+      // File path
       if (!await fileExists(BONUS_PENALTIES_DIR)) {
         await fsp.mkdir(BONUS_PENALTIES_DIR, { recursive: true });
       }
@@ -144,6 +211,14 @@ function setupBonusPenaltiesAPI(app) {
 
       // Сохраняем
       await writeJsonFile(filePath, data);
+      // DB dual-write
+      if (USE_DB) {
+        try {
+          await db.upsert('bonus_penalties', camelToDb(newRecord));
+        } catch (dbErr) {
+          console.error('DB bonus-penalties insert error:', dbErr.message);
+        }
+      }
 
       console.log(`✅ Создана запись ${type}: ${amount} для ${employeeName}`);
       res.json({ success: true, record: newRecord });
@@ -178,6 +253,14 @@ function setupBonusPenaltiesAPI(app) {
 
       data.records.splice(index, 1);
       await writeJsonFile(filePath, data);
+      // DB dual-write
+      if (USE_DB) {
+        try {
+          await db.deleteById('bonus_penalties', id);
+        } catch (dbErr) {
+          console.error('DB bonus-penalties delete error:', dbErr.message);
+        }
+      }
 
       console.log(`✅ Запись ${id} удалена`);
       res.json({ success: true });
@@ -194,6 +277,37 @@ function setupBonusPenaltiesAPI(app) {
 
       console.log(`📊 GET /api/bonus-penalties/summary/${employeeId}`);
 
+      const currentMonth = getCurrentMonth();
+      const previousMonth = getPreviousMonth();
+
+      // DB path
+      if (USE_DB) {
+        try {
+          const getMonthDataDb = async (month) => {
+            const result = await db.query(
+              'SELECT * FROM bonus_penalties WHERE month = $1 AND employee_id = $2 ORDER BY created_at DESC',
+              [month, employeeId]
+            );
+            const records = result.rows.map(dbToCamel);
+            let total = 0;
+            records.forEach(r => {
+              if (r.type === 'bonus') total += r.amount;
+              else total -= r.amount;
+            });
+            return { total, records };
+          };
+
+          return res.json({
+            success: true,
+            currentMonth: await getMonthDataDb(currentMonth),
+            previousMonth: await getMonthDataDb(previousMonth)
+          });
+        } catch (dbErr) {
+          console.error('DB bonus-penalties summary error:', dbErr.message);
+        }
+      }
+
+      // File path
       if (!await fileExists(BONUS_PENALTIES_DIR)) {
         return res.json({
           success: true,
@@ -202,10 +316,6 @@ function setupBonusPenaltiesAPI(app) {
         });
       }
 
-      const currentMonth = getCurrentMonth();
-      const previousMonth = getPreviousMonth();
-
-      // Функция для чтения и суммирования по месяцу
       const getMonthData = async (month) => {
         const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
         if (!await fileExists(filePath)) {
