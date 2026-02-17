@@ -87,6 +87,10 @@ async function patchSchema() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`,
 
+    // Add missing updated_at to test_questions and test_results
+    `ALTER TABLE test_questions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+    `ALTER TABLE test_results ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+
     // Add data JSONB column to auth_pins (PK is phone — already correct)
     `ALTER TABLE auth_pins ADD COLUMN IF NOT EXISTS data JSONB`,
     `ALTER TABLE auth_pins ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
@@ -273,6 +277,13 @@ async function migrateAuthSessions(stats) {
       const session = JSON.parse(content);
       const phone = file.replace('.json', '');
 
+      // Convert Unix ms timestamps to ISO strings
+      let createdAt = session.createdAt;
+      if (typeof createdAt === 'number' || (typeof createdAt === 'string' && /^\d{10,13}$/.test(createdAt))) {
+        createdAt = new Date(Number(createdAt)).toISOString();
+      }
+      createdAt = createdAt || new Date().toISOString();
+
       // Use raw query for INSERT ON CONFLICT on phone (unique index)
       // since the PK is id SERIAL, we upsert on phone unique index
       await db.query(
@@ -290,7 +301,7 @@ async function migrateAuthSessions(stats) {
           session.employeeId || null,
           session.isAdmin === true,
           JSON.stringify(session),
-          session.createdAt || new Date().toISOString(),
+          createdAt,
           new Date().toISOString()
         ]
       );
