@@ -292,10 +292,13 @@ CREATE TABLE IF NOT EXISTS rko_reports (
   file_name TEXT,
   original_name TEXT,
   employee_name TEXT,
+  employee_phone TEXT,
   shop_address TEXT,
+  shop_name TEXT,
   date DATE,
   amount NUMERIC,
   rko_type TEXT,
+  shift_type TEXT,
   file_path TEXT,
   status TEXT DEFAULT 'pending',
   rating INTEGER,
@@ -304,10 +307,14 @@ CREATE TABLE IF NOT EXISTS rko_reports (
   rejected_by TEXT,
   rejected_at TIMESTAMPTZ,
   reject_reason TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_rko_date ON rko_reports(date);
 CREATE INDEX IF NOT EXISTS idx_rko_shop ON rko_reports(shop_address);
+CREATE INDEX IF NOT EXISTS idx_rko_status ON rko_reports(status);
+CREATE INDEX IF NOT EXISTS idx_rko_employee ON rko_reports(employee_name);
+CREATE INDEX IF NOT EXISTS idx_rko_type ON rko_reports(rko_type);
 
 -- ============================================
 -- ВОЛНА 4: Центральный реестр баллов + посещаемость

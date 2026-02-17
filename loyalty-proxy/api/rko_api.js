@@ -3,6 +3,7 @@
  * РКО отчеты - генерация, загрузка, просмотр
  *
  * REWRITTEN: Exact match with index.js inline code (2026-02-08)
+ * REFACTORED: Added PostgreSQL support (2026-02-17)
  */
 
 const fs = require('fs');
@@ -10,7 +11,9 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, isPathSafe } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
 
+const USE_DB = process.env.USE_DB_RKO === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const rkoReportsDir = `${DATA_DIR}/rko-reports`;
 const rkoMetadataFile = path.join(rkoReportsDir, 'rko_metadata.json');
@@ -161,6 +164,34 @@ function convertAmountToWords(amount) {
   return `${rublesWord} ${rubleWord} ${kopecksStr} копеек`;
 }
 
+// ==================== DB CONVERSION ====================
+
+function dbRkoToCamel(row) {
+  return {
+    id: row.id,
+    fileName: row.file_name,
+    originalName: row.original_name,
+    employeeName: row.employee_name,
+    employeePhone: row.employee_phone,
+    shopAddress: row.shop_address,
+    shopName: row.shop_name,
+    date: row.date,
+    amount: row.amount != null ? parseFloat(row.amount) : null,
+    rkoType: row.rko_type,
+    shiftType: row.shift_type,
+    filePath: row.file_path,
+    status: row.status,
+    rating: row.rating,
+    confirmedBy: row.confirmed_by,
+    confirmedAt: row.confirmed_at,
+    rejectedBy: row.rejected_by,
+    rejectedAt: row.rejected_at,
+    rejectReason: row.reject_reason,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFailedRkoReports } = {}) {
   // Загрузка РКО на сервер
   app.post('/api/rko/upload', uploadRKO ? uploadRKO.single('docx') : (req, res, next) => next(), async (req, res) => {
@@ -220,6 +251,28 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
 
       await saveRKOMetadata(metadata);
 
+      // DB dual-write
+      if (USE_DB) {
+        try {
+          await db.upsert('rko_reports', {
+            id: fileName,
+            file_name: fileName,
+            original_name: req.file.originalname || fileName,
+            employee_name: employeeName,
+            shop_address: shopAddress,
+            date: date ? date.split('T')[0] : null,
+            amount: parseFloat(amount) || 0,
+            rko_type: rkoType || '',
+            status: 'uploaded',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+          console.log(`[RKO] DB upsert: ${fileName}`);
+        } catch (dbErr) {
+          console.error('[RKO] DB upsert error:', dbErr.message);
+        }
+      }
+
       // Очистка старых РКО
       await cleanupEmployeeRKOs(employeeName);
       await cleanupShopRKOs(shopAddress);
@@ -243,15 +296,24 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
       const employeeName = decodeURIComponent(req.params.employeeName);
       console.log('📋 GET /api/rko/list/employee:', employeeName);
 
-      const metadata = await loadRKOMetadata();
-      // Нормализуем имена для сравнения (приводим к нижнему регистру и убираем лишние пробелы)
-      const normalizedSearchName = employeeName.toLowerCase().trim().replace(/\s+/g, ' ');
-      const employeeRKOs = metadata.items
-        .filter(rko => {
-          const normalizedRkoName = (rko.employeeName || '').toLowerCase().trim().replace(/\s+/g, ' ');
-          return normalizedRkoName === normalizedSearchName;
-        })
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      let employeeRKOs;
+
+      if (USE_DB) {
+        const result = await db.query(
+          'SELECT * FROM rko_reports WHERE LOWER(TRIM(employee_name)) = LOWER(TRIM($1)) ORDER BY date DESC',
+          [employeeName]
+        );
+        employeeRKOs = result.rows.map(dbRkoToCamel);
+      } else {
+        const metadata = await loadRKOMetadata();
+        const normalizedSearchName = employeeName.toLowerCase().trim().replace(/\s+/g, ' ');
+        employeeRKOs = metadata.items
+          .filter(rko => {
+            const normalizedRkoName = (rko.employeeName || '').toLowerCase().trim().replace(/\s+/g, ' ');
+            return normalizedRkoName === normalizedSearchName;
+          })
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+      }
 
       // Последние 25
       const latest = employeeRKOs.slice(0, 25);
@@ -259,7 +321,8 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
       // Группировка по месяцам
       const monthsMap = {};
       employeeRKOs.forEach(rko => {
-        const monthKey = new Date(rko.date).toISOString().substring(0, 7);
+        const rkoDate = rko.date ? new Date(rko.date) : new Date();
+        const monthKey = rkoDate.toISOString().substring(0, 7);
         if (!monthsMap[monthKey]) {
           monthsMap[monthKey] = [];
         }
@@ -291,29 +354,39 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('📋 GET /api/rko/list/shop:', shopAddress);
 
-      const metadata = await loadRKOMetadata();
+      let shopRKOs;
       const now = new Date();
       const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
 
+      if (USE_DB) {
+        const result = await db.query(
+          'SELECT * FROM rko_reports WHERE shop_address = $1 ORDER BY date DESC',
+          [shopAddress]
+        );
+        shopRKOs = result.rows.map(dbRkoToCamel);
+      } else {
+        const metadata = await loadRKOMetadata();
+        shopRKOs = metadata.items
+          .filter(rko => rko.shopAddress === shopAddress)
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+      }
+
       // РКО за текущий месяц
-      const currentMonthRKOs = metadata.items
-        .filter(rko => {
-          const rkoMonth = new Date(rko.date).toISOString().substring(0, 7);
-          return rko.shopAddress === shopAddress && rkoMonth === currentMonth;
-        })
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      const currentMonthRKOs = shopRKOs.filter(rko => {
+        const rkoDate = rko.date ? new Date(rko.date) : new Date();
+        return rkoDate.toISOString().substring(0, 7) === currentMonth;
+      });
 
       // Группировка по месяцам
       const monthsMap = {};
-      metadata.items
-        .filter(rko => rko.shopAddress === shopAddress)
-        .forEach(rko => {
-          const monthKey = new Date(rko.date).toISOString().substring(0, 7);
-          if (!monthsMap[monthKey]) {
-            monthsMap[monthKey] = [];
-          }
-          monthsMap[monthKey].push(rko);
-        });
+      shopRKOs.forEach(rko => {
+        const rkoDate = rko.date ? new Date(rko.date) : new Date();
+        const monthKey = rkoDate.toISOString().substring(0, 7);
+        if (!monthsMap[monthKey]) {
+          monthsMap[monthKey] = [];
+        }
+        monthsMap[monthKey].push(rko);
+      });
 
       const months = Object.keys(monthsMap).sort((a, b) => b.localeCompare(a));
 
@@ -340,20 +413,31 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
       const { month } = req.query; // YYYY-MM
       console.log('📋 GET /api/rko/all, month:', month);
 
-      const metadata = await loadRKOMetadata();
+      let items;
 
-      let items = metadata.items || [];
+      if (USE_DB) {
+        let query = 'SELECT * FROM rko_reports';
+        const params = [];
+        if (month) {
+          query += ' WHERE TO_CHAR(date, \'YYYY-MM\') = $1';
+          params.push(month);
+        }
+        query += ' ORDER BY date DESC';
+        const result = await db.query(query, params);
+        items = result.rows.map(dbRkoToCamel);
+      } else {
+        const metadata = await loadRKOMetadata();
+        items = metadata.items || [];
 
-      // Фильтруем по месяцу если указан
-      if (month) {
-        items = items.filter(rko => {
-          const rkoMonth = new Date(rko.date).toISOString().substring(0, 7);
-          return rkoMonth === month;
-        });
+        if (month) {
+          items = items.filter(rko => {
+            const rkoMonth = new Date(rko.date).toISOString().substring(0, 7);
+            return rkoMonth === month;
+          });
+        }
+
+        items.sort((a, b) => new Date(b.date) - new Date(a.date));
       }
-
-      // Сортируем по дате (новые первыми)
-      items.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       console.log(`✅ Найдено ${items.length} РКО${month ? ` за ${month}` : ''}`);
 
@@ -693,6 +777,31 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
 
       await saveRKOMetadata(metadata);
 
+      // DB dual-write
+      if (USE_DB) {
+        try {
+          const dbUpdate = {
+            status: metadata.items[itemIndex].status,
+            updated_at: new Date().toISOString()
+          };
+          if (status === 'confirmed') {
+            dbUpdate.rating = rating;
+            dbUpdate.confirmed_by = confirmedBy;
+            dbUpdate.confirmed_at = metadata.items[itemIndex].confirmedAt;
+          } else {
+            dbUpdate.rejected_by = rejectedBy;
+            dbUpdate.rejected_at = metadata.items[itemIndex].rejectedAt;
+            dbUpdate.reject_reason = rejectReason;
+          }
+          // Try both id and fileName as the primary key
+          const rkoId = metadata.items[itemIndex].id || metadata.items[itemIndex].fileName;
+          await db.updateById('rko_reports', rkoId, dbUpdate);
+          console.log(`[RKO] DB updated: ${rkoId} → ${status}`);
+        } catch (dbErr) {
+          console.error('[RKO] DB update error:', dbErr.message);
+        }
+      }
+
       console.log(`✅ РКО ${reportId} ${status}`);
       res.json({ success: true, item: metadata.items[itemIndex] });
     } catch (error) {
@@ -741,7 +850,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
     }
   });
 
-  console.log('✅ RKO API initialized');
+  console.log(`✅ RKO API initialized (${USE_DB ? 'PostgreSQL' : 'JSON files'})`);
 }
 
 module.exports = { setupRkoAPI };
