@@ -12,6 +12,9 @@ const { isPaginationRequested, createPaginatedResponse } = require('../utils/pag
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_TASKS === 'true';
 
 const dataCache = require('../utils/data_cache');
 
@@ -21,6 +24,89 @@ const TASKS_DIR = `${DATA_DIR}/tasks`;
 const TASK_ASSIGNMENTS_DIR = `${DATA_DIR}/task-assignments`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+
+// DB conversion helpers
+function taskToDb(t, month) {
+  return {
+    id: t.id,
+    title: t.title || '',
+    description: t.description || null,
+    response_type: t.responseType || null,
+    deadline: t.deadline || null,
+    created_by: t.createdBy || null,
+    attachments: t.attachments || null,
+    month: month || t.month || null,
+    created_at: t.createdAt || new Date().toISOString()
+  };
+}
+
+function dbTaskToCamel(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    responseType: row.response_type,
+    deadline: row.deadline ? new Date(row.deadline).toISOString() : null,
+    createdBy: row.created_by,
+    attachments: row.attachments,
+    month: row.month,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+  };
+}
+
+function assignmentToDb(a) {
+  return {
+    id: a.id,
+    task_id: a.taskId || null,
+    assignee_id: a.assigneeId || null,
+    assignee_name: a.assigneeName || null,
+    assignee_phone: a.assigneePhone || null,
+    assignee_role: a.assigneeRole || null,
+    status: a.status || 'pending',
+    deadline: a.deadline || null,
+    response_text: a.responseText || null,
+    response_photos: a.responsePhotos || null,
+    responded_at: a.respondedAt || null,
+    reviewed_by: a.reviewedBy || null,
+    reviewed_at: a.reviewedAt || null,
+    review_comment: a.reviewComment || null,
+    expired_at: a.expiredAt || null,
+    viewed_by_admin: a.viewedByAdmin || false,
+    viewed_by_admin_at: a.viewedByAdminAt || null,
+    declined_at: a.declinedAt || null,
+    decline_reason: a.declineReason || null,
+    reminder_sent: a.reminderSent || false,
+    reminder_sent_at: a.reminderSentAt || null,
+    created_at: a.createdAt || new Date().toISOString()
+  };
+}
+
+function dbAssignmentToCamel(row) {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    assigneeId: row.assignee_id,
+    assigneeName: row.assignee_name,
+    assigneePhone: row.assignee_phone,
+    assigneeRole: row.assignee_role,
+    status: row.status,
+    deadline: row.deadline ? new Date(row.deadline).toISOString() : null,
+    responseText: row.response_text,
+    responsePhotos: row.response_photos || [],
+    respondedAt: row.responded_at ? new Date(row.responded_at).toISOString() : null,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : null,
+    reviewComment: row.review_comment,
+    expiredAt: row.expired_at ? new Date(row.expired_at).toISOString() : null,
+    viewedByAdmin: row.viewed_by_admin || false,
+    viewedByAdminAt: row.viewed_by_admin_at ? new Date(row.viewed_by_admin_at).toISOString() : null,
+    declinedAt: row.declined_at ? new Date(row.declined_at).toISOString() : null,
+    declineReason: row.decline_reason,
+    reminderSent: row.reminder_sent || false,
+    reminderSentAt: row.reminder_sent_at ? new Date(row.reminder_sent_at).toISOString() : null,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+  };
+}
 
 // Ensure directories exist
 async function ensureDir(dir) {
@@ -124,6 +210,19 @@ async function savePenalty(penalty) {
 
 // Load tasks for a month
 async function loadMonthTasks(monthKey) {
+  // DB path
+  if (USE_DB) {
+    try {
+      const result = await db.query(
+        'SELECT * FROM tasks WHERE month = $1 ORDER BY created_at DESC',
+        [monthKey]
+      );
+      return { monthKey, tasks: result.rows.map(dbTaskToCamel) };
+    } catch (dbErr) {
+      console.error('DB tasks read error:', dbErr.message);
+    }
+  }
+
   await ensureDir(TASKS_DIR);
   const filePath = path.join(TASKS_DIR, `${monthKey}.json`);
 
@@ -145,10 +244,34 @@ async function saveMonthTasks(monthKey, data) {
   const filePath = path.join(TASKS_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
   await writeJsonFile(filePath, data);
+
+  // DB dual-write: sync all tasks for this month
+  if (USE_DB) {
+    try {
+      for (const t of (data.tasks || [])) {
+        await db.upsert('tasks', taskToDb(t, monthKey));
+      }
+    } catch (dbErr) {
+      console.error('DB tasks sync error:', dbErr.message);
+    }
+  }
 }
 
 // Load assignments for a month
 async function loadMonthAssignments(monthKey) {
+  // DB path
+  if (USE_DB) {
+    try {
+      const result = await db.query(
+        'SELECT * FROM task_assignments WHERE id IN (SELECT ta.id FROM task_assignments ta JOIN tasks t ON ta.task_id = t.id WHERE t.month = $1) ORDER BY created_at DESC',
+        [monthKey]
+      );
+      return { monthKey, assignments: result.rows.map(dbAssignmentToCamel) };
+    } catch (dbErr) {
+      console.error('DB task-assignments read error:', dbErr.message);
+    }
+  }
+
   await ensureDir(TASK_ASSIGNMENTS_DIR);
   const filePath = path.join(TASK_ASSIGNMENTS_DIR, `${monthKey}.json`);
 
@@ -170,10 +293,37 @@ async function saveMonthAssignments(monthKey, data) {
   const filePath = path.join(TASK_ASSIGNMENTS_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
   await writeJsonFile(filePath, data);
+
+  // DB dual-write: sync all assignments for this month
+  if (USE_DB) {
+    try {
+      for (const a of (data.assignments || [])) {
+        await db.upsert('task_assignments', assignmentToDb(a));
+      }
+    } catch (dbErr) {
+      console.error('DB task-assignments sync error:', dbErr.message);
+    }
+  }
 }
 
 // Get all tasks (across months)
 async function getAllTasks(fromMonth, toMonth) {
+  // DB path
+  if (USE_DB) {
+    try {
+      const conditions = [];
+      const params = [];
+      let paramIdx = 1;
+      if (fromMonth) { conditions.push(`month >= $${paramIdx++}`); params.push(fromMonth); }
+      if (toMonth) { conditions.push(`month <= $${paramIdx++}`); params.push(toMonth); }
+      const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const result = await db.query(`SELECT * FROM tasks ${where} ORDER BY created_at DESC`, params);
+      return result.rows.map(dbTaskToCamel);
+    } catch (dbErr) {
+      console.error('DB getAllTasks error:', dbErr.message);
+    }
+  }
+
   await ensureDir(TASKS_DIR);
   const files = (await fsp.readdir(TASKS_DIR)).filter(f => f.endsWith('.json'));
   let allTasks = [];
@@ -192,6 +342,27 @@ async function getAllTasks(fromMonth, toMonth) {
 
 // Get all assignments (across months)
 async function getAllAssignments(fromMonth, toMonth) {
+  // DB path
+  if (USE_DB) {
+    try {
+      let sql = 'SELECT ta.* FROM task_assignments ta';
+      const conditions = [];
+      const params = [];
+      let paramIdx = 1;
+      if (fromMonth || toMonth) {
+        sql += ' JOIN tasks t ON ta.task_id = t.id';
+        if (fromMonth) { conditions.push(`t.month >= $${paramIdx++}`); params.push(fromMonth); }
+        if (toMonth) { conditions.push(`t.month <= $${paramIdx++}`); params.push(toMonth); }
+      }
+      if (conditions.length > 0) sql += ` WHERE ${conditions.join(' AND ')}`;
+      sql += ' ORDER BY ta.created_at DESC';
+      const result = await db.query(sql, params);
+      return result.rows.map(dbAssignmentToCamel);
+    } catch (dbErr) {
+      console.error('DB getAllAssignments error:', dbErr.message);
+    }
+  }
+
   await ensureDir(TASK_ASSIGNMENTS_DIR);
   const files = (await fsp.readdir(TASK_ASSIGNMENTS_DIR)).filter(f => f.endsWith('.json'));
   let allAssignments = [];
@@ -345,6 +516,7 @@ function setupTasksAPI(app) {
   // POST /api/tasks - Create a task
   app.post('/api/tasks', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const task = req.body;
       console.log('POST /api/tasks:', task.title);
 
@@ -650,6 +822,7 @@ function setupTasksAPI(app) {
   // POST /api/task-assignments/:id/review - Review a task (admin)
   app.post('/api/task-assignments/:id/review', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { id } = req.params;
       const { approved, reviewedBy, reviewComment } = req.body;
       console.log('POST /api/task-assignments/:id/review', id, { approved, reviewedBy });
@@ -755,6 +928,7 @@ function setupTasksAPI(app) {
   // POST /api/task-assignments/mark-expired-viewed - Mark all expired tasks as viewed
   app.post('/api/task-assignments/mark-expired-viewed', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       console.log('POST /api/task-assignments/mark-expired-viewed');
 
       await ensureDir(TASK_ASSIGNMENTS_DIR);

@@ -5,11 +5,15 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, loadJsonFile } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { getMoscowTime, getMoscowDateString } = require('../utils/moscow_time');
 const { getTaskPointsConfig } = require('./task_points_settings_api');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 const { dbInsertPenalties } = require('./efficiency_penalties_api');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_RECURRING_TASKS === 'true';
 
 // Директории хранения
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -17,6 +21,99 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const RECURRING_TASKS_DIR = `${DATA_DIR}/recurring-tasks`;
 const RECURRING_INSTANCES_DIR = `${DATA_DIR}/recurring-task-instances`;
 const EFFICIENCY_DIR = `${DATA_DIR}/efficiency-penalties`;
+
+// DB conversion helpers
+function templateToDb(t) {
+  return {
+    id: t.id,
+    title: t.title || '',
+    description: t.description || null,
+    response_type: t.responseType || null,
+    days_of_week: t.daysOfWeek || null,
+    start_time: t.startTime || null,
+    end_time: t.endTime || null,
+    reminder_times: t.reminderTimes || null,
+    assignees: t.assignees ? JSON.stringify(t.assignees) : null,
+    is_paused: t.isPaused || false,
+    created_by: t.createdBy || null,
+    supplier_id: t.supplierId || null,
+    shop_id: t.shopId || null,
+    supplier_name: t.supplierName || null,
+    created_at: t.createdAt || new Date().toISOString(),
+    updated_at: t.updatedAt || new Date().toISOString()
+  };
+}
+
+function dbTemplateToCamel(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    responseType: row.response_type,
+    daysOfWeek: row.days_of_week,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    reminderTimes: row.reminder_times,
+    assignees: typeof row.assignees === 'string' ? JSON.parse(row.assignees) : row.assignees,
+    isPaused: row.is_paused || false,
+    createdBy: row.created_by,
+    supplierId: row.supplier_id,
+    shopId: row.shop_id,
+    supplierName: row.supplier_name,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+  };
+}
+
+function instanceToDb(i) {
+  return {
+    id: i.id,
+    recurring_task_id: i.recurringTaskId || null,
+    assignee_id: i.assigneeId || null,
+    assignee_name: i.assigneeName || null,
+    assignee_phone: i.assigneePhone || null,
+    date: i.date || null,
+    deadline: i.deadline || null,
+    reminder_times: i.reminderTimes || null,
+    status: i.status || 'pending',
+    response_text: i.responseText || null,
+    response_photos: i.responsePhotos || null,
+    completed_at: i.completedAt || null,
+    expired_at: i.expiredAt || null,
+    is_recurring: i.isRecurring != null ? i.isRecurring : true,
+    title: i.title || null,
+    description: i.description || null,
+    response_type: i.responseType || null,
+    created_at: i.createdAt || new Date().toISOString()
+  };
+}
+
+function dbInstanceToCamel(row) {
+  let dateStr = row.date;
+  if (dateStr instanceof Date) {
+    dateStr = dateStr.toISOString().split('T')[0];
+  }
+  return {
+    id: row.id,
+    recurringTaskId: row.recurring_task_id,
+    assigneeId: row.assignee_id,
+    assigneeName: row.assignee_name,
+    assigneePhone: row.assignee_phone,
+    date: dateStr,
+    deadline: row.deadline ? new Date(row.deadline).toISOString() : null,
+    reminderTimes: row.reminder_times,
+    status: row.status,
+    responseText: row.response_text,
+    responsePhotos: row.response_photos || [],
+    completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
+    expiredAt: row.expired_at ? new Date(row.expired_at).toISOString() : null,
+    isRecurring: row.is_recurring != null ? row.is_recurring : true,
+    title: row.title,
+    description: row.description,
+    responseType: row.response_type,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+  };
+}
 
 // Создаем директории если не существуют
 (async () => {
@@ -37,26 +134,16 @@ function generateInstanceId(recurringTaskId, date, assigneeId) {
   return 'instance_' + date + '_' + recurringTaskId + '_' + assigneeId;
 }
 
+// Boy Scout: use Moscow time (UTC+3) instead of UTC
 function getToday() {
-  const now = new Date();
-  return now.toISOString().split('T')[0]; // YYYY-MM-DD
+  return getMoscowDateString();
 }
 
 function getYearMonth(date) {
   return date.substring(0, 7); // YYYY-MM
 }
 
-async function loadJsonFile(filePath, defaultValue = []) {
-  try {
-    if (await fileExists(filePath)) {
-      const content = await fsp.readFile(filePath, 'utf8');
-      return JSON.parse(content);
-    }
-  } catch (e) {
-    console.error('Error loading file:', filePath, e);
-  }
-  return defaultValue;
-}
+// loadJsonFile imported from file_helpers (removed local duplicate)
 
 
 // ==================== ШАБЛОНЫ ЗАДАЧ ====================
@@ -66,11 +153,31 @@ const SCHEDULER_STATE_FILE = path.join(RECURRING_TASKS_DIR, 'scheduler-state.jso
 const REMINDERS_SENT_FILE = path.join(RECURRING_TASKS_DIR, 'reminders-sent.json');
 
 async function loadTemplates() {
+  // DB path
+  if (USE_DB) {
+    try {
+      const result = await db.query('SELECT * FROM recurring_tasks ORDER BY created_at DESC');
+      return result.rows.map(dbTemplateToCamel);
+    } catch (dbErr) {
+      console.error('DB recurring_tasks read error:', dbErr.message);
+    }
+  }
   return await loadJsonFile(TEMPLATES_FILE, []);
 }
 
 async function saveTemplates(templates) {
   await writeJsonFile(TEMPLATES_FILE, templates);
+
+  // DB dual-write: sync all templates
+  if (USE_DB) {
+    try {
+      for (const t of templates) {
+        await db.upsert('recurring_tasks', templateToDb(t));
+      }
+    } catch (dbErr) {
+      console.error('DB recurring_tasks sync error:', dbErr.message);
+    }
+  }
 }
 
 async function loadSchedulerState() {
@@ -87,6 +194,18 @@ async function saveSchedulerState(state) {
 // ==================== ЭКЗЕМПЛЯРЫ ЗАДАЧ ====================
 
 async function loadInstances(yearMonth) {
+  // DB path
+  if (USE_DB) {
+    try {
+      const result = await db.query(
+        `SELECT * FROM recurring_task_instances WHERE date >= ($1 || '-01')::date AND date < (($1 || '-01')::date + interval '1 month') ORDER BY created_at DESC`,
+        [yearMonth]
+      );
+      return result.rows.map(dbInstanceToCamel);
+    } catch (dbErr) {
+      console.error('DB recurring_task_instances read error:', dbErr.message);
+    }
+  }
   const filePath = path.join(RECURRING_INSTANCES_DIR, yearMonth + '.json');
   return await loadJsonFile(filePath, []);
 }
@@ -94,6 +213,17 @@ async function loadInstances(yearMonth) {
 async function saveInstances(yearMonth, instances) {
   const filePath = path.join(RECURRING_INSTANCES_DIR, yearMonth + '.json');
   await writeJsonFile(filePath, instances);
+
+  // DB dual-write: sync all instances for this month
+  if (USE_DB) {
+    try {
+      for (const i of instances) {
+        await db.upsert('recurring_task_instances', instanceToDb(i));
+      }
+    } catch (dbErr) {
+      console.error('DB recurring_task_instances sync error:', dbErr.message);
+    }
+  }
 }
 
 // ==================== ГЕНЕРАЦИЯ ЗАДАЧ ====================
@@ -330,16 +460,11 @@ async function saveRemindersSent(data) {
   await writeJsonFile(REMINDERS_SENT_FILE, data);
 }
 
-// Получить текущее время в формате HH:MM
+// Boy Scout: use imported getMoscowTime instead of manual offset calculation
 function getCurrentTime() {
-  const now = new Date();
-  // Московское время (UTC+3)
-  const moscowOffset = 3 * 60;
-  const utcOffset = now.getTimezoneOffset();
-  const moscowTime = new Date(now.getTime() + (moscowOffset + utcOffset) * 60 * 1000);
-
-  const hours = moscowTime.getHours().toString().padStart(2, '0');
-  const minutes = moscowTime.getMinutes().toString().padStart(2, '0');
+  const moscowNow = getMoscowTime();
+  const hours = moscowNow.getUTCHours().toString().padStart(2, '0');
+  const minutes = moscowNow.getUTCMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 }
 
@@ -584,6 +709,7 @@ function setupRecurringTasksAPI(app) {
   // POST /api/recurring-tasks - Создать шаблон
   app.post('/api/recurring-tasks', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const {
         title,
         description,
@@ -650,6 +776,7 @@ function setupRecurringTasksAPI(app) {
   // PUT /api/recurring-tasks/:id - Обновить шаблон
   app.put('/api/recurring-tasks/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
@@ -700,6 +827,7 @@ function setupRecurringTasksAPI(app) {
   // PUT /api/recurring-tasks/:id/toggle-pause - Пауза/возобновить
   app.put('/api/recurring-tasks/:id/toggle-pause', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
@@ -722,6 +850,7 @@ function setupRecurringTasksAPI(app) {
   // DELETE /api/recurring-tasks/:id - Удалить шаблон
   app.delete('/api/recurring-tasks/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
@@ -731,6 +860,15 @@ function setupRecurringTasksAPI(app) {
 
       templates.splice(index, 1);
       await saveTemplates(templates);
+
+      // DB delete (saveTemplates only upserts remaining, doesn't delete removed)
+      if (USE_DB) {
+        try {
+          await db.deleteById('recurring_tasks', req.params.id);
+        } catch (dbErr) {
+          console.error('DB recurring_tasks delete error:', dbErr.message);
+        }
+      }
 
       console.log('Deleted recurring task:', req.params.id);
       res.json({ success: true });

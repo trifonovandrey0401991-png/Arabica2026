@@ -9,11 +9,47 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_WORK_SCHEDULE === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
 const WORK_SCHEDULE_TEMPLATES_DIR = `${DATA_DIR}/work-schedule-templates`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+
+// DB conversion helpers
+function entryToDb(e) {
+  return {
+    id: e.id,
+    employee_id: e.employeeId || null,
+    employee_name: e.employeeName || null,
+    shop_address: e.shopAddress || null,
+    shop_name: e.shopName || null,
+    date: e.date || null,
+    shift_type: e.shiftType || null,
+    month: e.month || null,
+    created_at: e.createdAt || new Date().toISOString()
+  };
+}
+
+function dbEntryToCamel(row) {
+  let dateStr = row.date;
+  if (dateStr instanceof Date) {
+    dateStr = dateStr.toISOString().split('T')[0];
+  }
+  return {
+    id: row.id,
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    shopAddress: row.shop_address,
+    shopName: row.shop_name,
+    date: dateStr,
+    shiftType: row.shift_type,
+    month: row.month,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+  };
+}
 
 // Создаем директории, если их нет
 (async () => {
@@ -66,6 +102,21 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
         return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
       }
 
+      // DB path
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            'SELECT * FROM work_schedule_entries WHERE month = $1 ORDER BY date, shift_type',
+            [month]
+          );
+          const entries = result.rows.map(dbEntryToCamel);
+          console.log(`📥 Загружен график из DB для ${month}: ${entries.length} записей`);
+          return res.json({ success: true, schedule: { month, entries } });
+        } catch (dbErr) {
+          console.error('DB work-schedule read error:', dbErr.message);
+        }
+      }
+
       const schedule = await loadSchedule(month);
       console.log(`📥 Загружен график для ${month}: ${schedule.entries.length} записей`);
       res.json({ success: true, schedule });
@@ -82,6 +133,20 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
       const month = req.query.month;
       if (!month) {
         return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+      }
+
+      // DB path
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            'SELECT * FROM work_schedule_entries WHERE month = $1 AND employee_id = $2 ORDER BY date',
+            [month, employeeId]
+          );
+          const entries = result.rows.map(dbEntryToCamel);
+          return res.json({ success: true, schedule: { month, entries } });
+        } catch (dbErr) {
+          console.error('DB work-schedule employee read error:', dbErr.message);
+        }
       }
 
       const schedule = await loadSchedule(month);
@@ -130,6 +195,20 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
       schedule.month = month;
 
       if (await saveSchedule(schedule)) {
+        // DB dual-write
+        if (USE_DB) {
+          try {
+            // Remove conflicting entries from DB (same logic as file filter)
+            await db.query(
+              'DELETE FROM work_schedule_entries WHERE employee_id = $1 AND date = $2::date AND shift_type = $3 AND id != $4',
+              [entry.employeeId, entry.date, entry.shiftType, entry.id]
+            );
+            await db.upsert('work_schedule_entries', entryToDb(entry));
+          } catch (dbErr) {
+            console.error('DB work-schedule insert error:', dbErr.message);
+          }
+        }
+
         res.json({ success: true, entry });
 
         // Отправляем push-уведомление сотруднику об изменении в графике
@@ -190,6 +269,15 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
       schedule.entries = [];
 
       if (await saveSchedule(schedule)) {
+        // DB dual-write
+        if (USE_DB) {
+          try {
+            await db.query('DELETE FROM work_schedule_entries WHERE month = $1', [month]);
+          } catch (dbErr) {
+            console.error('DB work-schedule clear error:', dbErr.message);
+          }
+        }
+
         console.log(`✅ График за ${month} очищен. Удалено записей: ${entriesCount}`);
         res.json({
           success: true,
@@ -223,6 +311,15 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
 
       if (schedule.entries.length < initialLength) {
         if (await saveSchedule(schedule)) {
+          // DB dual-write
+          if (USE_DB) {
+            try {
+              await db.deleteById('work_schedule_entries', entryId);
+            } catch (dbErr) {
+              console.error('DB work-schedule delete error:', dbErr.message);
+            }
+          }
+
           res.json({ success: true, message: 'Смена удалена' });
         } else {
           res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
@@ -328,6 +425,21 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
         } else {
           allSaved = false;
           console.error(`❌ Ошибка сохранения графика для ${month}`);
+        }
+      }
+
+      // DB sync after bulk save
+      if (USE_DB && allSaved) {
+        try {
+          for (const m in schedulesByMonth) {
+            const sched = schedulesByMonth[m];
+            await db.query('DELETE FROM work_schedule_entries WHERE month = $1', [m]);
+            for (const e of sched.entries) {
+              await db.upsert('work_schedule_entries', entryToDb(e));
+            }
+          }
+        } catch (dbErr) {
+          console.error('DB work-schedule bulk sync error:', dbErr.message);
         }
       }
 
