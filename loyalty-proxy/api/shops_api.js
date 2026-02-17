@@ -7,23 +7,10 @@ const fsp = require('fs').promises;
 const path = require('path');
 const dataCache = require('../utils/data_cache');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { fileExists, sanitizeId } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHOPS_DIR = `${DATA_DIR}/shops`;
-
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function sanitizeId(id) {
-  if (!id || typeof id !== 'string') return '';
-  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
-}
 
 // Дефолтные магазины (создаются при первом запуске) — загружаются из config/default_shops.json
 const DEFAULT_SHOPS = require('../config/default_shops.json');
@@ -98,6 +85,7 @@ function setupShopsAPI(app) {
   // POST /api/shops - создать магазин
   app.post('/api/shops', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { name, address, latitude, longitude, icon } = req.body;
       console.log('POST /api/shops', name, address);
 
@@ -127,6 +115,7 @@ function setupShopsAPI(app) {
   // PUT /api/shops/:id - обновить магазин
   app.put('/api/shops/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const updates = req.body;
       console.log('PUT /api/shops/' + id, updates);
@@ -160,6 +149,7 @@ function setupShopsAPI(app) {
   // DELETE /api/shops/:id - удалить магазин
   app.delete('/api/shops/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/shops/' + id);
 

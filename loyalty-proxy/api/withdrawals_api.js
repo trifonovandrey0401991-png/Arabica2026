@@ -299,6 +299,7 @@ function setupWithdrawalsAPI(app) {
   // POST /api/withdrawals - создать новую выемку
   app.post('/api/withdrawals', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const {
         shopAddress,
         employeeName,
@@ -381,6 +382,7 @@ function setupWithdrawalsAPI(app) {
   // PATCH /api/withdrawals/:id/confirm - подтвердить выемку
   app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
@@ -411,6 +413,7 @@ function setupWithdrawalsAPI(app) {
   // DELETE /api/withdrawals/:id - удалить выемку
   app.delete('/api/withdrawals/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
@@ -430,6 +433,7 @@ function setupWithdrawalsAPI(app) {
   // PATCH /api/withdrawals/:id/cancel - отменить выемку
   app.patch('/api/withdrawals/:id/cancel', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const { cancelledBy, cancelReason } = req.body;
       console.log('PATCH /api/withdrawals/:id/cancel', id);

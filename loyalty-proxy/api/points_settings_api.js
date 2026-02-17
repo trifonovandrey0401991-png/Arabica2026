@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -23,16 +24,6 @@ const ORDERS_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'orders_points_setting
 const ENVELOPE_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'envelope_points_settings.json');
 const COFFEE_MACHINE_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'coffee_machine_points_settings.json');
 const MANAGER_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'manager_points_settings.json');
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Ensure directory exists (async)
 async function ensureDir() {
@@ -331,6 +322,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/test - Save test points settings
   app.post('/api/points-settings/test', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { minPoints, zeroThreshold, maxPoints } = req.body;
@@ -449,6 +441,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/attendance - Save attendance points settings
   app.post('/api/points-settings/attendance', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -540,6 +533,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/shift - Save shift points settings
   app.post('/api/points-settings/shift', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -671,6 +665,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/recount - Save recount points settings
   app.post('/api/points-settings/recount', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -802,6 +797,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/rko - Save RKO points settings
   app.post('/api/points-settings/rko', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -897,6 +893,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/shift-handover - Save shift handover points settings
   app.post('/api/points-settings/shift-handover', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -1028,6 +1025,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/reviews - Save reviews points settings
   app.post('/api/points-settings/reviews', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { positivePoints, negativePoints } = req.body;
@@ -1107,6 +1105,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/product-search - Save product search points settings
   app.post('/api/points-settings/product-search', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { answeredPoints, notAnsweredPoints, answerTimeoutMinutes } = req.body;
@@ -1194,6 +1193,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/orders - Save orders points settings
   app.post('/api/points-settings/orders', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { acceptedPoints, rejectedPoints } = req.body;
@@ -1273,6 +1273,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/envelope - Save envelope points settings
   app.post('/api/points-settings/envelope', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { submittedPoints, notSubmittedPoints } = req.body;
@@ -1351,6 +1352,7 @@ function setupPointsSettingsAPI(app) {
   // POST /api/points-settings/coffee-machine - Save coffee machine points settings
   app.post('/api/points-settings/coffee-machine', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { submittedPoints, notSubmittedPoints, morningStartTime, morningEndTime,
@@ -1451,6 +1453,7 @@ function setupPointsSettingsAPI(app) {
   // Simplified: confirmedPoints (>=0), rejectedPenalty (<=0)
   app.post('/api/points-settings/manager', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { shiftSettings, recountSettings, shiftHandoverSettings } = req.body;

@@ -78,6 +78,7 @@ function setupBonusPenaltiesAPI(app) {
   // POST /api/bonus-penalties - создать премию/штраф
   app.post('/api/bonus-penalties', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { employeeId, employeeName, type, amount, comment, adminName } = req.body;
 
       console.log(`📤 POST /api/bonus-penalties: ${type} ${amount} для ${employeeName}`);
@@ -148,6 +149,7 @@ function setupBonusPenaltiesAPI(app) {
   // DELETE /api/bonus-penalties/:id - удалить премию/штраф
   app.delete('/api/bonus-penalties/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const month = req.query.month || getCurrentMonth();
 

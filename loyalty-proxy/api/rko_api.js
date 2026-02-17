@@ -164,6 +164,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   // Загрузка РКО на сервер
   app.post('/api/rko/upload', uploadRKO ? uploadRKO.single('docx') : (req, res, next) => next(), async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       console.log('📤 POST /api/rko/upload');
 
       if (!req.file) {
@@ -452,6 +453,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   // Генерация РКО из .docx шаблона
   app.post('/api/rko/generate-from-docx', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const {
         shopAddress,
         shopSettings,
@@ -659,6 +661,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
 
   app.put('/api/rko/:reportId/status', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { reportId } = req.params;
       const { status, rating, confirmedBy, confirmedAt, rejectedBy, rejectedAt, rejectReason } = req.body;
       console.log(`📝 PUT /api/rko/${reportId}/status:`, status);

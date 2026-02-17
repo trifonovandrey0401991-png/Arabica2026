@@ -5,23 +5,10 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists, sanitizeId } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const MENU_DIR = `${DATA_DIR}/menu`;
-
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function sanitizeId(id) {
-  if (!id || typeof id !== 'string') return '';
-  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
-}
 
 // Ensure directory exists at startup
 (async () => {
@@ -101,6 +88,7 @@ function setupMenuAPI(app) {
   // POST /api/menu - создать позицию меню
   app.post('/api/menu', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const item = req.body;
       console.log('POST /api/menu:', item.name);
 
@@ -122,6 +110,7 @@ function setupMenuAPI(app) {
   // PUT /api/menu/:id - обновить позицию меню
   app.put('/api/menu/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const updates = req.body;
       console.log('PUT /api/menu/:id', id);
@@ -154,6 +143,7 @@ function setupMenuAPI(app) {
   // DELETE /api/menu/:id - удалить позицию меню
   app.delete('/api/menu/:id', async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/menu/:id', id);
 
