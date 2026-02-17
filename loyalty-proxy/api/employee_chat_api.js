@@ -3,6 +3,10 @@ const fsPromises = fs.promises;
 const path = require('path');
 const { isAdminPhoneAsync } = require('../utils/admin_cache');
 const { maskPhone } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_EMPLOYEE_CHATS === 'true';
 
 // WebSocket уведомления (опционально, если модуль загружен)
 let wsNotify = null;
@@ -46,8 +50,92 @@ try {
   console.warn('⚠️ Firebase Admin not available for employee chat notifications:', e.message);
 }
 
+// ===== DB Converters =====
+
+function chatToDb(chat) {
+  return {
+    id: chat.id,
+    type: chat.type || null,
+    name: chat.name || null,
+    participants: chat.participants || null,
+    participant_names: chat.participantNames || null,
+    shop_address: chat.shopAddress || null,
+    shop_members: chat.shopMembers || null,
+    creator_phone: chat.creatorPhone || null,
+    creator_name: chat.creatorName || null,
+    image_url: chat.imageUrl || null,
+    created_at: chat.createdAt || new Date().toISOString(),
+    updated_at: chat.updatedAt || new Date().toISOString()
+  };
+}
+
+function dbChatToObject(row, messageRows) {
+  return {
+    id: row.id,
+    type: row.type,
+    name: row.name,
+    participants: row.participants,
+    participantNames: row.participant_names,
+    shopAddress: row.shop_address,
+    shopMembers: row.shop_members,
+    creatorPhone: row.creator_phone,
+    creatorName: row.creator_name,
+    imageUrl: row.image_url,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+    messages: (messageRows || []).map(dbMsgToCamel)
+  };
+}
+
+function msgToDb(msg, chatId) {
+  return {
+    id: msg.id,
+    chat_id: chatId || msg.chatId,
+    sender_phone: msg.senderPhone || null,
+    sender_name: msg.senderName || null,
+    text: msg.text || null,
+    image_url: msg.imageUrl || null,
+    read_by: msg.readBy || [],
+    reactions: msg.reactions || null,
+    forwarded_from: msg.forwardedFrom || null,
+    timestamp: msg.timestamp || new Date().toISOString()
+  };
+}
+
+function dbMsgToCamel(row) {
+  const msg = {
+    id: row.id,
+    chatId: row.chat_id,
+    senderPhone: row.sender_phone,
+    senderName: row.sender_name,
+    text: row.text,
+    imageUrl: row.image_url,
+    readBy: row.read_by || [],
+    timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : null
+  };
+  if (row.reactions) msg.reactions = row.reactions;
+  if (row.forwarded_from) msg.forwardedFrom = row.forwarded_from;
+  return msg;
+}
+
 // Helper: Load chat file (async)
 async function loadChat(chatId) {
+  // DB read branch
+  if (USE_DB) {
+    try {
+      const chatRow = await db.findById('employee_chats', chatId);
+      if (!chatRow) return null;
+      const msgsResult = await db.query(
+        'SELECT * FROM chat_messages WHERE chat_id = $1 ORDER BY timestamp ASC',
+        [chatId]
+      );
+      return dbChatToObject(chatRow, msgsResult.rows);
+    } catch (dbErr) {
+      console.error('DB loadChat error:', dbErr.message);
+      // fallback to file
+    }
+  }
+
   const sanitizedId = chatId.replace(/[^a-zA-Z0-9_\-]/g, '_');
   const filePath = path.join(EMPLOYEE_CHATS_DIR, `${sanitizedId}.json`);
 
@@ -58,11 +146,9 @@ async function loadChat(chatId) {
       return JSON.parse(content);
     } catch (parseError) {
       console.error(`JSON parse error for chat ${chatId}:`, parseError.message);
-      // Попробуем восстановить - вернём пустой чат
       return null;
     }
   } catch (e) {
-    // Файл не существует - это нормально
     if (e.code !== 'ENOENT') {
       console.error(`Error loading chat ${chatId}:`, e.message);
     }
@@ -76,10 +162,19 @@ async function saveChat(chat) {
   const filePath = path.join(EMPLOYEE_CHATS_DIR, `${sanitizedId}.json`);
   chat.updatedAt = new Date().toISOString();
   try {
-    await fsPromises.writeFile(filePath, JSON.stringify(chat, null, 2), 'utf8');
+    // Boy Scout: writeJsonFile with file locking instead of raw fsPromises.writeFile
+    await writeJsonFile(filePath, chat);
   } catch (e) {
     console.error(`Error saving chat ${chat.id}:`, e.message);
     throw e;
+  }
+  // DB dual-write: chat metadata only (messages handled per-endpoint)
+  if (USE_DB) {
+    try {
+      await db.upsert('employee_chats', chatToDb(chat));
+    } catch (dbErr) {
+      console.error('DB saveChat error:', dbErr.message);
+    }
   }
 }
 
@@ -93,6 +188,17 @@ async function cleanOldMessages(chat) {
     chat.messages = chat.messages.filter(m => new Date(m.timestamp) > cutoffDate);
     if (chat.messages.length !== originalLength) {
       await saveChat(chat);
+      // DB: delete old messages
+      if (USE_DB) {
+        try {
+          await db.query(
+            'DELETE FROM chat_messages WHERE chat_id = $1 AND timestamp < $2',
+            [chat.id, cutoffDate.toISOString()]
+          );
+        } catch (dbErr) {
+          console.error('DB cleanOldMessages error:', dbErr.message);
+        }
+      }
     }
   }
   return chat;
@@ -242,13 +348,21 @@ async function deleteChat(chatId) {
   try {
     await fsPromises.unlink(filePath);
     console.log(`🗑️ Удалён чат: ${chatId}`);
-    return true;
   } catch (e) {
     if (e.code !== 'ENOENT') {
       console.error(`Error deleting chat ${chatId}:`, e.message);
     }
-    return false;
   }
+  // DB: delete messages first (FK), then chat
+  if (USE_DB) {
+    try {
+      await db.query('DELETE FROM chat_messages WHERE chat_id = $1', [chatId]);
+      await db.deleteById('employee_chats', chatId);
+    } catch (dbErr) {
+      console.error('DB deleteChat error:', dbErr.message);
+    }
+  }
+  return true;
 }
 
 // Helper: Get participant name (employee or client) (async)
@@ -325,13 +439,92 @@ function setupEmployeeChatAPI(app) {
   app.get('/api/employee-chats', async (req, res) => {
     try {
       const { phone } = req.query;
-      // SECURITY FIX: Проверяем isAdmin по базе данных сотрудников, а не по query параметру
-      // Это предотвращает подделку прав доступа клиентом
       const isAdminUser = await isAdminPhoneAsync(phone);
       console.log('GET /api/employee-chats for phone:', maskPhone(phone), 'isAdmin:', isAdminUser, '(verified from DB)');
 
       if (!phone) {
         return res.status(400).json({ success: false, error: 'phone is required' });
+      }
+
+      // DB read branch: efficient single query
+      if (USE_DB) {
+        try {
+          // Ensure general chat exists
+          const generalExists = await db.findById('employee_chats', 'general');
+          if (!generalExists) {
+            await db.upsert('employee_chats', {
+              id: 'general', type: 'general', name: 'Общий чат',
+              participants: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+            });
+          }
+
+          // Single query: all chats with last message + unread count
+          const result = await db.query(`
+            SELECT c.*,
+              lm.id as last_msg_id, lm.sender_phone as last_msg_sender_phone,
+              lm.sender_name as last_msg_sender_name, lm.text as last_msg_text,
+              lm.image_url as last_msg_image_url, lm.timestamp as last_msg_timestamp,
+              lm.read_by as last_msg_read_by,
+              COALESCE(uc.cnt, 0)::int as unread_count
+            FROM employee_chats c
+            LEFT JOIN LATERAL (
+              SELECT * FROM chat_messages WHERE chat_id = c.id ORDER BY timestamp DESC LIMIT 1
+            ) lm ON true
+            LEFT JOIN LATERAL (
+              SELECT COUNT(*) as cnt FROM chat_messages
+              WHERE chat_id = c.id AND sender_phone != $1
+              AND NOT ($1 = ANY(COALESCE(read_by, ARRAY[]::TEXT[])))
+            ) uc ON true
+            WHERE c.type = 'general'
+              OR (c.type = 'private' AND $1 = ANY(COALESCE(c.participants, ARRAY[]::TEXT[])))
+              OR (c.type = 'shop' AND ($2::boolean = true OR $1 = ANY(COALESCE(c.shop_members, ARRAY[]::TEXT[]))))
+              OR (c.type = 'group' AND ($2::boolean = true OR $1 = ANY(COALESCE(c.participants, ARRAY[]::TEXT[]))))
+            ORDER BY lm.timestamp DESC NULLS LAST
+          `, [phone, isAdminUser]);
+
+          // Resolve private chat names
+          let employeesCache = null;
+          const chats = [];
+          for (const row of result.rows) {
+            let chatName = row.name;
+            if (row.type === 'private') {
+              const participants = row.participants || [];
+              const otherPhone = participants.find(p => p !== phone);
+              if (otherPhone) {
+                if (!employeesCache) employeesCache = await getAllEmployees();
+                const otherEmp = employeesCache.find(e => e.phone === otherPhone);
+                chatName = otherEmp?.name || otherPhone;
+              }
+            }
+            const lastMessage = row.last_msg_id ? {
+              id: row.last_msg_id,
+              senderPhone: row.last_msg_sender_phone,
+              senderName: row.last_msg_sender_name,
+              text: row.last_msg_text,
+              imageUrl: row.last_msg_image_url,
+              readBy: row.last_msg_read_by || [],
+              timestamp: row.last_msg_timestamp ? new Date(row.last_msg_timestamp).toISOString() : null
+            } : null;
+
+            chats.push({
+              id: row.id,
+              type: row.type,
+              name: chatName,
+              shopAddress: row.shop_address,
+              participants: row.participants,
+              participantNames: row.participant_names,
+              imageUrl: row.image_url,
+              creatorPhone: row.creator_phone,
+              creatorName: row.creator_name,
+              unreadCount: row.unread_count,
+              lastMessage
+            });
+          }
+          return res.json({ success: true, chats });
+        } catch (dbErr) {
+          console.error('DB list chats error:', dbErr.message);
+          // fallback to file
+        }
       }
 
       const chats = [];
@@ -371,7 +564,6 @@ function setupEmployeeChatAPI(app) {
         const allFiles = await fsPromises.readdir(EMPLOYEE_CHATS_DIR);
         const files = allFiles.filter(f => f.endsWith('.json') && f !== 'general.json');
 
-        // Параллельное чтение всех файлов чатов (вместо последовательного for...of)
         const chatResults = await Promise.all(files.map(async (file) => {
           try {
             const content = await fsPromises.readFile(path.join(EMPLOYEE_CHATS_DIR, file), 'utf8');
@@ -383,7 +575,6 @@ function setupEmployeeChatAPI(app) {
         }));
         const allChats = chatResults.filter(Boolean);
 
-        // Кэш сотрудников — загружаем один раз, а не для каждого приватного чата
         let employeesCache = null;
         const getEmployeeCached = async (empPhone) => {
           if (!employeesCache) {
@@ -395,7 +586,6 @@ function setupEmployeeChatAPI(app) {
         const normalizedPhone = phone.replace(/[^\d]/g, '');
 
         for (const chat of allChats) {
-          // Фильтрация по участию — БЕЗ чтения лишних файлов
           if (chat.type === 'private') {
             if (!(chat.participants || []).includes(phone)) continue;
             const otherPhone = chat.participants.find(p => p !== phone);
@@ -412,7 +602,6 @@ function setupEmployeeChatAPI(app) {
             if (!isAdminUser && !normalizedParticipants.includes(normalizedPhone)) continue;
           }
 
-          // Подсчёт непрочитанных — только фильтрация массива, без записи на диск
           const messages = chat.messages || [];
           const unread = messages.filter(m =>
             m.senderPhone !== phone && !(m.readBy || []).includes(phone)
@@ -435,7 +624,6 @@ function setupEmployeeChatAPI(app) {
           });
         }
       } catch (e) {
-        // Directory doesn't exist - это нормально при первом запуске
         if (e.code !== 'ENOENT') {
           console.error('Error reading chats directory:', e.message);
         }
@@ -534,6 +722,15 @@ function setupEmployeeChatAPI(app) {
       chat.messages.push(message);
       await saveChat(chat);
 
+      // DB: insert message
+      if (USE_DB) {
+        try {
+          await db.upsert('chat_messages', msgToDb(message, chatId));
+        } catch (dbErr) {
+          console.error('DB send message error:', dbErr.message);
+        }
+      }
+
       // Send push notifications
       const recipients = await getChatParticipants(chat, senderPhone);
       const tokens = await getFcmTokens(recipients);
@@ -589,6 +786,19 @@ function setupEmployeeChatAPI(app) {
 
       if (updated) {
         await saveChat(chat);
+        // DB: bulk update read_by
+        if (USE_DB) {
+          try {
+            await db.query(
+              `UPDATE chat_messages SET read_by = array_append(read_by, $1)
+               WHERE chat_id = $2 AND sender_phone != $1
+               AND NOT ($1 = ANY(COALESCE(read_by, ARRAY[]::TEXT[])))`,
+              [phone, chatId]
+            );
+          } catch (dbErr) {
+            console.error('DB mark-read error:', dbErr.message);
+          }
+        }
       }
 
       res.json({ success: true });
@@ -828,6 +1038,22 @@ function setupEmployeeChatAPI(app) {
 
       await saveChat(chat);
 
+      // DB: delete messages
+      if (USE_DB && deletedCount > 0) {
+        try {
+          if (mode === 'all') {
+            await db.query('DELETE FROM chat_messages WHERE chat_id = $1', [chatId]);
+          } else {
+            await db.query(
+              'DELETE FROM chat_messages WHERE chat_id = $1 AND timestamp < $2',
+              [chatId, firstDayOfMonth.toISOString()]
+            );
+          }
+        } catch (dbErr) {
+          console.error('DB clear messages error:', dbErr.message);
+        }
+      }
+
       // WebSocket: уведомление об очистке чата
       if (wsNotify && deletedCount > 0) {
         wsNotify.notifyChatCleared(chatId, deletedCount);
@@ -865,6 +1091,15 @@ function setupEmployeeChatAPI(app) {
 
       chat.messages.splice(idx, 1);
       await saveChat(chat);
+
+      // DB: delete message
+      if (USE_DB) {
+        try {
+          await db.query('DELETE FROM chat_messages WHERE id = $1 AND chat_id = $2', [messageId, chatId]);
+        } catch (dbErr) {
+          console.error('DB delete message error:', dbErr.message);
+        }
+      }
 
       // WebSocket: уведомление об удалении сообщения
       if (wsNotify) {
@@ -947,6 +1182,18 @@ function setupEmployeeChatAPI(app) {
 
       await saveChat(chat);
 
+      // DB: update reactions on message
+      if (USE_DB) {
+        try {
+          await db.query(
+            'UPDATE chat_messages SET reactions = $1 WHERE id = $2 AND chat_id = $3',
+            [JSON.stringify(message.reactions), messageId, chatId]
+          );
+        } catch (dbErr) {
+          console.error('DB add reaction error:', dbErr.message);
+        }
+      }
+
       // WebSocket: уведомление о реакции
       if (wsNotify) {
         wsNotify.notifyReactionAdded(chatId, messageId, reaction, phone);
@@ -992,6 +1239,18 @@ function setupEmployeeChatAPI(app) {
       }
 
       await saveChat(chat);
+
+      // DB: update reactions on message
+      if (USE_DB) {
+        try {
+          await db.query(
+            'UPDATE chat_messages SET reactions = $1 WHERE id = $2 AND chat_id = $3',
+            [JSON.stringify(message.reactions || {}), messageId, chatId]
+          );
+        } catch (dbErr) {
+          console.error('DB remove reaction error:', dbErr.message);
+        }
+      }
 
       // WebSocket: уведомление об удалении реакции
       if (wsNotify) {
@@ -1055,6 +1314,15 @@ function setupEmployeeChatAPI(app) {
       if (!targetChat.messages) targetChat.messages = [];
       targetChat.messages.push(forwardedMessage);
       await saveChat(targetChat);
+
+      // DB: insert forwarded message
+      if (USE_DB) {
+        try {
+          await db.upsert('chat_messages', msgToDb(forwardedMessage, targetChatId));
+        } catch (dbErr) {
+          console.error('DB forward message error:', dbErr.message);
+        }
+      }
 
       // Push уведомления
       const recipients = await getChatParticipants(targetChat, senderPhone);
@@ -1396,7 +1664,7 @@ function setupEmployeeChatAPI(app) {
     }
   });
 
-  console.log('Employee Chat API initialized');
+  console.log(`✅ Employee Chat API initialized (storage: ${USE_DB ? 'PostgreSQL' : 'JSON files'})`);
 }
 
 module.exports = { setupEmployeeChatAPI };

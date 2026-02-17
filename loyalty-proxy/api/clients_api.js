@@ -2,7 +2,8 @@
  * Clients API
  * Управление клиентами и диалогами
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * Feature flag: USE_DB_CLIENTS=true → PostgreSQL (clients CRUD), false → JSON files
+ * Диалоги/сообщения остаются на JSON (Wave 6)
  */
 
 const fsp = require('fs').promises;
@@ -12,14 +13,57 @@ const { isAdminPhone } = require('../utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
 const { fileExists, maskPhone, sanitizePhone } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
+const db = require('../utils/db');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const CLIENTS_DIR = path.join(DATA_DIR, 'clients');
+const USE_DB = process.env.USE_DB_CLIENTS === 'true';
+const USE_DB_MSGS = process.env.USE_DB_CLIENT_MESSAGES === 'true';
 const CLIENT_DIALOGS_DIR = path.join(DATA_DIR, 'client-dialogs');
 const CLIENT_MESSAGES_DIR = path.join(DATA_DIR, 'client-messages');
 const CLIENT_MESSAGES_NETWORK_DIR = path.join(DATA_DIR, 'client-messages-network');
 const CLIENT_MESSAGES_MANAGEMENT_DIR = path.join(DATA_DIR, 'client-messages-management');
+
+// ===== Client Messages DB Converters =====
+
+function clientMsgToDb(msg, phone, channel, shopAddress) {
+  return {
+    id: msg.id,
+    client_phone: phone,
+    channel: channel,
+    shop_address: shopAddress || null,
+    text: msg.text || null,
+    image_url: msg.imageUrl || null,
+    sender_type: msg.senderType || null,
+    sender_name: msg.senderName || null,
+    sender_phone: msg.senderPhone || null,
+    is_read_by_client: msg.isReadByClient === true,
+    is_read_by_admin: msg.isReadByAdmin === true,
+    is_read_by_manager: msg.isReadByManager === true,
+    is_broadcast: msg.isBroadcast === true,
+    data: msg.data || null,
+    timestamp: msg.timestamp || new Date().toISOString()
+  };
+}
+
+function dbClientMsgToCamel(row) {
+  const msg = {
+    id: row.id,
+    text: row.text,
+    imageUrl: row.image_url,
+    timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : null,
+    senderType: row.sender_type,
+    senderName: row.sender_name,
+    senderPhone: row.sender_phone,
+    isReadByClient: row.is_read_by_client,
+    isReadByAdmin: row.is_read_by_admin,
+    isReadByManager: row.is_read_by_manager,
+    isBroadcast: row.is_broadcast
+  };
+  if (row.data) msg.data = row.data;
+  return msg;
+}
 
 // Initialize directories on module load
 (async () => {
@@ -52,23 +96,37 @@ function setupClientsAPI(app) {
   app.get('/api/clients', async (req, res) => {
     try {
       console.log('GET /api/clients');
-      let clients = [];
+      let clients;
 
-      if (await fileExists(CLIENTS_DIR)) {
-        const allFiles = await fsp.readdir(CLIENTS_DIR);
-        const files = allFiles.filter(f => f.endsWith('.json'));
+      if (USE_DB) {
+        const rows = await db.findAll('clients', { orderBy: 'updated_at', orderDir: 'DESC' });
+        clients = rows.map(dbClientToCamel);
+      } else {
+        clients = [];
 
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(CLIENTS_DIR, file), 'utf8');
-            clients.push(JSON.parse(content));
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
+        if (await fileExists(CLIENTS_DIR)) {
+          const allFiles = await fsp.readdir(CLIENTS_DIR);
+          const files = allFiles.filter(f => f.endsWith('.json'));
+
+          for (const file of files) {
+            try {
+              const content = await fsp.readFile(path.join(CLIENTS_DIR, file), 'utf8');
+              clients.push(JSON.parse(content));
+            } catch (e) {
+              console.error(`Error reading ${file}:`, e);
+            }
           }
         }
+
+        // Сортировка по дате обновления (новые сверху)
+        clients.sort((a, b) => {
+          const dateA = new Date(a.updatedAt || a.createdAt || 0);
+          const dateB = new Date(b.updatedAt || b.createdAt || 0);
+          return dateB - dateA;
+        });
       }
 
-      // SCALABILITY: Поддержка поиска по имени/телефону
+      // Поддержка поиска по имени/телефону
       const { search } = req.query;
       if (search) {
         const searchLower = search.toLowerCase();
@@ -78,18 +136,10 @@ function setupClientsAPI(app) {
         );
       }
 
-      // SCALABILITY: Сортировка по дате обновления (новые сверху)
-      clients.sort((a, b) => {
-        const dateA = new Date(a.updatedAt || a.createdAt || 0);
-        const dateB = new Date(b.updatedAt || b.createdAt || 0);
-        return dateB - dateA;
-      });
-
-      // SCALABILITY: Пагинация если запрошена
+      // Пагинация если запрошена
       if (isPaginationRequested(req.query)) {
         res.json(createPaginatedResponse(clients, req.query, 'clients'));
       } else {
-        // Backwards compatibility - возвращаем все без пагинации
         res.json({ success: true, clients });
       }
     } catch (error) {
@@ -106,19 +156,55 @@ function setupClientsAPI(app) {
         return res.status(400).json({ success: false, error: 'Phone required' });
       }
 
-      const filePath = path.join(CLIENTS_DIR, `${phone}.json`);
+      let updated;
 
-      const updated = await withLock(filePath, async () => {
-        let existing = {};
-        if (await fileExists(filePath)) {
-          const content = await fsp.readFile(filePath, 'utf8');
-          existing = JSON.parse(content);
+      if (USE_DB) {
+        const now = new Date().toISOString();
+        const data = {
+          phone,
+          name: client.name !== undefined ? client.name : null,
+          client_name: client.clientName !== undefined ? client.clientName : null,
+          fcm_token: client.fcmToken !== undefined ? client.fcmToken : null,
+          referred_by: client.referredBy !== undefined ? client.referredBy : null,
+          referred_at: client.referredAt !== undefined ? client.referredAt : null,
+          is_admin: client.isAdmin === true,
+          employee_name: client.employeeName !== undefined ? client.employeeName : null,
+          updated_at: now
+        };
+        // Upsert — если клиент существует, обновляем только переданные поля
+        const existing = await db.findById('clients', phone);
+        if (existing) {
+          const updateData = { updated_at: now };
+          if (client.name !== undefined) updateData.name = client.name;
+          if (client.clientName !== undefined) updateData.client_name = client.clientName;
+          if (client.fcmToken !== undefined) updateData.fcm_token = client.fcmToken;
+          if (client.referredBy !== undefined) updateData.referred_by = client.referredBy;
+          if (client.referredAt !== undefined) updateData.referred_at = client.referredAt;
+          if (client.isAdmin !== undefined) updateData.is_admin = client.isAdmin === true;
+          if (client.employeeName !== undefined) updateData.employee_name = client.employeeName;
+          const row = await db.updateById('clients', phone, updateData);
+          updated = dbClientToCamel(row);
+        } else {
+          data.created_at = now;
+          const row = await db.insert('clients', data);
+          updated = dbClientToCamel(row);
         }
-        const merged = { ...existing, ...client, phone };
-        merged.updatedAt = new Date().toISOString();
-        await fsp.writeFile(filePath, JSON.stringify(merged, null, 2), 'utf8');
-        return merged;
-      });
+      } else {
+        const filePath = path.join(CLIENTS_DIR, `${phone}.json`);
+
+        updated = await withLock(filePath, async () => {
+          let existing = {};
+          if (await fileExists(filePath)) {
+            const content = await fsp.readFile(filePath, 'utf8');
+            existing = JSON.parse(content);
+          }
+          const merged = { ...existing, ...client, phone };
+          merged.updatedAt = new Date().toISOString();
+          await fsp.writeFile(filePath, JSON.stringify(merged, null, 2), 'utf8');
+          return merged;
+        });
+      }
+
       res.json({ success: true, client: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -193,6 +279,16 @@ function setupClientsAPI(app) {
         dialog.messages.push(message);
         await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       });
+
+      // DB dual-write
+      if (USE_DB_MSGS && message.id) {
+        try {
+          await db.upsert('client_messages', clientMsgToDb(message, phone, 'dialog', shopAddress));
+        } catch (dbErr) {
+          console.error('DB dialog message error:', dbErr.message);
+        }
+      }
+
       res.json({ success: true, message });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -205,8 +301,6 @@ function setupClientsAPI(app) {
     try {
       const phone = sanitizePhone(req.params.phone);
 
-      // SECURITY: Проверка авторизации - клиент может читать только свои диалоги
-      // Админ может читать любые диалоги
       const requesterPhone = sanitizePhone(req.query.clientPhone || req.headers['x-client-phone']);
       const isAdmin = isAdminPhone(requesterPhone);
 
@@ -215,18 +309,28 @@ function setupClientsAPI(app) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
-
       let messages = [];
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const dialog = JSON.parse(content);
-        messages = dialog.messages || [];
+      if (USE_DB_MSGS) {
+        try {
+          const result = await db.query(
+            'SELECT * FROM client_messages WHERE client_phone = $1 AND channel = $2 ORDER BY timestamp ASC',
+            [phone, 'network']
+          );
+          messages = result.rows.map(dbClientMsgToCamel);
+        } catch (dbErr) {
+          console.error('DB network GET error:', dbErr.message);
+          messages = [];
+        }
+      } else {
+        const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          const dialog = JSON.parse(content);
+          messages = dialog.messages || [];
+        }
       }
 
-      // Считаем непрочитанные сообщения от админа (для клиента)
       const unreadCount = messages.filter(m => m.senderType === 'admin' && !m.isReadByClient).length;
-
       res.json({ success: true, messages, unreadCount });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -270,6 +374,16 @@ function setupClientsAPI(app) {
         dialog.messages.push(message);
         await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       });
+
+      // DB dual-write
+      if (USE_DB_MSGS) {
+        try {
+          await db.upsert('client_messages', clientMsgToDb(message, phone, 'network'));
+        } catch (dbErr) {
+          console.error('DB network reply error:', dbErr.message);
+        }
+      }
+
       console.log(`Сообщение от клиента ${maskPhone(phone)} в общий чат сохранено`);
       res.json({ success: true, message });
     } catch (error) {
@@ -292,6 +406,19 @@ function setupClientsAPI(app) {
         });
       }
 
+      // DB: mark as read by client
+      if (USE_DB_MSGS) {
+        try {
+          await db.query(
+            `UPDATE client_messages SET is_read_by_client = true
+             WHERE client_phone = $1 AND channel = 'network' AND sender_type = 'admin' AND is_read_by_client = false`,
+            [phone]
+          );
+        } catch (dbErr) {
+          console.error('DB network read-by-client error:', dbErr.message);
+        }
+      }
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -312,6 +439,19 @@ function setupClientsAPI(app) {
         });
       }
 
+      // DB: mark as read by admin
+      if (USE_DB_MSGS) {
+        try {
+          await db.query(
+            `UPDATE client_messages SET is_read_by_admin = true
+             WHERE client_phone = $1 AND channel = 'network' AND sender_type = 'client' AND is_read_by_admin = false`,
+            [phone]
+          );
+        } catch (dbErr) {
+          console.error('DB network read-by-admin error:', dbErr.message);
+        }
+      }
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -324,8 +464,6 @@ function setupClientsAPI(app) {
     try {
       const phone = sanitizePhone(req.params.phone);
 
-      // SECURITY: Проверка авторизации - клиент может читать только свои диалоги
-      // Админ может читать любые диалоги
       const requesterPhone = sanitizePhone(req.query.clientPhone || req.headers['x-client-phone']);
       const isAdmin = isAdminPhone(requesterPhone);
 
@@ -334,18 +472,28 @@ function setupClientsAPI(app) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
-      const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
-
       let messages = [];
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const dialog = JSON.parse(content);
-        messages = dialog.messages || [];
+      if (USE_DB_MSGS) {
+        try {
+          const result = await db.query(
+            'SELECT * FROM client_messages WHERE client_phone = $1 AND channel = $2 ORDER BY timestamp ASC',
+            [phone, 'management']
+          );
+          messages = result.rows.map(dbClientMsgToCamel);
+        } catch (dbErr) {
+          console.error('DB management GET error:', dbErr.message);
+          messages = [];
+        }
+      } else {
+        const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          const dialog = JSON.parse(content);
+          messages = dialog.messages || [];
+        }
       }
 
-      // Считаем непрочитанные сообщения от руководства (для клиента)
       const unreadCount = messages.filter(m => m.senderType === 'manager' && !m.isReadByClient).length;
-
       res.json({ success: true, messages, unreadCount });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -388,6 +536,16 @@ function setupClientsAPI(app) {
         dialog.messages.push(message);
         await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       });
+
+      // DB dual-write
+      if (USE_DB_MSGS) {
+        try {
+          await db.upsert('client_messages', clientMsgToDb(message, phone, 'management'));
+        } catch (dbErr) {
+          console.error('DB management reply error:', dbErr.message);
+        }
+      }
+
       console.log(`Сообщение руководству от клиента ${maskPhone(phone)} сохранено`);
 
       // Отправить push-уведомление админам
@@ -433,6 +591,23 @@ function setupClientsAPI(app) {
         });
       }
 
+      // DB: mark as read by client (with type filter)
+      if (USE_DB_MSGS) {
+        try {
+          let sql = `UPDATE client_messages SET is_read_by_client = true
+                     WHERE client_phone = $1 AND channel = 'management' AND sender_type = 'manager' AND is_read_by_client = false`;
+          const params = [phone];
+          if (msgType === 'broadcast') {
+            sql += ' AND is_broadcast = true';
+          } else if (msgType === 'personal') {
+            sql += ' AND is_broadcast = false';
+          }
+          await db.query(sql, params);
+        } catch (dbErr) {
+          console.error('DB management read-by-client error:', dbErr.message);
+        }
+      }
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -451,6 +626,19 @@ function setupClientsAPI(app) {
           dialog.messages.forEach(m => { if (m.senderType === 'client') m.isReadByManager = true; });
           await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
         });
+      }
+
+      // DB: mark as read by manager
+      if (USE_DB_MSGS) {
+        try {
+          await db.query(
+            `UPDATE client_messages SET is_read_by_manager = true
+             WHERE client_phone = $1 AND channel = 'management' AND sender_type = 'client' AND is_read_by_manager = false`,
+            [phone]
+          );
+        } catch (dbErr) {
+          console.error('DB management read-by-manager error:', dbErr.message);
+        }
       }
 
       res.json({ success: true });
@@ -494,6 +682,16 @@ function setupClientsAPI(app) {
         dialog.messages.push(message);
         await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       });
+
+      // DB dual-write
+      if (USE_DB_MSGS) {
+        try {
+          await db.upsert('client_messages', clientMsgToDb(message, phone, 'management'));
+        } catch (dbErr) {
+          console.error('DB management send error:', dbErr.message);
+        }
+      }
+
       console.log(`Сообщение от руководства клиенту ${maskPhone(phone)} сохранено (от админа: ${maskPhone(normalizedSenderPhone)})`);
 
       // Отправить push-уведомление клиенту
@@ -570,6 +768,17 @@ function setupClientsAPI(app) {
       });
 
       // 2. Дублируем в management-директорию (клиент видит в "Связь с руководством")
+      const mgmtMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        text: message.text || '',
+        imageUrl: message.imageUrl || null,
+        timestamp: message.timestamp,
+        senderType: 'manager',
+        senderName: 'Руководство',
+        isReadByClient: false,
+        isReadByManager: true
+      };
+
       const mgmtFilePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
       await withLock(mgmtFilePath, async () => {
         let mgmtDialog = { phone, messages: [] };
@@ -578,18 +787,21 @@ function setupClientsAPI(app) {
             mgmtDialog = JSON.parse(await fsp.readFile(mgmtFilePath, 'utf8'));
           } catch (e) { /* ignore parse errors */ }
         }
-        mgmtDialog.messages.push({
-          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          text: message.text || '',
-          imageUrl: message.imageUrl || null,
-          timestamp: message.timestamp,
-          senderType: 'manager',
-          senderName: 'Руководство',
-          isReadByClient: false,
-          isReadByManager: true
-        });
+        mgmtDialog.messages.push(mgmtMessage);
         await fsp.writeFile(mgmtFilePath, JSON.stringify(mgmtDialog, null, 2), 'utf8');
       });
+
+      // DB dual-write: both dialog + management
+      if (USE_DB_MSGS) {
+        try {
+          if (message.id) {
+            await db.upsert('client_messages', clientMsgToDb(message, phone, 'dialog', shopAddress));
+          }
+          await db.upsert('client_messages', clientMsgToDb(mgmtMessage, phone, 'management'));
+        } catch (dbErr) {
+          console.error('DB legacy message error:', dbErr.message);
+        }
+      }
 
       // 3. Отправляем push-уведомление клиенту
       try {
@@ -680,6 +892,32 @@ function setupClientsAPI(app) {
             await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
           });
 
+          // DB dual-write
+          if (USE_DB_MSGS) {
+            try {
+              const broadcastMsgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              await db.upsert('client_messages', {
+                id: broadcastMsgId,
+                client_phone: normalizedPhone,
+                channel: 'management',
+                shop_address: null,
+                text: msgText,
+                image_url: messageObj.imageUrl || null,
+                sender_type: 'manager',
+                sender_name: 'Руководство',
+                sender_phone: null,
+                is_read_by_client: false,
+                is_read_by_admin: false,
+                is_read_by_manager: true,
+                is_broadcast: true,
+                data: null,
+                timestamp: new Date().toISOString()
+              });
+            } catch (dbErr) {
+              // non-critical
+            }
+          }
+
           // Push-уведомление каждому клиенту
           try {
             await sendPushToPhone(
@@ -706,6 +944,60 @@ function setupClientsAPI(app) {
   app.get('/api/management-dialogs', async (req, res) => {
     try {
       console.log('GET /api/management-dialogs');
+
+      // DB read branch: efficient aggregation query
+      if (USE_DB_MSGS) {
+        try {
+          const result = await db.query(`
+            SELECT
+              client_phone,
+              COUNT(*)::int as messages_count,
+              COUNT(*) FILTER (WHERE sender_type = 'client' AND is_read_by_manager = false)::int as unread_count,
+              MAX(timestamp) as last_timestamp
+            FROM client_messages
+            WHERE channel = 'management'
+            GROUP BY client_phone
+            HAVING COUNT(*) > 0
+            ORDER BY MAX(timestamp) DESC
+          `);
+
+          const dialogs = [];
+          for (const row of result.rows) {
+            // Get last message and client name
+            const lastMsgResult = await db.query(
+              `SELECT text, timestamp, sender_type, sender_name FROM client_messages
+               WHERE client_phone = $1 AND channel = 'management' ORDER BY timestamp DESC LIMIT 1`,
+              [row.client_phone]
+            );
+            const clientNameResult = await db.query(
+              `SELECT sender_name FROM client_messages
+               WHERE client_phone = $1 AND channel = 'management' AND sender_name IS NOT NULL AND sender_name != 'Руководство'
+               ORDER BY timestamp DESC LIMIT 1`,
+              [row.client_phone]
+            );
+
+            const lastMsg = lastMsgResult.rows[0];
+            dialogs.push({
+              phone: row.client_phone,
+              clientName: clientNameResult.rows[0]?.sender_name || 'Клиент',
+              messagesCount: row.messages_count,
+              unreadCount: row.unread_count,
+              lastMessage: lastMsg ? {
+                text: lastMsg.text,
+                timestamp: lastMsg.timestamp ? new Date(lastMsg.timestamp).toISOString() : null,
+                senderType: lastMsg.sender_type
+              } : null
+            });
+          }
+
+          const totalUnread = dialogs.reduce((sum, d) => sum + d.unreadCount, 0);
+          return res.json({ success: true, dialogs, totalUnread });
+        } catch (dbErr) {
+          console.error('DB management-dialogs error:', dbErr.message);
+          // fallback to file
+        }
+      }
+
       const dialogs = [];
 
       if (!(await fileExists(CLIENT_MESSAGES_MANAGEMENT_DIR))) {
@@ -722,15 +1014,11 @@ function setupClientsAPI(app) {
           const dialog = JSON.parse(content);
 
           if (dialog.messages && dialog.messages.length > 0) {
-            // Подсчитываем непрочитанные сообщения от клиентов
             const unreadCount = dialog.messages.filter(
               m => m.senderType === 'client' && m.isReadByManager === false
             ).length;
 
-            // Находим последнее сообщение
             const lastMessage = dialog.messages[dialog.messages.length - 1];
-
-            // Получаем имя клиента из последнего сообщения
             const clientName = dialog.messages.find(m => m.senderName && m.senderName !== 'Руководство')?.senderName || 'Клиент';
 
             dialogs.push({
@@ -750,14 +1038,11 @@ function setupClientsAPI(app) {
         }
       }
 
-      // Сортируем по последнему сообщению (новые первыми)
       dialogs.sort((a, b) => {
         return new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp);
       });
 
-      // Подсчитываем общее количество непрочитанных
       const totalUnread = dialogs.reduce((sum, d) => sum + d.unreadCount, 0);
-
       res.json({ success: true, dialogs, totalUnread });
     } catch (error) {
       console.error('Error getting management dialogs:', error);
@@ -840,7 +1125,25 @@ function setupClientsAPI(app) {
     }
   });
 
-  console.log('✅ Clients API initialized');
+  console.log(`✅ Clients API initialized (clients: ${USE_DB ? 'PostgreSQL' : 'JSON'}, messages: ${USE_DB_MSGS ? 'PostgreSQL' : 'JSON'})`);
+}
+
+/**
+ * Преобразование DB row (snake_case) → camelCase (для совместимости с Flutter)
+ */
+function dbClientToCamel(row) {
+  return {
+    phone: row.phone,
+    name: row.name,
+    clientName: row.client_name,
+    fcmToken: row.fcm_token,
+    referredBy: row.referred_by,
+    referredAt: row.referred_at,
+    isAdmin: row.is_admin,
+    employeeName: row.employee_name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
 }
 
 module.exports = { setupClientsAPI };
