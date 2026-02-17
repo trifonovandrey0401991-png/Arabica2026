@@ -2,34 +2,46 @@
  * Employees API - CRUD сотрудников
  * Поиск, пагинация, referralCode, кэш invalidation
  *
- * REWRITTEN: Exact match with index.js inline code (2026-02-08)
+ * Feature flag: USE_DB_EMPLOYEES=true → PostgreSQL, false → JSON files
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 const dataCache = require('../utils/data_cache');
+const db = require('../utils/db');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const USE_DB = process.env.USE_DB_EMPLOYEES === 'true';
 
-// Получить следующий свободный referralCode
+/**
+ * Получить следующий свободный referralCode (1-1000)
+ */
 async function getNextReferralCode() {
   try {
-    if (!await fileExists(EMPLOYEES_DIR)) return 1;
+    let usedCodes;
 
-    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
-    const usedCodes = new Set();
+    if (USE_DB) {
+      const result = await db.query('SELECT referral_code FROM employees WHERE referral_code IS NOT NULL');
+      usedCodes = new Set(result.rows.map(r => r.referral_code));
+    } else {
+      if (!await fileExists(EMPLOYEES_DIR)) return 1;
 
-    for (const file of files) {
-      try {
-        const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
-        const emp = JSON.parse(content);
-        if (emp.referralCode) {
-          usedCodes.add(emp.referralCode);
+      const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+      usedCodes = new Set();
+
+      for (const file of files) {
+        try {
+          const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
+          const emp = JSON.parse(content);
+          if (emp.referralCode) {
+            usedCodes.add(emp.referralCode);
+          }
+        } catch (e) {
+          console.error(`[Employees] Error reading employee file ${file}:`, e.message);
         }
-      } catch (e) {
-        console.error(`[Employees] Error reading employee file ${file}:`, e.message);
       }
     }
 
@@ -44,31 +56,51 @@ async function getNextReferralCode() {
   }
 }
 
+/**
+ * Парсинг boolean из req.body (true, 'true', 1 → true)
+ */
+function parseBool(value) {
+  return value === true || value === 'true' || value === 1;
+}
+
 function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse, invalidateCache } = {}) {
 
   // GET /api/employees - получить всех сотрудников
   app.get('/api/employees', async (req, res) => {
     try {
       console.log('GET /api/employees');
+      let employees;
 
-      // SCALABILITY: Используем кэш если доступен, иначе читаем с диска
-      let employees = dataCache.getEmployees();
+      if (USE_DB) {
+        const rows = await db.findAll('employees', { orderBy: 'created_at', orderDir: 'DESC' });
+        employees = rows.map(dbEmployeeToCamel);
+      } else {
+        // SCALABILITY: Используем кэш если доступен, иначе читаем с диска
+        employees = dataCache.getEmployees();
 
-      if (!employees) {
-        employees = [];
-        if (!await fileExists(EMPLOYEES_DIR)) {
-          await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
-        }
-        const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
-          try {
-            const filePath = path.join(EMPLOYEES_DIR, file);
-            const content = await fsp.readFile(filePath, 'utf8');
-            employees.push(JSON.parse(content));
-          } catch (e) {
-            console.error(`Ошибка чтения файла ${file}:`, e);
+        if (!employees) {
+          employees = [];
+          if (!await fileExists(EMPLOYEES_DIR)) {
+            await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
+          }
+          const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+          for (const file of files) {
+            try {
+              const filePath = path.join(EMPLOYEES_DIR, file);
+              const content = await fsp.readFile(filePath, 'utf8');
+              employees.push(JSON.parse(content));
+            } catch (e) {
+              console.error(`Ошибка чтения файла ${file}:`, e);
+            }
           }
         }
+
+        // Сортируем по дате создания (новые первыми)
+        employees.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
       }
 
       // SCALABILITY: Поддержка поиска по имени/телефону
@@ -82,18 +114,10 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         );
       }
 
-      // Сортируем по дате создания (новые первыми)
-      employees.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-      });
-
       // SCALABILITY: Пагинация если запрошена
       if (isPaginationRequested && isPaginationRequested(req.query)) {
         res.json(createPaginatedResponse(employees, req.query, 'employees'));
       } else {
-        // Backwards compatibility - возвращаем все без пагинации
         res.json({ success: true, employees });
       }
     } catch (error) {
@@ -105,21 +129,23 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   // GET /api/employees/:id - получить сотрудника по ID
   app.get('/api/employees/:id', async (req, res) => {
     try {
-      const id = req.params.id;
+      const id = sanitizeId(req.params.id);
       console.log('GET /api/employees:', id);
 
-      const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+      let employee;
 
-      if (!await fileExists(employeeFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Сотрудник не найден'
-        });
+      if (USE_DB) {
+        const row = await db.findById('employees', id);
+        if (!row) return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
+        employee = dbEmployeeToCamel(row);
+      } else {
+        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+        if (!await fileExists(employeeFile)) {
+          return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
+        }
+        const content = await fsp.readFile(employeeFile, 'utf8');
+        employee = JSON.parse(content);
       }
-
-      const content = await fsp.readFile(employeeFile, 'utf8');
-      const employee = JSON.parse(content);
 
       res.json({ success: true, employee });
     } catch (error) {
@@ -138,16 +164,9 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
 
       console.log('POST /api/employees:', JSON.stringify(req.body).substring(0, 200));
 
-      if (!await fileExists(EMPLOYEES_DIR)) {
-        await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
-      }
-
       // Валидация обязательных полей
       if (!req.body.name || req.body.name.trim() === '') {
-        return res.status(400).json({
-          success: false,
-          error: 'Имя сотрудника обязательно'
-        });
+        return res.status(400).json({ success: false, error: 'Имя сотрудника обязательно' });
       }
 
       // Валидация формата телефона (если указан)
@@ -164,30 +183,59 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
       }
 
       // Генерируем ID если не указан
-      const id = req.body.id || `employee_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+      const rawId = req.body.id || `employee_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const id = sanitizeId(rawId);
+      const now = new Date().toISOString();
+      const referralCode = req.body.referralCode || (await getNextReferralCode());
 
-      const employee = {
-        id: sanitizedId,
-        referralCode: req.body.referralCode || (await getNextReferralCode()),
-        name: req.body.name.trim(),
-        position: req.body.position || null,
-        department: req.body.department || null,
-        phone: req.body.phone || null,
-        email: req.body.email || null,
-        isAdmin: req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1,
-        isManager: req.body.isManager === true || req.body.isManager === 'true' || req.body.isManager === 1,
-        employeeName: req.body.employeeName || null,
-        preferredWorkDays: req.body.preferredWorkDays || [],
-        preferredShops: req.body.preferredShops || [],
-        shiftPreferences: req.body.shiftPreferences || {},
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      let employee;
 
-      await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
-      console.log('Сотрудник создан:', employeeFile);
+      if (USE_DB) {
+        const row = await db.insert('employees', {
+          id,
+          referral_code: referralCode,
+          name: req.body.name.trim(),
+          position: req.body.position || null,
+          department: req.body.department || null,
+          phone: req.body.phone || null,
+          email: req.body.email || null,
+          is_admin: parseBool(req.body.isAdmin),
+          is_manager: parseBool(req.body.isManager),
+          employee_name: req.body.employeeName || null,
+          preferred_work_days: req.body.preferredWorkDays || [],
+          preferred_shops: req.body.preferredShops || [],
+          shift_preferences: req.body.shiftPreferences || {},
+          created_at: now,
+          updated_at: now
+        });
+        employee = dbEmployeeToCamel(row);
+      } else {
+        if (!await fileExists(EMPLOYEES_DIR)) {
+          await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
+        }
+
+        employee = {
+          id,
+          referralCode,
+          name: req.body.name.trim(),
+          position: req.body.position || null,
+          department: req.body.department || null,
+          phone: req.body.phone || null,
+          email: req.body.email || null,
+          isAdmin: parseBool(req.body.isAdmin),
+          isManager: parseBool(req.body.isManager),
+          employeeName: req.body.employeeName || null,
+          preferredWorkDays: req.body.preferredWorkDays || [],
+          preferredShops: req.body.preferredShops || [],
+          shiftPreferences: req.body.shiftPreferences || {},
+          createdAt: now,
+          updatedAt: now,
+        };
+        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+        await writeJsonFile(employeeFile, employee);
+      }
+
+      console.log('✅ Сотрудник создан:', id);
 
       // SCALABILITY: Инвалидируем кэши при создании сотрудника
       if (employee.phone && invalidateCache) {
@@ -210,25 +258,12 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
       }
 
-      const id = req.params.id;
+      const id = sanitizeId(req.params.id);
       console.log('PUT /api/employees:', id);
-
-      const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
-
-      if (!await fileExists(employeeFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Сотрудник не найден'
-        });
-      }
 
       // Валидация обязательных полей
       if (!req.body.name || req.body.name.trim() === '') {
-        return res.status(400).json({
-          success: false,
-          error: 'Имя сотрудника обязательно'
-        });
+        return res.status(400).json({ success: false, error: 'Имя сотрудника обязательно' });
       }
 
       // Валидация формата телефона (если указан)
@@ -244,30 +279,62 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         return res.status(400).json({ success: false, error: 'Неверный формат email' });
       }
 
-      // Читаем существующие данные для сохранения createdAt
-      const oldContent = await fsp.readFile(employeeFile, 'utf8');
-      const oldEmployee = JSON.parse(oldContent);
+      let employee;
 
-      const employee = {
-        id: sanitizedId,
-        referralCode: req.body.referralCode || (await getNextReferralCode()),
-        name: req.body.name.trim(),
-        position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
-        department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
-        phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
-        email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
-        isAdmin: req.body.isAdmin !== undefined ? (req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1) : oldEmployee.isAdmin,
-        isManager: req.body.isManager !== undefined ? (req.body.isManager === true || req.body.isManager === 'true' || req.body.isManager === 1) : oldEmployee.isManager,
-        employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
-        preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
-        preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
-        shiftPreferences: req.body.shiftPreferences !== undefined ? req.body.shiftPreferences : oldEmployee.shiftPreferences,
-        createdAt: oldEmployee.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      if (USE_DB) {
+        const existing = await db.findById('employees', id);
+        if (!existing) return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
 
-      await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
-      console.log('Сотрудник обновлен:', employeeFile);
+        const updateData = { updated_at: new Date().toISOString() };
+        // Обязательные поля
+        updateData.name = req.body.name.trim();
+        updateData.referral_code = req.body.referralCode || existing.referral_code;
+        // Опциональные — обновляем только если переданы
+        if (req.body.position !== undefined) updateData.position = req.body.position;
+        if (req.body.department !== undefined) updateData.department = req.body.department;
+        if (req.body.phone !== undefined) updateData.phone = req.body.phone;
+        if (req.body.email !== undefined) updateData.email = req.body.email;
+        if (req.body.isAdmin !== undefined) updateData.is_admin = parseBool(req.body.isAdmin);
+        if (req.body.isManager !== undefined) updateData.is_manager = parseBool(req.body.isManager);
+        if (req.body.employeeName !== undefined) updateData.employee_name = req.body.employeeName;
+        if (req.body.preferredWorkDays !== undefined) updateData.preferred_work_days = req.body.preferredWorkDays;
+        if (req.body.preferredShops !== undefined) updateData.preferred_shops = req.body.preferredShops;
+        if (req.body.shiftPreferences !== undefined) updateData.shift_preferences = req.body.shiftPreferences;
+
+        const row = await db.updateById('employees', id, updateData);
+        employee = dbEmployeeToCamel(row);
+      } else {
+        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+        if (!await fileExists(employeeFile)) {
+          return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
+        }
+
+        // Читаем существующие данные для сохранения createdAt
+        const oldContent = await fsp.readFile(employeeFile, 'utf8');
+        const oldEmployee = JSON.parse(oldContent);
+
+        employee = {
+          id,
+          referralCode: req.body.referralCode || oldEmployee.referralCode,
+          name: req.body.name.trim(),
+          position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
+          department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
+          phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
+          email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
+          isAdmin: req.body.isAdmin !== undefined ? parseBool(req.body.isAdmin) : oldEmployee.isAdmin,
+          isManager: req.body.isManager !== undefined ? parseBool(req.body.isManager) : oldEmployee.isManager,
+          employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
+          preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
+          preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
+          shiftPreferences: req.body.shiftPreferences !== undefined ? req.body.shiftPreferences : oldEmployee.shiftPreferences,
+          createdAt: oldEmployee.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await writeJsonFile(employeeFile, employee);
+      }
+
+      console.log('✅ Сотрудник обновлен:', id);
 
       // SCALABILITY: Инвалидируем кэши при изменении сотрудника
       if (invalidateCache) {
@@ -290,29 +357,35 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
       }
 
-      const id = req.params.id;
+      const id = sanitizeId(req.params.id);
       console.log('DELETE /api/employees:', id);
 
-      const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+      let employeePhone = null;
 
-      if (!await fileExists(employeeFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Сотрудник не найден'
-        });
+      if (USE_DB) {
+        // Читаем телефон перед удалением для инвалидации кэша
+        const existing = await db.findById('employees', id);
+        if (!existing) return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
+        employeePhone = existing.phone;
+
+        await db.deleteById('employees', id);
+      } else {
+        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+        if (!await fileExists(employeeFile)) {
+          return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
+        }
+
+        // Читаем телефон перед удалением для инвалидации кэша
+        try {
+          const content = await fsp.readFile(employeeFile, 'utf8');
+          const employee = JSON.parse(content);
+          employeePhone = employee.phone;
+        } catch (e) { /* ignore */ }
+
+        await fsp.unlink(employeeFile);
       }
 
-      // SCALABILITY: Читаем телефон перед удалением для инвалидации кэша
-      let employeePhone = null;
-      try {
-        const content = await fsp.readFile(employeeFile, 'utf8');
-        const employee = JSON.parse(content);
-        employeePhone = employee.phone;
-      } catch (e) { /* ignore */ }
-
-      await fsp.unlink(employeeFile);
-      console.log('Сотрудник удален:', employeeFile);
+      console.log('✅ Сотрудник удален:', id);
 
       // SCALABILITY: Инвалидируем кэши при удалении сотрудника
       if (employeePhone && invalidateCache) {
@@ -327,7 +400,30 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
     }
   });
 
-  console.log('✅ Employees API initialized');
+  console.log(`✅ Employees API initialized (storage: ${USE_DB ? 'PostgreSQL' : 'JSON files'})`);
+}
+
+/**
+ * Преобразование DB row (snake_case) → camelCase (для совместимости с Flutter)
+ */
+function dbEmployeeToCamel(row) {
+  return {
+    id: row.id,
+    referralCode: row.referral_code,
+    name: row.name,
+    position: row.position,
+    department: row.department,
+    phone: row.phone,
+    email: row.email,
+    isAdmin: row.is_admin,
+    isManager: row.is_manager,
+    employeeName: row.employee_name,
+    preferredWorkDays: row.preferred_work_days,
+    preferredShops: row.preferred_shops,
+    shiftPreferences: row.shift_preferences,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
 }
 
 module.exports = { setupEmployeesAPI, getNextReferralCode };

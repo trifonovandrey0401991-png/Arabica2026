@@ -5,6 +5,7 @@ import '../models/review_model.dart';
 import '../services/review_service.dart';
 import 'review_detail_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница списка отзывов клиента (из "Мои диалоги")
 class ClientReviewsListPage extends StatefulWidget {
@@ -69,7 +70,7 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Мои отзывы'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -80,7 +81,7 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,

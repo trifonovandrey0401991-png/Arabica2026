@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/efficiency_data_model.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Утилиты для работы с эффективностью
 class EfficiencyUtils {
@@ -44,8 +45,8 @@ class EfficiencyUtils {
   }
 
   /// Константы цветов для эффективности
-  static const primaryColor = Color(0xFF1A4D4D);
-  static const secondaryColor = Color(0xFFD4AF37);
+  static const primaryColor = AppColors.emerald;
+  static const secondaryColor = AppColors.gold;
 
   /// Получить иконку для категории эффективности
   static IconData getCategoryIcon(EfficiencyCategory category) {

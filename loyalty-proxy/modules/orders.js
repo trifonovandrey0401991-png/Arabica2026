@@ -2,6 +2,7 @@
  * Orders Module
  *
  * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REFACTORED: Added PostgreSQL support with USE_DB_ORDERS flag (2026-02-17)
  */
 
 const fsp = require('fs').promises;
@@ -11,8 +12,10 @@ const { admin, firebaseInitialized } = require('../firebase-admin-config');
 const { sendPushNotification } = require('../api/report_notifications_api');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
+const db = require('../utils/db');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const USE_DB = process.env.USE_DB_ORDERS === 'true';
 
 const ORDERS_DIR = `${DATA_DIR}/orders`;
 const COUNTER_FILE = path.join(ORDERS_DIR, 'order-counter.json');
@@ -23,6 +26,31 @@ const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 // Файлы для отслеживания просмотров заказов
 const ORDERS_VIEWED_REJECTED_FILE = `${DATA_DIR}/orders-viewed-rejected.json`;
 const ORDERS_VIEWED_UNCONFIRMED_FILE = `${DATA_DIR}/orders-viewed-unconfirmed.json`;
+
+// =====================================================
+// DB CONVERSION
+// =====================================================
+
+function dbOrderToCamel(row) {
+  return {
+    id: row.id,
+    orderNumber: row.order_number,
+    clientPhone: row.client_phone,
+    clientName: row.client_name,
+    shopAddress: row.shop_address,
+    items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+    totalPrice: row.total_price != null ? Number(row.total_price) : null,
+    comment: row.comment,
+    status: row.status,
+    acceptedBy: row.accepted_by,
+    rejectedBy: row.rejected_by,
+    rejectionReason: row.rejection_reason,
+    rejectedAt: row.rejected_at,
+    expiredAt: row.expired_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
 
 // =====================================================
 // ФУНКЦИИ ДЛЯ ОТСЛЕЖИВАНИЯ ПРОСМОТРОВ ЗАКАЗОВ
@@ -58,6 +86,25 @@ async function saveLastViewedAt(type, date) {
 
 // Подсчёт непросмотренных заказов
 async function countUnviewedOrders(status, lastViewedAt) {
+  if (USE_DB) {
+    try {
+      const dateColumn = status === 'rejected' ? 'rejected_at' : 'expired_at';
+      let query = `SELECT COUNT(*)::int as count FROM orders WHERE status = $1 AND ${dateColumn} IS NOT NULL`;
+      const params = [status];
+
+      if (lastViewedAt) {
+        query += ` AND ${dateColumn} > $2`;
+        params.push(lastViewedAt.toISOString());
+      }
+
+      const result = await db.query(query, params);
+      return result.rows[0].count;
+    } catch (err) {
+      console.error('DB error counting unviewed orders:', err.message);
+      return 0;
+    }
+  }
+
   let count = 0;
 
   try {
@@ -113,6 +160,11 @@ async function getUnviewedOrdersCounts() {
 }
 
 async function getNextOrderNumber() {
+  if (USE_DB) {
+    const result = await db.query('SELECT COALESCE(MAX(order_number), 0) + 1 as next_num FROM orders');
+    return result.rows[0].next_num;
+  }
+
   const lockFile = COUNTER_FILE + '.lock';
   let attempts = 0;
   const maxAttempts = 10;
@@ -135,7 +187,8 @@ async function getNextOrderNumber() {
     const data = await fsp.readFile(COUNTER_FILE, 'utf8');
     const { counter } = JSON.parse(data);
     const nextCounter = counter + 1;
-    await fsp.writeFile(COUNTER_FILE, JSON.stringify({ counter: nextCounter }, null, 2));
+    // Boy Scout: fsp.writeFile → writeJsonFile
+    await writeJsonFile(COUNTER_FILE, { counter: nextCounter });
     return nextCounter;
   } finally {
     await fsp.unlink(lockFile).catch(() => {});
@@ -145,26 +198,46 @@ async function getNextOrderNumber() {
 async function createOrder(orderData) {
   const orderNumber = await getNextOrderNumber();
   const orderId = uuidv4();
+  const now = new Date().toISOString();
 
-  const order = {
-    id: orderId,
-    orderNumber,
-    clientPhone: orderData.clientPhone,
-    clientName: orderData.clientName,
-    shopAddress: orderData.shopAddress,
-    items: orderData.items,
-    totalPrice: orderData.totalPrice,
-    comment: orderData.comment || null,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    acceptedBy: null,
-    rejectedBy: null,
-    rejectionReason: null
-  };
+  let order;
 
-  const orderFile = path.join(ORDERS_DIR, orderId + '.json');
-  await writeJsonFile(orderFile, order);
+  if (USE_DB) {
+    const row = await db.insert('orders', {
+      id: orderId,
+      order_number: orderNumber,
+      client_phone: orderData.clientPhone,
+      client_name: orderData.clientName,
+      shop_address: orderData.shopAddress,
+      items: JSON.stringify(orderData.items || []),
+      total_price: orderData.totalPrice,
+      comment: orderData.comment || null,
+      status: 'pending',
+      created_at: now,
+      updated_at: now
+    });
+    order = dbOrderToCamel(row);
+  } else {
+    order = {
+      id: orderId,
+      orderNumber,
+      clientPhone: orderData.clientPhone,
+      clientName: orderData.clientName,
+      shopAddress: orderData.shopAddress,
+      items: orderData.items,
+      totalPrice: orderData.totalPrice,
+      comment: orderData.comment || null,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+      acceptedBy: null,
+      rejectedBy: null,
+      rejectionReason: null
+    };
+
+    const orderFile = path.join(ORDERS_DIR, orderId + '.json');
+    await writeJsonFile(orderFile, order);
+  }
 
   await addOrderToDialog(order);
 
@@ -176,6 +249,30 @@ async function createOrder(orderData) {
 }
 
 async function getOrders(filters = {}) {
+  if (USE_DB) {
+    let query = 'SELECT * FROM orders WHERE 1=1';
+    const params = [];
+    let paramIdx = 1;
+
+    if (filters.clientPhone) {
+      query += ` AND client_phone = $${paramIdx++}`;
+      params.push(filters.clientPhone);
+    }
+    if (filters.status) {
+      query += ` AND status = $${paramIdx++}`;
+      params.push(filters.status);
+    }
+    if (filters.shopAddress) {
+      query += ` AND shop_address = $${paramIdx++}`;
+      params.push(filters.shopAddress);
+    }
+
+    query += ' ORDER BY order_number DESC NULLS LAST';
+
+    const result = await db.query(query, params);
+    return result.rows.map(dbOrderToCamel);
+  }
+
   const files = await fsp.readdir(ORDERS_DIR);
   const orders = [];
 
@@ -201,27 +298,43 @@ async function getOrders(filters = {}) {
 }
 
 async function updateOrderStatus(orderId, updates) {
-  const orderFile = path.join(ORDERS_DIR, orderId + '.json');
+  let order;
 
-  if (!(await fileExists(orderFile))) {
-    throw new Error('Заказ ' + orderId + ' не найден');
-  }
+  if (USE_DB) {
+    const dbUpdates = { updated_at: new Date().toISOString() };
+    if (updates.status) dbUpdates.status = updates.status;
+    if (updates.acceptedBy) dbUpdates.accepted_by = updates.acceptedBy;
+    if (updates.rejectedBy) dbUpdates.rejected_by = updates.rejectedBy;
+    if (updates.rejectionReason) dbUpdates.rejection_reason = updates.rejectionReason;
+    if (updates.status === 'rejected') dbUpdates.rejected_at = new Date().toISOString();
 
-  const order = await withLock(orderFile, async () => {
-    const content = await fsp.readFile(orderFile, 'utf8');
-    const data = JSON.parse(content);
+    const row = await db.updateById('orders', orderId, dbUpdates);
+    if (!row) throw new Error('Заказ ' + orderId + ' не найден');
+    order = dbOrderToCamel(row);
+  } else {
+    const orderFile = path.join(ORDERS_DIR, orderId + '.json');
 
-    Object.assign(data, updates);
-    data.updatedAt = new Date().toISOString();
-
-    // Добавляем rejectedAt при отказе
-    if (updates.status === 'rejected') {
-      data.rejectedAt = new Date().toISOString();
+    if (!(await fileExists(orderFile))) {
+      throw new Error('Заказ ' + orderId + ' не найден');
     }
 
-    await fsp.writeFile(orderFile, JSON.stringify(data, null, 2));
-    return data;
-  });
+    order = await withLock(orderFile, async () => {
+      const content = await fsp.readFile(orderFile, 'utf8');
+      const data = JSON.parse(content);
+
+      Object.assign(data, updates);
+      data.updatedAt = new Date().toISOString();
+
+      // Добавляем rejectedAt при отказе
+      if (updates.status === 'rejected') {
+        data.rejectedAt = new Date().toISOString();
+      }
+
+      // Boy Scout: fsp.writeFile → writeJsonFile
+      await writeJsonFile(orderFile, data);
+      return data;
+    });
+  }
 
   if (updates.status === 'accepted') {
     await sendOrderNotification(order, 'accepted');
@@ -398,7 +511,8 @@ async function addOrderToDialog(order) {
     dialog.messages.push(message);
     dialog.lastMessageTime = message.timestamp;
 
-    await fsp.writeFile(dialogFile, JSON.stringify(dialog, null, 2));
+    // Boy Scout: fsp.writeFile → writeJsonFile
+    await writeJsonFile(dialogFile, dialog);
   });
   console.log('✅ Заказ #' + order.orderNumber + ' добавлен в диалог с магазином ' + order.shopAddress);
 }
@@ -446,7 +560,8 @@ async function addResponseToDialog(order, responseType) {
     dialog.lastMessageTime = message.timestamp;
     dialog.unreadCount += 1;
 
-    await fsp.writeFile(dialogFile, JSON.stringify(dialog, null, 2));
+    // Boy Scout: fsp.writeFile → writeJsonFile
+    await writeJsonFile(dialogFile, dialog);
   });
   console.log('✅ Ответ сотрудника добавлен в диалог (заказ #' + order.orderNumber + ')');
 }
@@ -456,5 +571,6 @@ module.exports = {
   getOrders,
   updateOrderStatus,
   getUnviewedOrdersCounts,
-  saveLastViewedAt
+  saveLastViewedAt,
+  dbOrderToCamel
 };

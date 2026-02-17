@@ -172,7 +172,7 @@ function setupClientsAPI(app) {
           updated_at: now
         };
         // Upsert — если клиент существует, обновляем только переданные поля
-        const existing = await db.findById('clients', phone);
+        const existing = await db.findById('clients', phone, 'phone');
         if (existing) {
           const updateData = { updated_at: now };
           if (client.name !== undefined) updateData.name = client.name;
@@ -182,7 +182,7 @@ function setupClientsAPI(app) {
           if (client.referredAt !== undefined) updateData.referred_at = client.referredAt;
           if (client.isAdmin !== undefined) updateData.is_admin = client.isAdmin === true;
           if (client.employeeName !== undefined) updateData.employee_name = client.employeeName;
-          const row = await db.updateById('clients', phone, updateData);
+          const row = await db.updateById('clients', phone, updateData, 'phone');
           updated = dbClientToCamel(row);
         } else {
           data.created_at = now;

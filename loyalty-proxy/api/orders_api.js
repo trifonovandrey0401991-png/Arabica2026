@@ -3,6 +3,7 @@
  * Заказы клиентов
  *
  * REWRITTEN: Exact match with index.js inline code (2026-02-08)
+ * REFACTORED: Added PostgreSQL support with USE_DB_ORDERS flag (2026-02-17)
  */
 
 const fsp = require('fs').promises;
@@ -10,9 +11,11 @@ const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const ordersModule = require('../modules/orders');
+const db = require('../utils/db');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ORDERS_DIR = `${DATA_DIR}/orders`;
+const USE_DB = process.env.USE_DB_ORDERS === 'true';
 
 (async () => {
   if (!await fileExists(ORDERS_DIR)) {
@@ -113,17 +116,24 @@ function setupOrdersAPI(app) {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/orders/:id', id);
 
-      const orderFile = path.join(ORDERS_DIR, `${id}.json`);
+      let order;
 
-      if (!await fileExists(orderFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Заказ не найден'
-        });
+      if (USE_DB) {
+        const row = await db.findById('orders', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Заказ не найден' });
+        }
+        order = ordersModule.dbOrderToCamel(row);
+      } else {
+        const orderFile = path.join(ORDERS_DIR, `${id}.json`);
+
+        if (!await fileExists(orderFile)) {
+          return res.status(404).json({ success: false, error: 'Заказ не найден' });
+        }
+
+        const content = await fsp.readFile(orderFile, 'utf8');
+        order = JSON.parse(content);
       }
-
-      const content = await fsp.readFile(orderFile, 'utf8');
-      const order = JSON.parse(content);
 
       res.json({ success: true, order });
     } catch (error) {
@@ -155,19 +165,26 @@ function setupOrdersAPI(app) {
   // DELETE /api/orders/:id - удалить заказ
   app.delete('/api/orders/:id', async (req, res) => {
     try {
+      // Boy Scout: добавлена проверка авторизации
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/orders/:id', id);
 
-      const orderFile = path.join(ORDERS_DIR, `${id}.json`);
+      if (USE_DB) {
+        const deleted = await db.deleteById('orders', id);
+        if (!deleted) {
+          return res.status(404).json({ success: false, error: 'Заказ не найден' });
+        }
+      } else {
+        const orderFile = path.join(ORDERS_DIR, `${id}.json`);
 
-      if (!await fileExists(orderFile)) {
-        return res.status(404).json({
-          success: false,
-          error: 'Заказ не найден'
-        });
+        if (!await fileExists(orderFile)) {
+          return res.status(404).json({ success: false, error: 'Заказ не найден' });
+        }
+
+        await fsp.unlink(orderFile);
       }
-
-      await fsp.unlink(orderFile);
 
       res.json({ success: true, message: 'Заказ удален' });
     } catch (error) {
@@ -176,7 +193,7 @@ function setupOrdersAPI(app) {
     }
   });
 
-  console.log('✅ Orders API initialized');
+  console.log(`✅ Orders API initialized (storage: ${USE_DB ? 'PostgreSQL' : 'JSON files'})`);
 }
 
 module.exports = { setupOrdersAPI };

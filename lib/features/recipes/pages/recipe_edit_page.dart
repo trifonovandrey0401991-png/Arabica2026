@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'recipe_form_page.dart';
 import 'recipe_list_edit_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class RecipeEditPage extends StatelessWidget {
   const RecipeEditPage({super.key});
@@ -11,11 +12,11 @@ class RecipeEditPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Редактировать рецепты'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -59,13 +60,13 @@ class RecipeEditPage extends StatelessWidget {
                           Container(
                             padding: EdgeInsets.all(16.w),
                             decoration: BoxDecoration(
-                              color: Color(0xFF004D40).withOpacity(0.1),
+                              color: AppColors.primaryGreen.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12.r),
                             ),
                             child: Icon(
                               Icons.add_circle_outline,
                               size: 48,
-                              color: Color(0xFF004D40),
+                              color: AppColors.primaryGreen,
                             ),
                           ),
                           SizedBox(width: 24),
@@ -120,13 +121,13 @@ class RecipeEditPage extends StatelessWidget {
                           Container(
                             padding: EdgeInsets.all(16.w),
                             decoration: BoxDecoration(
-                              color: Color(0xFF004D40).withOpacity(0.1),
+                              color: AppColors.primaryGreen.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12.r),
                             ),
                             child: Icon(
                               Icons.edit,
                               size: 48,
-                              color: Color(0xFF004D40),
+                              color: AppColors.primaryGreen,
                             ),
                           ),
                           SizedBox(width: 24),
@@ -169,5 +170,3 @@ class RecipeEditPage extends StatelessWidget {
     );
   }
 }
-
-

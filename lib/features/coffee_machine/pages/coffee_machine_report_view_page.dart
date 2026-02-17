@@ -7,6 +7,7 @@ import '../../../core/constants/api_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Детальный просмотр отчёта по счётчику кофемашин
@@ -20,11 +21,6 @@ class CoffeeMachineReportViewPage extends StatefulWidget {
 }
 
 class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isConfirming = false;
   int _selectedRating = 0;
   final Set<String> _trainedReadings = {}; // templateIds уже обученных
@@ -46,7 +42,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -91,7 +87,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
             onPressed: () => Navigator.pop(context),
             icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
-          Icon(Icons.coffee_outlined, color: _gold, size: 22),
+          Icon(Icons.coffee_outlined, color: AppColors.gold, size: 22),
           SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -126,7 +122,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
       case 'expired':
         return Colors.red;
       default:
-        return _gold;
+        return AppColors.gold;
     }
   }
 
@@ -181,7 +177,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
       children: [
         Text(
           'Показания машин',
-          style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 10),
         ...report.readings.map((reading) => _buildReadingCard(reading)),
@@ -211,7 +207,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
         children: [
           Row(
             children: [
-              Icon(Icons.coffee, color: _gold, size: 20),
+              Icon(Icons.coffee, color: AppColors.gold, size: 20),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -221,7 +217,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               ),
               Text(
                 '${reading.confirmedNumber}',
-                style: TextStyle(color: _gold, fontSize: 20.sp, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.gold, fontSize: 20.sp, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -295,10 +291,10 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _trainOcr(reading),
-                icon: Icon(Icons.school, color: _gold, size: 18),
-                label: Text('Обучить ИИ', style: TextStyle(color: _gold, fontSize: 13.sp)),
+                icon: Icon(Icons.school, color: AppColors.gold, size: 18),
+                label: Text('Обучить ИИ', style: TextStyle(color: AppColors.gold, fontSize: 13.sp)),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: _gold.withOpacity(0.4)),
+                  side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
                   padding: EdgeInsets.symmetric(vertical: 8.h),
                 ),
@@ -480,7 +476,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Сумма машин', style: TextStyle(color: Colors.white70, fontSize: 13.sp)),
-              Text('+${report.sumOfMachines}', style: TextStyle(color: _gold, fontWeight: FontWeight.bold)),
+              Text('+${report.sumOfMachines}', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
             ],
           ),
           SizedBox(height: 4),
@@ -538,12 +534,12 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: _gold.withOpacity(0.3)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Оценка', style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold)),
+          Text('Оценка', style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold)),
           SizedBox(height: 10),
           // Рейтинг
           Row(
@@ -556,7 +552,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
                   padding: EdgeInsets.symmetric(horizontal: 4.w),
                   child: Icon(
                     starNum <= _selectedRating ? Icons.star : Icons.star_border,
-                    color: _gold,
+                    color: AppColors.gold,
                     size: 36,
                   ),
                 ),

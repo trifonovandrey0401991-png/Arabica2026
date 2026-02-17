@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -22,11 +23,6 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
   late ClientPrize _prize;
   bool _regenerating = false;
 
-  // Цвета
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   @override
   void initState() {
     super.initState();
@@ -46,7 +42,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('QR-код обновлён'),
-          backgroundColor: Color(0xFF4CAF50),
+          backgroundColor: AppColors.success,
         ),
       );
     } else if (mounted) {
@@ -63,9 +59,9 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       appBar: AppBar(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Text('Ваш приз'),
         centerTitle: true,
       ),
@@ -180,7 +176,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                   borderRadius: BorderRadius.circular(20.r),
                   boxShadow: [
                     BoxShadow(
-                      color: _emerald.withOpacity(0.3),
+                      color: AppColors.emerald.withOpacity(0.3),
                       blurRadius: 20,
                       offset: Offset(0, 10),
                     ),
@@ -195,11 +191,11 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                       backgroundColor: Colors.white,
                       eyeStyle: QrEyeStyle(
                         eyeShape: QrEyeShape.square,
-                        color: _emeraldDark,
+                        color: AppColors.emeraldDark,
                       ),
                       dataModuleStyle: QrDataModuleStyle(
                         dataModuleShape: QrDataModuleShape.square,
-                        color: _emeraldDark,
+                        color: AppColors.emeraldDark,
                       ),
                     ),
                     if (_prize.qrUsed) ...[
@@ -233,7 +229,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
               Container(
                 padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: _emerald.withOpacity(0.3),
+                  color: AppColors.emerald.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Row(
@@ -276,7 +272,7 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
                         : Icon(Icons.refresh),
                     label: Text(_regenerating ? 'Обновление...' : 'Обновить QR-код'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _emerald,
+                      backgroundColor: AppColors.emerald,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(

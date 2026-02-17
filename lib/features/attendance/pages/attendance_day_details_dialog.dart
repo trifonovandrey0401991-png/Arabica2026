@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/attendance_model.dart';
 import '../models/shop_attendance_summary.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -30,7 +31,7 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: Color(0xFF004D40),
+                color: AppColors.primaryGreen,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(4.r),
                   topRight: Radius.circular(4.r),

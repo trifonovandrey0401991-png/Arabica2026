@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 
 import '../services/auth_service.dart' show AuthService, AuthResult;
 import '../widgets/pin_input_widget.dart';
@@ -40,10 +41,8 @@ class PinSetupPage extends StatefulWidget {
 class _PinSetupPageState extends State<PinSetupPage> {
   final AuthService _authService = AuthService();
 
-  // Брендовые цвета Arabica
-  static final Color _primaryColor = Color(0xFF1A4D4D);
+  // Цвет не из палитры AppColors
   static final Color _primaryDark = Color(0xFF0D3333);
-  static final Color _accentGold = Color(0xFFD4AF37);
 
   bool _isConfirmStep = false;
   String _firstPin = '';
@@ -226,7 +225,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _primaryColor,
+              AppColors.emerald,
               _primaryDark,
               Color(0xFF0A2626),
             ],
@@ -283,7 +282,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
                       borderRadius: BorderRadius.circular(16.r),
                       color: Colors.white.withOpacity(0.1),
                       border: Border.all(
-                        color: _accentGold.withOpacity(0.4),
+                        color: AppColors.gold.withOpacity(0.4),
                         width: 2,
                       ),
                     ),
@@ -311,7 +310,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
                         errorMessage: _errorMessage,
                         clear: _clearPin,
                         lightTheme: true,
-                        accentColor: _accentGold,
+                        accentColor: AppColors.gold,
                       ),
                     ),
                   ),
@@ -333,7 +332,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(_accentGold),
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                           ),
                           SizedBox(height: 16),
                           Text(

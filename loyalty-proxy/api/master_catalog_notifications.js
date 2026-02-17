@@ -10,23 +10,13 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, fileExists } = require('../utils/file_helpers');
 
 // Константы
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ==================== УТИЛИТЫ ====================
 

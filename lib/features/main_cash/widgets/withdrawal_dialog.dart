@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../models/withdrawal_model.dart';
 import '../models/withdrawal_expense_model.dart';
@@ -249,7 +250,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
         ElevatedButton(
           onPressed: _isSaving ? null : _saveWithdrawal,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF004D40),
+            backgroundColor: AppColors.primaryGreen,
           ),
           child: _isSaving
               ? const SizedBox(

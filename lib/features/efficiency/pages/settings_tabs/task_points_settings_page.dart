@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'regular_task_points_settings_page.dart';
 import 'recurring_task_points_settings_page.dart';
 
@@ -12,7 +13,7 @@ class TaskPointsSettingsPage extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Задачи'),
-          backgroundColor: const Color(0xFF004D40),
+          backgroundColor: AppColors.primaryGreen,
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Обычные'),

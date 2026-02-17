@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/envelope_report_model.dart';
 import '../../suppliers/models/supplier_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class AddExpenseDialog extends StatefulWidget {
   final List<Supplier> suppliers;
@@ -23,7 +24,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   final _amountFocusNode = FocusNode();
   final _commentFocusNode = FocusNode();
 
-  static final _primaryColor = Color(0xFF004D40);
   static final _primaryColorLight = Color(0xFF00695C);
   static final _backgroundColor = Color(0xFFF5F7FA);
 
@@ -95,7 +95,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          backgroundColor: _primaryColor,
+          backgroundColor: AppColors.primaryGreen,
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
@@ -184,13 +184,13 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
           height: 44,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [_primaryColor.withOpacity(0.15), _primaryColorLight.withOpacity(0.1)],
+              colors: [AppColors.primaryGreen.withOpacity(0.15), _primaryColorLight.withOpacity(0.1)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(12.r),
           ),
-          child: Icon(icon, color: _primaryColor, size: 22),
+          child: Icon(icon, color: AppColors.primaryGreen, size: 22),
         ),
         SizedBox(width: 14),
         Column(
@@ -282,13 +282,13 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16.r),
                   border: Border.all(
-                    color: isSelected ? _primaryColor : Colors.transparent,
+                    color: isSelected ? AppColors.primaryGreen : Colors.transparent,
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: isSelected
-                          ? _primaryColor.withOpacity(0.15)
+                          ? AppColors.primaryGreen.withOpacity(0.15)
                           : Colors.black.withOpacity(0.04),
                       blurRadius: isSelected ? 12 : 8,
                       offset: Offset(0, 4),
@@ -306,7 +306,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                         shape: BoxShape.circle,
                         gradient: isSelected
                             ? LinearGradient(
-                                colors: [_primaryColor, _primaryColorLight],
+                                colors: [AppColors.primaryGreen, _primaryColorLight],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               )
@@ -338,7 +338,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                             style: TextStyle(
                               fontSize: 16.sp,
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: isSelected ? _primaryColor : Color(0xFF2D3748),
+                              color: isSelected ? AppColors.primaryGreen : Color(0xFF2D3748),
                             ),
                           ),
                           if (supplier.legalType != null) ...[
@@ -347,7 +347,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? _primaryColor.withOpacity(0.1)
+                                    ? AppColors.primaryGreen.withOpacity(0.1)
                                     : Colors.grey[100],
                                 borderRadius: BorderRadius.circular(6.r),
                               ),
@@ -356,7 +356,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w500,
-                                  color: isSelected ? _primaryColor : Colors.grey[600],
+                                  color: isSelected ? AppColors.primaryGreen : Colors.grey[600],
                                 ),
                               ),
                             ),
@@ -393,12 +393,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                               key: ValueKey('check'),
                               padding: EdgeInsets.all(6.w),
                               decoration: BoxDecoration(
-                                color: _primaryColor.withOpacity(0.1),
+                                color: AppColors.primaryGreen.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Icon(
                                 Icons.check_circle_rounded,
-                                color: _primaryColor,
+                                color: AppColors.primaryGreen,
                                 size: 22,
                               ),
                             )
@@ -441,7 +441,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
         style: TextStyle(
           fontSize: 32.sp,
           fontWeight: FontWeight.bold,
-          color: _primaryColor,
+          color: AppColors.primaryGreen,
           letterSpacing: 1,
         ),
         decoration: InputDecoration(
@@ -459,7 +459,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Text(
@@ -467,7 +467,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                     style: TextStyle(
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w600,
-                      color: _primaryColor,
+                      color: AppColors.primaryGreen,
                     ),
                   ),
                 ),
@@ -484,7 +484,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: _primaryColor, width: 2),
+            borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
           ),
           filled: true,
           fillColor: Colors.white,
@@ -533,7 +533,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: _primaryColor, width: 2),
+            borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
           ),
           filled: true,
           fillColor: Colors.white,
@@ -573,7 +573,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                 decoration: BoxDecoration(
                   gradient: isValid
                       ? LinearGradient(
-                          colors: [_primaryColor, _primaryColorLight],
+                          colors: [AppColors.primaryGreen, _primaryColorLight],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         )
@@ -583,7 +583,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                   boxShadow: isValid
                       ? [
                           BoxShadow(
-                            color: _primaryColor.withOpacity(0.3),
+                            color: AppColors.primaryGreen.withOpacity(0.3),
                             blurRadius: 12,
                             offset: Offset(0, 6),
                           ),

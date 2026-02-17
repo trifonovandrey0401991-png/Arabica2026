@@ -9,6 +9,7 @@ import '../../referrals/models/referral_stats_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/services/employee_registration_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка эффективности по сотрудникам
@@ -20,11 +21,6 @@ class EfficiencyByEmployeePage extends StatefulWidget {
 }
 
 class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   EfficiencyData? _data;
@@ -176,13 +172,13 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emeraldDark, _night],
+            colors: [AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3],
           ),
         ),
@@ -251,8 +247,8 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     }
 
     return RefreshIndicator(
-      color: _gold,
-      backgroundColor: _emerald,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emerald,
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
@@ -286,9 +282,9 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: _emerald.withOpacity(0.5)),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.5)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -372,7 +368,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: isPositive
-                              ? Color(0xFF4CAF50)
+                              ? AppColors.success
                               : Color(0xFFEF5350),
                         ),
                       ),
@@ -388,7 +384,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                         '+${summary.earnedPoints.toStringAsFixed(1)}',
                         style: TextStyle(
                           fontSize: 14.sp,
-                          color: Color(0xFF4CAF50),
+                          color: AppColors.success,
                         ),
                       ),
                       Text(
@@ -429,7 +425,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                         Icon(
                           Icons.person_add_alt_outlined,
                           size: 14,
-                          color: _gold,
+                          color: AppColors.gold,
                         ),
                         SizedBox(width: 4),
                         Text(
@@ -445,7 +441,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                           style: TextStyle(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.bold,
-                            color: _gold,
+                            color: AppColors.gold,
                           ),
                         ),
                       ],

@@ -3,6 +3,7 @@ import '../models/employee_rating_model.dart';
 import '../services/rating_service.dart';
 import '../widgets/rating_badge_widget.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница "Мой рейтинг" с историей за 3 месяца
 class MyRatingPage extends StatefulWidget {
@@ -22,12 +23,6 @@ class MyRatingPage extends StatefulWidget {
 class _MyRatingPageState extends State<MyRatingPage> {
   List<MonthlyRating> _history = [];
   bool _isLoading = true;
-
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -54,13 +49,13 @@ class _MyRatingPageState extends State<MyRatingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -118,10 +113,10 @@ class _MyRatingPageState extends State<MyRatingPage> {
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold, strokeWidth: 3))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold, strokeWidth: 3))
                     : RefreshIndicator(
                         onRefresh: _loadHistory,
-                        color: _gold,
+                        color: AppColors.gold,
                         child: _history.isEmpty
                             ? _buildEmptyState()
                             : ListView.builder(
@@ -148,7 +143,7 @@ class _MyRatingPageState extends State<MyRatingPage> {
           Container(
             padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
-              color: _emerald.withOpacity(0.3),
+              color: AppColors.emerald.withOpacity(0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -248,7 +243,7 @@ class _MyRatingPageState extends State<MyRatingPage> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.4),
+                color: AppColors.emerald.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
@@ -258,7 +253,7 @@ class _MyRatingPageState extends State<MyRatingPage> {
                   Icon(
                     Icons.trending_up,
                     size: 18,
-                    color: _gold,
+                    color: AppColors.gold,
                   ),
                   SizedBox(width: 8),
                   Text(

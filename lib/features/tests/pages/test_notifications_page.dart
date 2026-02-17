@@ -20,6 +20,7 @@ import '../../shops/models/shop_model.dart';
 import '../../rko/services/rko_reports_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Тестовая страница для проверки всех функций приложения
 class TestNotificationsPage extends StatefulWidget {
@@ -816,7 +817,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                 icon: Icon(Icons.add_shopping_cart),
                 label: Text('Создать тестовый заказ'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF004D40),
+                  backgroundColor: AppColors.primaryGreen,
                   padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
               ),
@@ -1001,7 +1002,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                       : Icon(Icons.access_time),
                   label: Text('Создать отметку прихода'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF004D40),
+                    backgroundColor: AppColors.primaryGreen,
                     padding: EdgeInsets.symmetric(vertical: 16.h),
                   ),
                 ),
@@ -1100,7 +1101,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Тестирование функций'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.w),

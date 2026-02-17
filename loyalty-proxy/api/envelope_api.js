@@ -3,6 +3,7 @@
  * Вопросы конверта + Отчёты конвертов + Pending/Failed
  *
  * REWRITTEN: Exact match with index.js inline code (2026-02-08)
+ * REFACTORED: Added PostgreSQL support with USE_DB_ENVELOPE flag (2026-02-17)
  */
 
 const fs = require('fs');
@@ -10,8 +11,72 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_ENVELOPE === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+
+// ==================== DB CONVERSION ====================
+
+function dbEnvelopeReportToCamel(row) {
+  return {
+    id: row.id,
+    employeeName: row.employee_name,
+    employeePhone: row.employee_phone,
+    shopAddress: row.shop_address,
+    shiftType: row.shift_type,
+    status: row.status,
+    createdAt: row.created_at,
+    oooZReportPhotoUrl: row.ooo_z_report_photo_url,
+    oooRevenue: row.ooo_revenue != null ? Number(row.ooo_revenue) : null,
+    oooCash: row.ooo_cash != null ? Number(row.ooo_cash) : null,
+    oooExpenses: typeof row.ooo_expenses === 'string' ? JSON.parse(row.ooo_expenses) : (row.ooo_expenses || []),
+    oooEnvelopePhotoUrl: row.ooo_envelope_photo_url,
+    oooOfdNotSent: row.ooo_ofd_not_sent,
+    ipZReportPhotoUrl: row.ip_z_report_photo_url,
+    ipRevenue: row.ip_revenue != null ? Number(row.ip_revenue) : null,
+    ipCash: row.ip_cash != null ? Number(row.ip_cash) : null,
+    expenses: typeof row.expenses === 'string' ? JSON.parse(row.expenses) : (row.expenses || []),
+    ipEnvelopePhotoUrl: row.ip_envelope_photo_url,
+    ipOfdNotSent: row.ip_ofd_not_sent,
+    rating: row.rating,
+    confirmedAt: row.confirmed_at,
+    confirmedByAdmin: row.confirmed_by_admin,
+    failedAt: row.failed_at,
+  };
+}
+
+/**
+ * Конвертация camelCase body в snake_case для DB INSERT/UPDATE
+ */
+function camelToDbEnvelope(body) {
+  const data = {};
+  if (body.id !== undefined) data.id = body.id;
+  if (body.employeeName !== undefined) data.employee_name = body.employeeName;
+  if (body.employeePhone !== undefined) data.employee_phone = body.employeePhone;
+  if (body.shopAddress !== undefined) data.shop_address = body.shopAddress;
+  if (body.shiftType !== undefined) data.shift_type = body.shiftType;
+  if (body.status !== undefined) data.status = body.status;
+  if (body.oooZReportPhotoUrl !== undefined) data.ooo_z_report_photo_url = body.oooZReportPhotoUrl;
+  if (body.oooRevenue !== undefined) data.ooo_revenue = body.oooRevenue;
+  if (body.oooCash !== undefined) data.ooo_cash = body.oooCash;
+  if (body.oooExpenses !== undefined) data.ooo_expenses = JSON.stringify(body.oooExpenses || []);
+  if (body.oooEnvelopePhotoUrl !== undefined) data.ooo_envelope_photo_url = body.oooEnvelopePhotoUrl;
+  if (body.oooOfdNotSent !== undefined) data.ooo_ofd_not_sent = body.oooOfdNotSent;
+  if (body.ipZReportPhotoUrl !== undefined) data.ip_z_report_photo_url = body.ipZReportPhotoUrl;
+  if (body.ipRevenue !== undefined) data.ip_revenue = body.ipRevenue;
+  if (body.ipCash !== undefined) data.ip_cash = body.ipCash;
+  if (body.expenses !== undefined) data.expenses = JSON.stringify(body.expenses || []);
+  if (body.ipEnvelopePhotoUrl !== undefined) data.ip_envelope_photo_url = body.ipEnvelopePhotoUrl;
+  if (body.ipOfdNotSent !== undefined) data.ip_ofd_not_sent = body.ipOfdNotSent;
+  if (body.rating !== undefined) data.rating = body.rating;
+  if (body.confirmedAt !== undefined) data.confirmed_at = body.confirmedAt;
+  if (body.confirmedByAdmin !== undefined) data.confirmed_by_admin = body.confirmedByAdmin;
+  return data;
+}
+
 const ENVELOPE_QUESTIONS_DIR = `${DATA_DIR}/envelope-questions`;
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 
@@ -235,48 +300,67 @@ function setupEnvelopeAPI(app) {
       if (shopAddress && shopAddress.includes('%')) {
         try {
           shopAddress = decodeURIComponent(shopAddress);
-          console.log(`  📋 Декодирован shop address: "${shopAddress}"`);
         } catch (e) {
           console.error('  ⚠️ Ошибка декодирования shopAddress:', e);
         }
       }
 
-      // Нормализуем адрес магазина для сравнения (убираем лишние пробелы)
       const normalizedShopAddress = shopAddress ? shopAddress.trim() : null;
-      if (normalizedShopAddress) {
-        console.log(`  📋 Фильтр по магазину: "${normalizedShopAddress}" (длина: ${normalizedShopAddress.length})`);
-      }
 
-      const reports = [];
-      if (await fileExists(ENVELOPE_REPORTS_DIR)) {
-        const files = await fs.promises.readdir(ENVELOPE_REPORTS_DIR);
-        const jsonFiles = files.filter(f => f.endsWith('.json'));
-        console.log(`  📋 Найдено файлов конвертов: ${jsonFiles.length}`);
+      let reports;
 
-        for (const file of jsonFiles) {
-          try {
-            const content = await fs.promises.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
-            const report = JSON.parse(content);
+      if (USE_DB) {
+        let query = 'SELECT * FROM envelope_reports WHERE 1=1';
+        const params = [];
+        let paramIdx = 1;
 
-            // Применяем фильтры (с нормализацией адреса)
-            if (normalizedShopAddress) {
-              const reportShopTrimmed = report.shopAddress.trim();
-              console.log(`  📋 Сравнение: "${reportShopTrimmed}" (длина: ${reportShopTrimmed.length}) === "${normalizedShopAddress}" (длина: ${normalizedShopAddress.length}) => ${reportShopTrimmed === normalizedShopAddress}`);
-              if (reportShopTrimmed !== normalizedShopAddress) continue;
+        if (normalizedShopAddress) {
+          query += ` AND TRIM(shop_address) = $${paramIdx++}`;
+          params.push(normalizedShopAddress);
+        }
+        if (status) {
+          query += ` AND status = $${paramIdx++}`;
+          params.push(status);
+        }
+        if (fromDate) {
+          query += ` AND created_at >= $${paramIdx++}`;
+          params.push(fromDate);
+        }
+        if (toDate) {
+          query += ` AND created_at <= $${paramIdx++}`;
+          params.push(toDate);
+        }
+
+        query += ' ORDER BY created_at DESC';
+
+        const result = await db.query(query, params);
+        reports = result.rows.map(dbEnvelopeReportToCamel);
+      } else {
+        reports = [];
+        if (await fileExists(ENVELOPE_REPORTS_DIR)) {
+          const files = await fsp.readdir(ENVELOPE_REPORTS_DIR);
+          const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+          for (const file of jsonFiles) {
+            try {
+              const content = await fsp.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
+              const report = JSON.parse(content);
+
+              if (normalizedShopAddress) {
+                if (report.shopAddress.trim() !== normalizedShopAddress) continue;
+              }
+              if (status && report.status !== status) continue;
+              if (fromDate && new Date(report.createdAt) < new Date(fromDate)) continue;
+              if (toDate && new Date(report.createdAt) > new Date(toDate)) continue;
+
+              reports.push(report);
+            } catch (e) {
+              console.error(`Ошибка чтения ${file}:`, e);
             }
-            if (status && report.status !== status) continue;
-            if (fromDate && new Date(report.createdAt) < new Date(fromDate)) continue;
-            if (toDate && new Date(report.createdAt) > new Date(toDate)) continue;
-
-            reports.push(report);
-          } catch (e) {
-            console.error(`Ошибка чтения ${file}:`, e);
           }
         }
+        reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       }
-
-      // Сортируем по дате создания (новые первыми)
-      reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       if (isPaginationRequested(req.query)) {
         res.json(createPaginatedResponse(reports, req.query, 'reports'));
@@ -294,34 +378,42 @@ function setupEnvelopeAPI(app) {
     try {
       console.log('GET /api/envelope-reports/expired');
 
-      const reports = [];
-      if (await fileExists(ENVELOPE_REPORTS_DIR)) {
-        const files = await fs.promises.readdir(ENVELOPE_REPORTS_DIR);
-        const jsonFiles = files.filter(f => f.endsWith('.json'));
+      let reports;
 
-        for (const file of jsonFiles) {
-          try {
-            const content = await fs.promises.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
-            const report = JSON.parse(content);
+      if (USE_DB) {
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const result = await db.query(
+          "SELECT * FROM envelope_reports WHERE status = 'pending' AND created_at < $1 ORDER BY created_at ASC",
+          [cutoff]
+        );
+        reports = result.rows.map(dbEnvelopeReportToCamel);
+      } else {
+        reports = [];
+        if (await fileExists(ENVELOPE_REPORTS_DIR)) {
+          const files = await fsp.readdir(ENVELOPE_REPORTS_DIR);
+          const jsonFiles = files.filter(f => f.endsWith('.json'));
 
-            // Проверяем: не подтверждён И прошло более 24 часов
-            if (report.status === 'pending') {
-              const createdAt = new Date(report.createdAt);
-              const now = new Date();
-              const diffHours = (now - createdAt) / (1000 * 60 * 60);
+          for (const file of jsonFiles) {
+            try {
+              const content = await fsp.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
+              const report = JSON.parse(content);
 
-              if (diffHours >= 24) {
-                reports.push(report);
+              if (report.status === 'pending') {
+                const createdAt = new Date(report.createdAt);
+                const now = new Date();
+                const diffHours = (now - createdAt) / (1000 * 60 * 60);
+
+                if (diffHours >= 24) {
+                  reports.push(report);
+                }
               }
+            } catch (e) {
+              console.error(`Ошибка чтения ${file}:`, e);
             }
-          } catch (e) {
-            console.error(`Ошибка чтения ${file}:`, e);
           }
         }
+        reports.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       }
-
-      // Сортируем по дате создания (старые первыми)
-      reports.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
       res.json({ success: true, reports });
     } catch (error) {
@@ -336,13 +428,22 @@ function setupEnvelopeAPI(app) {
       const rawId = decodeURIComponent(req.params.id);
       console.log('GET /api/envelope-reports/:id', rawId);
 
-      const filePath = await findEnvelopeReportFile(rawId);
-      if (!filePath) {
-        return res.status(404).json({ success: false, error: 'Отчет не найден' });
-      }
+      let report;
 
-      const content = await fs.promises.readFile(filePath, 'utf8');
-      const report = JSON.parse(content);
+      if (USE_DB) {
+        const row = await db.findById('envelope_reports', rawId);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        report = dbEnvelopeReportToCamel(row);
+      } else {
+        const filePath = await findEnvelopeReportFile(rawId);
+        if (!filePath) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        const content = await fsp.readFile(filePath, 'utf8');
+        report = JSON.parse(content);
+      }
 
       // IDOR: проверка владельца или админ
       const ownerPhone = report.employeePhone || report.phone;
@@ -363,17 +464,28 @@ function setupEnvelopeAPI(app) {
       console.log('POST /api/envelope-reports:', JSON.stringify(req.body).substring(0, 300));
 
       const reportId = req.body.id || `envelope_report_${Date.now()}`;
+      const now = new Date().toISOString();
       const report = {
         ...req.body,
         id: reportId,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
         status: req.body.status || 'pending',
       };
 
+      if (USE_DB) {
+        const dbData = camelToDbEnvelope(report);
+        dbData.id = reportId;
+        dbData.created_at = now;
+        dbData.date = now.split('T')[0];
+        dbData.updated_at = now;
+        await db.insert('envelope_reports', dbData);
+      }
+
+      // Dual-write: всегда сохраняем в файл (для efficiency_calc, dashboard_batch)
       const sanitizedId2 = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId2}.json`);
-
-      await fs.promises.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+      // Boy Scout: fs.promises.writeFile → writeJsonFile
+      await writeJsonFile(filePath, report);
       console.log('Отчет конверта создан:', filePath);
 
       res.json({ success: true, report });
@@ -389,13 +501,22 @@ function setupEnvelopeAPI(app) {
       const rawId = decodeURIComponent(req.params.id);
       console.log('PUT /api/envelope-reports/:id', rawId);
 
-      const filePath = await findEnvelopeReportFile(rawId);
-      if (!filePath) {
-        return res.status(404).json({ success: false, error: 'Отчет не найден' });
-      }
+      let existingReport;
 
-      const content = await fs.promises.readFile(filePath, 'utf8');
-      const existingReport = JSON.parse(content);
+      if (USE_DB) {
+        const row = await db.findById('envelope_reports', rawId);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        existingReport = dbEnvelopeReportToCamel(row);
+      } else {
+        const filePath = await findEnvelopeReportFile(rawId);
+        if (!filePath) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        const content = await fsp.readFile(filePath, 'utf8');
+        existingReport = JSON.parse(content);
+      }
 
       // IDOR: проверка владельца или админ
       const ownerPhone = existingReport.employeePhone || existingReport.phone;
@@ -406,12 +527,30 @@ function setupEnvelopeAPI(app) {
       const updatedReport = {
         ...existingReport,
         ...req.body,
-        id: existingReport.id, // Не меняем ID
-        createdAt: existingReport.createdAt, // Не меняем дату создания
+        id: existingReport.id,
+        createdAt: existingReport.createdAt,
       };
 
-      await fs.promises.writeFile(filePath, JSON.stringify(updatedReport, null, 2), 'utf8');
-      console.log('Отчет конверта обновлён:', filePath);
+      if (USE_DB) {
+        const dbUpdates = camelToDbEnvelope(req.body);
+        // Не перезаписываем id и created_at
+        delete dbUpdates.id;
+        delete dbUpdates.created_at;
+        dbUpdates.updated_at = new Date().toISOString();
+        await db.updateById('envelope_reports', rawId, dbUpdates);
+      }
+
+      // Dual-write: всегда обновляем файл
+      const filePath = await findEnvelopeReportFile(rawId);
+      if (filePath) {
+        // Boy Scout: fs.promises.writeFile → writeJsonFile
+        await writeJsonFile(filePath, updatedReport);
+      } else {
+        // Файла нет — создаём с sanitized именем
+        const sanitizedId = rawId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        await writeJsonFile(path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`), updatedReport);
+      }
+      console.log('Отчет конверта обновлён:', rawId);
 
       res.json({ success: true, report: updatedReport });
     } catch (error) {
@@ -432,21 +571,46 @@ function setupEnvelopeAPI(app) {
       const { confirmedByAdmin, rating } = req.body;
       console.log('PUT /api/envelope-reports/:id/confirm', rawId, confirmedByAdmin, rating);
 
-      const filePath = await findEnvelopeReportFile(rawId);
-      if (!filePath) {
-        return res.status(404).json({ success: false, error: 'Отчет не найден' });
+      const now = new Date().toISOString();
+      let report;
+
+      if (USE_DB) {
+        const row = await db.findById('envelope_reports', rawId);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        await db.updateById('envelope_reports', rawId, {
+          status: 'confirmed',
+          confirmed_at: now,
+          confirmed_by_admin: confirmedByAdmin,
+          rating: rating,
+          updated_at: now
+        });
+        report = dbEnvelopeReportToCamel(row);
+        report.status = 'confirmed';
+        report.confirmedAt = now;
+        report.confirmedByAdmin = confirmedByAdmin;
+        report.rating = rating;
+      } else {
+        const filePath = await findEnvelopeReportFile(rawId);
+        if (!filePath) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
+        const content = await fsp.readFile(filePath, 'utf8');
+        report = JSON.parse(content);
+        report.status = 'confirmed';
+        report.confirmedAt = now;
+        report.confirmedByAdmin = confirmedByAdmin;
+        report.rating = rating;
       }
 
-      const content = await fs.promises.readFile(filePath, 'utf8');
-      const report = JSON.parse(content);
-
-      report.status = 'confirmed';
-      report.confirmedAt = new Date().toISOString();
-      report.confirmedByAdmin = confirmedByAdmin;
-      report.rating = rating;
-
-      await fs.promises.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
-      console.log('Отчет конверта подтверждён:', filePath);
+      // Dual-write: всегда обновляем файл
+      const filePath = await findEnvelopeReportFile(rawId);
+      if (filePath) {
+        // Boy Scout: fs.promises.writeFile → writeJsonFile
+        await writeJsonFile(filePath, report);
+      }
+      console.log('Отчет конверта подтверждён:', rawId);
 
       res.json({ success: true, report });
     } catch (error) {
@@ -466,13 +630,22 @@ function setupEnvelopeAPI(app) {
       const rawId = decodeURIComponent(req.params.id);
       console.log('DELETE /api/envelope-reports/:id', rawId);
 
-      const filePath = await findEnvelopeReportFile(rawId);
-      if (!filePath) {
-        return res.status(404).json({ success: false, error: 'Отчет не найден' });
+      if (USE_DB) {
+        const deleted = await db.deleteById('envelope_reports', rawId);
+        if (!deleted) {
+          return res.status(404).json({ success: false, error: 'Отчет не найден' });
+        }
       }
 
-      await fs.promises.unlink(filePath);
-      console.log('Отчет конверта удалён:', filePath);
+      // Dual-write: удаляем файл тоже
+      const filePath = await findEnvelopeReportFile(rawId);
+      if (filePath) {
+        await fsp.unlink(filePath);
+      } else if (!USE_DB) {
+        // Только если не DB — файл обязателен
+        return res.status(404).json({ success: false, error: 'Отчет не найден' });
+      }
+      console.log('Отчет конверта удалён:', rawId);
 
       res.json({ success: true, message: 'Отчет успешно удален' });
     } catch (error) {
@@ -553,7 +726,7 @@ function setupEnvelopeAPI(app) {
     }
   });
 
-  console.log('✅ Envelope API initialized');
+  console.log(`✅ Envelope API initialized (reports storage: ${USE_DB ? 'PostgreSQL + dual-write' : 'JSON files'})`);
 }
 
 module.exports = { setupEnvelopeAPI };

@@ -15,21 +15,11 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, fileExists } = require('../utils/file_helpers');
 
 // Константы
 const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
 const EMPLOYEES_DIR = '/var/www/employees';
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ==================== УТИЛИТЫ ====================
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/providers/order_provider.dart';
 import '../../features/employees/pages/employees_page.dart';
@@ -249,12 +250,12 @@ class NotificationService {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Заказ принят сотрудником $employeeName'),
-                  backgroundColor: Color(0xFF004D40),
+                  backgroundColor: AppColors.primaryGreen,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF004D40),
+              backgroundColor: AppColors.primaryGreen,
             ),
             child: Text('Принять заказ'),
           ),

@@ -9,6 +9,7 @@ import '../services/coffee_machine_template_service.dart';
 import '../models/coffee_machine_template_model.dart';
 import '../../shops/services/shop_service.dart';
 import 'coffee_machine_training_photos_page.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Управление счётчиком кофемашин: шаблоны, привязки, обучающие фото
@@ -20,11 +21,6 @@ class CoffeeMachineQuestionsManagementPage extends StatefulWidget {
 }
 
 class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQuestionsManagementPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   final _imagePicker = ImagePicker();
 
   bool _isLoading = true;
@@ -83,7 +79,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -99,7 +95,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                       onPressed: () => Navigator.pop(context),
                       icon: Icon(Icons.arrow_back, color: Colors.white),
                     ),
-                    Icon(Icons.coffee_outlined, color: _gold, size: 22),
+                    Icon(Icons.coffee_outlined, color: AppColors.gold, size: 22),
                     SizedBox(width: 8),
                     Text(
                       'Счётчик кофемашин',
@@ -116,7 +112,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
               // Content
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : SingleChildScrollView(
                         padding: EdgeInsets.all(16.w),
                         child: Column(
@@ -130,7 +126,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                               children: [
                                 Text(
                                   'Шаблоны машин',
-                                  style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
                                 ),
                                 Spacer(),
                                 GestureDetector(
@@ -138,16 +134,16 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                                   child: Container(
                                     padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                                     decoration: BoxDecoration(
-                                      color: _gold.withOpacity(0.15),
+                                      color: AppColors.gold.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(6.r),
-                                      border: Border.all(color: _gold.withOpacity(0.3)),
+                                      border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.add, color: _gold, size: 16),
+                                        Icon(Icons.add, color: AppColors.gold, size: 16),
                                         SizedBox(width: 4),
-                                        Text('Создать', style: TextStyle(color: _gold, fontSize: 12.sp)),
+                                        Text('Создать', style: TextStyle(color: AppColors.gold, fontSize: 12.sp)),
                                       ],
                                     ),
                                   ),
@@ -163,7 +159,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                             // Привязки к магазинам
                             Text(
                               'Привязки к магазинам',
-                              style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
                             ),
                             SizedBox(height: 10),
                             if (_shopAddresses.isEmpty)
@@ -188,7 +184,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: _gold.withOpacity(0.2)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -206,7 +202,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
   Widget _buildStatItem(String value, String label) {
     return Column(
       children: [
-        Text(value, style: TextStyle(color: _gold, fontSize: 22.sp, fontWeight: FontWeight.bold)),
+        Text(value, style: TextStyle(color: AppColors.gold, fontSize: 22.sp, fontWeight: FontWeight.bold)),
         Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp)),
       ],
     );
@@ -245,10 +241,10 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8.r),
               ),
-              child: Icon(Icons.coffee, color: _gold, size: 22),
+              child: Icon(Icons.coffee, color: AppColors.gold, size: 22),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -269,7 +265,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                       SizedBox(width: 8),
                       Text(
                         OcrPresets.getDisplayName(template.ocrPreset),
-                        style: TextStyle(color: _gold.withOpacity(0.5), fontSize: 11.sp),
+                        style: TextStyle(color: AppColors.gold.withOpacity(0.5), fontSize: 11.sp),
                       ),
                     ],
                   ),
@@ -407,7 +403,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
     String selectedPreset = existing?.ocrPreset ?? OcrPresets.standard;
     Uint8List? imageBytes;
 
-    return await showDialog<Map<String, dynamic>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
@@ -436,7 +432,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: _gold),
+                        borderSide: BorderSide(color: AppColors.gold),
                       ),
                     ),
                   ),
@@ -454,7 +450,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: _gold),
+                        borderSide: BorderSide(color: AppColors.gold),
                       ),
                     ),
                     items: CoffeeMachineTypes.all.map((type) => DropdownMenuItem(
@@ -479,7 +475,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: _gold),
+                        borderSide: BorderSide(color: AppColors.gold),
                       ),
                     ),
                     items: OcrPresets.all.map((preset) => DropdownMenuItem(
@@ -512,14 +508,14 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                     },
                     icon: Icon(
                       imageBytes != null ? Icons.check_circle : Icons.camera_alt,
-                      color: imageBytes != null ? Colors.green : _gold,
+                      color: imageBytes != null ? Colors.green : AppColors.gold,
                     ),
                     label: Text(
                       imageBytes != null ? 'Фото загружено' : 'Эталонное фото',
-                      style: TextStyle(color: imageBytes != null ? Colors.green : _gold),
+                      style: TextStyle(color: imageBytes != null ? Colors.green : AppColors.gold),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: (imageBytes != null ? Colors.green : _gold).withOpacity(0.4)),
+                      side: BorderSide(color: (imageBytes != null ? Colors.green : AppColors.gold).withOpacity(0.4)),
                     ),
                   ),
                 ],
@@ -545,7 +541,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                   );
                   Navigator.pop(context, {'template': template, 'image': imageBytes});
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: _gold),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
                 child: Text('Сохранить', style: TextStyle(color: Colors.white)),
               ),
             ],
@@ -553,6 +549,8 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
         },
       ),
     );
+    nameController.dispose();
+    return result;
   }
 
   // ============ Магазины (привязки) ============
@@ -576,14 +574,14 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
           color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
-            color: assignedCount > 0 ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.08),
+            color: assignedCount > 0 ? AppColors.gold.withOpacity(0.15) : Colors.white.withOpacity(0.08),
           ),
         ),
         child: Row(
           children: [
             Icon(
               Icons.store,
-              color: assignedCount > 0 ? _gold : Colors.white30,
+              color: assignedCount > 0 ? AppColors.gold : Colors.white30,
               size: 20,
             ),
             SizedBox(width: 10),
@@ -599,7 +597,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                   if (assignedCount > 0)
                     Text(
                       templateNames,
-                      style: TextStyle(color: _gold.withOpacity(0.7), fontSize: 11.sp),
+                      style: TextStyle(color: AppColors.gold.withOpacity(0.7), fontSize: 11.sp),
                       overflow: TextOverflow.ellipsis,
                     )
                   else
@@ -647,7 +645,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                             CoffeeMachineTypes.getDisplayName(t.machineType),
                             style: TextStyle(color: Colors.white.withOpacity(0.4)),
                           ),
-                          activeColor: _gold,
+                          activeColor: AppColors.gold,
                           checkColor: Colors.white,
                           onChanged: (v) {
                             setDialogState(() {
@@ -669,7 +667,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, selected),
-                style: ElevatedButton.styleFrom(backgroundColor: _gold),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
                 child: Text('Сохранить', style: TextStyle(color: Colors.white)),
               ),
             ],

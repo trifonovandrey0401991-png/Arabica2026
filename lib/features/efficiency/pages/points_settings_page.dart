@@ -15,6 +15,7 @@ import 'settings_tabs/coffee_machine_points_settings_page.dart';
 import 'settings_tabs/manager_points_settings_page.dart';
 import '../../referrals/pages/referrals_points_settings_page.dart';
 import '../../loyalty/pages/loyalty_gamification_settings_page.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Page for configuring efficiency points settings
@@ -26,10 +27,6 @@ class PointsSettingsPage extends StatefulWidget {
 }
 
 class _PointsSettingsPageState extends State<PointsSettingsPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   final bool _isLoading = false;
 
@@ -117,7 +114,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       title: 'Счётчик кофе',
       icon: Icons.coffee_outlined,
       description: 'Баллы за показания счётчика',
-      gradientColors: [Color(0xFFD4AF37), Color(0xFFF0C850)],
+      gradientColors: [AppColors.gold, Color(0xFFF0C850)],
     ),
     _PointsCategory(
       id: 'referrals',
@@ -268,13 +265,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emeraldDark, _night],
+            colors: [AppColors.emeraldDark, AppColors.night],
           ),
         ),
         child: Column(
@@ -312,7 +309,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.3),
+                color: AppColors.emerald.withOpacity(0.3),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(28.r),
                   bottomRight: Radius.circular(28.r),
@@ -324,10 +321,10 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                   Container(
                     padding: EdgeInsets.all(16.w),
                     decoration: BoxDecoration(
-                      color: _emerald.withOpacity(0.4),
+                      color: AppColors.emerald.withOpacity(0.4),
                       borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(
-                        color: _gold.withOpacity(0.2),
+                        color: AppColors.gold.withOpacity(0.2),
                         width: 1,
                       ),
                     ),
@@ -337,16 +334,16 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: _gold.withOpacity(0.15),
+                            color: AppColors.gold.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(
-                              color: _gold.withOpacity(0.3),
+                              color: AppColors.gold.withOpacity(0.3),
                               width: 1,
                             ),
                           ),
                           child: Icon(
                             Icons.stars_rounded,
-                            color: _gold,
+                            color: AppColors.gold,
                             size: 28,
                           ),
                         ),
@@ -382,7 +379,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
             // Category list
             Expanded(
               child: _isLoading
-                  ? Center(child: CircularProgressIndicator(color: _gold))
+                  ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                   : ListView.builder(
                       padding: EdgeInsets.all(16.w),
                       itemCount: _categories.length,
@@ -402,10 +399,10 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
-          color: _emerald.withOpacity(0.5),
+          color: AppColors.emerald.withOpacity(0.5),
           width: 1,
         ),
       ),
@@ -467,12 +464,12 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: _emerald.withOpacity(0.4),
+                    color: AppColors.emerald.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.chevron_right_rounded,
-                    color: _gold.withOpacity(0.7),
+                    color: AppColors.gold.withOpacity(0.7),
                     size: 24,
                   ),
                 ),

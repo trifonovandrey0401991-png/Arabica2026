@@ -7,6 +7,7 @@ import '../services/employee_service.dart';
 import 'unverified_employees_page.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Модель сотрудника
 class Employee {
@@ -364,7 +365,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF004D40),
+              AppColors.primaryGreen,
               Color(0xFF00695C),
               Color(0xFF00796B),
             ],
@@ -513,7 +514,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                 decoration: InputDecoration(
                   hintText: 'Поиск сотрудника...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: Icon(Icons.search, color: Color(0xFF004D40).withOpacity(0.7)),
+                  prefixIcon: Icon(Icons.search, color: AppColors.primaryGreen.withOpacity(0.7)),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: Icon(Icons.clear, color: Colors.grey[400]),
@@ -551,7 +552,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
                         ),
                         SizedBox(height: 16),
                         Text(
@@ -608,7 +609,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                             icon: Icon(Icons.refresh),
                             label: Text('Повторить'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF004D40),
+                              backgroundColor: AppColors.primaryGreen,
                               foregroundColor: Colors.white,
                               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                               shape: RoundedRectangleBorder(
@@ -631,7 +632,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
                         ),
                         SizedBox(height: 16),
                         Text(
@@ -718,7 +719,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     _animationController.reset();
                     _animationController.forward();
                   },
-                  color: Color(0xFF004D40),
+                  color: AppColors.primaryGreen,
                   child: ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16.w),
                     itemCount: filteredEmployees.length,
@@ -769,7 +770,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
   Widget _buildEmployeeCard(Employee employee, bool isVerified) {
     // Определяем цвета в зависимости от статуса
-    final Color primaryColor = isVerified ? Color(0xFF004D40) : Color(0xFF78909C);
+    final Color primaryColor = isVerified ? AppColors.primaryGreen : Color(0xFF78909C);
     final Color accentColor = isVerified ? Color(0xFF00897B) : Color(0xFF90A4AE);
 
     return Container(
@@ -812,7 +813,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
             decoration: BoxDecoration(
               border: Border(
                 left: BorderSide(
-                  color: isVerified ? Color(0xFF4CAF50) : Colors.orange,
+                  color: isVerified ? AppColors.success : Colors.orange,
                   width: 3,
                 ),
               ),

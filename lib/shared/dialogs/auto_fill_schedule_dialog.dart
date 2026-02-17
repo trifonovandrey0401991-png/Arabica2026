@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
@@ -207,7 +208,7 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
         ElevatedButton(
           onPressed: _isLoading ? null : _performAutoFill,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF004D40),
+            backgroundColor: AppColors.primaryGreen,
             foregroundColor: Colors.white,
           ),
           child: Text('Заполнить'),

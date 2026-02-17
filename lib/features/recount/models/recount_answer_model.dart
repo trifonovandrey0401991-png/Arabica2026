@@ -247,14 +247,3 @@ class RecountAnswer {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-

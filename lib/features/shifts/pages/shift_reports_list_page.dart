@@ -11,6 +11,7 @@ import '../../../features/shops/services/shop_service.dart';
 import '../../../features/efficiency/models/points_settings_model.dart';
 import '../../../features/efficiency/services/points_settings_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Модель строки сводного отчёта (дата + смена)
 class ShiftSummaryItem {
@@ -69,12 +70,6 @@ class ShiftReportsListPage extends StatefulWidget {
 
 class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     with SingleTickerProviderStateMixin {
-
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   late TabController _tabController;
   Future<List<String>> _shopsFuture = Future.value([]);
@@ -790,8 +785,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          dropdownColor: _emeraldDark,
-          icon: Icon(Icons.arrow_drop_down, color: _gold),
+          dropdownColor: AppColors.emeraldDark,
+          icon: Icon(Icons.arrow_drop_down, color: AppColors.gold),
           hint: Row(
             children: [
               Icon(icon, size: 18, color: Colors.white.withOpacity(0.5)),
@@ -803,14 +798,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
             return [
               Row(
                 children: [
-                  Icon(icon, size: 18, color: _gold),
+                  Icon(icon, size: 18, color: AppColors.gold),
                   SizedBox(width: 8),
                   Expanded(child: Text('Все', style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9)))),
                 ],
               ),
               ...items.map((item) => Row(
                 children: [
-                  Icon(icon, size: 18, color: _gold),
+                  Icon(icon, size: 18, color: AppColors.gold),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -848,7 +843,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.calendar_today, size: 18, color: _gold),
+            Icon(Icons.calendar_today, size: 18, color: AppColors.gold),
             SizedBox(width: 8),
             Text(
               _selectedDate == null
@@ -934,13 +929,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -1165,7 +1160,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         child: Container(
                           padding: EdgeInsets.all(2.w),
                           decoration: BoxDecoration(
-                            color: _emeraldDark,
+                            color: AppColors.emeraldDark,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(Icons.error, color: Colors.red, size: 14),
@@ -1452,7 +1447,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           ),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: report.isConfirmed ? Colors.green : _emerald,
+              backgroundColor: report.isConfirmed ? Colors.green : AppColors.emerald,
               child: Icon(
                 report.isConfirmed ? Icons.check : Icons.receipt_long,
                 color: Colors.white,

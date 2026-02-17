@@ -10,6 +10,7 @@ import '../../shops/models/shop_model.dart';
 import '../../../core/utils/logger.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления вопросами пересменки
 class ShiftQuestionsManagementPage extends StatefulWidget {
@@ -20,12 +21,6 @@ class ShiftQuestionsManagementPage extends StatefulWidget {
 }
 
 class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementPage> {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<ShiftQuestion> _questions = [];
   List<ShiftQuestion> _filteredQuestions = [];
   bool _isLoading = true;
@@ -167,7 +162,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
         child: Container(
           constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             borderRadius: BorderRadius.circular(20.r),
           ),
           child: Column(
@@ -366,7 +361,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         padding: EdgeInsets.all(20.w),
@@ -380,12 +375,12 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.15),
+                    color: AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.filter_list,
-                    color: _gold,
+                    color: AppColors.gold,
                   ),
                 ),
                 SizedBox(width: 12),
@@ -407,7 +402,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       });
                       Navigator.pop(context);
                     },
-                    child: Text('Сбросить', style: TextStyle(color: _gold)),
+                    child: Text('Сбросить', style: TextStyle(color: AppColors.gold)),
                   ),
               ],
             ),
@@ -590,10 +585,10 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       margin: EdgeInsets.only(right: 8.w),
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: color?.withOpacity(0.15) ?? _gold.withOpacity(0.15),
+        color: color?.withOpacity(0.15) ?? AppColors.gold.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
-          color: color?.withOpacity(0.3) ?? _gold.withOpacity(0.3),
+          color: color?.withOpacity(0.3) ?? AppColors.gold.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -604,7 +599,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             style: TextStyle(
               fontSize: 13.sp,
               fontWeight: FontWeight.w500,
-              color: color ?? _gold,
+              color: color ?? AppColors.gold,
             ),
           ),
           SizedBox(width: 6),
@@ -613,7 +608,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             child: Icon(
               Icons.close,
               size: 16,
-              color: color ?? _gold,
+              color: color ?? AppColors.gold,
             ),
           ),
         ],
@@ -647,20 +642,20 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       case 'text':
         return Color(0xFF2E7D32);
       default:
-        return _gold;
+        return AppColors.gold;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -679,13 +674,13 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddQuestionDialog,
-        backgroundColor: _gold,
+        backgroundColor: AppColors.gold,
         elevation: 0,
-        icon: Icon(Icons.add_rounded, color: _night),
+        icon: Icon(Icons.add_rounded, color: AppColors.night),
         label: Text(
           'Добавить',
           style: TextStyle(
-            color: _night,
+            color: AppColors.night,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -782,7 +777,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
-              cursorColor: _gold,
+              cursorColor: AppColors.gold,
               onChanged: (value) {
                 _searchDebounce?.cancel();
                 _searchDebounce = Timer(const Duration(milliseconds: 300), () {
@@ -834,9 +829,9 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: _gold,
+                color: AppColors.gold,
                 shape: BoxShape.circle,
-                border: Border.all(color: _emeraldDark, width: 1.5),
+                border: Border.all(color: AppColors.emeraldDark, width: 1.5),
               ),
             ),
           ),
@@ -908,9 +903,9 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
         duration: Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.08),
+          color: isSelected ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(20.r),
-          border: isSelected ? Border.all(color: _gold, width: 1.5) : Border.all(color: Colors.white.withOpacity(0.1)),
+          border: isSelected ? Border.all(color: AppColors.gold, width: 1.5) : Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -918,7 +913,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             Icon(
               icon,
               size: 16,
-              color: isSelected ? _gold : Colors.white.withOpacity(0.7),
+              color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.7),
             ),
             SizedBox(width: 6),
             Text(
@@ -926,7 +921,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               style: TextStyle(
                 fontSize: 13.sp,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? _gold : Colors.white.withOpacity(0.8),
+                color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.8),
               ),
             ),
           ],
@@ -987,7 +982,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                 strokeWidth: 3,
               ),
             ),
@@ -1048,7 +1043,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                           child: Material(
                             color: Colors.transparent,
                             elevation: elevation,
-                            shadowColor: _gold.withOpacity(0.3),
+                            shadowColor: AppColors.gold.withOpacity(0.3),
                             borderRadius: BorderRadius.circular(14.r),
                             child: child,
                           ),
@@ -1087,7 +1082,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             child: Icon(
               Icons.question_answer_outlined,
               size: 56,
-              color: _gold.withOpacity(0.6),
+              color: AppColors.gold.withOpacity(0.6),
             ),
           ),
           SizedBox(height: 24),
@@ -1096,7 +1091,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             style: TextStyle(
               fontSize: 22.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 8),
@@ -1165,7 +1160,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             icon: Icon(Icons.refresh),
             label: Text('Сбросить фильтры'),
             style: TextButton.styleFrom(
-              foregroundColor: _gold,
+              foregroundColor: AppColors.gold,
             ),
           ),
         ],
@@ -1291,7 +1286,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       children: [
                         _buildCardActionButton(
                           icon: Icons.edit_rounded,
-                          color: _gold,
+                          color: AppColors.gold,
                           onTap: () => _showEditQuestionDialog(question),
                         ),
                         SizedBox(height: 6),
@@ -1432,12 +1427,6 @@ class ShiftQuestionFormDialog extends StatefulWidget {
 }
 
 class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
-  // Dark emerald palette (dialog)
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   final _formKey = GlobalKey<FormState>();
   final _questionController = TextEditingController();
   String? _selectedAnswerType; // 'photo', 'yesno', 'number', 'text'
@@ -1777,7 +1766,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         decoration: BoxDecoration(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           borderRadius: BorderRadius.circular(24.r),
         ),
         child: Column(
@@ -1788,7 +1777,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
               padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_emerald, _emeraldDark],
+                  colors: [AppColors.emerald, AppColors.emeraldDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -1803,12 +1792,12 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _gold.withOpacity(0.2),
+                      color: AppColors.gold.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(14.r),
                     ),
                     child: Icon(
                       isEditing ? Icons.edit_note : Icons.add_circle_outline,
-                      color: _gold,
+                      color: AppColors.gold,
                       size: 28,
                     ),
                   ),
@@ -1859,7 +1848,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                       _buildSectionHeader(
                         icon: Icons.help_outline,
                         title: 'Текст вопроса',
-                        color: _gold,
+                        color: AppColors.gold,
                       ),
                       SizedBox(height: 12),
                       TextFormField(
@@ -1879,7 +1868,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14.r),
-                            borderSide: BorderSide(color: _gold, width: 2),
+                            borderSide: BorderSide(color: AppColors.gold, width: 2),
                           ),
                           errorBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14.r),
@@ -1893,7 +1882,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                         ),
                         maxLines: 3,
                         style: TextStyle(fontSize: 16.sp, height: 1.4, color: Colors.white.withOpacity(0.9)),
-                        cursorColor: _gold,
+                        cursorColor: AppColors.gold,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Пожалуйста, введите текст вопроса';
@@ -1965,7 +1954,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           child: Padding(
                             padding: EdgeInsets.all(20.w),
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                             ),
                           ),
                         )
@@ -1973,10 +1962,10 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                         // Переключатель "Все магазины"
                         Container(
                           decoration: BoxDecoration(
-                            color: _isForAllShops ? _gold.withOpacity(0.1) : Colors.white.withOpacity(0.06),
+                            color: _isForAllShops ? AppColors.gold.withOpacity(0.1) : Colors.white.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(14.r),
                             border: Border.all(
-                              color: _isForAllShops ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+                              color: _isForAllShops ? AppColors.gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
                             ),
                           ),
                           child: CheckboxListTile(
@@ -1998,8 +1987,8 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               });
                             },
                             controlAffinity: ListTileControlAffinity.leading,
-                            activeColor: _gold,
-                            checkColor: _night,
+                            activeColor: AppColors.gold,
+                            checkColor: AppColors.night,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14.r),
                             ),
@@ -2023,7 +2012,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                   final isSelected = _selectedShopAddresses.contains(shop.address);
                                   return Container(
                                     decoration: BoxDecoration(
-                                      color: isSelected ? _gold.withOpacity(0.08) : Colors.transparent,
+                                      color: isSelected ? AppColors.gold.withOpacity(0.08) : Colors.transparent,
                                       border: Border(
                                         bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
                                       ),
@@ -2053,8 +2042,8 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                         });
                                       },
                                       controlAffinity: ListTileControlAffinity.leading,
-                                      activeColor: _gold,
-                                      checkColor: _night,
+                                      activeColor: AppColors.gold,
+                                      checkColor: AppColors.night,
                                     ),
                                   );
                                 },
@@ -2080,12 +2069,12 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           Container(
                             decoration: BoxDecoration(
                               color: _isAiCheck
-                                  ? Color(0xFFF59E0B).withOpacity(0.1)
+                                  ? AppColors.warning.withOpacity(0.1)
                                   : Colors.white.withOpacity(0.06),
                               borderRadius: BorderRadius.circular(12.r),
                               border: Border.all(
                                 color: _isAiCheck
-                                    ? Color(0xFFF59E0B)
+                                    ? AppColors.warning
                                     : Colors.white.withOpacity(0.1),
                                 width: 1,
                               ),
@@ -2110,15 +2099,15 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                   color: Colors.white.withOpacity(0.5),
                                 ),
                               ),
-                              activeColor: Color(0xFFF59E0B),
-                              checkColor: _night,
+                              activeColor: AppColors.warning,
+                              checkColor: AppColors.night,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                               secondary: Icon(
                                 Icons.psychology,
                                 color: _isAiCheck
-                                    ? Color(0xFFF59E0B)
+                                    ? AppColors.warning
                                     : Colors.white.withOpacity(0.4),
                               ),
                             ),
@@ -2202,8 +2191,8 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveQuestion,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _gold,
-                        foregroundColor: _night,
+                        backgroundColor: AppColors.gold,
+                        foregroundColor: AppColors.night,
                         padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.r),
@@ -2216,7 +2205,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               width: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(_night),
+                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.night),
                               ),
                             )
                           : Row(
@@ -2282,7 +2271,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
     Color? color,
   }) {
     final isSelected = _selectedAnswerType == value;
-    final cardColor = color ?? _gold;
+    final cardColor = color ?? AppColors.gold;
 
     return GestureDetector(
       onTap: () {
@@ -2529,7 +2518,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
     bool isDestructive = false,
   }) {
     return Material(
-      color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : _emeraldDark.withOpacity(0.9),
+      color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : AppColors.emeraldDark.withOpacity(0.9),
       borderRadius: BorderRadius.circular(8.r),
       child: InkWell(
         onTap: onPressed,

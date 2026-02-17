@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../services/turnover_service.dart';
@@ -24,10 +25,6 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
   TurnoverComparison? _comparison;
   bool _isLoading = true;
   bool _isLoadingComparison = false;
-
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _gold = Color(0xFFD4AF37);
 
   static List<String> _monthNames = [
     'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -178,7 +175,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         Expanded(
           flex: 2,
           child: _isLoading
-              ? Center(child: CircularProgressIndicator(color: _gold))
+              ? Center(child: CircularProgressIndicator(color: AppColors.gold))
               : _buildCalendar(),
         ),
 
@@ -259,11 +256,11 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
                   margin: EdgeInsets.all(2.w),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? _emerald
+                        ? AppColors.emerald
                         : null,
                     borderRadius: BorderRadius.circular(8.r),
                     border: isToday && !isSelected
-                        ? Border.all(color: _gold, width: 2)
+                        ? Border.all(color: AppColors.gold, width: 2)
                         : null,
                   ),
                   child: Column(
@@ -312,7 +309,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
 
   Widget _buildDayDetails() {
     if (_isLoadingComparison) {
-      return Center(child: CircularProgressIndicator(color: _gold));
+      return Center(child: CircularProgressIndicator(color: AppColors.gold));
     }
 
     if (_comparison == null) {

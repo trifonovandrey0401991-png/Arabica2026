@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/employee_chat_message_model.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Доступные реакции
 List<String> availableReactions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -16,10 +17,6 @@ class ChatMessageBubble extends StatelessWidget {
   final Function(String reaction)? onReactionTap;
   final VoidCallback? onForwardTap;
   final VoidCallback? onLongPress;
-
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
 
   const ChatMessageBubble({
     super.key,
@@ -54,7 +51,7 @@ class ChatMessageBubble extends StatelessWidget {
                           ? LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [_emerald, _emeraldDark],
+                              colors: [AppColors.emerald, AppColors.emeraldDark],
                             )
                           : null,
                       color: isMe ? null : Colors.white.withOpacity(0.08),
@@ -249,11 +246,11 @@ class ChatMessageBubble extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: hasMyReaction
-                    ? _emerald.withOpacity(0.4)
+                    ? AppColors.emerald.withOpacity(0.4)
                     : Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(14.r),
                 border: hasMyReaction
-                    ? Border.all(color: _emerald.withOpacity(0.7), width: 1.5)
+                    ? Border.all(color: AppColors.emerald.withOpacity(0.7), width: 1.5)
                     : Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: Row(
@@ -296,7 +293,7 @@ class ChatMessageBubble extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: _night.withOpacity(0.98),
+          color: AppColors.night.withOpacity(0.98),
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
           border: Border(
             top: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -336,11 +333,11 @@ class ChatMessageBubble extends StatelessWidget {
                           padding: EdgeInsets.all(10.w),
                           decoration: BoxDecoration(
                             color: hasMyReaction
-                                ? _emerald.withOpacity(0.4)
+                                ? AppColors.emerald.withOpacity(0.4)
                                 : Colors.white.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(12.r),
                             border: hasMyReaction
-                                ? Border.all(color: _emerald.withOpacity(0.7))
+                                ? Border.all(color: AppColors.emerald.withOpacity(0.7))
                                 : Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
                           child: Text(
@@ -360,7 +357,7 @@ class ChatMessageBubble extends StatelessWidget {
                   leading: Container(
                     padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
-                      color: _emerald.withOpacity(0.3),
+                      color: AppColors.emerald.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(Icons.forward_rounded, color: Colors.white.withOpacity(0.8)),
@@ -397,7 +394,7 @@ class ChatMessageBubble extends StatelessWidget {
                         content: Text('Текст скопирован'),
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                        backgroundColor: _emerald,
+                        backgroundColor: AppColors.emerald,
                         duration: Duration(seconds: 2),
                       ),
                     );

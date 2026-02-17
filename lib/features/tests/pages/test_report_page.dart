@@ -5,6 +5,7 @@ import '../../../core/services/multitenancy_filter_service.dart';
 import '../models/test_result_model.dart';
 import '../services/test_result_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница отчёта по тестированию
 class TestReportPage extends StatefulWidget {
@@ -20,11 +21,6 @@ class _TestReportPageState extends State<TestReportPage>
   List<TestResult> _allResults = [];
   bool _isLoading = true;
 
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
   static final Color _goldLight = Color(0xFFE8C860);
 
   @override
@@ -152,13 +148,13 @@ class _TestReportPageState extends State<TestReportPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -172,7 +168,7 @@ class _TestReportPageState extends State<TestReportPage>
               // Контент
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -242,9 +238,9 @@ class _TestReportPageState extends State<TestReportPage>
         controller: _tabController,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: _gold.withOpacity(0.2),
+          color: AppColors.gold.withOpacity(0.2),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: _gold.withOpacity(0.4)),
+          border: Border.all(color: AppColors.gold.withOpacity(0.4)),
         ),
         indicatorPadding: EdgeInsets.all(3.w),
         labelColor: _goldLight,
@@ -340,7 +336,7 @@ class _TestReportPageState extends State<TestReportPage>
                   SizedBox(height: 4),
                   Row(
                     children: [
-                      _buildMiniStat('Месяц', stat.avgThisMonth, _gold),
+                      _buildMiniStat('Месяц', stat.avgThisMonth, AppColors.gold),
                       SizedBox(width: 16),
                       _buildMiniStat('Всего', stat.avgTotal, Colors.white.withOpacity(0.5)),
                     ],
@@ -405,7 +401,7 @@ class _TestReportPageState extends State<TestReportPage>
           builder: (context, scrollController) {
             return Container(
               decoration: BoxDecoration(
-                color: _emeraldDark,
+                color: AppColors.emeraldDark,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
               ),
               child: SingleChildScrollView(
@@ -435,11 +431,11 @@ class _TestReportPageState extends State<TestReportPage>
                             width: 56,
                             height: 56,
                             decoration: BoxDecoration(
-                              color: _gold.withOpacity(0.12),
+                              color: AppColors.gold.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(16.r),
-                              border: Border.all(color: _gold.withOpacity(0.3)),
+                              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                             ),
-                            child: Icon(Icons.person_rounded, size: 28, color: _gold),
+                            child: Icon(Icons.person_rounded, size: 28, color: AppColors.gold),
                           ),
                           SizedBox(width: 16),
                           Expanded(
@@ -476,7 +472,7 @@ class _TestReportPageState extends State<TestReportPage>
                         style: TextStyle(
                           fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
-                          color: _gold.withOpacity(0.8),
+                          color: AppColors.gold.withOpacity(0.8),
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -486,7 +482,7 @@ class _TestReportPageState extends State<TestReportPage>
                       _buildStatCard(
                         'Средний балл за месяц',
                         stat.avgThisMonth,
-                        _gold,
+                        AppColors.gold,
                         Icons.calendar_month_rounded,
                       ),
                       SizedBox(height: 8),
@@ -500,7 +496,7 @@ class _TestReportPageState extends State<TestReportPage>
                       _buildStatCard(
                         'Общий средний балл',
                         stat.avgTotal,
-                        Color(0xFF4CAF50),
+                        AppColors.success,
                         Icons.bar_chart_rounded,
                       ),
 
@@ -512,7 +508,7 @@ class _TestReportPageState extends State<TestReportPage>
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
-                            color: _gold.withOpacity(0.8),
+                            color: AppColors.gold.withOpacity(0.8),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -770,7 +766,7 @@ class _TestReportPageState extends State<TestReportPage>
   }
 
   Color _getScoreColor(double score) {
-    if (score >= 80) return Color(0xFF4CAF50);
+    if (score >= 80) return AppColors.success;
     if (score >= 60) return Colors.orange;
     if (score > 0) return Color(0xFFEF5350);
     return Colors.white.withOpacity(0.3);

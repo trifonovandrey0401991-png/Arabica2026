@@ -8,6 +8,7 @@ import 'employee_chat_page.dart';
 import 'new_chat_page.dart';
 import 'shop_chat_members_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница списка чатов сотрудников
 class EmployeeChatsListPage extends StatefulWidget {
@@ -19,11 +20,6 @@ class EmployeeChatsListPage extends StatefulWidget {
 
 class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
     with SingleTickerProviderStateMixin {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   List<EmployeeChat> _chats = [];
   bool _isLoading = true;
   String? _userPhone;
@@ -181,13 +177,13 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -218,7 +214,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14.r),
-              color: _emerald,
+              color: AppColors.emerald,
               border: Border.all(color: Colors.white.withOpacity(0.2)),
             ),
             child: Row(
@@ -368,7 +364,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
                 : Colors.white.withOpacity(0.04),
             border: Border.all(
               color: hasUnread
-                  ? _emerald.withOpacity(0.6)
+                  ? AppColors.emerald.withOpacity(0.6)
                   : Colors.white.withOpacity(0.1),
             ),
           ),

@@ -183,13 +183,3 @@ class RecountQuestion {
   }
 }
 
-
-
-
-
-
-
-
-
-
-

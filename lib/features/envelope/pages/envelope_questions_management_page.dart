@@ -7,6 +7,7 @@ import '../models/envelope_question_model.dart';
 import '../services/envelope_question_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления вопросами формирования конверта
 class EnvelopeQuestionsManagementPage extends StatefulWidget {
@@ -218,7 +219,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                 Navigator.pop(context, true);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF004D40),
+                backgroundColor: AppColors.primaryGreen,
                 foregroundColor: Colors.white,
               ),
               child: Text(isEdit ? 'Сохранить' : 'Создать'),
@@ -269,6 +270,9 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
         }
       }
     }
+
+    titleController.dispose();
+    descriptionController.dispose();
   }
 
   /// Удаление вопроса
@@ -523,7 +527,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
     return Scaffold(
       appBar: AppBar(
         title: Text('Вопросы (Конверт)'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -534,7 +538,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditDialog(),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         child: Icon(Icons.add, color: Colors.white),
       ),
       body: _isLoading
@@ -556,7 +560,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                         icon: Icon(Icons.add),
                         label: Text('Добавить вопрос'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF004D40),
+                          backgroundColor: AppColors.primaryGreen,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -671,7 +675,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                 Switch(
                                   value: question.isActive,
                                   onChanged: (_) => _toggleQuestion(question),
-                                  activeColor: Color(0xFF004D40),
+                                  activeColor: AppColors.primaryGreen,
                                 ),
                               ],
                             ),
@@ -782,7 +786,7 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                             icon: Icon(Icons.add_photo_alternate, size: 16),
                                             label: Text('Добавить эталон'),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: Color(0xFF004D40),
+                                              backgroundColor: AppColors.primaryGreen,
                                               foregroundColor: Colors.white,
                                               padding: EdgeInsets.symmetric(
                                                 horizontal: 12.w,

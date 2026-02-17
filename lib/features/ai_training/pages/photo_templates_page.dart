@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/photo_template.dart';
 import '../models/cigarette_training_model.dart';
 import '../widgets/template_overlay_painter.dart';
@@ -57,7 +58,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
             ),
           ],
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Column(
         children: [

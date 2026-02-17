@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
@@ -122,7 +123,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
           children: [
             TabBar(
               controller: _tabController,
-              labelColor: Color(0xFF004D40),
+              labelColor: AppColors.primaryGreen,
               tabs: [
                 Tab(text: 'Редактировать'),
                 Tab(text: 'Свободные сотрудники'),
@@ -318,7 +319,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
                   ElevatedButton(
                     onPressed: _saveShift,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF004D40),
+                      backgroundColor: AppColors.primaryGreen,
                       foregroundColor: Colors.white,
                     ),
                     child: Text('Сохранить'),
@@ -359,7 +360,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
         return Card(
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Color(0xFF004D40),
+              backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
               child: Text(
                 emp.name.length >= 2

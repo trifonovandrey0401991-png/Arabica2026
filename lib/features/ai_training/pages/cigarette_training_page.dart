@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/api_constants.dart';
@@ -14,6 +15,9 @@ import 'training_settings_page.dart';
 import 'pending_codes_page.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'cigarette_shop_selection_dialog.dart';
+import 'cigarette_shop_details_dialog.dart';
+import 'cigarette_photos_management_dialog.dart';
 
 /// Страница обучения ИИ распознаванию сигарет - Премиум версия
 class CigaretteTrainingPage extends StatefulWidget {
@@ -48,11 +52,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   String _accuracySortMode = 'none'; // 'none', 'worst', 'best'
 
   // Цвета и градиенты
-  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
-  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
-  static final _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
-  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
-  static final _redGradient = [Color(0xFFEF4444), Color(0xFFF87171)];
+  static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
+  static final _blueGradient = [AppColors.info, AppColors.infoLight];
+  static final _orangeGradient = [AppColors.warning, AppColors.warningLight];
+  static final _purpleGradient = [AppColors.indigo, AppColors.purple];
+  static final _redGradient = [AppColors.error, AppColors.errorLight];
 
   /// Количество вкладок зависит от роли
   /// Для админа: Фото, Товары, Новые коды, Статистика, Настройки = 5
@@ -155,9 +159,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
+              AppColors.darkNavy,
+              AppColors.navy,
+              AppColors.deepBlue,
             ],
           ),
         ),
@@ -563,7 +567,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return RefreshIndicator(
       onRefresh: _loadData,
       color: _greenGradient[0],
-      backgroundColor: Color(0xFF1A1A2E),
+      backgroundColor: AppColors.darkNavy,
       child: ListView(
         padding: EdgeInsets.all(16.w),
         children: [
@@ -658,7 +662,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     return RefreshIndicator(
       onRefresh: _loadData,
       color: _greenGradient[0],
-      backgroundColor: Color(0xFF1A1A2E),
+      backgroundColor: AppColors.darkNavy,
       child: ListView(
         padding: EdgeInsets.all(16.w),
         children: [
@@ -810,7 +814,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         child: DropdownButton<String>(
           value: _selectedGroup,
           isExpanded: true,
-          dropdownColor: Color(0xFF1A1A2E),
+          dropdownColor: AppColors.darkNavy,
           icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
           hint: Row(
             children: [
@@ -869,7 +873,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         child: DropdownButton<String>(
           value: _accuracySortMode,
           isExpanded: true,
-          dropdownColor: Color(0xFF1A1A2E),
+          dropdownColor: AppColors.darkNavy,
           icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
           items: [
             DropdownMenuItem(
@@ -1812,7 +1816,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+                colors: [AppColors.darkNavy, AppColors.navy],
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
             ),
@@ -2168,7 +2172,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: AppColors.darkNavy,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
@@ -2213,417 +2217,26 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Диалог выбора магазина
   void _showShopSelectionDialog() {
-    if (_shops.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Не удалось загрузить список магазинов'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    showModalBottomSheet(
+    CigaretteShopSelectionDialog.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-            ],
-          ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Индикатор
-            Padding(
-              padding: EdgeInsets.only(top: 12.h),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ),
-            // Заголовок
-            Padding(
-              padding: EdgeInsets.all(16.w),
-              child: Column(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: _blueGradient),
-                      borderRadius: BorderRadius.circular(16.r),
-                    ),
-                    child: Icon(
-                      Icons.store,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Выберите магазин',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Для загрузки фото выкладки нужно выбрать магазин',
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      color: Colors.white.withOpacity(0.6),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            // Список магазинов
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                itemCount: _shops.length,
-                itemBuilder: (context, index) {
-                  final shop = _shops[index];
-                  final isSelected = shop.address == _selectedShopAddress;
-
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 8.h),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () async {
-                          // Сохраняем выбранный магазин
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.setString('selectedShopAddress', shop.address);
-
-                          if (mounted) {
-                            setState(() {
-                              _selectedShopAddress = shop.address;
-                            });
-                            Navigator.pop(context);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(Icons.check_circle, color: Colors.white, size: 20),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text('Выбран магазин: ${shop.name}'),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: _greenGradient[0],
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-
-                            // Перезагружаем данные для обновления статистики
-                            _loadData();
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(12.r),
-                        child: Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? _blueGradient[0].withOpacity(0.2)
-                                : Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(
-                              color: isSelected
-                                  ? _blueGradient[0]
-                                  : Colors.white.withOpacity(0.1),
-                              width: isSelected ? 2 : 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: isSelected ? _blueGradient : _purpleGradient,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                                child: Icon(
-                                  isSelected ? Icons.check : Icons.store,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      shop.name,
-                                      style: TextStyle(
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: isSelected ? _blueGradient[0] : Colors.white,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      shop.address,
-                                      style: TextStyle(
-                                        fontSize: 12.sp,
-                                        color: Colors.white.withOpacity(0.5),
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (isSelected)
-                                Icon(
-                                  Icons.check_circle,
-                                  color: _blueGradient[0],
-                                  size: 24,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            // Кнопка закрытия
-            Padding(
-              padding: EdgeInsets.all(16.w),
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Отмена',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
-                    fontSize: 14.sp,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      shops: _shops,
+      selectedShopAddress: _selectedShopAddress,
+      onShopSelected: (shopAddress) {
+        if (mounted) {
+          setState(() {
+            _selectedShopAddress = shopAddress;
+          });
+          _loadData();
+        }
+      },
     );
   }
 
   /// Диалог детализации по магазинам (для админа)
   void _showShopDetailsDialog(CigaretteProduct product) {
-    showModalBottomSheet(
+    CigaretteShopDetailsDialog.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-            ],
-          ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Индикатор
-            Padding(
-              padding: EdgeInsets.only(top: 12.h),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ),
-            // Заголовок
-            Padding(
-              padding: EdgeInsets.all(16.w),
-              child: Column(
-                children: [
-                  Text(
-                    'Статус по магазинам',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    product.productName,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.white.withOpacity(0.6),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 8),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: _getProgressGradient(
-                          product.totalShops > 0
-                            ? product.shopsWithAiReady / product.totalShops * 100
-                            : 0,
-                        ),
-                      ),
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Text(
-                      '${product.shopsWithAiReady}/${product.totalShops} магазинов готовы',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Список магазинов
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                itemCount: product.perShopDisplayStats.length,
-                itemBuilder: (context, index) {
-                  final stats = product.perShopDisplayStats[index];
-                  final shopGradient = _getProgressGradient(stats.progress);
-
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 8.h),
-                    padding: EdgeInsets.all(12.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: stats.isDisplayComplete
-                            ? _greenGradient[0].withOpacity(0.5)
-                            : Colors.white.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: stats.isDisplayComplete ? _greenGradient : shopGradient,
-                            ),
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Icon(
-                            stats.isDisplayComplete ? Icons.check : Icons.store,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                stats.shopName ?? stats.shopAddress,
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      height: 4,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(2.r),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(2.r),
-                                        child: FractionallySizedBox(
-                                          alignment: Alignment.centerLeft,
-                                          widthFactor: (stats.progress / 100).clamp(0.0, 1.0),
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: stats.isDisplayComplete ? _greenGradient : shopGradient,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    '${stats.displayPhotosCount}/${stats.requiredDisplayPhotos}',
-                                    style: TextStyle(
-                                      fontSize: 11.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: stats.isDisplayComplete ? _greenGradient[0] : shopGradient[0],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            SizedBox(height: 16),
-          ],
-        ),
-      ),
+      product: product,
     );
   }
 
@@ -2691,7 +2304,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           ],
         ),
         duration: Duration(seconds: 1),
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: AppColors.darkNavy,
       ),
     );
 
@@ -2810,12 +2423,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: AppColors.darkNavy,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Container(
           padding: EdgeInsets.all(20.w),
           decoration: BoxDecoration(
-            color: Color(0xFF1A1A2E),
+            color: AppColors.darkNavy,
             borderRadius: BorderRadius.circular(20.r),
             border: Border.all(
               color: Colors.white.withOpacity(0.1),
@@ -3121,8 +2734,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF1A1A2E),
-                Color(0xFF16213E),
+                AppColors.darkNavy,
+                AppColors.navy,
               ],
             ),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
@@ -3398,170 +3011,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   }
 
   /// Диалог управления фотографиями товара (только для админа)
-  void _showPhotosManagementDialog(CigaretteProduct product) async {
-    // Показать индикатор загрузки
-    showDialog(
+  void _showPhotosManagementDialog(CigaretteProduct product) {
+    CigarettePhotosManagementDialog.show(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
-    );
-
-    // Загрузить samples
-    final samples = await CigaretteVisionService.getSamplesForProduct(product.id);
-
-    if (!mounted) return;
-    Navigator.pop(context); // Закрыть индикатор
-
-    // Разделить на типы
-    final recountSamples = samples
-        .where((s) => s.type == TrainingSampleType.recount)
-        .toList()
-      ..sort((a, b) => (a.templateId ?? 0).compareTo(b.templateId ?? 0));
-
-    final displaySamples = samples
-        .where((s) => s.type == TrainingSampleType.display)
-        .toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-    if (!mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-          ),
-          child: Column(
-            children: [
-              // Заголовок
-              Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(2.r),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(10.w),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: _purpleGradient),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Icon(Icons.photo_library, color: Colors.white, size: 24),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Фотографии',
-                                style: TextStyle(
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                product.productName,
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  color: Colors.white.withOpacity(0.6),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.close, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Контент
-              Expanded(
-                child: samples.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.photo_library_outlined,
-                                size: 64, color: Colors.white.withOpacity(0.3)),
-                            SizedBox(height: 16),
-                            Text(
-                              'Нет загруженных фото',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 16.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView(
-                        controller: scrollController,
-                        padding: EdgeInsets.symmetric(horizontal: 16.w),
-                        children: [
-                          // Секция "Крупный план"
-                          if (recountSamples.isNotEmpty) ...[
-                            _buildSectionHeader(
-                              icon: Icons.crop_free,
-                              title: 'Крупный план',
-                              count: recountSamples.length,
-                              total: product.requiredRecountPhotos,
-                            ),
-                            SizedBox(height: 12),
-                            _buildPhotosGrid(recountSamples, product, isRecount: true),
-                            SizedBox(height: 24),
-                          ],
-
-                          // Секция "Выкладка"
-                          if (displaySamples.isNotEmpty) ...[
-                            _buildSectionHeader(
-                              icon: Icons.grid_view,
-                              title: 'Выкладка',
-                              count: displaySamples.length,
-                              total: null, // общее количество не ограничено
-                            ),
-                            SizedBox(height: 12),
-                            _buildPhotosGrid(displaySamples, product, isRecount: false),
-                            SizedBox(height: 24),
-                          ],
-                        ],
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      product: product,
+      photosGridBuilder: _buildPhotosGrid,
     );
   }
 
@@ -3730,7 +3184,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               width: double.infinity,
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: Color(0xFF1A1A2E),
+                color: AppColors.darkNavy,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
               ),
               child: Column(
@@ -3796,7 +3250,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               width: double.infinity,
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: Color(0xFF1A1A2E),
+                color: AppColors.darkNavy,
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(16.r)),
               ),
               child: ElevatedButton.icon(
@@ -3833,7 +3287,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: AppColors.darkNavy,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [

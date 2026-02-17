@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/fortune_wheel_model.dart';
 import '../services/fortune_wheel_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница настроек секторов Колеса Удачи (для админа)
 class WheelSettingsPage extends StatefulWidget {
@@ -117,7 +118,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Настройка Колеса Удачи'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.save),
@@ -133,7 +134,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                 Container(
                   padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
-                    color: Color(0xFF004D40).withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     border: Border(
                       bottom: BorderSide(color: Colors.grey.shade300),
                     ),
@@ -144,14 +145,14 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                       // Заголовок
                       Row(
                         children: [
-                          Icon(Icons.emoji_events, color: Color(0xFF004D40), size: 24),
+                          Icon(Icons.emoji_events, color: AppColors.primaryGreen, size: 24),
                           SizedBox(width: 12),
                           Text(
                             'Количество призовых мест',
                             style: TextStyle(
                               fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF004D40),
+                              color: AppColors.primaryGreen,
                             ),
                           ),
                         ],
@@ -177,7 +178,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                 decoration: BoxDecoration(
                                   gradient: _topEmployeesCount == i
                                       ? LinearGradient(
-                                          colors: [Color(0xFF00695C), Color(0xFF004D40)],
+                                          colors: [Color(0xFF00695C), AppColors.primaryGreen],
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
                                         )
@@ -186,14 +187,14 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                   borderRadius: BorderRadius.circular(10.r),
                                   border: Border.all(
                                     color: _topEmployeesCount == i
-                                        ? Color(0xFF004D40)
+                                        ? AppColors.primaryGreen
                                         : Colors.grey.shade300,
                                     width: _topEmployeesCount == i ? 2.5 : 1.5,
                                   ),
                                   boxShadow: [
                                     if (_topEmployeesCount == i)
                                       BoxShadow(
-                                        color: Color(0xFF004D40).withOpacity(0.3),
+                                        color: AppColors.primaryGreen.withOpacity(0.3),
                                         blurRadius: 6,
                                         offset: Offset(0, 3),
                                       ),
@@ -254,7 +255,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                                 ? [Color(0xFFE8E8E8), Color(0xFFC0C0C0)] // Серебро
                                                 : i == 2
                                                     ? [Color(0xFFCD7F32), Color(0xFF8B4513)] // Бронза
-                                                    : [Color(0xFF64B5F6), Color(0xFF42A5F5)], // Синий
+                                                    : [Color(0xFF64B5F6), AppColors.blue], // Синий
                                       ),
                                       borderRadius: BorderRadius.circular(18.r),
                                       border: Border.all(
@@ -356,7 +357,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveSettings,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF004D40),
+                        backgroundColor: AppColors.primaryGreen,
                         foregroundColor: Colors.white,
                         elevation: 2,
                         shape: RoundedRectangleBorder(

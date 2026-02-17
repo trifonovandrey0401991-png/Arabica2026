@@ -9,6 +9,7 @@ import '../models/test_result_model.dart';
 import '../services/test_question_service.dart';
 import '../services/test_result_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница тестирования
 class TestPage extends StatefulWidget {
@@ -37,11 +38,6 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   late AnimationController _pointsAnimController;
   late Animation<double> _pointsScaleAnimation;
 
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
   static final Color _goldLight = Color(0xFFE8C860);
 
   @override
@@ -255,7 +251,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
         child: Padding(
           padding: EdgeInsets.all(28.w),
@@ -302,12 +298,12 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _gold.withOpacity(0.2),
-                    foregroundColor: _gold,
+                    backgroundColor: AppColors.gold.withOpacity(0.2),
+                    foregroundColor: AppColors.gold,
                     padding: EdgeInsets.symmetric(vertical: 14.h),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14.r),
-                      side: BorderSide(color: _gold.withOpacity(0.4)),
+                      side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                     ),
                     elevation: 0,
                   ),
@@ -349,7 +345,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     IconData resultIcon;
 
     if (percentage >= 80) {
-      resultColor = Color(0xFF4CAF50);
+      resultColor = AppColors.success;
       resultMessage = 'Отличный результат!';
       resultIcon = Icons.emoji_events_rounded;
     } else if (percentage >= 60) {
@@ -366,7 +362,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
         child: Padding(
           padding: EdgeInsets.all(28.w),
@@ -444,10 +440,10 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                     decoration: BoxDecoration(
-                      color: (_testResult!.points! >= 0 ? _gold : Colors.red).withOpacity(0.12),
+                      color: (_testResult!.points! >= 0 ? AppColors.gold : Colors.red).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(14.r),
                       border: Border.all(
-                        color: (_testResult!.points! >= 0 ? _gold : Colors.red).withOpacity(0.4),
+                        color: (_testResult!.points! >= 0 ? AppColors.gold : Colors.red).withOpacity(0.4),
                         width: 1.5,
                       ),
                     ),
@@ -456,7 +452,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                       children: [
                         Icon(
                           _testResult!.points! >= 0 ? Icons.add_circle_rounded : Icons.remove_circle_rounded,
-                          color: _testResult!.points! >= 0 ? _gold : Colors.red,
+                          color: _testResult!.points! >= 0 ? AppColors.gold : Colors.red,
                           size: 22,
                         ),
                         SizedBox(width: 8),
@@ -482,12 +478,12 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _gold.withOpacity(0.2),
-                    foregroundColor: _gold,
+                    backgroundColor: AppColors.gold.withOpacity(0.2),
+                    foregroundColor: AppColors.gold,
                     padding: EdgeInsets.symmetric(vertical: 14.h),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14.r),
-                      side: BorderSide(color: _gold.withOpacity(0.4)),
+                      side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                     ),
                     elevation: 0,
                   ),
@@ -512,14 +508,14 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
 
     if (_testFinished) {
       return Scaffold(
-        backgroundColor: _night,
-        body: Center(child: CircularProgressIndicator(color: _gold)),
+        backgroundColor: AppColors.night,
+        body: Center(child: CircularProgressIndicator(color: AppColors.gold)),
       );
     }
 
     if (_questions.isEmpty) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Center(
           child: Text(
             'Вопросы не загружены',
@@ -536,13 +532,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
 
   Widget _buildStartScreen() {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -593,19 +589,19 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white.withOpacity(0.05),
-                            border: Border.all(color: _gold.withOpacity(0.2), width: 2),
+                            border: Border.all(color: AppColors.gold.withOpacity(0.2), width: 2),
                           ),
                           child: Container(
                             margin: EdgeInsets.all(15.w),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: _gold.withOpacity(0.12),
-                              border: Border.all(color: _gold.withOpacity(0.3)),
+                              color: AppColors.gold.withOpacity(0.12),
+                              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                             ),
                             child: Icon(
                               Icons.quiz_rounded,
                               size: 40,
-                              color: _gold,
+                              color: AppColors.gold,
                             ),
                           ),
                         ),
@@ -657,8 +653,8 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                           child: ElevatedButton(
                             onPressed: _questions.isNotEmpty ? _startTest : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _gold.withOpacity(0.2),
-                              foregroundColor: _gold,
+                              backgroundColor: AppColors.gold.withOpacity(0.2),
+                              foregroundColor: AppColors.gold,
                               disabledBackgroundColor: Colors.white.withOpacity(0.05),
                               disabledForegroundColor: Colors.white.withOpacity(0.3),
                               padding: EdgeInsets.symmetric(vertical: 18.h),
@@ -666,7 +662,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                                 borderRadius: BorderRadius.circular(16.r),
                                 side: BorderSide(
                                   color: _questions.isNotEmpty
-                                      ? _gold.withOpacity(0.5)
+                                      ? AppColors.gold.withOpacity(0.5)
                                       : Colors.white.withOpacity(0.1),
                                 ),
                               ),
@@ -678,7 +674,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                                 Icon(
                                   Icons.play_arrow_rounded,
                                   size: 26,
-                                  color: _questions.isNotEmpty ? _gold : Colors.white.withOpacity(0.3),
+                                  color: _questions.isNotEmpty ? AppColors.gold : Colors.white.withOpacity(0.3),
                                 ),
                                 SizedBox(width: 8),
                                 Text(
@@ -718,7 +714,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       ),
       child: Column(
         children: [
-          Icon(icon, color: _gold.withOpacity(0.7), size: 26),
+          Icon(icon, color: AppColors.gold.withOpacity(0.7), size: 26),
           SizedBox(height: 10),
           Text(
             title,
@@ -751,13 +747,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     final isTimeWarning = _timeRemaining <= 60;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.25, 1.0],
           ),
         ),
@@ -806,12 +802,12 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                       decoration: BoxDecoration(
                         color: isTimeWarning
                             ? Colors.red.withOpacity(0.15)
-                            : _gold.withOpacity(0.12),
+                            : AppColors.gold.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(
                           color: isTimeWarning
                               ? Colors.red.withOpacity(0.3)
-                              : _gold.withOpacity(0.3),
+                              : AppColors.gold.withOpacity(0.3),
                         ),
                       ),
                       child: Row(
@@ -820,7 +816,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                           Icon(
                             Icons.timer_rounded,
                             size: 16,
-                            color: isTimeWarning ? Colors.red[300] : _gold,
+                            color: isTimeWarning ? Colors.red[300] : AppColors.gold,
                           ),
                           SizedBox(width: 5),
                           Text(
@@ -847,7 +843,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.white.withOpacity(0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(_gold.withOpacity(0.8)),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold.withOpacity(0.8)),
                     minHeight: 4,
                   ),
                 ),
@@ -872,12 +868,12 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                _gold.withOpacity(0.12),
-                                _gold.withOpacity(0.04),
+                                AppColors.gold.withOpacity(0.12),
+                                AppColors.gold.withOpacity(0.04),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(18.r),
-                            border: Border.all(color: _gold.withOpacity(0.25)),
+                            border: Border.all(color: AppColors.gold.withOpacity(0.25)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -886,7 +882,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                               Container(
                                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
                                 decoration: BoxDecoration(
-                                  color: _gold.withOpacity(0.15),
+                                  color: AppColors.gold.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(10.r),
                                 ),
                                 child: Text(
@@ -894,7 +890,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                                   style: TextStyle(
                                     fontSize: 11.sp,
                                     fontWeight: FontWeight.w600,
-                                    color: _gold,
+                                    color: AppColors.gold,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
@@ -949,7 +945,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     Color bgColor = Colors.white.withOpacity(0.06);
     Color borderColor = Colors.white.withOpacity(0.12);
     Color textColor = Colors.white.withOpacity(0.85);
-    Color letterBgColor = _emerald.withOpacity(0.5);
+    Color letterBgColor = AppColors.emerald.withOpacity(0.5);
     Color letterColor = Colors.white.withOpacity(0.7);
     IconData? trailingIcon;
     Color? iconColor;
@@ -958,13 +954,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       if (isSelected) {
         if (isCorrect) {
           // Правильный ответ
-          bgColor = Color(0xFF4CAF50).withOpacity(0.12);
-          borderColor = Color(0xFF4CAF50).withOpacity(0.5);
-          textColor = Color(0xFF81C784);
-          letterBgColor = Color(0xFF4CAF50).withOpacity(0.2);
-          letterColor = Color(0xFF81C784);
+          bgColor = AppColors.success.withOpacity(0.12);
+          borderColor = AppColors.success.withOpacity(0.5);
+          textColor = AppColors.successLight;
+          letterBgColor = AppColors.success.withOpacity(0.2);
+          letterColor = AppColors.successLight;
           trailingIcon = Icons.check_circle_rounded;
-          iconColor = Color(0xFF4CAF50);
+          iconColor = AppColors.success;
         } else {
           // Неправильный ответ
           bgColor = Colors.red.withOpacity(0.12);
@@ -977,13 +973,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
         }
       } else if (isCorrectOption) {
         // Подсветка правильного (когда выбран неправильный)
-        bgColor = Color(0xFF4CAF50).withOpacity(0.12);
-        borderColor = Color(0xFF4CAF50).withOpacity(0.5);
-        textColor = Color(0xFF81C784);
-        letterBgColor = Color(0xFF4CAF50).withOpacity(0.2);
-        letterColor = Color(0xFF81C784);
+        bgColor = AppColors.success.withOpacity(0.12);
+        borderColor = AppColors.success.withOpacity(0.5);
+        textColor = AppColors.successLight;
+        letterBgColor = AppColors.success.withOpacity(0.2);
+        letterColor = AppColors.successLight;
         trailingIcon = Icons.check_circle_rounded;
-        iconColor = Color(0xFF4CAF50);
+        iconColor = AppColors.success;
       } else {
         // Неактивные варианты после выбора
         bgColor = Colors.white.withOpacity(0.03);
@@ -1059,7 +1055,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Padding(
           padding: EdgeInsets.all(24.w),

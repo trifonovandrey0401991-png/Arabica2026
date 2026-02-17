@@ -6,6 +6,7 @@ import '../models/content_block.dart';
 import '../services/training_article_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница редактора статьи обучения с поддержкой блоков контента
 class TrainingArticleEditorPage extends StatefulWidget {
@@ -18,12 +19,6 @@ class TrainingArticleEditorPage extends StatefulWidget {
 }
 
 class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
-  // Dark Emerald цвета
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
-
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _groupController = TextEditingController();
@@ -98,14 +93,14 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           child: Container(
             padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
-              color: _emeraldDark,
+              color: AppColors.emeraldDark,
               borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: _gold),
+                CircularProgressIndicator(color: AppColors.gold),
                 SizedBox(height: 16),
                 Text(
                   'Загрузка изображения...',
@@ -298,7 +293,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -348,7 +343,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 Text(
                   '${_contentBlocks.length} ${_getBlocksEnding(_contentBlocks.length)}',
                   style: TextStyle(
-                    color: _gold.withOpacity(0.8),
+                    color: AppColors.gold.withOpacity(0.8),
                     fontSize: 13.sp,
                   ),
                 ),
@@ -358,9 +353,9 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           // Кнопка сохранения
           Container(
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.2),
+              color: AppColors.gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: _gold.withOpacity(0.4)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.4)),
             ),
             child: IconButton(
               icon: _isSaving
@@ -369,10 +364,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: _gold,
+                        color: AppColors.gold,
                       ),
                     )
-                  : Icon(Icons.check_rounded, color: _gold, size: 24),
+                  : Icon(Icons.check_rounded, color: AppColors.gold, size: 24),
               onPressed: _isSaving ? null : _saveArticle,
             ),
           ),
@@ -435,11 +430,11 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.15),
+                  color: AppColors.gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: _gold.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                 ),
-                child: Icon(Icons.info_outline, color: _gold, size: 20),
+                child: Icon(Icons.info_outline, color: AppColors.gold, size: 20),
               ),
               SizedBox(width: 12),
               Text(
@@ -447,7 +442,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                 style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
-                  color: _gold,
+                  color: AppColors.gold,
                 ),
               ),
             ],
@@ -544,10 +539,10 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 12.w),
         decoration: BoxDecoration(
-          color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.04),
+          color: isSelected ? AppColors.gold.withOpacity(0.15) : Colors.white.withOpacity(0.04),
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
-            color: isSelected ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.08),
+            color: isSelected ? AppColors.gold.withOpacity(0.4) : Colors.white.withOpacity(0.08),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -557,7 +552,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? _gold : Colors.white.withOpacity(0.4),
+              color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.4),
             ),
             SizedBox(width: 8),
             Text(
@@ -565,7 +560,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               style: TextStyle(
                 fontSize: 13.sp,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? _gold : Colors.white.withOpacity(0.5),
+                color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.5),
               ),
             ),
           ],
@@ -583,11 +578,11 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             Container(
               padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
-              child: Icon(Icons.view_agenda_rounded, color: _gold, size: 20),
+              child: Icon(Icons.view_agenda_rounded, color: AppColors.gold, size: 20),
             ),
             SizedBox(width: 12),
             Text(
@@ -595,7 +590,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
           ],
@@ -626,7 +621,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             decoration: BoxDecoration(
               color: block.type == ContentBlockType.image
                   ? Colors.blue.withOpacity(0.1)
-                  : _gold.withOpacity(0.08),
+                  : AppColors.gold.withOpacity(0.08),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16.r),
                 topRight: Radius.circular(16.r),
@@ -641,7 +636,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                   size: 18,
                   color: block.type == ContentBlockType.image
                       ? Colors.blue[300]
-                      : _gold,
+                      : AppColors.gold,
                 ),
                 SizedBox(width: 8),
                 Expanded(
@@ -652,7 +647,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                       fontWeight: FontWeight.w600,
                       color: block.type == ContentBlockType.image
                           ? Colors.blue[300]
-                          : _gold,
+                          : AppColors.gold,
                     ),
                   ),
                 ),
@@ -725,11 +720,11 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
+          borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5), width: 2),
         ),
         contentPadding: EdgeInsets.all(14.w),
       ),
-      cursorColor: _gold,
+      cursorColor: AppColors.gold,
       onChanged: (value) => _updateTextBlock(index, value),
     );
   }
@@ -758,12 +753,12 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.r),
-              borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 1.5),
+              borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5), width: 1.5),
             ),
             contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             isDense: true,
           ),
-          cursorColor: _gold,
+          cursorColor: AppColors.gold,
           onChanged: (value) => _updateImageCaption(index, value),
         ),
         SizedBox(height: 12),
@@ -855,14 +850,14 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           child: Container(
             padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
-              color: _emeraldDark,
+              color: AppColors.emeraldDark,
               borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: _gold),
+                CircularProgressIndicator(color: AppColors.gold),
                 SizedBox(height: 16),
                 Text(
                   'Загрузка изображения...',
@@ -936,7 +931,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           child: _buildAddButton(
             icon: Icons.text_fields_rounded,
             label: 'Добавить текст',
-            color: _gold,
+            color: AppColors.gold,
             onTap: _addTextBlock,
           ),
         ),
@@ -1012,17 +1007,17 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               decoration: BoxDecoration(
-                color: _showUrlField ? _gold.withOpacity(0.1) : Colors.white.withOpacity(0.04),
+                color: _showUrlField ? AppColors.gold.withOpacity(0.1) : Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(
-                  color: _showUrlField ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.08),
+                  color: _showUrlField ? AppColors.gold.withOpacity(0.3) : Colors.white.withOpacity(0.08),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
                     _showUrlField ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
-                    color: _showUrlField ? _gold : Colors.white.withOpacity(0.4),
+                    color: _showUrlField ? AppColors.gold : Colors.white.withOpacity(0.4),
                     size: 22,
                   ),
                   SizedBox(width: 10),
@@ -1035,7 +1030,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w600,
-                            color: _showUrlField ? _gold : Colors.white.withOpacity(0.7),
+                            color: _showUrlField ? AppColors.gold : Colors.white.withOpacity(0.7),
                           ),
                         ),
                         Text(
@@ -1090,7 +1085,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
         hintText: hint,
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-        prefixIcon: Icon(icon, color: _gold, size: 20),
+        prefixIcon: Icon(icon, color: AppColors.gold, size: 20),
         filled: true,
         fillColor: Colors.white.withOpacity(0.06),
         border: OutlineInputBorder(
@@ -1103,7 +1098,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
+          borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
@@ -1113,7 +1108,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         isDense: true,
         errorStyle: TextStyle(color: Colors.red[300]),
       ),
-      cursorColor: _gold,
+      cursorColor: AppColors.gold,
       validator: validator,
     );
   }

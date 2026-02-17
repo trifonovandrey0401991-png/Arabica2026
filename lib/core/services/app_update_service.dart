@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_update/in_app_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -286,12 +287,12 @@ class AppUpdateService {
               Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: Color(0xFF004D40).withOpacity(0.1),
+                  color: AppColors.primaryGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
                   Icons.system_update,
-                  color: Color(0xFF004D40),
+                  color: AppColors.primaryGreen,
                   size: 28,
                 ),
               ),
@@ -364,7 +365,7 @@ class AppUpdateService {
                 icon: Icon(Icons.download),
                 label: Text('Обновить'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF004D40),
+                  backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(

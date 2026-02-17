@@ -4,6 +4,7 @@ import '../services/efficiency_data_service.dart';
 import '../widgets/efficiency_common_widgets.dart';
 import '../utils/efficiency_utils.dart';
 import 'shop_efficiency_detail_page.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка эффективности по магазинам
@@ -15,11 +16,6 @@ class EfficiencyByShopPage extends StatefulWidget {
 }
 
 class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
-  // --- palette ---
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   bool _isLoading = true;
   EfficiencyData? _data;
@@ -61,13 +57,13 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emeraldDark, _night],
+            colors: [AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3],
           ),
         ),
@@ -136,8 +132,8 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     }
 
     return RefreshIndicator(
-      color: _gold,
-      backgroundColor: _emerald,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emerald,
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
@@ -162,9 +158,9 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: _emerald.withOpacity(0.3)),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -212,7 +208,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                           color: isPositive
-                              ? Color(0xFF4CAF50)
+                              ? AppColors.success
                               : Color(0xFFEF5350),
                         ),
                       ),
@@ -226,7 +222,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
                       '+${summary.earnedPoints.toStringAsFixed(1)}',
                       style: TextStyle(
                         fontSize: 14.sp,
-                        color: Color(0xFF4CAF50),
+                        color: AppColors.success,
                       ),
                     ),
                     Text(' / ', style: TextStyle(color: Colors.white.withOpacity(0.3))),

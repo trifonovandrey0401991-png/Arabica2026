@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart' if (dart.library.htm
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -41,7 +42,7 @@ class FirebaseService {
   static BuildContext? _globalContext;
 
   /// Цвет уведомлений (основной цвет бренда Арабика)
-  static final Color _notificationColor = Color(0xFF004D40);
+  static final Color _notificationColor = AppColors.primaryGreen;
 
   /// Флаг для предотвращения повторного показа диалога блокировки
   static bool _verificationRevokedDialogShown = false;
@@ -602,7 +603,7 @@ class FirebaseService {
                 icon: Icon(Icons.restart_alt),
                 label: Text('Перезапустить приложение'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF004D40),
+                  backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 14.h),
                   shape: RoundedRectangleBorder(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../services/kpi_service.dart';
@@ -24,11 +25,6 @@ class KPIShopCalendarPage extends StatefulWidget {
 
 class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
 
   // Состояние для вкладки "Магазин" (календарь)
@@ -96,7 +92,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -399,7 +395,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     // Бордер для выбранного/сегодня
     Border? border;
     if (isSelected) {
-      border = Border.all(color: _emerald, width: 3);
+      border = Border.all(color: AppColors.emerald, width: 3);
     } else if (isToday) {
       border = Border.all(color: Colors.blue, width: 2);
     }
@@ -446,7 +442,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
               )
             : Container(
                 color: isSelected
-                    ? _emerald
+                    ? AppColors.emerald
                     : (isToday ? Colors.blue.withOpacity(0.2) : Colors.transparent),
                 child: Center(
                   child: Text(
@@ -484,7 +480,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                 icon: Icon(Icons.store),
                 label: Text('Выбрать магазин'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _emerald,
+                  backgroundColor: AppColors.emerald,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -739,13 +735,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -820,7 +816,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: _gold,
+                  indicatorColor: AppColors.gold,
                   indicatorWeight: 3,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),

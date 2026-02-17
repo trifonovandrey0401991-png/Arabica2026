@@ -7,6 +7,7 @@ import '../services/client_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница переписки с клиентом
@@ -20,11 +21,6 @@ class ClientChatPage extends StatefulWidget {
 }
 
 class _ClientChatPageState extends State<ClientChatPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<ClientMessage> _messages = [];
   bool _isLoading = true;
   bool _isUploading = false;
@@ -96,7 +92,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
   Future<void> _showMediaPicker() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
@@ -196,11 +192,11 @@ class _ClientChatPageState extends State<ClientChatPage> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _gold.withOpacity(0.15),
+          color: AppColors.gold.withOpacity(0.15),
           borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: _gold.withOpacity(0.3)),
+          border: Border.all(color: AppColors.gold.withOpacity(0.3)),
         ),
-        child: Icon(icon, color: _gold, size: 20),
+        child: Icon(icon, color: AppColors.gold, size: 20),
       ),
       title: Text(title, style: TextStyle(color: Colors.white.withOpacity(0.9))),
       onTap: onTap,
@@ -316,7 +312,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -327,7 +323,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                 child: _isLoading
                     ? Center(
                         child: CircularProgressIndicator(
-                          color: _gold.withOpacity(0.7),
+                          color: AppColors.gold.withOpacity(0.7),
                           strokeWidth: 2,
                         ),
                       )
@@ -343,7 +339,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                     borderRadius: BorderRadius.circular(16.r),
                                     border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   ),
-                                  child: Icon(Icons.chat_bubble_outline, size: 40, color: _gold.withOpacity(0.5)),
+                                  child: Icon(Icons.chat_bubble_outline, size: 40, color: AppColors.gold.withOpacity(0.5)),
                                 ),
                                 SizedBox(height: 12),
                                 Text(
@@ -373,12 +369,12 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: isFromAdmin
-                                        ? _emerald.withOpacity(0.8)
+                                        ? AppColors.emerald.withOpacity(0.8)
                                         : Colors.white.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(14.r),
                                     border: Border.all(
                                       color: isFromAdmin
-                                          ? _gold.withOpacity(0.2)
+                                          ? AppColors.gold.withOpacity(0.2)
                                           : Colors.white.withOpacity(0.08),
                                     ),
                                   ),
@@ -404,7 +400,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                         style: TextStyle(
                                           fontSize: 10.sp,
                                           color: isFromAdmin
-                                              ? _gold.withOpacity(0.6)
+                                              ? AppColors.gold.withOpacity(0.6)
                                               : Colors.white.withOpacity(0.35),
                                         ),
                                       ),
@@ -420,7 +416,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _emeraldDark,
+                    color: AppColors.emeraldDark,
                     border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
                   ),
                   child: Row(
@@ -431,8 +427,8 @@ class _ClientChatPageState extends State<ClientChatPage> {
                             ? Container(
                                 width: 56,
                                 height: 56,
-                                color: _night,
-                                child: Icon(Icons.videocam, color: _gold, size: 24),
+                                color: AppColors.night,
+                                child: Icon(Icons.videocam, color: AppColors.gold, size: 24),
                               )
                             : AppCachedImage(
                                 imageUrl: _pendingMediaUrl!,
@@ -442,7 +438,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                 errorWidget: (_, __, ___) => Container(
                                   width: 56,
                                   height: 56,
-                                  color: _night,
+                                  color: AppColors.night,
                                   child: Icon(Icons.image, color: Colors.white38),
                                 ),
                               ),
@@ -465,7 +461,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
               Container(
                 padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: _emeraldDark,
+                  color: AppColors.emeraldDark,
                   border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
                 ),
                 child: Row(
@@ -482,9 +478,9 @@ class _ClientChatPageState extends State<ClientChatPage> {
                             ? SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
                               )
-                            : Icon(Icons.attach_file, color: _gold.withOpacity(0.7), size: 22),
+                            : Icon(Icons.attach_file, color: AppColors.gold.withOpacity(0.7), size: 22),
                         tooltip: 'Прикрепить фото/видео',
                       ),
                     ),
@@ -499,7 +495,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                         child: TextField(
                           controller: _messageController,
                           style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                          cursorColor: _gold,
+                          cursorColor: AppColors.gold,
                           decoration: InputDecoration(
                             hintText: 'Введите сообщение...',
                             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -518,9 +514,9 @@ class _ClientChatPageState extends State<ClientChatPage> {
                     SizedBox(width: 8),
                     Container(
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.15),
+                        color: AppColors.gold.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10.r),
-                        border: Border.all(color: _gold.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                       ),
                       child: IconButton(
                         icon: _isSending
@@ -529,10 +525,10 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                                 ),
                               )
-                            : Icon(Icons.send, color: _gold, size: 22),
+                            : Icon(Icons.send, color: AppColors.gold, size: 22),
                         onPressed: _isSending ? null : _sendMessage,
                       ),
                     ),

@@ -4,6 +4,7 @@ import '../models/task_model.dart' show TaskResponseType, TaskResponseTypeExtens
 import '../services/recurring_task_service.dart';
 import 'recurring_recipient_selection_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница создания/редактирования циклической задачи
 class CreateRecurringTaskPage extends StatefulWidget {
@@ -37,12 +38,6 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
   ];
   List<TaskRecipient> _recipients = [];
   bool _isSubmitting = false;
-
-  // Цвета темы
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   bool get _isEditing => widget.editTask != null;
 
@@ -105,9 +100,9 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.dark(
-              primary: _gold,
+              primary: AppColors.gold,
               onPrimary: Colors.black,
-              surface: _emeraldDark,
+              surface: AppColors.emeraldDark,
               onSurface: Colors.white,
             ),
           ),
@@ -134,9 +129,9 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.dark(
-              primary: _gold,
+              primary: AppColors.gold,
               onPrimary: Colors.black,
-              surface: _emeraldDark,
+              surface: AppColors.emeraldDark,
               onSurface: Colors.white,
             ),
           ),
@@ -163,9 +158,9 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.dark(
-              primary: _gold,
+              primary: AppColors.gold,
               onPrimary: Colors.black,
-              surface: _emeraldDark,
+              surface: AppColors.emeraldDark,
               onSurface: Colors.white,
             ),
           ),
@@ -246,7 +241,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                 ),
               ],
             ),
-            backgroundColor: _emeraldDark,
+            backgroundColor: AppColors.emeraldDark,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
@@ -280,13 +275,13 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -463,10 +458,10 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                 Container(
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.15),
+                    color: AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: Icon(icon, color: _gold, size: 20),
+                  child: Icon(icon, color: AppColors.gold, size: 20),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -488,7 +483,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                             Text(
                               '*',
                               style: TextStyle(
-                                color: hasError ? Colors.red : _gold,
+                                color: hasError ? Colors.red : AppColors.gold,
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -559,7 +554,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: _gold, width: 2),
+          borderSide: BorderSide(color: AppColors.gold, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
@@ -596,10 +591,10 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isSelected ? _gold : Colors.white.withOpacity(0.06),
+              color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
-                color: isSelected ? _gold : Colors.white.withOpacity(0.1),
+                color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.1),
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -631,7 +626,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 12.w),
-          child: Icon(Icons.arrow_forward, color: _gold.withOpacity(0.6)),
+          child: Icon(Icons.arrow_forward, color: AppColors.gold.withOpacity(0.6)),
         ),
         Expanded(
           child: _buildTimeButton(
@@ -704,14 +699,14 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: _gold.withOpacity(0.15),
+                      color: AppColors.gold.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Center(
                       child: Text(
                         '${index + 1}',
                         style: TextStyle(
-                          color: _gold,
+                          color: AppColors.gold,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -737,7 +732,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                   SizedBox(width: 8),
                   Icon(
                     Icons.edit,
-                    color: _gold.withOpacity(0.5),
+                    color: AppColors.gold.withOpacity(0.5),
                     size: 18,
                   ),
                 ],
@@ -764,10 +759,10 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                 duration: Duration(milliseconds: 200),
                 padding: EdgeInsets.symmetric(vertical: 14.h),
                 decoration: BoxDecoration(
-                  color: isSelected ? _gold : Colors.white.withOpacity(0.06),
+                  color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
-                    color: isSelected ? _gold : Colors.white.withOpacity(0.1),
+                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.1),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -833,12 +828,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                   decoration: BoxDecoration(
                     color: _recipients.isEmpty
                         ? Colors.red.withOpacity(0.2)
-                        : _gold.withOpacity(0.15),
+                        : AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     _recipients.isEmpty ? Icons.person_add : Icons.group,
-                    color: _recipients.isEmpty ? Colors.red[300] : _gold,
+                    color: _recipients.isEmpty ? Colors.red[300] : AppColors.gold,
                     size: 24,
                   ),
                 ),
@@ -886,9 +881,9 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
             children: _recipients.map((r) => Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -936,21 +931,21 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: _gold.withOpacity(0.1),
+        color: AppColors.gold.withOpacity(0.1),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: _gold.withOpacity(0.25)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.25)),
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.15),
+              color: AppColors.gold.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10.r),
             ),
             child: Icon(
               Icons.info_outline,
-              color: _gold,
+              color: AppColors.gold,
               size: 24,
             ),
           ),
@@ -962,7 +957,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                 Text(
                   'Система баллов',
                   style: TextStyle(
-                    color: _gold,
+                    color: AppColors.gold,
                     fontWeight: FontWeight.w600,
                     fontSize: 14.sp,
                   ),
@@ -998,7 +993,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
           child: ElevatedButton(
             onPressed: _isFormValid && !_isSubmitting ? _saveTask : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isFormValid ? _gold : Colors.grey[800],
+              backgroundColor: _isFormValid ? AppColors.gold : Colors.grey[800],
               foregroundColor: Colors.black,
               disabledBackgroundColor: Colors.grey[800],
               disabledForegroundColor: Colors.white54,

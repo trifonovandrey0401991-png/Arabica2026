@@ -17,6 +17,7 @@ import '../../recount/services/recount_service.dart';
 import '../../recount/pages/recount_report_view_page.dart';
 import '../../employees/services/user_role_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница "Мои Задачи" для работника с вкладками
 class MyTasksPage extends StatefulWidget {
@@ -34,16 +35,9 @@ class MyTasksPage extends StatefulWidget {
 }
 
 class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStateMixin {
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   static final _orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
   static final _greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
   static final _redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
-  static final _blueGradient = [Color(0xFF2196F3), Color(0xFF64B5F6)];
   static final _purpleGradient = [Color(0xFF7B1FA2), Color(0xFFBA68C8)];
 
   List<TaskAssignment> _assignments = [];
@@ -81,10 +75,11 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
     _employeeId = widget.employeeId ?? prefs.getString('user_phone') ?? _userPhone;
 
-    _loadAssignments();
+    if (mounted) _loadAssignments();
   }
 
   Future<void> _loadAssignments({bool forceRefresh = false}) async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
@@ -160,6 +155,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         }(),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _assignments = assignments;
         _recurringInstances = recurringInstances;
@@ -168,6 +164,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -205,7 +202,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       case TaskStatus.pending:
         return _orangeGradient;
       case TaskStatus.submitted:
-        return _blueGradient;
+        return [AppColors.info, Color(0xFF21CBF3)];
       case TaskStatus.approved:
         return _greenGradient;
       case TaskStatus.rejected:
@@ -239,13 +236,13 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     final expiredCount = _expiredAssignments.length + _expiredRecurring.length;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -308,7 +305,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                   child: Text(
                     TaskUtils.getMonthName(_selectedMonth, _selectedYear),
                     style: TextStyle(
-                      color: _gold.withOpacity(0.7),
+                      color: AppColors.gold.withOpacity(0.7),
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
@@ -327,7 +324,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             child: PopupMenuButton<Map<String, dynamic>>(
               icon: Icon(Icons.calendar_month, color: Colors.white.withOpacity(0.8), size: 20),
               tooltip: 'Выбрать месяц',
-              color: _emeraldDark,
+              color: AppColors.emeraldDark,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               onSelected: (monthData) {
                 setState(() {
@@ -345,7 +342,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     child: Row(
                       children: [
                         if (isSelected)
-                          Icon(Icons.check, size: 18, color: _gold)
+                          Icon(Icons.check, size: 18, color: AppColors.gold)
                         else
                           SizedBox(width: 18),
                         SizedBox(width: 8),
@@ -353,7 +350,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                           m['name'] as String,
                           style: TextStyle(
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? _gold : Colors.white.withOpacity(0.8),
+                            color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.8),
                           ),
                         ),
                       ],
@@ -393,12 +390,12 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         controller: _tabController,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: _gold.withOpacity(0.2),
+          color: AppColors.gold.withOpacity(0.2),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: _gold.withOpacity(0.4)),
+          border: Border.all(color: AppColors.gold.withOpacity(0.4)),
         ),
         dividerColor: Colors.transparent,
-        labelColor: _gold,
+        labelColor: AppColors.gold,
         unselectedLabelColor: Colors.white.withOpacity(0.5),
         labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.sp),
         unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w400, fontSize: 12.sp),
@@ -422,7 +419,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             height: 48,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              color: _gold.withOpacity(0.7),
+              color: AppColors.gold.withOpacity(0.7),
             ),
           ),
           SizedBox(height: 16),
@@ -488,8 +485,8 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
     return RefreshIndicator(
       onRefresh: _loadAssignments,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView(
         padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 24.h),
         children: [
@@ -527,20 +524,20 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: _gold.withOpacity(0.1),
+        color: AppColors.gold.withOpacity(0.1),
         borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: _gold.withOpacity(0.2)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(6.w),
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.2),
+              color: AppColors.gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: _gold.withOpacity(0.3)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
             ),
-            child: Icon(icon, size: 16, color: _gold),
+            child: Icon(icon, size: 16, color: AppColors.gold),
           ),
           SizedBox(width: 10),
           Text(
@@ -548,20 +545,20 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             style: TextStyle(
               fontSize: 14.sp,
               fontWeight: FontWeight.w600,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           Spacer(),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.2),
+              color: AppColors.gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(10.r),
             ),
             child: Text(
               count.toString(),
               style: TextStyle(
-                color: _gold,
+                color: AppColors.gold,
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
               ),
@@ -646,7 +643,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       statusIcon = Icons.check_circle;
       statusText = 'Выполнено';
     } else {
-      statusGradient = _blueGradient;
+      statusGradient = [AppColors.info, Color(0xFF21CBF3)];
       statusIcon = Icons.repeat;
       statusText = 'В работе';
     }
@@ -773,7 +770,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         builder: (context) => RecurringTaskResponsePage(instance: instance),
       ),
     );
-    if (result == true) {
+    if (result == true && mounted) {
       _loadAssignments();
     }
   }
@@ -1011,7 +1008,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         builder: (context) => ShiftReportViewPage(report: report),
       ),
     );
-    _loadAssignments();
+    if (mounted) _loadAssignments();
   }
 
   Widget _buildRecountReviewCard(RecountReport report) {
@@ -1119,7 +1116,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         builder: (context) => RecountReportViewPage(report: report),
       ),
     );
-    _loadAssignments();
+    if (mounted) _loadAssignments();
   }
 
   void _openTaskDetail(TaskAssignment assignment) {

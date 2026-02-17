@@ -347,7 +347,10 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
           ),
         ),
       ),
-    );
+    ).then((_) {
+      amountController.dispose();
+      commentController.dispose();
+    });
   }
 
   Future<void> _createRecord(Employee employee, double amount, String comment) async {

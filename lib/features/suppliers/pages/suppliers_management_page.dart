@@ -8,6 +8,7 @@ import '../../employees/services/employee_service.dart';
 import '../../tasks/services/recurring_task_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления поставщиками
 class SuppliersManagementPage extends StatefulWidget {
@@ -139,7 +140,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     end: Alignment.bottomRight,
                     colors: [
                       Color(0xFF00695C),
-                      Color(0xFF004D40),
+                      AppColors.primaryGreen,
                     ],
                   ),
                   borderRadius: BorderRadius.only(
@@ -203,7 +204,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       _buildSectionHeader(
                         icon: Icons.info_outline,
                         title: 'Основная информация',
-                        color: Color(0xFF004D40),
+                        color: AppColors.primaryGreen,
                       ),
                       SizedBox(height: 12),
                       _buildStyledTextField(
@@ -393,12 +394,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [Color(0xFF00695C), Color(0xFF004D40)],
+                            colors: [Color(0xFF00695C), AppColors.primaryGreen],
                           ),
                           borderRadius: BorderRadius.circular(14.r),
                           boxShadow: [
                             BoxShadow(
-                              color: Color(0xFF004D40).withOpacity(0.3),
+                              color: AppColors.primaryGreen.withOpacity(0.3),
                               blurRadius: 8,
                               offset: Offset(0, 4),
                             ),
@@ -642,7 +643,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     required bool isSelected,
     required VoidCallback onTap,
     IconData? icon,
-    Color color = const Color(0xFF004D40),
+    Color color = AppColors.primaryGreen,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -765,8 +766,8 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                     }
                     onDaysChanged(newDays);
                   },
-                  selectedColor: Color(0xFF004D40).withOpacity(0.3),
-                  checkmarkColor: Color(0xFF004D40),
+                  selectedColor: AppColors.primaryGreen.withOpacity(0.3),
+                  checkmarkColor: AppColors.primaryGreen,
                   padding: EdgeInsets.symmetric(horizontal: 4.w),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 );
@@ -902,7 +903,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                             }
                           });
                         },
-                        activeColor: Color(0xFF004D40),
+                        activeColor: AppColors.primaryGreen,
                         dense: true,
                       );
                     },
@@ -919,7 +920,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF004D40),
+                backgroundColor: AppColors.primaryGreen,
               ),
               child: Text('Применить'),
             ),
@@ -996,7 +997,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         title: Text('Поставщики'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
         actions: [
           IconButton(
@@ -1010,12 +1011,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF00695C), Color(0xFF004D40)],
+            colors: [Color(0xFF00695C), AppColors.primaryGreen],
           ),
           borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
-              color: Color(0xFF004D40).withOpacity(0.4),
+              color: AppColors.primaryGreen.withOpacity(0.4),
               blurRadius: 12,
               offset: Offset(0, 6),
             ),
@@ -1034,7 +1035,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Color(0xFF004D40),
+              color: AppColors.primaryGreen,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(24.r),
                 bottomRight: Radius.circular(24.r),
@@ -1096,7 +1097,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           ),
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: Color(0xFF004D40)))
+                ? Center(child: CircularProgressIndicator(color: AppColors.primaryGreen))
                 : _filteredSuppliers.isEmpty
                     ? Center(
                         child: Column(
@@ -1145,7 +1146,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       )
                     : RefreshIndicator(
                         onRefresh: _loadData,
-                        color: Color(0xFF004D40),
+                        color: AppColors.primaryGreen,
                         child: ListView.builder(
                           padding: EdgeInsets.all(16.w),
                           itemCount: _filteredSuppliers.length,
@@ -1202,7 +1203,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   Widget _buildSupplierCard(Supplier supplier) {
     final hasDelivery = supplier.shopsWithDeliveryCount > 0;
     final gradientColors = hasDelivery
-        ? [Color(0xFF00695C), Color(0xFF004D40)]
+        ? [Color(0xFF00695C), AppColors.primaryGreen]
         : [Colors.blueGrey[600]!, Colors.blueGrey[800]!];
 
     return Container(
@@ -1287,7 +1288,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                                 Container(
                                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                                   decoration: BoxDecoration(
-                                    color: Color(0xFF004D40).withOpacity(0.1),
+                                    color: AppColors.primaryGreen.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Text(
@@ -1295,7 +1296,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                                     style: TextStyle(
                                       fontSize: 11.sp,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF004D40),
+                                      color: AppColors.primaryGreen,
                                     ),
                                   ),
                                 ),
@@ -1542,7 +1543,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
               _showAddEditDialog(supplier);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF004D40),
+              backgroundColor: AppColors.primaryGreen,
             ),
             child: Text('Редактировать'),
           ),

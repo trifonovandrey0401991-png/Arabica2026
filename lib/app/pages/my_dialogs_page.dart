@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/theme/app_colors.dart';
 import '../../features/clients/models/network_message_model.dart';
 import '../../features/clients/models/management_message_model.dart';
 import '../../features/clients/services/network_message_service.dart';
@@ -164,15 +165,10 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     }
   }
 
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       floatingActionButton: _buildFloatingActionButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: Container(
@@ -180,7 +176,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -257,8 +253,8 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
           borderRadius: BorderRadius.circular(14.r),
           gradient: LinearGradient(
             colors: [
-              _emerald,
-              _emerald.withOpacity(0.8),
+              AppColors.emerald,
+              AppColors.emerald.withOpacity(0.8),
             ],
           ),
           border: Border.all(color: Colors.white.withOpacity(0.2)),

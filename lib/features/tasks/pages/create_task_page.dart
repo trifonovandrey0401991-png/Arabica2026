@@ -8,6 +8,7 @@ import '../services/task_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import 'task_recipient_selection_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница создания задачи (для админа)
 class CreateTaskPage extends StatefulWidget {
@@ -32,12 +33,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   List<TaskRecipient> _recipients = [];
   final List<File> _attachments = [];
   bool _isSubmitting = false;
-
-  // Цвета темы — dark emerald
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -66,9 +61,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.dark(
-              primary: _gold,
+              primary: AppColors.gold,
               onPrimary: Colors.black,
-              surface: _emeraldDark,
+              surface: AppColors.emeraldDark,
               onSurface: Colors.white,
             ),
           ),
@@ -85,9 +80,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: ColorScheme.dark(
-                primary: _gold,
+                primary: AppColors.gold,
                 onPrimary: Colors.black,
-                surface: _emeraldDark,
+                surface: AppColors.emeraldDark,
                 onSurface: Colors.white,
               ),
             ),
@@ -132,9 +127,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(source: ImageSource.camera, maxWidth: 1280, imageQuality: 75);
 
-    if (pickedFile != null) {
+    if (pickedFile != null && mounted) {
       setState(() {
         _attachments.add(File(pickedFile.path));
       });
@@ -143,8 +138,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   Future<void> _pickFromGallery() async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
+    final pickedFiles = await picker.pickMultiImage(maxWidth: 1280, imageQuality: 75);
 
+    if (!mounted) return;
     setState(() {
       for (final file in pickedFiles) {
         _attachments.add(File(file.path));
@@ -199,7 +195,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 ),
               ],
             ),
-            backgroundColor: _emeraldDark,
+            backgroundColor: AppColors.emeraldDark,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           ),
@@ -231,13 +227,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 0.7],
           ),
         ),
@@ -403,10 +399,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 Container(
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.15),
+                    color: AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: Icon(icon, color: _gold, size: 20),
+                  child: Icon(icon, color: AppColors.gold, size: 20),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -428,7 +424,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             Text(
                               '*',
                               style: TextStyle(
-                                color: hasError ? Colors.red : _gold,
+                                color: hasError ? Colors.red : AppColors.gold,
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -499,7 +495,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: _gold, width: 2),
+          borderSide: BorderSide(color: AppColors.gold, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
@@ -528,10 +524,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 duration: Duration(milliseconds: 200),
                 padding: EdgeInsets.symmetric(vertical: 14.h),
                 decoration: BoxDecoration(
-                  color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
+                  color: isSelected ? AppColors.gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(
-                    color: isSelected ? _gold : Colors.white.withOpacity(0.1),
+                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.1),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -539,14 +535,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   children: [
                     Icon(
                       _getResponseTypeIcon(type),
-                      color: isSelected ? _gold : Colors.white60,
+                      color: isSelected ? AppColors.gold : Colors.white60,
                       size: 24,
                     ),
                     SizedBox(height: 6),
                     Text(
                       type.displayName,
                       style: TextStyle(
-                        color: isSelected ? _gold : Colors.white70,
+                        color: isSelected ? AppColors.gold : Colors.white70,
                         fontSize: 12.sp,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
@@ -607,12 +603,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             Container(
               padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 Icons.event,
-                color: _gold,
+                color: AppColors.gold,
                 size: 24,
               ),
             ),
@@ -753,12 +749,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: _gold.withOpacity(0.4)),
+          border: Border.all(color: AppColors.gold.withOpacity(0.4)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: _gold, size: 20),
+            Icon(icon, color: AppColors.gold, size: 20),
             SizedBox(width: 8),
             Text(
               label,
@@ -797,12 +793,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   decoration: BoxDecoration(
                     color: _recipients.isEmpty
                         ? Colors.red.withOpacity(0.2)
-                        : _gold.withOpacity(0.15),
+                        : AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     _recipients.isEmpty ? Icons.person_add : Icons.group,
-                    color: _recipients.isEmpty ? Colors.red[300] : _gold,
+                    color: _recipients.isEmpty ? Colors.red[300] : AppColors.gold,
                     size: 24,
                   ),
                 ),
@@ -851,9 +847,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             children: _recipients.map((r) => Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: _gold.withOpacity(0.4)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.4)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -901,7 +897,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         border: Border(
           top: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
@@ -912,8 +908,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           child: ElevatedButton(
             onPressed: _isFormValid && !_isSubmitting ? _createTask : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isFormValid ? _gold : Colors.grey[800],
-              foregroundColor: _isFormValid ? _night : Colors.white54,
+              backgroundColor: _isFormValid ? AppColors.gold : Colors.grey[800],
+              foregroundColor: _isFormValid ? AppColors.night : Colors.white54,
               disabledBackgroundColor: Colors.grey[800],
               disabledForegroundColor: Colors.white54,
               padding: EdgeInsets.symmetric(vertical: 16.h),

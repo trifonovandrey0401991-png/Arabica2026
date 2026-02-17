@@ -6,6 +6,7 @@ import '../models/shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница просмотра отчета сдачи смены
 class ShiftHandoverReportViewPage extends StatefulWidget {
@@ -23,11 +24,6 @@ class ShiftHandoverReportViewPage extends StatefulWidget {
 }
 
 class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late ShiftHandoverReport _currentReport;
 
   @override
@@ -90,7 +86,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: _emeraldDark,
+              backgroundColor: AppColors.emeraldDark,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20.r),
               ),
@@ -156,7 +152,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                   : Colors.white.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(8.r),
                               border: isSelected
-                                  ? Border.all(color: _gold, width: 2)
+                                  ? Border.all(color: AppColors.gold, width: 2)
                                   : Border.all(color: Colors.white.withOpacity(0.1)),
                             ),
                             child: Center(
@@ -188,7 +184,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                         ElevatedButton(
                           onPressed: () => Navigator.of(context).pop(selectedRating),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _gold,
+                            backgroundColor: AppColors.gold,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
@@ -362,7 +358,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -741,7 +737,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: _night.withOpacity(0.8),
+                color: AppColors.night.withOpacity(0.8),
                 border: Border(
                   top: BorderSide(color: Colors.white.withOpacity(0.1)),
                 ),
@@ -920,7 +916,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                             style: TextStyle(fontSize: 18.sp),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _gold,
+                            backgroundColor: AppColors.gold,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 16.h),
                             shape: RoundedRectangleBorder(

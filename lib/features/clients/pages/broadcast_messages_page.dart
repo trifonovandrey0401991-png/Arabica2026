@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/management_message_model.dart';
 import '../services/management_message_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница "Что-то НОВОЕ!" — рассылки от руководства
@@ -18,11 +19,6 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
   bool _isLoading = true;
   String? _userPhone;
   final ScrollController _scrollController = ScrollController();
-
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -107,7 +103,7 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: _gold.withOpacity(0.2)),
+          border: Border.all(color: AppColors.gold.withOpacity(0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,13 +159,13 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -234,7 +230,7 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
               // Messages
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _messages.isEmpty
                         ? Center(
                             child: Column(

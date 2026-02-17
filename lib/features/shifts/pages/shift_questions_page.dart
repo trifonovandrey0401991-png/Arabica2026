@@ -14,6 +14,7 @@ import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../ai_training/pages/shift_ai_verification_page.dart';
 import '../../ai_training/services/shift_ai_verification_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -36,12 +37,6 @@ class ShiftQuestionsPage extends StatefulWidget {
 }
 
 class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<ShiftQuestion>? _questions;
   bool _isLoading = true;
   final List<ShiftAnswer> _answers = [];
@@ -142,12 +137,14 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
           }
         }
       }
+      if (!mounted) return;
       setState(() {
         _questions = questions;
         _isLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки вопросов', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -191,7 +188,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
           source = await showDialog<ImageSource>(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: _emeraldDark,
+              backgroundColor: AppColors.emeraldDark,
               title: Text('Выберите источник', style: TextStyle(color: Colors.white)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -229,6 +226,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
           final bytes = await photo.readAsBytes();
           final base64String = base64Encode(bytes);
           final dataUrl = 'data:image/jpeg;base64,$base64String';
+          if (!mounted) return;
           setState(() {
             _photoPath = dataUrl;
           });
@@ -239,6 +237,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
           final savedFile = File(path.join(appDir.path, fileName));
           final bytes = await photo.readAsBytes();
           await savedFile.writeAsBytes(bytes);
+          if (!mounted) return;
           setState(() {
             _photoPath = savedFile.path;
           });
@@ -578,7 +577,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
               context: context,
               barrierDismissible: false,
               builder: (context) => AlertDialog(
-                backgroundColor: _emeraldDark,
+                backgroundColor: AppColors.emeraldDark,
                 title: Row(
                   children: [
                     Icon(Icons.timer_off, color: Colors.red, size: 28),
@@ -596,7 +595,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                       Navigator.of(context).pop(); // Закрыть диалог
                       Navigator.of(context).popUntil((route) => route.isFirst); // Вернуться на главную
                     },
-                    child: Text('Понятно', style: TextStyle(color: _gold)),
+                    child: Text('Понятно', style: TextStyle(color: AppColors.gold)),
                   ),
                 ],
               ),
@@ -672,13 +671,13 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -687,7 +686,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
               children: [
                 _buildAppBar(context, 'Загрузка вопросов'),
                 Expanded(
-                  child: Center(child: CircularProgressIndicator(color: _gold)),
+                  child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
                 ),
               ],
             ),
@@ -698,13 +697,13 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
     if (_questions == null || _questions!.isEmpty) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -728,8 +727,8 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                         ElevatedButton(
                           onPressed: () => Navigator.pop(context),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _gold,
-                            foregroundColor: _night,
+                            backgroundColor: AppColors.gold,
+                            foregroundColor: AppColors.night,
                           ),
                           child: Text('Назад'),
                         ),
@@ -746,13 +745,13 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
     if (_currentQuestionIndex >= _questions!.length) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -782,13 +781,13 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     }
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -841,7 +840,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.r),
-                              borderSide: BorderSide(color: _gold, width: 2),
+                              borderSide: BorderSide(color: AppColors.gold, width: 2),
                             ),
                             filled: true,
                             fillColor: Colors.white.withOpacity(0.06),
@@ -882,7 +881,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                       style: TextStyle(
                                         fontSize: 16.sp,
                                         fontWeight: FontWeight.bold,
-                                        color: _gold,
+                                        color: AppColors.gold,
                                       ),
                                     ),
                                     SizedBox(height: 8),
@@ -986,8 +985,8 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                           icon: Icon(Icons.camera_alt),
                           label: Text(_photoPath == null ? 'Сфотографировать' : 'Изменить фото'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _gold,
-                            foregroundColor: _night,
+                            backgroundColor: AppColors.gold,
+                            foregroundColor: AppColors.night,
                             padding: EdgeInsets.symmetric(vertical: 16.h),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
@@ -1087,7 +1086,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.r),
-                              borderSide: BorderSide(color: _gold, width: 2),
+                              borderSide: BorderSide(color: AppColors.gold, width: 2),
                             ),
                             filled: true,
                             fillColor: Colors.white.withOpacity(0.06),
@@ -1155,12 +1154,12 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                               decoration: BoxDecoration(
                                 color: (_isSubmitting || !_canProceed())
                                     ? Colors.white.withOpacity(0.06)
-                                    : _gold,
+                                    : AppColors.gold,
                                 borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(
                                   color: (_isSubmitting || !_canProceed())
                                       ? Colors.white.withOpacity(0.1)
-                                      : _gold,
+                                      : AppColors.gold,
                                 ),
                               ),
                               child: Material(
@@ -1184,7 +1183,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                               width: 22,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2.5,
-                                                color: _gold,
+                                                color: AppColors.gold,
                                               ),
                                             ),
                                           )
@@ -1197,7 +1196,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                                   size: 20,
                                                   color: (_isSubmitting || !_canProceed())
                                                       ? Colors.white.withOpacity(0.3)
-                                                      : _night,
+                                                      : AppColors.night,
                                                 ),
                                                 SizedBox(width: 10),
                                               ],
@@ -1210,7 +1209,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                                   fontWeight: FontWeight.bold,
                                                   color: (_isSubmitting || !_canProceed())
                                                       ? Colors.white.withOpacity(0.3)
-                                                      : _night,
+                                                      : AppColors.night,
                                                 ),
                                               ),
                                               if (_currentQuestionIndex < _questions!.length - 1) ...[
@@ -1220,7 +1219,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                                   size: 18,
                                                   color: (_isSubmitting || !_canProceed())
                                                       ? Colors.white.withOpacity(0.3)
-                                                      : _night,
+                                                      : AppColors.night,
                                                 ),
                                               ],
                                             ],
@@ -1237,7 +1236,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                       LinearProgressIndicator(
                         value: (_currentQuestionIndex + 1) / _questions!.length,
                         backgroundColor: Colors.white.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                       ),
                       SizedBox(height: 8),
                       Text(

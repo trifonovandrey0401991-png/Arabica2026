@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Значок уровня - может быть иконкой или картинкой
 class LevelBadge {
@@ -463,7 +464,7 @@ class ClientPrize {
   Color get prizeColor {
     switch (prizeType) {
       case 'bonus_points':
-        return const Color(0xFF4CAF50);
+        return AppColors.success;
       case 'discount':
         return const Color(0xFF2196F3);
       case 'free_drink':

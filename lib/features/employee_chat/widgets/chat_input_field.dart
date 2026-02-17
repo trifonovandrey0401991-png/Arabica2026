@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Виджет поля ввода сообщения — dark emerald стиль
 class ChatInputField extends StatelessWidget {
@@ -8,9 +9,6 @@ class ChatInputField extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onAttach;
   final ValueChanged<String>? onChanged;
-
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _night = Color(0xFF051515);
 
   const ChatInputField({
     super.key,
@@ -26,7 +24,7 @@ class ChatInputField extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: BoxDecoration(
-        color: _night.withOpacity(0.95),
+        color: AppColors.night.withOpacity(0.95),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
       ),
       child: SafeArea(
@@ -100,7 +98,7 @@ class ChatInputField extends StatelessWidget {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: _emerald,
+                    color: AppColors.emerald,
                     borderRadius: BorderRadius.circular(23.r),
                     border: Border.all(color: Colors.white.withOpacity(0.15)),
                   ),

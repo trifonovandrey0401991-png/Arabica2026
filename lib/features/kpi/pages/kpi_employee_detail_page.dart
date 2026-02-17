@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
 import '../../../core/utils/logger.dart';
@@ -75,7 +76,7 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
               ? '${widget.employeeName} - ${widget.month}.${widget.year}'
               : widget.employeeName,
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -95,7 +96,7 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
                     // Статистика
                     Container(
                       padding: EdgeInsets.all(16.0.w),
-                      color: Color(0xFF004D40).withOpacity(0.1),
+                      color: AppColors.primaryGreen.withOpacity(0.1),
                       child: Column(
                         children: [
                           Row(
@@ -219,14 +220,14 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
   Widget _buildStatCard(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: Color(0xFF004D40)),
+        Icon(icon, color: AppColors.primaryGreen),
         SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF004D40),
+            color: AppColors.primaryGreen,
           ),
         ),
         Text(

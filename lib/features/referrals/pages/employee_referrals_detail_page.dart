@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/referral_service.dart';
 import '../models/referral_stats_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница детальной статистики приглашений сотрудника
 class EmployeeReferralsDetailPage extends StatefulWidget {
@@ -72,7 +73,7 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.employeeName} (#${widget.referralCode})'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -168,7 +169,7 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: isTotal ? Color(0xFF004D40) : Colors.grey[200],
+              color: isTotal ? AppColors.primaryGreen : Colors.grey[200],
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text(
@@ -192,7 +193,7 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
       margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Color(0xFF004D40),
+          backgroundColor: AppColors.primaryGreen,
           child: Icon(Icons.person, color: Colors.white),
         ),
         title: Text(

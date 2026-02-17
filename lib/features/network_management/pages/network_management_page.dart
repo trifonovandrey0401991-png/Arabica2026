@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/network_management_service.dart';
 import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
@@ -23,10 +24,6 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   String? _currentUserPhone;
   bool _isLoading = true;
 
-  // Цветовая схема
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
   static final Color _accent = Color(0xFF2DD4BF);
 
   // Данные для вкладок
@@ -92,13 +89,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -852,7 +849,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Добавить управляющего', style: TextStyle(color: Colors.white)),
         content: Column(
@@ -900,7 +897,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _emeraldDark,
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Магазины: ${manager['name']}', style: TextStyle(color: Colors.white)),
           content: SizedBox(
@@ -917,7 +914,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                         subtitle: Text(shop.address, style: TextStyle(color: Colors.white.withOpacity(0.5))),
                         value: selectedShops.contains(shop.id),
                         activeColor: _accent,
-                        checkColor: _night,
+                        checkColor: AppColors.night,
                         onChanged: (value) {
                           setDialogState(() {
                             if (value == true) {
@@ -986,7 +983,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _emeraldDark,
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Сотрудники: ${manager['name']}', style: TextStyle(color: Colors.white)),
           content: SizedBox(
@@ -1079,7 +1076,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                                 ),
                                 value: isSelected,
                                 activeColor: _accent,
-                                checkColor: _night,
+                                checkColor: AppColors.night,
                                 onChanged: (value) {
                                   setDialogState(() {
                                     if (value == true) {
@@ -1175,7 +1172,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _emeraldDark,
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Назначить: $shopName', style: TextStyle(color: Colors.white)),
           content: Column(
@@ -1262,7 +1259,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _emeraldDark,
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Перевести: ${_formatPhone(employeePhone)}', style: TextStyle(color: Colors.white)),
           content: Column(
@@ -1344,7 +1341,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _emeraldDark,
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Добавить заведующую', style: TextStyle(color: Colors.white)),
           content: SizedBox(
@@ -1360,7 +1357,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 DropdownButtonFormField<String>(
                   value: selectedShopId,
                   isExpanded: true,
-                  dropdownColor: _emeraldDark,
+                  dropdownColor: AppColors.emeraldDark,
                   style: TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     prefixIcon: Icon(Icons.store, color: Colors.white60),
@@ -1441,7 +1438,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _emeraldDark,
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Редактировать: ${_formatPhone(phone)}', style: TextStyle(color: Colors.white)),
           content: SizedBox(
@@ -1455,7 +1452,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 DropdownButtonFormField<String>(
                   value: selectedShopId,
                   isExpanded: true,
-                  dropdownColor: _emeraldDark,
+                  dropdownColor: AppColors.emeraldDark,
                   style: TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     prefixIcon: Icon(Icons.store, color: Colors.white60),
@@ -1589,7 +1586,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(title, style: TextStyle(color: Colors.white)),
         content: _buildTextField(controller, label, icon, hint: hint),
@@ -1616,7 +1613,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(title, style: TextStyle(color: Colors.white)),
         content: Text(content, style: TextStyle(color: Colors.white.withOpacity(0.8))),

@@ -7,7 +7,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Сервис для генерации PDF графика работы
 class SchedulePdfService {
-  // Цвета для смен (фоновые цвета как в приложении)
   static final _morningColor = PdfColor.fromInt(0xFFB9F6CA); // Салатовый - утро
   static final _dayColor = PdfColor.fromInt(0xFFFFF59D); // Светло-жёлтый - день
   static final _eveningColor = PdfColor.fromInt(0xFFE0E0E0); // Светло-серый - вечер

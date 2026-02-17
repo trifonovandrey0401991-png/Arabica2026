@@ -9,6 +9,7 @@ import '../services/rko_reports_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 // http оставлен для скачивания binary файлов (DOCX/PDF) с сервера
 
@@ -98,7 +99,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
               : widget.fileName,
             overflow: TextOverflow.ellipsis,
           ),
-          backgroundColor: Color(0xFF004D40),
+          backgroundColor: AppColors.primaryGreen,
         ),
         body: _isLoading
             ? Center(child: CircularProgressIndicator())
@@ -134,7 +135,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.description, size: 80, color: Color(0xFF004D40)),
+                        Icon(Icons.description, size: 80, color: AppColors.primaryGreen),
                         SizedBox(height: 24),
                         Text(
                           'Файл Word (.docx)',
@@ -155,7 +156,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
                           icon: Icon(Icons.open_in_new),
                           label: Text('Открыть в приложении'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF004D40),
+                            backgroundColor: AppColors.primaryGreen,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                           ),
@@ -175,7 +176,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
             : widget.fileName,
           overflow: TextOverflow.ellipsis,
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: _errorMessage != null
           ? Center(
@@ -223,4 +224,3 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
     );
   }
 }
-

@@ -11,6 +11,7 @@ import '../../shops/models/shop_model.dart';
 import '../../kpi/services/kpi_service.dart';
 import '../../kpi/models/kpi_models.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница моего графика (для просмотра личного графика сотрудника)
 class MySchedulePage extends StatefulWidget {
@@ -28,12 +29,6 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   String? _employeeName;
   bool _isLoading = false;
   String? _error;
-
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   // Кэш времени смен для магазинов
   Map<String, Map<ShiftType, ShiftTimeInfo>> _shiftTimes = {};
@@ -314,13 +309,13 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -437,17 +432,17 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
         decoration: BoxDecoration(
-          color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+          color: isSelected ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
-            color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+            color: isSelected ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: isSelected ? _gold : Colors.white.withOpacity(0.5)),
+            Icon(icon, size: 16, color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.5)),
             SizedBox(width: 4),
             Flexible(
               child: Text(
@@ -455,7 +450,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                 style: TextStyle(
                   fontSize: 11.sp,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                  color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.6),
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -486,7 +481,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: _gold, strokeWidth: 3),
+            CircularProgressIndicator(color: AppColors.gold, strokeWidth: 3),
             SizedBox(height: 20),
             Text('Загрузка графика...', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ],
@@ -566,7 +561,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
             Container(
               padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.3),
+                color: AppColors.emerald.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 56, color: Colors.white.withOpacity(0.4)),
@@ -593,7 +588,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildGradientButton(String label, IconData icon, VoidCallback onPressed) {
     return Container(
       decoration: BoxDecoration(
-        color: _emerald,
+        color: AppColors.emerald,
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
@@ -646,13 +641,13 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.2),
+                  color: AppColors.gold.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(color: _gold.withOpacity(0.4)),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                 ),
                 child: Text(
                   '${entriesWithDates.length} смен',
-                  style: TextStyle(color: _gold, fontWeight: FontWeight.bold, fontSize: 13.sp),
+                  style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 13.sp),
                 ),
               ),
             ],
@@ -689,7 +684,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
-          color: isToday ? _gold.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+          color: isToday ? AppColors.gold.withOpacity(0.6) : Colors.white.withOpacity(0.1),
           width: isToday ? 1.5 : 1,
         ),
       ),
@@ -703,11 +698,11 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
               height: 66,
               decoration: BoxDecoration(
                 color: isToday
-                    ? _gold.withOpacity(0.2)
+                    ? AppColors.gold.withOpacity(0.2)
                     : entry.shiftType.color.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12.r),
                 border: isToday
-                    ? Border.all(color: _gold.withOpacity(0.4))
+                    ? Border.all(color: AppColors.gold.withOpacity(0.4))
                     : null,
               ),
               child: Column(
@@ -718,14 +713,14 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                     style: TextStyle(
                       fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
-                      color: isToday ? _gold : entry.shiftType.color,
+                      color: isToday ? AppColors.gold : entry.shiftType.color,
                     ),
                   ),
                   Text(
                     _getWeekdayShort(day.weekday),
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: isToday ? _gold.withOpacity(0.7) : entry.shiftType.color.withOpacity(0.7),
+                      color: isToday ? AppColors.gold.withOpacity(0.7) : entry.shiftType.color.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -791,13 +786,13 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.2),
+                  color: AppColors.gold.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: _gold.withOpacity(0.4)),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                 ),
                 child: Text(
                   'Сегодня',
-                  style: TextStyle(color: _gold, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppColors.gold, fontSize: 11.sp, fontWeight: FontWeight.w600),
                 ),
               ),
           ],
@@ -825,7 +820,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatChip('Всего', '${futureEntries.length}', _gold),
+          _buildStatChip('Всего', '${futureEntries.length}', AppColors.gold),
           _buildStatChip('Утро', '${futureEntries.where((e) => e.shiftType == ShiftType.morning).length}', ShiftType.morning.color),
           _buildStatChip('День', '${futureEntries.where((e) => e.shiftType == ShiftType.day).length}', ShiftType.day.color),
           _buildStatChip('Вечер', '${futureEntries.where((e) => e.shiftType == ShiftType.evening).length}', ShiftType.evening.color),
@@ -912,7 +907,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildNotificationsTab() {
     if (_isLoadingNotifications) {
       return Center(
-        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
+        child: CircularProgressIndicator(color: AppColors.gold, strokeWidth: 3),
       );
     }
 
@@ -927,7 +922,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadNotifications,
-      color: _gold,
+      color: AppColors.gold,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: _notifications.length,
@@ -942,7 +937,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildOutgoingRequestsTab() {
     if (_isLoadingOutgoing) {
       return Center(
-        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
+        child: CircularProgressIndicator(color: AppColors.gold, strokeWidth: 3),
       );
     }
 
@@ -957,7 +952,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadOutgoingRequests,
-      color: _gold,
+      color: AppColors.gold,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: _outgoingRequests.length,
@@ -1125,7 +1120,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _emerald,
+                    color: AppColors.emerald,
                     borderRadius: BorderRadius.circular(10.r),
                     border: Border.all(color: Colors.white.withOpacity(0.15)),
                   ),
@@ -1209,7 +1204,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: _emerald,
+                        color: AppColors.emerald,
                         borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(color: Colors.white.withOpacity(0.15)),
                       ),
@@ -1288,7 +1283,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
             'на ${request.shiftDate.day} ${_getMonthName(request.shiftDate.month)}?\n\n'
             'После принятия запрос будет отправлен администратору на одобрение.',
         confirmText: 'Принять',
-        confirmColor: _emerald,
+        confirmColor: AppColors.emerald,
       ),
     );
 
@@ -1346,7 +1341,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     required Color confirmColor,
   }) {
     return AlertDialog(
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       title: Text(title, style: TextStyle(color: Colors.white.withOpacity(0.9))),
       content: Text(content, style: TextStyle(color: Colors.white.withOpacity(0.7))),
@@ -1603,7 +1598,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildWorkedTab() {
     if (_isLoadingWorked) {
       return Center(
-        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
+        child: CircularProgressIndicator(color: AppColors.gold, strokeWidth: 3),
       );
     }
 
@@ -1618,7 +1613,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadWorkedHistory,
-      color: _gold,
+      color: AppColors.gold,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: _workedShifts.length,
@@ -1784,7 +1779,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Widget _buildGeneralScheduleTab() {
     if (_isLoadingGeneral) {
       return Center(
-        child: CircularProgressIndicator(color: _gold, strokeWidth: 3),
+        child: CircularProgressIndicator(color: AppColors.gold, strokeWidth: 3),
       );
     }
 
@@ -1808,7 +1803,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     return RefreshIndicator(
       onRefresh: _loadGeneralSchedule,
-      color: _gold,
+      color: AppColors.gold,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: sortedDates.length,
@@ -1837,7 +1832,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
-          color: isToday ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+          color: isToday ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
           width: isToday ? 1.5 : 1,
         ),
       ),
@@ -1857,9 +1852,9 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: isToday ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                  color: isToday ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12.r),
-                  border: isToday ? Border.all(color: _gold.withOpacity(0.4)) : null,
+                  border: isToday ? Border.all(color: AppColors.gold.withOpacity(0.4)) : null,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1869,14 +1864,14 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 17.sp,
-                        color: isToday ? _gold : Colors.white.withOpacity(0.9),
+                        color: isToday ? AppColors.gold : Colors.white.withOpacity(0.9),
                       ),
                     ),
                     Text(
                       _getWeekdayShort(date.weekday),
                       style: TextStyle(
                         fontSize: 11.sp,
-                        color: isToday ? _gold.withOpacity(0.7) : Colors.white.withOpacity(0.5),
+                        color: isToday ? AppColors.gold.withOpacity(0.7) : Colors.white.withOpacity(0.5),
                       ),
                     ),
                   ],
@@ -1902,13 +1897,13 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.2),
+                    color: AppColors.gold.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: _gold.withOpacity(0.4)),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                   ),
                   child: Text(
                     'Сегодня',
-                    style: TextStyle(color: _gold, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: AppColors.gold, fontSize: 11.sp, fontWeight: FontWeight.w600),
                   ),
                 ),
             ],
@@ -2014,10 +2009,6 @@ class _ShiftSelectionDialog extends StatelessWidget {
     required this.shiftTimes,
   });
 
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   String _getShiftTimeRange(WorkScheduleEntry entry) {
     final shopTimes = shiftTimes[entry.shopAddress];
     if (shopTimes != null) {
@@ -2051,7 +2042,7 @@ class _ShiftSelectionDialog extends StatelessWidget {
     ).toList();
 
     return Dialog(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Container(
         constraints: BoxConstraints(
@@ -2062,7 +2053,7 @@ class _ShiftSelectionDialog extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.4, 1.0],
           ),
           borderRadius: BorderRadius.circular(24.r),
@@ -2257,11 +2248,6 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
   bool _sendToAll = false;
   final TextEditingController _commentController = TextEditingController();
 
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   @override
   void dispose() {
     _commentController.dispose();
@@ -2278,7 +2264,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
     final day = widget.entry.date;
 
     return Dialog(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Container(
         constraints: BoxConstraints(
@@ -2289,7 +2275,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
           borderRadius: BorderRadius.circular(24.r),
@@ -2411,10 +2397,10 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                       child: Container(
                         padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
-                          color: _sendToAll ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                          color: _sendToAll ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(14.r),
                           border: Border.all(
-                            color: _sendToAll ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+                            color: _sendToAll ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
                           ),
                         ),
                         child: Row(
@@ -2422,12 +2408,12 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                             Container(
                               padding: EdgeInsets.all(10.w),
                               decoration: BoxDecoration(
-                                color: _sendToAll ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+                                color: _sendToAll ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
                                 borderRadius: BorderRadius.circular(10.r),
                               ),
                               child: Icon(
                                 Icons.campaign,
-                                color: _sendToAll ? _gold : Colors.white.withOpacity(0.5),
+                                color: _sendToAll ? AppColors.gold : Colors.white.withOpacity(0.5),
                                 size: 24,
                               ),
                             ),
@@ -2440,21 +2426,21 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                                     'Отправить всем',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: _sendToAll ? _gold : Colors.white.withOpacity(0.8),
+                                      color: _sendToAll ? AppColors.gold : Colors.white.withOpacity(0.8),
                                     ),
                                   ),
                                   Text(
                                     'Все сотрудники получат уведомление',
                                     style: TextStyle(
                                       fontSize: 12.sp,
-                                      color: _sendToAll ? _gold.withOpacity(0.7) : Colors.white.withOpacity(0.4),
+                                      color: _sendToAll ? AppColors.gold.withOpacity(0.7) : Colors.white.withOpacity(0.4),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             if (_sendToAll)
-                              Icon(Icons.check_circle, color: _gold),
+                              Icon(Icons.check_circle, color: AppColors.gold),
                           ],
                         ),
                       ),
@@ -2493,9 +2479,9 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                               padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                               margin: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                               decoration: BoxDecoration(
-                                color: isSelected ? _emerald.withOpacity(0.4) : Colors.transparent,
+                                color: isSelected ? AppColors.emerald.withOpacity(0.4) : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10.r),
-                                border: isSelected ? Border.all(color: _emerald) : null,
+                                border: isSelected ? Border.all(color: AppColors.emerald) : null,
                               ),
                               child: Row(
                                 children: [
@@ -2503,7 +2489,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                                     width: 40,
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: isSelected ? _emerald : Colors.white.withOpacity(0.08),
+                                      color: isSelected ? AppColors.emerald : Colors.white.withOpacity(0.08),
                                       borderRadius: BorderRadius.circular(10.r),
                                     ),
                                     child: Center(
@@ -2537,7 +2523,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                                     ),
                                   ),
                                   if (isSelected)
-                                    Icon(Icons.check_circle, color: _gold, size: 22),
+                                    Icon(Icons.check_circle, color: AppColors.gold, size: 22),
                                 ],
                               ),
                             ),
@@ -2595,7 +2581,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                     flex: 2,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: (_sendToAll || _selectedEmployeeId != null) ? _emerald : Colors.white.withOpacity(0.06),
+                        color: (_sendToAll || _selectedEmployeeId != null) ? AppColors.emerald : Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(
                           color: (_sendToAll || _selectedEmployeeId != null)

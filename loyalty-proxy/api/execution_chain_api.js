@@ -12,20 +12,11 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const CONFIG_DIR = path.join(DATA_DIR, 'execution-chain');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ═══════════════════════════════════════════════════
 // Доступные модули для цепочки

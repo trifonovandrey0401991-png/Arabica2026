@@ -2,12 +2,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/kpi_models.dart';
 import '../../recount/services/recount_service.dart';
 import '../../recount/models/recount_report_model.dart';
 import '../../shifts/services/shift_report_service.dart';
 import '../../shifts/models/shift_report_model.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -89,7 +91,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
 
     try {
       Logger.debug('📄 Попытка загрузки РКО: ${widget.shopDayData.rkoFileName}');
-      final serverUrl = 'https://arabica26.ru';
+      final serverUrl = ApiConstants.serverUrl;
       // Используем query параметр вместо path параметра для правильной обработки кириллицы
       final uri = Uri.parse('$serverUrl/api/rko/download').replace(
         queryParameters: {'fileName': widget.shopDayData.rkoFileName!},
@@ -120,7 +122,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.shopDayData.displayTitle),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: _isLoadingDetails
           ? Center(child: CircularProgressIndicator())
@@ -189,7 +191,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                   if (widget.shopDayData.attendanceTime != null)
                     Card(
                       child: ListTile(
-                        leading: Icon(Icons.access_time, color: Color(0xFF004D40)),
+                        leading: Icon(Icons.access_time, color: AppColors.primaryGreen),
                         title: Text('Время прихода'),
                         subtitle: Text(
                           widget.shopDayData.formattedAttendanceTime ?? '',

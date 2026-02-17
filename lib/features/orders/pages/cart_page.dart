@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/providers/order_provider.dart';
 import '../../../core/services/notification_service.dart';
@@ -13,12 +14,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
 
-  // Dark Emerald палитра
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   Widget _buildNoPhotoPlaceholder() {
     return Container(
       width: 60,
@@ -30,7 +25,7 @@ class CartPage extends StatelessWidget {
       child: Icon(
         Icons.local_cafe_rounded,
         size: 28,
-        color: _gold,
+        color: AppColors.gold,
       ),
     );
   }
@@ -61,13 +56,13 @@ class CartPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -93,7 +88,7 @@ class CartPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 12),
-                    Icon(Icons.shopping_cart_rounded, color: _gold, size: 24),
+                    Icon(Icons.shopping_cart_rounded, color: AppColors.gold, size: 24),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -113,14 +108,14 @@ class CartPage extends StatelessWidget {
                         return Container(
                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            color: _gold.withOpacity(0.2),
+                            color: AppColors.gold.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(color: _gold.withOpacity(0.4)),
+                            border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                           ),
                           child: Text(
                             '$count',
                             style: TextStyle(
-                              color: _gold,
+                              color: AppColors.gold,
                               fontWeight: FontWeight.bold,
                               fontSize: 14.sp,
                             ),
@@ -215,12 +210,12 @@ class CartPage extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_back_rounded, color: _gold, size: 18),
+                  Icon(Icons.arrow_back_rounded, color: AppColors.gold, size: 18),
                   SizedBox(width: 8),
                   Text(
                     'В меню',
                     style: TextStyle(
-                      color: _gold,
+                      color: AppColors.gold,
                       fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -237,19 +232,19 @@ class CartPage extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.1),
+                color: AppColors.gold.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14.r),
-                border: Border.all(color: _gold.withOpacity(0.25)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.25)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.receipt_long_rounded, color: _gold, size: 18),
+                  Icon(Icons.receipt_long_rounded, color: AppColors.gold, size: 18),
                   SizedBox(width: 8),
                   Text(
                     'Просмотр заказов',
                     style: TextStyle(
-                      color: _gold,
+                      color: AppColors.gold,
                       fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -299,7 +294,7 @@ class CartPage extends StatelessWidget {
                   Text(
                     '${cartItem.menuItem.price} × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} руб.',
                     style: TextStyle(
-                      color: _gold,
+                      color: AppColors.gold,
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -370,7 +365,7 @@ class CartPage extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10.r),
         ),
-        child: Icon(icon, color: _gold, size: 20),
+        child: Icon(icon, color: AppColors.gold, size: 20),
       ),
     );
   }
@@ -379,7 +374,7 @@ class CartPage extends StatelessWidget {
     return Container(
       padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
       decoration: BoxDecoration(
-        color: _emeraldDark.withOpacity(0.9),
+        color: AppColors.emeraldDark.withOpacity(0.9),
         border: Border(
           top: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
@@ -400,16 +395,16 @@ class CartPage extends StatelessWidget {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.15),
+                  color: AppColors.gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: _gold.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                 ),
                 child: Text(
                   '${cart.totalPrice.toStringAsFixed(0)} руб.',
                   style: TextStyle(
                     fontSize: 22.sp,
                     fontWeight: FontWeight.bold,
-                    color: _gold,
+                    color: AppColors.gold,
                   ),
                 ),
               ),
@@ -432,14 +427,14 @@ class CartPage extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.receipt_long_rounded, size: 18, color: _gold),
+                  Icon(Icons.receipt_long_rounded, size: 18, color: AppColors.gold),
                   SizedBox(width: 8),
                   Text(
                     'Просмотр заказов',
                     style: TextStyle(
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w600,
-                      color: _gold,
+                      color: AppColors.gold,
                     ),
                   ),
                 ],
@@ -456,12 +451,12 @@ class CartPage extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 14.h),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [_gold.withOpacity(0.9), _gold],
+                        colors: [AppColors.gold.withOpacity(0.9), AppColors.gold],
                       ),
                       borderRadius: BorderRadius.circular(14.r),
                       boxShadow: [
                         BoxShadow(
-                          color: _gold.withOpacity(0.3),
+                          color: AppColors.gold.withOpacity(0.3),
                           blurRadius: 8,
                           offset: Offset(0, 4),
                         ),
@@ -494,7 +489,7 @@ class CartPage extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.message_outlined, size: 18, color: _gold),
+                        Icon(Icons.message_outlined, size: 18, color: AppColors.gold),
                         SizedBox(width: 6),
                         Flexible(
                           child: Text(
@@ -631,7 +626,7 @@ class CartPage extends StatelessWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Заказ успешно оформлен!'),
-                            backgroundColor: Color(0xFF004D40),
+                            backgroundColor: AppColors.primaryGreen,
                             duration: Duration(seconds: 2),
                           ),
                         );
@@ -649,7 +644,7 @@ class CartPage extends StatelessWidget {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF004D40),
+                    backgroundColor: AppColors.primaryGreen,
                     padding: EdgeInsets.symmetric(vertical: 16.h),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.r),
@@ -678,19 +673,19 @@ class CartPage extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.r),
         ),
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Column(
           children: [
             Container(
               padding: EdgeInsets.all(14.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.access_time_rounded,
                 size: 32,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 12),
@@ -760,7 +755,7 @@ class CartPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(color: _gold.withOpacity(0.3)),
+            border: Border.all(color: AppColors.gold.withOpacity(0.3)),
           ),
           child: Column(
             children: [
@@ -769,7 +764,7 @@ class CartPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28.sp,
                   fontWeight: FontWeight.bold,
-                  color: _gold,
+                  color: AppColors.gold,
                 ),
               ),
               Text(
@@ -827,7 +822,7 @@ class CartPage extends StatelessWidget {
               Text('Заказ успешно создан!'),
             ],
           ),
-          backgroundColor: _emerald,
+          backgroundColor: AppColors.emerald,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           margin: EdgeInsets.all(16.w),
@@ -855,19 +850,19 @@ class CartPage extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.r),
         ),
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 Icons.edit_note_rounded,
                 size: 24,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(width: 12),
@@ -891,7 +886,7 @@ class CartPage extends StatelessWidget {
                   controller: controller,
                   maxLines: 3,
                   style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                  cursorColor: _gold,
+                  cursorColor: AppColors.gold,
                   decoration: InputDecoration(
                     hintText: 'Напишите пожелания к заказу...',
                     hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -907,7 +902,7 @@ class CartPage extends StatelessWidget {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.r),
-                      borderSide: BorderSide(color: _gold, width: 2),
+                      borderSide: BorderSide(color: AppColors.gold, width: 2),
                     ),
                     contentPadding: EdgeInsets.all(14.w),
                   ),
@@ -928,7 +923,7 @@ class CartPage extends StatelessWidget {
                           height: 46,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [_gold.withOpacity(0.9), _gold],
+                              colors: [AppColors.gold.withOpacity(0.9), AppColors.gold],
                             ),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
@@ -1015,7 +1010,7 @@ class CartPage extends StatelessWidget {
               Navigator.of(dialogContext).pop();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF004D40),
+              backgroundColor: AppColors.primaryGreen,
             ),
             child: Text('Готово'),
           ),

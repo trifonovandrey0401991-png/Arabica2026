@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../../features/work_schedule/work_schedule_validator.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -140,7 +141,7 @@ class ScheduleErrorsDialog extends StatelessWidget {
           _formatErrorDate(error.date),
           style: TextStyle(color: Colors.grey[600]),
         ),
-        trailing: Icon(Icons.arrow_forward, color: Color(0xFF004D40)),
+        trailing: Icon(Icons.arrow_forward, color: AppColors.primaryGreen),
         onTap: () {
           Navigator.of(context).pop();
           onErrorTap(error);

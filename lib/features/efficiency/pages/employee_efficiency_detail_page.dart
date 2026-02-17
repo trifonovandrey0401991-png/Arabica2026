@@ -6,6 +6,7 @@ import '../utils/efficiency_utils.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
 import '../../employees/services/employee_service.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница детальной информации об эффективности сотрудника
@@ -26,10 +27,6 @@ class EmployeeEfficiencyDetailPage extends StatefulWidget {
 
 class _EmployeeEfficiencyDetailPageState
     extends State<EmployeeEfficiencyDetailPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   EmployeeReferralPoints? _referralPoints;
   bool _isLoadingReferrals = true;
@@ -74,7 +71,7 @@ class _EmployeeEfficiencyDetailPageState
   void _showExportMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
@@ -83,7 +80,7 @@ class _EmployeeEfficiencyDetailPageState
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.text_snippet, color: _gold),
+              leading: Icon(Icons.text_snippet, color: AppColors.gold),
               title: Text('Копировать как текст', style: TextStyle(color: Colors.white)),
               subtitle: Text('Форматированный отчёт', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
@@ -92,7 +89,7 @@ class _EmployeeEfficiencyDetailPageState
               },
             ),
             ListTile(
-              leading: Icon(Icons.table_chart, color: _gold),
+              leading: Icon(Icons.table_chart, color: AppColors.gold),
               title: Text('Копировать как CSV', style: TextStyle(color: Colors.white)),
               subtitle: Text('Для Excel/Google Sheets', style: TextStyle(color: Colors.white.withOpacity(0.5))),
               onTap: () {
@@ -116,7 +113,7 @@ class _EmployeeEfficiencyDetailPageState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Отчёт скопирован в буфер обмена'),
-        backgroundColor: _emerald,
+        backgroundColor: AppColors.emerald,
         duration: Duration(seconds: 2),
       ),
     );
@@ -132,7 +129,7 @@ class _EmployeeEfficiencyDetailPageState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('CSV скопирован в буфер обмена'),
-        backgroundColor: _emerald,
+        backgroundColor: AppColors.emerald,
         duration: Duration(seconds: 2),
       ),
     );
@@ -141,13 +138,13 @@ class _EmployeeEfficiencyDetailPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emeraldDark, _night],
+            colors: [AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3],
           ),
         ),
@@ -175,7 +172,7 @@ class _EmployeeEfficiencyDetailPageState
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.ios_share, color: _gold, size: 22),
+                      icon: Icon(Icons.ios_share, color: AppColors.gold, size: 22),
                       tooltip: 'Экспорт',
                       onPressed: () => _showExportMenu(context),
                     ),
@@ -254,7 +251,7 @@ class _EmployeeEfficiencyDetailPageState
             style: TextStyle(
               fontSize: 16.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 12),
@@ -278,13 +275,13 @@ class _EmployeeEfficiencyDetailPageState
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: _emerald.withOpacity(0.5),
+              color: AppColors.emerald.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(
               Icons.store,
               size: 20,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(width: 12),
@@ -300,7 +297,7 @@ class _EmployeeEfficiencyDetailPageState
             style: TextStyle(
               fontSize: 16.sp,
               fontWeight: FontWeight.w600,
-              color: isPositive ? Color(0xFF4CAF50) : Color(0xFFEF5350),
+              color: isPositive ? AppColors.success : Color(0xFFEF5350),
             ),
           ),
         ],
@@ -363,12 +360,12 @@ class _EmployeeEfficiencyDetailPageState
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _emerald.withOpacity(0.5),
+              color: AppColors.emerald.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(
               Icons.person_add_alt_outlined,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(width: 12),
@@ -401,7 +398,7 @@ class _EmployeeEfficiencyDetailPageState
             style: TextStyle(
               fontSize: 18.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(width: 4),

@@ -38,7 +38,7 @@ async function ensureDir() {
 
 // Сохранить настройки и инвалидировать кэш
 async function saveSettings(filePath, data) {
-  await saveSettings(filePath, data);
+  await writeJsonFile(filePath, data);
   invalidatePointsSettings();
 }
 

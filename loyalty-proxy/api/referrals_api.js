@@ -938,7 +938,7 @@ function setupReferralsAPI(app) {
       await writeJsonFile(clientFile, client);
 
       if (USE_DB) {
-        try { await db.upsert('clients', { phone: normalizedPhone, data: client, updated_at: client.updatedAt }); }
+        try { await db.upsert('clients', { phone: normalizedPhone, data: client, updated_at: client.updatedAt }, 'phone'); }
         catch (dbErr) { console.error('DB update client referral-status error:', dbErr.message); }
       }
 

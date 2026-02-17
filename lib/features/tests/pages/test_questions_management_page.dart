@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/test_model.dart';
 import '../services/test_question_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления вопросами тестирования
 class TestQuestionsManagementPage extends StatefulWidget {
@@ -19,13 +20,6 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   String _searchQuery = '';
   final _searchController = TextEditingController();
   int _testDurationMinutes = 7;
-
-  // Единая палитра приложения (как в test_page)
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
-
   @override
   void initState() {
     super.initState();
@@ -213,13 +207,13 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -235,15 +229,15 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddQuestionDialog,
-        backgroundColor: _gold.withOpacity(0.2),
-        icon: Icon(Icons.add_rounded, color: _gold),
+        backgroundColor: AppColors.gold.withOpacity(0.2),
+        icon: Icon(Icons.add_rounded, color: AppColors.gold),
         label: Text(
           'Добавить',
-          style: TextStyle(color: _gold, fontWeight: FontWeight.w600),
+          style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600),
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
-          side: BorderSide(color: _gold.withOpacity(0.4)),
+          side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
         ),
         elevation: 0,
       ),
@@ -295,12 +289,12 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
           // Кнопка настроек
           Container(
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.12),
+              color: AppColors.gold.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: _gold.withOpacity(0.25)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.25)),
             ),
             child: IconButton(
-              icon: Icon(Icons.settings_rounded, color: _gold, size: 20),
+              icon: Icon(Icons.settings_rounded, color: AppColors.gold, size: 20),
               onPressed: _showSettingsDialog,
               tooltip: 'Настройки теста',
             ),
@@ -363,7 +357,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: _gold.withOpacity(0.7), size: 16),
+            Icon(icon, color: AppColors.gold.withOpacity(0.7), size: 16),
             SizedBox(width: 6),
             Text(
               value,
@@ -397,7 +391,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(_gold),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
               strokeWidth: 3,
             ),
             SizedBox(height: 16),
@@ -464,13 +458,13 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.1),
+                    color: AppColors.gold.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Text(
                     'Найдено: ${_filteredQuestions.length} из ${_questions.length}',
                     style: TextStyle(
-                      color: _gold,
+                      color: AppColors.gold,
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
@@ -485,8 +479,8 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
               ? _buildEmptyState()
               : RefreshIndicator(
                   onRefresh: _loadQuestions,
-                  color: _gold,
-                  backgroundColor: _emeraldDark,
+                  color: AppColors.gold,
+                  backgroundColor: AppColors.emeraldDark,
                   child: ListView.builder(
                     padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 100.h),
                     itemCount: _filteredQuestions.length,
@@ -572,14 +566,14 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.15),
+                        color: AppColors.gold.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Center(
                         child: Text(
                           '${index + 1}',
                           style: TextStyle(
-                            color: _gold,
+                            color: AppColors.gold,
                             fontWeight: FontWeight.bold,
                             fontSize: 13.sp,
                           ),
@@ -624,7 +618,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                       children: [
                         _buildActionIconButton(
                           icon: Icons.edit_outlined,
-                          color: _gold,
+                          color: AppColors.gold,
                           onPressed: () => _showEditQuestionDialog(question),
                         ),
                         SizedBox(width: 4),
@@ -647,12 +641,12 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: isCorrect
-                            ? Color(0xFF4CAF50).withOpacity(0.1)
+                            ? AppColors.success.withOpacity(0.1)
                             : Colors.white.withOpacity(0.03),
                         borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(
                           color: isCorrect
-                              ? Color(0xFF4CAF50).withOpacity(0.3)
+                              ? AppColors.success.withOpacity(0.3)
                               : Colors.white.withOpacity(0.06),
                         ),
                       ),
@@ -664,7 +658,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                             height: 22,
                             decoration: BoxDecoration(
                               color: isCorrect
-                                  ? Color(0xFF4CAF50).withOpacity(0.2)
+                                  ? AppColors.success.withOpacity(0.2)
                                   : Colors.white.withOpacity(0.06),
                               borderRadius: BorderRadius.circular(6.r),
                             ),
@@ -673,7 +667,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                                 String.fromCharCode(65 + entry.key),
                                 style: TextStyle(
                                   color: isCorrect
-                                      ? Color(0xFF81C784)
+                                      ? AppColors.successLight
                                       : Colors.white.withOpacity(0.4),
                                   fontWeight: FontWeight.w600,
                                   fontSize: 11.sp,
@@ -689,7 +683,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                               style: TextStyle(
                                 fontSize: 12.sp,
                                 color: isCorrect
-                                    ? Color(0xFF81C784)
+                                    ? AppColors.successLight
                                     : Colors.white.withOpacity(0.6),
                                 fontWeight: isCorrect ? FontWeight.w500 : FontWeight.normal,
                               ),
@@ -698,7 +692,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                           if (isCorrect)
                             Icon(
                               Icons.check_circle_rounded,
-                              color: Color(0xFF4CAF50),
+                              color: AppColors.success,
                               size: 16,
                             ),
                         ],
@@ -749,8 +743,6 @@ class _TestSettingsDialog extends StatefulWidget {
 }
 
 class _TestSettingsDialogState extends State<_TestSettingsDialog> {
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _gold = Color(0xFFD4AF37);
   static final _goldLight = Color(0xFFE8C860);
 
   late int _selectedMinutes;
@@ -771,7 +763,7 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Padding(
         padding: EdgeInsets.all(28.w),
@@ -782,14 +774,14 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.12),
+                color: AppColors.gold.withOpacity(0.12),
                 shape: BoxShape.circle,
-                border: Border.all(color: _gold.withOpacity(0.25)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.25)),
               ),
               child: Icon(
                 Icons.timer_rounded,
                 size: 36,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 20),
@@ -817,7 +809,7 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
@@ -834,7 +826,7 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                     icon: Icon(
                       Icons.remove_circle_outline,
                       color: _selectedMinutes > 1
-                          ? _gold
+                          ? AppColors.gold
                           : Colors.white.withOpacity(0.2),
                     ),
                   ),
@@ -879,7 +871,7 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                     icon: Icon(
                       Icons.add_circle_outline,
                       color: _selectedMinutes < 120
-                          ? _gold
+                          ? AppColors.gold
                           : Colors.white.withOpacity(0.2),
                     ),
                   ),
@@ -915,12 +907,12 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? _gold.withOpacity(0.2)
+                            ? AppColors.gold.withOpacity(0.2)
                             : Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(
                           color: isSelected
-                              ? _gold.withOpacity(0.5)
+                              ? AppColors.gold.withOpacity(0.5)
                               : Colors.white.withOpacity(0.08),
                         ),
                       ),
@@ -967,12 +959,12 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _gold.withOpacity(0.2),
-                      foregroundColor: _gold,
+                      backgroundColor: AppColors.gold.withOpacity(0.2),
+                      foregroundColor: AppColors.gold,
                       padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14.r),
-                        side: BorderSide(color: _gold.withOpacity(0.4)),
+                        side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                       ),
                       elevation: 0,
                     ),
@@ -996,13 +988,10 @@ class _ModernDeleteDialog extends StatelessWidget {
   final TestQuestion question;
 
   _ModernDeleteDialog({required this.question});
-
-  static final _emeraldDark = Color(0xFF0D2E2E);
-
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
       child: Padding(
         padding: EdgeInsets.all(24.w),
@@ -1107,11 +1096,6 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
   ];
   int? _selectedCorrectAnswer;
   bool _isSaving = false;
-
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
-
   @override
   void initState() {
     super.initState();
@@ -1247,7 +1231,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [_emeraldDark, _night],
+          colors: [AppColors.emeraldDark, AppColors.night],
         ),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
@@ -1271,13 +1255,13 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                 Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.12),
+                    color: AppColors.gold.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: _gold.withOpacity(0.25)),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.25)),
                   ),
                   child: Icon(
                     isEditing ? Icons.edit_note_rounded : Icons.add_circle_outline,
-                    color: _gold,
+                    color: AppColors.gold,
                     size: 24,
                   ),
                 ),
@@ -1326,7 +1310,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(color: _gold.withOpacity(0.15)),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.15)),
                       ),
                       child: TextFormField(
                         controller: _questionController,
@@ -1375,7 +1359,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
           Container(
             padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 12.h + MediaQuery.of(context).padding.bottom),
             decoration: BoxDecoration(
-              color: _night,
+              color: AppColors.night,
               border: Border(
                 top: BorderSide(color: Colors.white.withOpacity(0.06)),
               ),
@@ -1402,14 +1386,14 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                   child: ElevatedButton(
                     onPressed: _isSaving ? null : _saveQuestion,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _gold.withOpacity(0.2),
-                      foregroundColor: _gold,
+                      backgroundColor: AppColors.gold.withOpacity(0.2),
+                      foregroundColor: AppColors.gold,
                       disabledBackgroundColor: Colors.white.withOpacity(0.05),
                       disabledForegroundColor: Colors.white.withOpacity(0.3),
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14.r),
-                        side: BorderSide(color: _gold.withOpacity(0.4)),
+                        side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                       ),
                       elevation: 0,
                     ),
@@ -1419,7 +1403,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4AF37)),
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                             ),
                           )
                         : Text(
@@ -1439,14 +1423,14 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: _gold),
+        Icon(icon, size: 18, color: AppColors.gold),
         SizedBox(width: 8),
         Text(
           title,
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 15.sp,
-            color: _gold,
+            color: AppColors.gold,
           ),
         ),
       ],
@@ -1462,12 +1446,12 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
       child: Container(
         decoration: BoxDecoration(
           color: isSelected
-              ? Color(0xFF4CAF50).withOpacity(0.08)
+              ? AppColors.success.withOpacity(0.08)
               : Colors.white.withOpacity(0.04),
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: isSelected
-                ? Color(0xFF4CAF50).withOpacity(0.4)
+                ? AppColors.success.withOpacity(0.4)
                 : Colors.white.withOpacity(0.08),
             width: isSelected ? 1.5 : 1,
           ),
@@ -1480,7 +1464,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
               height: 56,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Color(0xFF4CAF50).withOpacity(0.2)
+                    ? AppColors.success.withOpacity(0.2)
                     : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(12.r),
@@ -1492,7 +1476,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                   letter,
                   style: TextStyle(
                     color: isSelected
-                        ? Color(0xFF81C784)
+                        ? AppColors.successLight
                         : Colors.white.withOpacity(0.4),
                     fontWeight: FontWeight.bold,
                     fontSize: 18.sp,
@@ -1513,7 +1497,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                 style: TextStyle(
                   fontSize: 14.sp,
                   color: isSelected
-                      ? Color(0xFF81C784)
+                      ? AppColors.successLight
                       : Colors.white.withOpacity(0.8),
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
                 ),
@@ -1551,21 +1535,21 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
                   height: 32,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Color(0xFF4CAF50).withOpacity(0.2)
+                        ? AppColors.success.withOpacity(0.2)
                         : hasText
                             ? Colors.white.withOpacity(0.08)
                             : Colors.white.withOpacity(0.04),
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isSelected
-                          ? Color(0xFF4CAF50).withOpacity(0.5)
+                          ? AppColors.success.withOpacity(0.5)
                           : Colors.white.withOpacity(0.1),
                     ),
                   ),
                   child: Icon(
                     isSelected ? Icons.check_rounded : Icons.circle_outlined,
                     color: isSelected
-                        ? Color(0xFF4CAF50)
+                        ? AppColors.success
                         : Colors.white.withOpacity(0.3),
                     size: 18,
                   ),

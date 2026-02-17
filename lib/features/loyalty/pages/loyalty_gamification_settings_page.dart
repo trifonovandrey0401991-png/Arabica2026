@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
 import '../../../core/constants/api_constants.dart';
@@ -43,7 +44,7 @@ class _LoyaltyGamificationSettingsPageState
   final List<TextEditingController> _sectorValueControllers = [];
 
   // Премиум цвета
-  static final _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = AppColors.primaryGreen;
   static final _accentColor = Color(0xFF00897B);
   static final _goldColor = Color(0xFFFFD700);
 
@@ -251,7 +252,7 @@ class _LoyaltyGamificationSettingsPageState
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF004D40),
+              AppColors.primaryGreen,
               Color(0xFF00695C),
               Color(0xFF00897B),
             ],
@@ -654,7 +655,7 @@ class _LoyaltyGamificationSettingsPageState
 
   void _showColorPicker(int index) {
     final colors = [
-      Color(0xFF78909C), Color(0xFF4CAF50),
+      Color(0xFF78909C), AppColors.success,
       Color(0xFF2196F3), Color(0xFF9C27B0),
       Color(0xFFFF9800), Color(0xFFF44336),
       Color(0xFF00BCD4), Color(0xFFE91E63),
@@ -1329,7 +1330,7 @@ class _LoyaltyGamificationSettingsPageState
 
   void _showSectorColorPicker(int index) {
     final colors = [
-      Color(0xFF4CAF50), Color(0xFF2196F3),
+      AppColors.success, Color(0xFF2196F3),
       Color(0xFFFF9800), Color(0xFF9C27B0),
       Color(0xFFF44336), Color(0xFF795548),
       Color(0xFF00BCD4), Color(0xFFE91E63),

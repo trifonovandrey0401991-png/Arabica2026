@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../models/shop_cash_balance_model.dart';
@@ -25,11 +26,6 @@ class MainCashPage extends StatefulWidget {
 }
 
 class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
   List<ShopCashBalance> _balances = [];
   List<Withdrawal> _withdrawals = [];
@@ -391,6 +387,9 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         setState(() => _isLoading = false);
       }
     }
+
+    amountController.dispose();
+    commentController.dispose();
   }
 
   /// Показать диалог переноса денег
@@ -639,6 +638,8 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         setState(() => _isLoading = false);
       }
     }
+
+    amountController.dispose();
   }
 
   String _formatAmount(double amount) {
@@ -664,13 +665,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -756,9 +757,9 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: _gold,
+                  indicatorColor: AppColors.gold,
                   indicatorWeight: 3,
-                  labelColor: _gold,
+                  labelColor: AppColors.gold,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
                   labelStyle: TextStyle(
                     fontSize: 13.sp,
@@ -809,7 +810,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -862,7 +863,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         Container(
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
           decoration: BoxDecoration(
-            color: _emerald.withOpacity(0.5),
+            color: AppColors.emerald.withOpacity(0.5),
             border: Border(
               bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
@@ -918,7 +919,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           width: double.infinity,
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           decoration: BoxDecoration(
-            color: _emerald.withOpacity(0.6),
+            color: AppColors.emerald.withOpacity(0.6),
             border: Border(
               top: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
@@ -932,7 +933,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 10.h),
                     decoration: BoxDecoration(
-                      color: _emeraldDark,
+                      color: AppColors.emeraldDark,
                       borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
@@ -998,9 +999,9 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         Container(
           padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             border: Border(
-              top: BorderSide(color: _gold.withOpacity(0.3)),
+              top: BorderSide(color: AppColors.gold.withOpacity(0.3)),
             ),
           ),
           child: Row(
@@ -1010,7 +1011,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   'ИТОГО:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: _gold,
+                    color: AppColors.gold,
                     fontSize: 14.sp,
                   ),
                 ),
@@ -1045,7 +1046,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   _formatAmount(_balances.fold(0.0, (sum, b) => sum + b.totalBalance)),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: _gold,
+                    color: AppColors.gold,
                     fontSize: 14.sp,
                   ),
                   textAlign: TextAlign.right,
@@ -1121,7 +1122,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   style: TextStyle(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
-                    color: balance.totalBalance < 0 ? Colors.red[300] : _gold,
+                    color: balance.totalBalance < 0 ? Colors.red[300] : AppColors.gold,
                   ),
                 ),
               ),
@@ -1153,13 +1154,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 12.h),
                     decoration: BoxDecoration(
-                      color: _withdrawalTabIndex == 0 ? _gold.withOpacity(0.2) : Colors.transparent,
+                      color: _withdrawalTabIndex == 0 ? AppColors.gold.withOpacity(0.2) : Colors.transparent,
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(11.r),
                         bottomLeft: Radius.circular(11.r),
                       ),
                       border: _withdrawalTabIndex == 0
-                          ? Border.all(color: _gold.withOpacity(0.3))
+                          ? Border.all(color: AppColors.gold.withOpacity(0.3))
                           : null,
                     ),
                     child: Row(
@@ -1168,7 +1169,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         Icon(
                           Icons.list_alt,
                           size: 18,
-                          color: _withdrawalTabIndex == 0 ? _gold : Colors.white.withOpacity(0.4),
+                          color: _withdrawalTabIndex == 0 ? AppColors.gold : Colors.white.withOpacity(0.4),
                         ),
                         SizedBox(width: 6),
                         Text(
@@ -1177,7 +1178,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: _withdrawalTabIndex == 0 ? FontWeight.bold : FontWeight.w500,
-                            color: _withdrawalTabIndex == 0 ? _gold : Colors.white.withOpacity(0.4),
+                            color: _withdrawalTabIndex == 0 ? AppColors.gold : Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -1191,13 +1192,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 12.h),
                     decoration: BoxDecoration(
-                      color: _withdrawalTabIndex == 1 ? _gold.withOpacity(0.2) : Colors.transparent,
+                      color: _withdrawalTabIndex == 1 ? AppColors.gold.withOpacity(0.2) : Colors.transparent,
                       borderRadius: BorderRadius.only(
                         topRight: Radius.circular(11.r),
                         bottomRight: Radius.circular(11.r),
                       ),
                       border: _withdrawalTabIndex == 1
-                          ? Border.all(color: _gold.withOpacity(0.3))
+                          ? Border.all(color: AppColors.gold.withOpacity(0.3))
                           : null,
                     ),
                     child: Row(
@@ -1206,7 +1207,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         Icon(
                           Icons.check_circle,
                           size: 18,
-                          color: _withdrawalTabIndex == 1 ? _gold : Colors.white.withOpacity(0.4),
+                          color: _withdrawalTabIndex == 1 ? AppColors.gold : Colors.white.withOpacity(0.4),
                         ),
                         SizedBox(width: 6),
                         Text(
@@ -1215,7 +1216,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: _withdrawalTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
-                            color: _withdrawalTabIndex == 1 ? _gold : Colors.white.withOpacity(0.4),
+                            color: _withdrawalTabIndex == 1 ? AppColors.gold : Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -1240,11 +1241,11 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               child: DropdownButton<String>(
                 value: _selectedShopFilter,
                 isExpanded: true,
-                dropdownColor: _emeraldDark,
-                icon: Icon(Icons.arrow_drop_down, color: _gold),
+                dropdownColor: AppColors.emeraldDark,
+                icon: Icon(Icons.arrow_drop_down, color: AppColors.gold),
                 hint: Row(
                   children: [
-                    Icon(Icons.store, size: 18, color: _gold),
+                    Icon(Icons.store, size: 18, color: AppColors.gold),
                     SizedBox(width: 8),
                     Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp)),
                   ],
@@ -1270,7 +1271,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         // Список выемок
         Expanded(
           child: _isLoading
-              ? Center(child: CircularProgressIndicator(color: _gold))
+              ? Center(child: CircularProgressIndicator(color: AppColors.gold))
               : _filteredWithdrawals.isEmpty
                   ? Center(
                       child: Column(
@@ -1479,7 +1480,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
-                      color: _gold,
+                      color: AppColors.gold,
                     ),
                   ),
                 ],
@@ -1522,7 +1523,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: _emerald.withOpacity(0.5),
+                            color: AppColors.emerald.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Center(
@@ -1571,7 +1572,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13.sp,
-                            color: _gold,
+                            color: AppColors.gold,
                           ),
                         ),
                       ],
@@ -1895,6 +1896,8 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         setState(() => _isLoading = false);
       }
     }
+
+    reasonController.dispose();
   }
 
   String _formatDate(DateTime date) {

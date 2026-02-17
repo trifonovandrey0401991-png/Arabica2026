@@ -10,6 +10,7 @@ import '../models/pending_recount_report_model.dart';
 import '../services/pending_recount_service.dart';
 import 'recount_questions_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница выбора магазина для пересчета
 class RecountShopSelectionPage extends StatefulWidget {
@@ -28,12 +29,6 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   Map<String, ShopSyncInfo> _shopsSyncInfo = {}; // Информация о синхронизации магазинов
   List<PendingRecountReport> _pendingRecounts = []; // Ожидающие пересчёты
   RecountPointsSettings? _recountSettings; // Настройки интервалов
-
-  // Единая палитра приложения (Dark Emerald)
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   /// Таймаут для определения устаревших данных (5 минут)
   static final Duration _staleDataTimeout = Duration(minutes: 5);
@@ -176,7 +171,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                 ),
                 borderRadius: BorderRadius.circular(10.r),
               ),
-              child: Icon(Icons.schedule, color: _gold, size: 24),
+              child: Icon(Icons.schedule, color: AppColors.gold, size: 24),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -201,16 +196,16 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: _gold, size: 20),
+                  Icon(Icons.info_outline, color: AppColors.gold, size: 20),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _getNextIntervalInfo(),
-                      style: TextStyle(fontSize: 13.sp, color: _gold),
+                      style: TextStyle(fontSize: 13.sp, color: AppColors.gold),
                     ),
                   ),
                 ],
@@ -221,7 +216,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(foregroundColor: _gold),
+            style: TextButton.styleFrom(foregroundColor: AppColors.gold),
             child: Text('Понятно'),
           ),
         ],
@@ -315,11 +310,11 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [_gold.withOpacity(0.3), _gold.withOpacity(0.1)],
+                colors: [AppColors.gold.withOpacity(0.3), AppColors.gold.withOpacity(0.1)],
               ),
               borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Icon(Icons.inventory, color: _gold, size: 22),
+            child: Icon(Icons.inventory, color: AppColors.gold, size: 22),
           ),
           SizedBox(width: 10.w),
           Expanded(
@@ -368,7 +363,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
               borderRadius: BorderRadius.circular(14.r),
               border: Border.all(
                 color: hasPending
-                    ? _gold.withOpacity(0.4)
+                    ? AppColors.gold.withOpacity(0.4)
                     : Colors.white.withOpacity(0.08),
               ),
             ),
@@ -383,14 +378,14 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: hasPending
-                          ? [_gold.withOpacity(0.25), _gold.withOpacity(0.1)]
+                          ? [AppColors.gold.withOpacity(0.25), AppColors.gold.withOpacity(0.1)]
                           : [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.04)],
                     ),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.store,
-                    color: hasPending ? _gold : Colors.white.withOpacity(0.5),
+                    color: hasPending ? AppColors.gold : Colors.white.withOpacity(0.5),
                     size: 24,
                   ),
                 ),
@@ -428,7 +423,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                             _buildBadge(
                               icon: Icons.schedule,
                               text: 'Ожидает',
-                              color: _gold,
+                              color: AppColors.gold,
                             ),
                         ],
                       ),
@@ -437,7 +432,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                 ),
                 Icon(
                   Icons.chevron_right,
-                  color: hasPending ? _gold.withOpacity(0.7) : Colors.white.withOpacity(0.3),
+                  color: hasPending ? AppColors.gold.withOpacity(0.7) : Colors.white.withOpacity(0.3),
                   size: 24,
                 ),
               ],
@@ -493,10 +488,10 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
             Container(
               padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
-                color: (iconColor ?? _gold).withOpacity(0.1),
+                color: (iconColor ?? AppColors.gold).withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 48, color: (iconColor ?? _gold).withOpacity(0.7)),
+              child: Icon(icon, size: 48, color: (iconColor ?? AppColors.gold).withOpacity(0.7)),
             ),
             SizedBox(height: 20.h),
             Text(
@@ -520,7 +515,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
               icon: Icon(Icons.arrow_back, size: 18),
               label: Text('Назад'),
               style: TextButton.styleFrom(
-                foregroundColor: _gold,
+                foregroundColor: AppColors.gold,
                 padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               ),
             ),
@@ -584,7 +579,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: _gold.withOpacity(0.7), size: 18),
+                Icon(Icons.info_outline, color: AppColors.gold.withOpacity(0.7), size: 18),
                 SizedBox(width: 10.w),
                 Expanded(
                   child: Text(
@@ -616,13 +611,13 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -632,7 +627,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
               _buildAppBar(context),
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _buildBody(),
               ),
             ],

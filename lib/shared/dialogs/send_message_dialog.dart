@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import '../../features/clients/models/client_model.dart';
@@ -19,11 +20,6 @@ class SendMessageDialog extends StatefulWidget {
 }
 
 class _SendMessageDialogState extends State<SendMessageDialog> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   final _formKey = GlobalKey<FormState>();
   final _textController = TextEditingController();
   File? _selectedMedia;
@@ -41,7 +37,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
   Future<void> _showMediaPicker() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
@@ -129,11 +125,11 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _gold.withOpacity(0.15),
+          color: AppColors.gold.withOpacity(0.15),
           borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: _gold.withOpacity(0.3)),
+          border: Border.all(color: AppColors.gold.withOpacity(0.3)),
         ),
-        child: Icon(icon, color: _gold, size: 20),
+        child: Icon(icon, color: AppColors.gold, size: 20),
       ),
       title: Text(title, style: TextStyle(color: Colors.white.withOpacity(0.9))),
       onTap: onTap,
@@ -255,7 +251,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
@@ -270,8 +266,8 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: isBroadcast
-                      ? [Colors.orange.withOpacity(0.3), _emeraldDark]
-                      : [_emerald, _emeraldDark],
+                      ? [Colors.orange.withOpacity(0.3), AppColors.emeraldDark]
+                      : [AppColors.emerald, AppColors.emeraldDark],
                 ),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20.r),
@@ -286,17 +282,17 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                     decoration: BoxDecoration(
                       color: isBroadcast
                           ? Colors.orange.withOpacity(0.15)
-                          : _gold.withOpacity(0.15),
+                          : AppColors.gold.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(14.r),
                       border: Border.all(
                         color: isBroadcast
                             ? Colors.orange.withOpacity(0.3)
-                            : _gold.withOpacity(0.3),
+                            : AppColors.gold.withOpacity(0.3),
                       ),
                     ),
                     child: Icon(
                       isBroadcast ? Icons.campaign_rounded : Icons.send_rounded,
-                      color: isBroadcast ? Colors.orange : _gold,
+                      color: isBroadcast ? Colors.orange : AppColors.gold,
                       size: 26,
                     ),
                   ),
@@ -402,7 +398,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                         child: TextFormField(
                           controller: _textController,
                           style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                          cursorColor: _gold,
+                          cursorColor: AppColors.gold,
                           decoration: InputDecoration(
                             labelText: 'Текст сообщения',
                             labelStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
@@ -445,12 +441,12 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                                         height: 160,
                                         width: double.infinity,
                                         decoration: BoxDecoration(
-                                          color: _night,
+                                          color: AppColors.night,
                                         ),
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.videocam_rounded, color: _gold, size: 48),
+                                            Icon(Icons.videocam_rounded, color: AppColors.gold, size: 48),
                                             SizedBox(height: 8),
                                             Text(
                                               'Видео выбрано',
@@ -472,7 +468,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                                           return Container(
                                             height: 160,
                                             width: double.infinity,
-                                            color: _night,
+                                            color: AppColors.night,
                                             child: Column(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
@@ -539,9 +535,9 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                           padding: EdgeInsets.all(14.w),
                           margin: EdgeInsets.only(bottom: 16.h),
                           decoration: BoxDecoration(
-                            color: _gold.withOpacity(0.1),
+                            color: AppColors.gold.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: _gold.withOpacity(0.2)),
+                            border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                           ),
                           child: Row(
                             children: [
@@ -550,13 +546,13 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  color: _gold,
+                                  color: AppColors.gold,
                                 ),
                               ),
                               SizedBox(width: 14),
                               Text(
                                 'Загрузка медиа...',
-                                style: TextStyle(color: _gold.withOpacity(0.9), fontWeight: FontWeight.w500),
+                                style: TextStyle(color: AppColors.gold.withOpacity(0.9), fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
@@ -593,7 +589,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
             Container(
               padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
-                color: _night,
+                color: AppColors.night,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(20.r),
                   bottomRight: Radius.circular(20.r),
@@ -628,7 +624,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  isBroadcast ? Colors.orange : _gold,
+                                  isBroadcast ? Colors.orange : AppColors.gold,
                                 ),
                               ),
                             )
@@ -643,15 +639,15 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: isBroadcast ? Colors.orange : _gold,
+                        foregroundColor: isBroadcast ? Colors.orange : AppColors.gold,
                         side: BorderSide(
                           color: isBroadcast
                               ? Colors.orange.withOpacity(0.4)
-                              : _gold.withOpacity(0.4),
+                              : AppColors.gold.withOpacity(0.4),
                         ),
                         backgroundColor: isBroadcast
                             ? Colors.orange.withOpacity(0.15)
-                            : _gold.withOpacity(0.15),
+                            : AppColors.gold.withOpacity(0.15),
                         padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.r),

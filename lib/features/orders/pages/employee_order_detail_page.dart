@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/order_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,7 +20,7 @@ class EmployeeOrderDetailPage extends StatefulWidget {
 class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
   bool _isProcessing = false;
 
-  static final _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = AppColors.primaryGreen;
   static final _primaryColorLight = Color(0xFF00695C);
 
   String _formatPrice(dynamic price) {

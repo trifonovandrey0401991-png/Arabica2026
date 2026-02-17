@@ -9,6 +9,7 @@ import '../../recount/services/recount_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница выбора типа РКО
 class RKOTypeSelectionPage extends StatefulWidget {
@@ -19,8 +20,6 @@ class RKOTypeSelectionPage extends StatefulWidget {
 }
 
 class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
-  static final _primaryColor = Color(0xFF004D40);
-
   List<Shop> _shops = [];
   String? _employeeName;
 
@@ -87,7 +86,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
       MaterialPageRoute(
         builder: (context) => _RKOShopSelectionPage(
           shops: _shops,
-          primaryColor: _primaryColor,
+          primaryColor: AppColors.primaryGreen,
           employeeName: _employeeName,
         ),
       ),
@@ -112,7 +111,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('РКО'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
       body: Container(
@@ -121,8 +120,8 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _primaryColor,
-              _primaryColor.withOpacity(0.85),
+              AppColors.primaryGreen,
+              AppColors.primaryGreen.withOpacity(0.85),
             ],
           ),
         ),
@@ -329,12 +328,12 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: _primaryColor,
+                    color: AppColors.primaryGreen,
                     size: 18,
                   ),
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/shop_revenue_model.dart';
 import '../services/revenue_analytics_service.dart';
 import '../../../core/utils/logger.dart';
@@ -21,12 +22,6 @@ class RevenueAnalyticsPage extends StatefulWidget {
 }
 
 class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   AnalyticsMode _mode = AnalyticsMode.none;
   String? _selectedShop;
   List<String> _shopAddresses = [];
@@ -92,10 +87,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Row(
           children: [
-            Icon(Icons.bar_chart, color: _gold),
+            Icon(Icons.bar_chart, color: AppColors.gold),
             SizedBox(width: 12),
             Text('Аналитика выручки', style: TextStyle(color: Colors.white)),
           ],
@@ -112,10 +107,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               leading: Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: _emerald.withOpacity(0.3),
+                  color: AppColors.emerald.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: Icon(Icons.store, color: _gold),
+                child: Icon(Icons.store, color: AppColors.gold),
               ),
               title: Text('Один магазин', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
               subtitle: Text('Детальная аналитика и сравнение периодов', style: TextStyle(color: Colors.white.withOpacity(0.5))),
@@ -129,10 +124,10 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               leading: Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: _emerald.withOpacity(0.3),
+                  color: AppColors.emerald.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: Icon(Icons.storefront, color: _gold),
+                child: Icon(Icons.storefront, color: AppColors.gold),
               ),
               title: Text('Все магазины', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
               subtitle: Text('Обзор выручки и сравнение магазинов', style: TextStyle(color: Colors.white.withOpacity(0.5))),
@@ -146,7 +141,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(foregroundColor: _gold),
+            style: TextButton.styleFrom(foregroundColor: AppColors.gold),
             child: Text('Отмена'),
           ),
         ],
@@ -172,7 +167,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Text('Выберите магазин', style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
@@ -184,7 +179,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   itemBuilder: (context, index) {
                     final address = _shopAddresses[index];
                     return ListTile(
-                      leading: Icon(Icons.store_outlined, color: _gold),
+                      leading: Icon(Icons.store_outlined, color: AppColors.gold),
                       title: Text(
                         address,
                         style: TextStyle(fontSize: 14.sp, color: Colors.white),
@@ -204,7 +199,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               setState(() => _mode = AnalyticsMode.none);
               _showModeSelectionDialog();
             },
-            style: TextButton.styleFrom(foregroundColor: _gold),
+            style: TextButton.styleFrom(foregroundColor: AppColors.gold),
             child: Text('Назад'),
           ),
         ],
@@ -345,13 +340,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Column(
         children: [
           _buildHeader(),
           if (_isLoading)
             Expanded(
-              child: Center(child: CircularProgressIndicator(color: _gold)),
+              child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
             )
           else if (_mode == AnalyticsMode.none)
             Expanded(
@@ -371,8 +366,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                       icon: Icon(Icons.settings),
                       label: Text('Выбрать режим'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _gold,
-                        foregroundColor: _night,
+                        backgroundColor: AppColors.gold,
+                        foregroundColor: AppColors.night,
                       ),
                     ),
                   ],
@@ -405,7 +400,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_emeraldDark, _emerald],
+          colors: [AppColors.emeraldDark, AppColors.emerald],
         ),
         boxShadow: [
           BoxShadow(
@@ -502,8 +497,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     }
 
     return RefreshIndicator(
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       onRefresh: () => _loadSingleShopData(_selectedShop!),
       child: SingleChildScrollView(
         physics: AlwaysScrollableScrollPhysics(),
@@ -563,7 +558,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             style: TextStyle(
               fontSize: 14.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 16),
@@ -573,7 +568,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 child: _buildDayCard(
                   title: 'Вчера',
                   value: _yesterdayRevenue,
-                  color: _emerald,
+                  color: AppColors.emerald,
                 ),
               ),
               SizedBox(width: 12),
@@ -581,7 +576,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 child: _buildDayCard(
                   title: 'Неделю назад',
                   value: _weekAgoRevenue,
-                  color: _emerald,
+                  color: AppColors.emerald,
                 ),
               ),
               SizedBox(width: 12),
@@ -652,7 +647,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             style: TextStyle(
               fontSize: 14.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 16),
@@ -702,7 +697,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     IconData trendIcon = Icons.remove;
     if (changePercent != null) {
       if (changePercent > 5) {
-        indicatorColor = Color(0xFF4CAF50);
+        indicatorColor = AppColors.success;
         trendIcon = Icons.trending_up;
       } else if (changePercent < -5) {
         indicatorColor = Color(0xFFEF5350);
@@ -827,7 +822,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             style: TextStyle(
               fontSize: 14.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 16),
@@ -899,7 +894,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                     barRods: [
                       BarChartRodData(
                         toY: _dailyRevenues[index].totalRevenue,
-                        color: _gold,
+                        color: AppColors.gold,
                         width: _dailyRevenues.length > 20 ? 8 : 12,
                         borderRadius: BorderRadius.vertical(top: Radius.circular(3.r)),
                       ),
@@ -924,8 +919,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         icon: Icon(Icons.table_chart),
         label: Text('Подробно'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: _gold,
-          side: BorderSide(color: _gold.withOpacity(0.5)),
+          foregroundColor: AppColors.gold,
+          side: BorderSide(color: AppColors.gold.withOpacity(0.5)),
           padding: EdgeInsets.symmetric(vertical: 12.h),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8.r),
@@ -944,13 +939,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     }
 
     return Container(
-      color: _night,
+      color: AppColors.night,
       child: Column(
         children: [
           // Заголовок
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             child: Row(
               children: [
                 IconButton(
@@ -1009,14 +1004,14 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     TextStyle headerStyle = TextStyle(
       fontWeight: FontWeight.bold,
       fontSize: 11.sp,
-      color: _gold,
+      color: AppColors.gold,
     );
     final cellWidth = 55.0;
 
     return Container(
       padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 4.w),
       decoration: BoxDecoration(
-        color: _emerald.withOpacity(0.2),
+        color: AppColors.emerald.withOpacity(0.2),
         borderRadius: BorderRadius.vertical(top: Radius.circular(14.r)),
       ),
       child: Row(
@@ -1081,7 +1076,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               style: TextStyle(
                 fontSize: 10.sp,
                 fontWeight: FontWeight.bold,
-                color: _gold,
+                color: AppColors.gold,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1099,9 +1094,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 4.w),
       decoration: BoxDecoration(
-        color: _emerald.withOpacity(0.15),
+        color: AppColors.emerald.withOpacity(0.15),
         border: Border(
-          bottom: BorderSide(color: _gold.withOpacity(0.3), width: 2),
+          bottom: BorderSide(color: AppColors.gold.withOpacity(0.3), width: 2),
         ),
       ),
       child: Row(
@@ -1116,7 +1111,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12.sp,
-                    color: _gold,
+                    color: AppColors.gold,
                   ),
                 ),
                 SizedBox(width: 12),
@@ -1181,8 +1176,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     }
 
     return RefreshIndicator(
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       onRefresh: _loadAllShopsData,
       child: SingleChildScrollView(
         physics: AlwaysScrollableScrollPhysics(),
@@ -1213,7 +1208,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             title: 'Общая выручка',
             value: _formatRevenue(totalRevenue),
             subtitle: 'за текущий месяц',
-            color: _gold,
+            color: AppColors.gold,
           ),
         ),
         SizedBox(width: 12),
@@ -1223,7 +1218,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             title: 'Магазинов',
             value: _allShopsRevenues.length.toString(),
             subtitle: '$totalShifts смен',
-            color: _emerald,
+            color: AppColors.emerald,
           ),
         ),
       ],
@@ -1299,7 +1294,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
           _buildTopCard(
             title: 'Лидер роста',
             icon: Icons.trending_up,
-            color: Color(0xFF4CAF50),
+            color: AppColors.success,
             shop: topGrowers.first,
           ),
         if (topGrowers.isNotEmpty && decliners.isNotEmpty)
@@ -1409,8 +1404,8 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         icon: Icon(Icons.table_chart),
         label: Text('Показать таблицу выручки'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _gold,
-          foregroundColor: _night,
+          backgroundColor: AppColors.gold,
+          foregroundColor: AppColors.night,
           padding: EdgeInsets.symmetric(vertical: 14.h),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.r),
@@ -1463,7 +1458,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       children: [
         Container(
           padding: EdgeInsets.all(12.w),
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           child: Row(
             children: [
               IconButton(
@@ -1527,7 +1522,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             child: Container(
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.2),
+                color: AppColors.emerald.withOpacity(0.2),
                 borderRadius: BorderRadius.vertical(
                   top: Radius.circular(14.r),
                   bottom: isCollapsed ? Radius.circular(14.r) : Radius.zero,
@@ -1594,7 +1589,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     TextStyle headerStyle = TextStyle(
       fontWeight: FontWeight.bold,
       fontSize: 10.sp,
-      color: _gold,
+      color: AppColors.gold,
     );
     final cellWidth = 55.0;
 
@@ -1602,7 +1597,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
       padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 4.w),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: _gold.withOpacity(0.3)),
+          bottom: BorderSide(color: AppColors.gold.withOpacity(0.3)),
         ),
       ),
       child: Row(
@@ -1664,7 +1659,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               style: TextStyle(
                 fontSize: 10.sp,
                 fontWeight: FontWeight.bold,
-                color: _gold,
+                color: AppColors.gold,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1682,7 +1677,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 4.w),
       decoration: BoxDecoration(
-        color: _emerald.withOpacity(0.15),
+        color: AppColors.emerald.withOpacity(0.15),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(12.r)),
       ),
       child: Row(
@@ -1697,7 +1692,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12.sp,
-                    color: _gold,
+                    color: AppColors.gold,
                   ),
                 ),
                 SizedBox(width: 12),

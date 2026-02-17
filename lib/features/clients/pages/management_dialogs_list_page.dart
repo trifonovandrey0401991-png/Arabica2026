@@ -5,6 +5,7 @@ import '../models/client_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import 'admin_management_dialog_page.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка диалогов "Связь с руководством" для админа
@@ -130,7 +131,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
             ],
           ],
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -141,7 +142,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -170,7 +171,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
                           leading: Stack(
                             children: [
                               CircleAvatar(
-                                backgroundColor: Color(0xFF004D40),
+                                backgroundColor: AppColors.primaryGreen,
                                 child: Text(
                                   dialog.clientName[0].toUpperCase(),
                                   style: TextStyle(

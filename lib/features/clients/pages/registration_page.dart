@@ -10,6 +10,7 @@ import '../../referrals/services/referral_service.dart';
 import '../../auth/services/auth_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/firebase_service.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница регистрации
@@ -435,10 +436,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   // Брендовые цвета Arabica
-  static final Color _primaryColor = Color(0xFF1A4D4D); // Основной темно-бирюзовый
   static final Color _primaryLight = Color(0xFF2D6B6B); // Светлее
   static final Color _primaryDark = Color(0xFF0D3333); // Темнее
-  static final Color _accentGold = Color(0xFFD4AF37); // Золотистый акцент
 
   InputDecoration _buildInputDecoration({
     required String labelText,
@@ -456,10 +455,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
       prefixStyle: TextStyle(
         fontSize: 16.sp,
         fontWeight: FontWeight.w600,
-        color: _primaryColor,
+        color: AppColors.emerald,
       ),
       labelStyle: TextStyle(
-        color: _primaryColor.withOpacity(0.8),
+        color: AppColors.emerald.withOpacity(0.8),
         fontWeight: FontWeight.w500,
       ),
       hintStyle: TextStyle(
@@ -467,15 +466,15 @@ class _RegistrationPageState extends State<RegistrationPage> {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16.r),
-        borderSide: BorderSide(color: _primaryColor.withOpacity(0.3)),
+        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16.r),
-        borderSide: BorderSide(color: _primaryColor.withOpacity(0.3), width: 1.5),
+        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.3), width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16.r),
-        borderSide: BorderSide(color: _primaryColor, width: 2),
+        borderSide: BorderSide(color: AppColors.emerald, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16.r),
@@ -489,7 +488,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       fillColor: Colors.white.withOpacity(0.95),
       prefixIcon: Container(
         margin: EdgeInsets.only(left: 12.w, right: 8.w),
-        child: Icon(icon, color: _primaryColor, size: 22),
+        child: Icon(icon, color: AppColors.emerald, size: 22),
       ),
       prefixIconConstraints: BoxConstraints(minWidth: 48),
       suffixIcon: suffixIcon,
@@ -514,7 +513,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _primaryColor,
+              AppColors.emerald,
               _primaryDark,
               Color(0xFF0A2626),
             ],
@@ -533,7 +532,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     borderRadius: BorderRadius.circular(24.r),
                     color: Colors.white.withOpacity(0.1),
                     border: Border.all(
-                      color: _accentGold.withOpacity(0.4),
+                      color: AppColors.gold.withOpacity(0.4),
                       width: 2,
                     ),
                   ),
@@ -659,7 +658,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePin ? Icons.visibility_off : Icons.visibility,
-                                    color: _primaryColor,
+                                    color: AppColors.emerald,
                                   ),
                                   onPressed: () => setState(() => _obscurePin = !_obscurePin),
                                 ),
@@ -698,7 +697,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePinConfirm ? Icons.visibility_off : Icons.visibility,
-                                    color: _primaryColor,
+                                    color: AppColors.emerald,
                                   ),
                                   onPressed: () => setState(() => _obscurePinConfirm = !_obscurePinConfirm),
                                 ),
@@ -760,13 +759,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16.r),
                                 gradient: LinearGradient(
-                                  colors: [_primaryLight, _primaryColor, _primaryDark],
+                                  colors: [_primaryLight, AppColors.emerald, _primaryDark],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: _primaryColor.withOpacity(0.4),
+                                    color: AppColors.emerald.withOpacity(0.4),
                                     blurRadius: 12,
                                     offset: Offset(0, 6),
                                   ),

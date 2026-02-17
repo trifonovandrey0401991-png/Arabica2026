@@ -35,6 +35,7 @@ import '../../../core/utils/logger.dart';
 import '../../ai_training/pages/ai_training_page.dart';
 import '../../../app/pages/client_functions_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница панели работника (сетка как у сотрудника)
 class EmployeePanelPage extends StatefulWidget {
@@ -53,14 +54,6 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   int _unreadProductQuestionsCount = 0;
   int _activeTasksCount = 0;
   int _shiftTransferUnreadCount = 0;
-
-  // ═══════════════════════════════════════════════════════════════
-  // ПАЛИТРА
-  // ═══════════════════════════════════════════════════════════════
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldLight = Color(0xFF2A6363);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
 
   @override
   void initState() {
@@ -192,13 +185,13 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -418,7 +411,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
               child: Text(
                 badge > 99 ? '99+' : badge.toString(),
                 style: TextStyle(
-                  color: _emerald,
+                  color: AppColors.emerald,
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
                 ),
@@ -660,13 +653,13 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       height: height,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_emeraldLight.withOpacity(0.8), _emerald],
+          colors: [AppColors.emeraldLight.withOpacity(0.8), AppColors.emerald],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: Color(0xFF4ECDC4).withOpacity(0.6),
+          color: AppColors.turquoise.withOpacity(0.6),
           width: 1.5,
         ),
       ),
@@ -698,14 +691,14 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
-                    color: Color(0xFF4ECDC4).withOpacity(0.3),
+                    color: AppColors.turquoise.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(6.r),
-                    border: Border.all(color: Color(0xFF4ECDC4).withOpacity(0.5), width: 1),
+                    border: Border.all(color: AppColors.turquoise.withOpacity(0.5), width: 1),
                   ),
                   child: Text(
                     'AI',
                     style: TextStyle(
-                      color: Color(0xFF4ECDC4),
+                      color: AppColors.turquoise,
                       fontSize: 11.sp,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
@@ -728,7 +721,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -791,7 +784,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -937,7 +930,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1077,7 +1070,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1110,7 +1103,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1163,7 +1156,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1241,7 +1234,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),

@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 const cigaretteVision = require('../modules/cigarette-vision');
 
@@ -23,16 +24,6 @@ function sanitizeFileName(name) {
 
 // Кэш вопросов пересчёта
 let recountQuestionsCache = [];
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Загрузить вопросы пересчёта из директории

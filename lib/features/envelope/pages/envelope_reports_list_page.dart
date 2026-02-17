@@ -7,6 +7,7 @@ import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 import 'envelope_report_view_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница со списком отчетов по конвертам
 class EnvelopeReportsListPage extends StatefulWidget {
@@ -18,11 +19,6 @@ class EnvelopeReportsListPage extends StatefulWidget {
 
 class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
   String? _selectedShop;
   String? _selectedEmployee;
@@ -178,13 +174,13 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -324,7 +320,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.calendar_today, size: 18, color: _gold),
+                                  Icon(Icons.calendar_today, size: 18, color: AppColors.gold),
                                   SizedBox(width: 8),
                                   Text(
                                     _selectedDate == null
@@ -370,7 +366,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
               // TabBarView с отчетами
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -407,11 +403,11 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
         child: DropdownButton<T>(
           value: value,
           isExpanded: true,
-          dropdownColor: _emeraldDark,
-          icon: Icon(Icons.arrow_drop_down, color: _gold),
+          dropdownColor: AppColors.emeraldDark,
+          icon: Icon(Icons.arrow_drop_down, color: AppColors.gold),
           hint: Row(
             children: [
-              Icon(icon, size: 18, color: _gold),
+              Icon(icon, size: 18, color: AppColors.gold),
               SizedBox(width: 8),
               Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp)),
             ],
@@ -419,7 +415,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
           selectedItemBuilder: (context) => [
             ...items.map((item) => Row(
               children: [
-                Icon(icon, size: 18, color: _gold),
+                Icon(icon, size: 18, color: AppColors.gold),
                 SizedBox(width: 8),
                 Expanded(
                   child: DefaultTextStyle(
@@ -458,10 +454,10 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
           decoration: BoxDecoration(
-            color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+            color: isSelected ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(10.r),
             border: Border.all(
-              color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+              color: isSelected ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             ),
           ),
           child: Row(
@@ -474,7 +470,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                   style: TextStyle(
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     fontSize: 12.sp,
-                    color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.6),
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -485,13 +481,13 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
-                    color: isSelected ? _gold : Colors.white.withOpacity(0.15),
+                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
-                      color: isSelected ? _night : Colors.white.withOpacity(0.7),
+                      color: isSelected ? AppColors.night : Colors.white.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 11.sp,
                     ),
@@ -532,8 +528,8 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: reports.length,
@@ -580,7 +576,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         ? Colors.green.withOpacity(0.2)
                         : isExpired
                             ? Colors.red.withOpacity(0.2)
-                            : _emerald,
+                            : AppColors.emerald,
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
@@ -629,7 +625,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                             'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: _gold,
+                              color: AppColors.gold,
                               fontSize: 13.sp,
                             ),
                           ),
@@ -791,8 +787,8 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: reports.length,

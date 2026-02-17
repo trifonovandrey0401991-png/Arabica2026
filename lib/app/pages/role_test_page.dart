@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/theme/app_colors.dart';
 import '../../features/employees/models/user_role_model.dart';
 import '../../features/employees/services/user_role_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -112,11 +113,11 @@ class _RoleTestPageState extends State<RoleTestPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Тест ролей'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -142,7 +143,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF004D40),
+                            color: AppColors.primaryGreen,
                           ),
                         ),
                         SizedBox(height: 8),
@@ -197,7 +198,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF004D40),
+                          color: AppColors.primaryGreen,
                         ),
                       ),
                       SizedBox(height: 16),
@@ -301,7 +302,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                           style: TextStyle(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF004D40),
+                            color: AppColors.primaryGreen,
                           ),
                         ),
                         SizedBox(height: 12),
@@ -341,7 +342,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
               ElevatedButton(
                 onPressed: _applyRole,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF004D40),
+                  backgroundColor: AppColors.primaryGreen,
                   padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
                 child: Text(
@@ -366,7 +367,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF004D40),
+                          color: AppColors.primaryGreen,
                         ),
                       ),
                       SizedBox(height: 12),

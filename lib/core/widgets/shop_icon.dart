@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 /// Виджет иконки магазина Арабика
 /// Использует картинку shop_icon.jpg вместо стандартных иконок
@@ -38,7 +39,7 @@ class ShopIcon extends StatelessWidget {
             return Icon(
               Icons.store,
               size: size * 0.7,
-              color: const Color(0xFF004D40),
+              color: AppColors.primaryGreen,
             );
           },
         ),

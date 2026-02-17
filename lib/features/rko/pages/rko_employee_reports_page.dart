@@ -5,6 +5,7 @@ import 'rko_pdf_viewer_page.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница отчетов по сотрудникам
 class RKOEmployeeReportsPage extends StatefulWidget {
@@ -54,7 +55,7 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Отчет по сотруднику'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -109,7 +110,7 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
                             child: ListTile(
                               leading: Icon(
                                 Icons.person,
-                                color: Color(0xFF004D40),
+                                color: AppColors.primaryGreen,
                               ),
                               title: Text(
                                 employee.name,
@@ -157,8 +158,6 @@ class RKOEmployeeDetailPage extends StatefulWidget {
 }
 
 class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
-  static final _primaryColor = Color(0xFF004D40);
-
   List<dynamic> _latest = [];
   List<dynamic> _months = [];
   bool _isLoading = true;
@@ -212,7 +211,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text('История РКО'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
         actions: [
           IconButton(
@@ -230,7 +229,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: _primaryColor,
+                    color: AppColors.primaryGreen,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(24.r),
                       bottomRight: Radius.circular(24.r),
@@ -345,7 +344,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
                       if (_latest.isNotEmpty) ...[
                         Row(
                           children: [
-                            Icon(Icons.history, color: _primaryColor, size: 20),
+                            Icon(Icons.history, color: AppColors.primaryGreen, size: 20),
                             SizedBox(width: 8),
                             Text(
                               'Последние выплаты',
@@ -686,4 +685,3 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
     return monthKey;
   }
 }
-

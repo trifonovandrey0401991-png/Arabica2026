@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/recipe_model.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class RecipeViewPage extends StatelessWidget {
   final Recipe recipe;
@@ -16,11 +17,11 @@ class RecipeViewPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(recipe.name),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -151,4 +152,3 @@ class RecipeViewPage extends StatelessWidget {
     );
   }
 }
-

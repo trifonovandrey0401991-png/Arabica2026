@@ -7,6 +7,7 @@ import '../../employees/services/user_role_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/models/user_role_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница аналитики по задачам за 3 месяца
 class TaskAnalyticsPage extends StatefulWidget {
@@ -17,12 +18,6 @@ class TaskAnalyticsPage extends StatefulWidget {
 }
 
 class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = true;
   String? _error;
 
@@ -118,13 +113,13 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -189,7 +184,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: _gold),
+            CircularProgressIndicator(color: AppColors.gold),
             SizedBox(height: 16),
             Text(
               'Загрузка аналитики...',
@@ -216,7 +211,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
             ElevatedButton(
               onPressed: _loadData,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _emerald,
+                backgroundColor: AppColors.emerald,
                 foregroundColor: Colors.white,
               ),
               child: Text('Повторить'),
@@ -235,8 +230,8 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: SingleChildScrollView(
         physics: AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.all(16.w),
@@ -285,15 +280,15 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 8),
             Row(
               children: [
-                _buildLegendItem('Всего', _gold),
+                _buildLegendItem('Всего', AppColors.gold),
                 SizedBox(width: 16),
-                _buildLegendItem('Выполнено', _emerald),
+                _buildLegendItem('Выполнено', AppColors.emerald),
               ],
             ),
             SizedBox(height: 16),
@@ -354,24 +349,24 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                     LineChartBarData(
                       spots: spots,
                       isCurved: true,
-                      color: _gold,
+                      color: AppColors.gold,
                       barWidth: 3,
                       dotData: FlDotData(show: true),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: _gold.withOpacity(0.15),
+                        color: AppColors.gold.withOpacity(0.15),
                       ),
                     ),
                     // Линия "Выполнено"
                     LineChartBarData(
                       spots: approvedSpots,
                       isCurved: true,
-                      color: _emerald,
+                      color: AppColors.emerald,
                       barWidth: 3,
                       dotData: FlDotData(show: true),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: _emerald.withOpacity(0.15),
+                        color: AppColors.emerald.withOpacity(0.15),
                       ),
                     ),
                   ],
@@ -420,7 +415,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 16),
@@ -458,7 +453,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
                       child: LinearProgressIndicator(
                         value: rate / 100,
                         backgroundColor: Colors.white.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                         minHeight: 8,
                       ),
                     ),
@@ -490,7 +485,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 12),
@@ -587,7 +582,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 12),

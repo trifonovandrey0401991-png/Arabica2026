@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
@@ -16,11 +17,6 @@ class StoreManagersPage extends StatefulWidget {
 }
 
 class _StoreManagersPageState extends State<StoreManagersPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<Employee> _managers = [];
   Map<String, StoreManagerInfo> _shopAssignments = {};
   List<Shop> _allShops = [];
@@ -135,13 +131,13 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -196,7 +192,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
               // Content
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _errorMessage != null
                         ? _buildErrorState()
                         : _managers.isEmpty
@@ -228,7 +224,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
               decoration: BoxDecoration(
-                color: _emerald,
+                color: AppColors.emerald,
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Text('Повторить', style: TextStyle(color: Colors.white)),
@@ -300,7 +296,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                   // Аватар
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: _emerald,
+                    backgroundColor: AppColors.emerald,
                     child: Text(
                       employee.name.isNotEmpty
                           ? employee.name[0].toUpperCase()
@@ -343,7 +339,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                             Icon(
                               Icons.store,
                               size: 14,
-                              color: hasShops ? _gold : Colors.white.withOpacity(0.3),
+                              color: hasShops ? AppColors.gold : Colors.white.withOpacity(0.3),
                             ),
                             SizedBox(width: 4),
                             Expanded(
@@ -352,7 +348,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   color: hasShops
-                                      ? _gold.withOpacity(0.8)
+                                      ? AppColors.gold.withOpacity(0.8)
                                       : Colors.white.withOpacity(0.3),
                                 ),
                                 maxLines: 2,
@@ -404,11 +400,6 @@ class _ShopAssignmentDialog extends StatefulWidget {
 }
 
 class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late Set<String> _selected;
 
   @override
@@ -437,7 +428,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       child: Container(
         constraints: BoxConstraints(
@@ -448,7 +439,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
           borderRadius: BorderRadius.circular(16.r),
@@ -482,7 +473,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
                   SizedBox(height: 8),
                   Text(
                     'Выбрано: ${_selected.length} из ${widget.allShops.length}',
-                    style: TextStyle(fontSize: 13.sp, color: _gold),
+                    style: TextStyle(fontSize: 13.sp, color: AppColors.gold),
                   ),
                 ],
               ),
@@ -501,17 +492,17 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
                     onTap: () => _toggleShop(shop),
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                      color: selected ? _emerald.withOpacity(0.5) : Colors.transparent,
+                      color: selected ? AppColors.emerald.withOpacity(0.5) : Colors.transparent,
                       child: Row(
                         children: [
                           Container(
                             width: 24,
                             height: 24,
                             decoration: BoxDecoration(
-                              color: selected ? _gold : Colors.transparent,
+                              color: selected ? AppColors.gold : Colors.transparent,
                               borderRadius: BorderRadius.circular(6.r),
                               border: Border.all(
-                                color: selected ? _gold : Colors.white.withOpacity(0.3),
+                                color: selected ? AppColors.gold : Colors.white.withOpacity(0.3),
                                 width: 2,
                               ),
                             ),
@@ -571,7 +562,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
                       child: Container(
                         padding: EdgeInsets.symmetric(vertical: 12.h),
                         decoration: BoxDecoration(
-                          color: _gold,
+                          color: AppColors.gold,
                           borderRadius: BorderRadius.circular(10.r),
                         ),
                         child: Center(

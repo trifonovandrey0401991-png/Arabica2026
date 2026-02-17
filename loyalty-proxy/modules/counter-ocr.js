@@ -22,6 +22,7 @@ const sharp = require('sharp');
 const http = require('http');
 
 const execPromise = util.promisify(exec);
+const { fileExists } = require('../utils/file_helpers');
 
 const TEMP_DIR = '/tmp/counter-ocr';
 const EASYOCR_URL = 'http://127.0.0.1:5001/ocr';
@@ -41,10 +42,6 @@ const PRESETS = {
     psm: 6, parseStrategy: 'largest_number',
   },
 };
-
-async function fileExists(fp) {
-  try { await fsp.access(fp); return true; } catch { return false; }
-}
 
 (async () => {
   if (!(await fileExists(TEMP_DIR))) {

@@ -3,6 +3,7 @@ import '../models/coffee_machine_report_model.dart';
 import '../models/pending_coffee_machine_report_model.dart';
 import '../services/coffee_machine_report_service.dart';
 import 'coffee_machine_report_view_page.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Список отчётов по счётчикам кофемашин (5 вкладок)
@@ -15,11 +16,6 @@ class CoffeeMachineReportsListPage extends StatefulWidget {
 
 class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListPage>
     with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
   int _selectedTab = 0;
 
@@ -104,7 +100,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -116,7 +112,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               _buildFilters(),
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -144,7 +140,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
             onPressed: () => Navigator.pop(context),
             icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
-          Icon(Icons.coffee_outlined, color: _gold, size: 22),
+          Icon(Icons.coffee_outlined, color: AppColors.gold, size: 22),
           SizedBox(width: 8),
           Text(
             'Счётчик кофемашин',
@@ -213,10 +209,10 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
           decoration: BoxDecoration(
-            color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+            color: isSelected ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(10.r),
             border: Border.all(
-              color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+              color: isSelected ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             ),
           ),
           child: Row(
@@ -229,7 +225,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
                   style: TextStyle(
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     fontSize: 12.sp,
-                    color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.6),
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -240,13 +236,13 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
-                    color: isSelected ? _gold : Colors.white.withOpacity(0.15),
+                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
-                      color: isSelected ? _night : Colors.white.withOpacity(0.7),
+                      color: isSelected ? AppColors.night : Colors.white.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 11.sp,
                     ),
@@ -308,7 +304,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
               ),
               child: Icon(
                 Icons.calendar_today,
-                color: _selectedDate != null ? _gold : Colors.white54,
+                color: _selectedDate != null ? AppColors.gold : Colors.white54,
                 size: 18,
               ),
             ),
@@ -354,7 +350,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
           value: value,
           hint: Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp)),
           isExpanded: true,
-          dropdownColor: _emeraldDark,
+          dropdownColor: AppColors.emeraldDark,
           style: TextStyle(color: Colors.white, fontSize: 12.sp),
           icon: Icon(Icons.arrow_drop_down, color: Colors.white.withOpacity(0.4)),
           items: [
@@ -379,7 +375,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
+      color: AppColors.gold,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         itemCount: reports.length,
@@ -394,7 +390,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
+      color: AppColors.gold,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         itemCount: reports.length,
@@ -488,7 +484,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
         icon = Icons.cancel;
         break;
       default:
-        statusColor = _gold;
+        statusColor = AppColors.gold;
         icon = Icons.mail_outline;
     }
 
@@ -544,7 +540,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
                     children: [
                       Text(
                         'Сумма: ${report.sumOfMachines}',
-                        style: TextStyle(color: _gold, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: AppColors.gold, fontSize: 13.sp, fontWeight: FontWeight.w600),
                       ),
                       if (report.hasDiscrepancy) ...[
                         SizedBox(width: 8),

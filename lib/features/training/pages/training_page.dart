@@ -7,6 +7,7 @@ import 'training_article_view_page.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница обучения
 class TrainingPage extends StatefulWidget {
@@ -23,12 +24,6 @@ class _TrainingPageState extends State<TrainingPage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
-
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -244,13 +239,13 @@ class _TrainingPageState extends State<TrainingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -398,7 +393,7 @@ class _TrainingPageState extends State<TrainingPage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: _emerald.withOpacity(0.5),
+                    color: AppColors.emerald.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(9.r),
                   ),
                   child: Icon(
@@ -427,7 +422,7 @@ class _TrainingPageState extends State<TrainingPage> {
                         article.group,
                         style: TextStyle(
                           fontSize: 11.sp,
-                          color: _gold.withOpacity(0.7),
+                          color: AppColors.gold.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -611,13 +606,13 @@ class _TrainingPageState extends State<TrainingPage> {
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: _gold.withOpacity(0.5)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.5)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            _gold.withOpacity(0.15),
-            _gold.withOpacity(0.05),
+            AppColors.gold.withOpacity(0.15),
+            AppColors.gold.withOpacity(0.05),
           ],
         ),
       ),
@@ -625,7 +620,7 @@ class _TrainingPageState extends State<TrainingPage> {
         children: [
           Icon(
             Icons.folder_rounded,
-            color: _gold,
+            color: AppColors.gold,
             size: 22,
           ),
           SizedBox(width: 10),
@@ -635,14 +630,14 @@ class _TrainingPageState extends State<TrainingPage> {
               style: TextStyle(
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w600,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
           ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.2),
+              color: AppColors.gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(10.r),
             ),
             child: Text(
@@ -650,7 +645,7 @@ class _TrainingPageState extends State<TrainingPage> {
               style: TextStyle(
                 fontSize: 11.sp,
                 fontWeight: FontWeight.w500,
-                color: _gold.withOpacity(0.9),
+                color: AppColors.gold.withOpacity(0.9),
               ),
             ),
           ),
@@ -720,7 +715,7 @@ class _TrainingPageState extends State<TrainingPage> {
               height: 40,
               decoration: BoxDecoration(
                 color: hasContent
-                    ? _emerald.withOpacity(0.4)
+                    ? AppColors.emerald.withOpacity(0.4)
                     : Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10.r),
               ),

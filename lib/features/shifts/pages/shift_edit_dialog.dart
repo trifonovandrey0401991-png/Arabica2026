@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../work_schedule/models/work_schedule_model.dart';
 import '../../shops/models/shop_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class ShiftEditDialog extends StatefulWidget {
   final String employeeId;
@@ -24,10 +25,6 @@ class ShiftEditDialog extends StatefulWidget {
 }
 
 class _ShiftEditDialogState extends State<ShiftEditDialog> {
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   String? _selectedShopAddress;
   ShiftType? _selectedShiftType;
   bool _isLoading = false;
@@ -44,7 +41,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       title: Text(
         'Смена: ${widget.employeeName}',
@@ -74,13 +71,13 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
             SizedBox(height: 8),
             Theme(
               data: Theme.of(context).copyWith(
-                canvasColor: _night,
+                canvasColor: AppColors.night,
               ),
               child: DropdownButtonFormField<String>(
                 value: _selectedShopAddress,
-                dropdownColor: _night,
+                dropdownColor: AppColors.night,
                 style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                iconEnabledColor: _gold,
+                iconEnabledColor: AppColors.gold,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
@@ -92,7 +89,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: _gold, width: 1.5),
+                    borderSide: BorderSide(color: AppColors.gold, width: 1.5),
                   ),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.06),
@@ -137,7 +134,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                     _selectedShiftType = value;
                   });
                 },
-                activeColor: _gold,
+                activeColor: AppColors.gold,
                 tileColor: Colors.transparent,
               );
             }),
@@ -186,9 +183,9 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
         ElevatedButton(
           onPressed: _isLoading ? null : _save,
           style: ElevatedButton.styleFrom(
-            backgroundColor: _gold,
-            foregroundColor: _night,
-            disabledBackgroundColor: _gold.withOpacity(0.4),
+            backgroundColor: AppColors.gold,
+            foregroundColor: AppColors.night,
+            disabledBackgroundColor: AppColors.gold.withOpacity(0.4),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.r),
             ),
@@ -200,7 +197,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: _night,
+                    color: AppColors.night,
                   ),
                 )
               : Text(

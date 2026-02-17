@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_cached_image.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_products_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Режимы отображения страницы
 enum _SearchMode {
@@ -25,10 +26,6 @@ class ProductSearchPage extends StatefulWidget {
 }
 
 class _ProductSearchPageState extends State<ProductSearchPage> {
-  // Цветовая схема
-  static final _primaryColor = Color(0xFF004D40);
-  static final _blueGradient = [Color(0xFF2196F3), Color(0xFF21CBF3)];
-
   /// Таймаут для определения устаревших данных (5 минут)
   static final Duration _staleDataTimeout = Duration(minutes: 5);
 
@@ -345,7 +342,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     final url = _productPhotos[kod];
     if (url == null || url.isEmpty) return null;
     if (url.startsWith('http')) return url;
-    return 'https://arabica26.ru$url';
+    return '${ApiConstants.serverUrl}$url';
   }
 
   /// Получить название магазина по ID
@@ -364,7 +361,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(_mode == _SearchMode.shopsList ? 'Поиск товара' : _getSearchTitle()),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
         leading: _mode == _SearchMode.search
             ? IconButton(
@@ -403,11 +400,11 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
               width: double.infinity,
               padding: EdgeInsets.symmetric(vertical: 16.h),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: _blueGradient),
+                gradient: LinearGradient(colors: [AppColors.info, const Color(0xFF21CBF3)]),
                 borderRadius: BorderRadius.circular(16.r),
                 boxShadow: [
                   BoxShadow(
-                    color: _blueGradient[0].withOpacity(0.4),
+                    color: AppColors.info.withOpacity(0.4),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
@@ -569,7 +566,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: _primaryColor, width: 2),
+                borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
               ),
               filled: true,
               fillColor: Colors.grey[50],

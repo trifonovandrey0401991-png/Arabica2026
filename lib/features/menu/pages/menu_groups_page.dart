@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'menu_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -6,11 +7,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class MenuGroupsPage extends StatelessWidget {
   final List<String> groups;
   final String? selectedShop;
-
-  // Минималистичная палитра
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
 
   const MenuGroupsPage({
     super.key,
@@ -109,13 +105,13 @@ class MenuGroupsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),

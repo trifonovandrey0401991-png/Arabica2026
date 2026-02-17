@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../../features/menu/pages/menu_groups_page.dart';
 import '../../features/orders/pages/cart_page.dart';
 import '../../features/orders/pages/orders_page.dart';
@@ -24,10 +25,6 @@ class ClientFunctionsPage extends StatefulWidget {
 }
 
 class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   int _myDialogsUnreadCount = 0;
 
   @override
@@ -48,13 +45,13 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -241,7 +238,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                     child: Text(
                       badge > 99 ? '99+' : '$badge',
                       style: TextStyle(
-                        color: _emerald,
+                        color: AppColors.emerald,
                         fontSize: 13.sp,
                         fontWeight: FontWeight.w600,
                       ),
@@ -270,7 +267,7 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
         ),

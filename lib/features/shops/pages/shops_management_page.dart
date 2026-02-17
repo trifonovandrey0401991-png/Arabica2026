@@ -8,6 +8,7 @@ import '../services/shop_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления магазинами для РКО с улучшенным дизайном
 class ShopsManagementPage extends StatefulWidget {
@@ -142,10 +143,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               Container(
                 padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: Color(0xFF004D40).withOpacity(0.1),
+                  color: AppColors.primaryGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: Icon(Icons.add_business_rounded, color: Color(0xFF004D40)),
+                child: Icon(Icons.add_business_rounded, color: AppColors.primaryGreen),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -388,7 +389,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                  colors: [AppColors.primaryGreen, Color(0xFF00695C)],
                 ),
                 borderRadius: BorderRadius.circular(12.r),
               ),
@@ -586,10 +587,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               Container(
                 padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: Color(0xFF004D40).withOpacity(0.1),
+                  color: AppColors.primaryGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: Icon(Icons.settings_rounded, color: Color(0xFF004D40)),
+                child: Icon(Icons.settings_rounded, color: AppColors.primaryGreen),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -790,7 +791,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                  colors: [AppColors.primaryGreen, Color(0xFF00695C)],
                 ),
                 borderRadius: BorderRadius.circular(12.r),
               ),
@@ -918,10 +919,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         Container(
           padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
-            color: Color(0xFF004D40).withOpacity(0.1),
+            color: AppColors.primaryGreen.withOpacity(0.1),
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Icon(icon, color: Color(0xFF004D40), size: 20),
+          child: Icon(icon, color: AppColors.primaryGreen, size: 20),
         ),
         SizedBox(width: 10),
         Text(
@@ -945,7 +946,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: Color(0xFF004D40)),
+        prefixIcon: Icon(icon, color: AppColors.primaryGreen),
         filled: true,
         fillColor: Colors.grey[50],
         border: OutlineInputBorder(
@@ -958,7 +959,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(color: Color(0xFF004D40), width: 2),
+          borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
         ),
       ),
     );
@@ -1319,13 +1320,13 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF004D40),
+      backgroundColor: AppColors.primaryGreen,
       appBar: AppBar(
         title: Text(
           'Управление магазинами',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
         actions: [
           // Кнопка добавления магазина
@@ -1361,7 +1362,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF004D40),
+              AppColors.primaryGreen,
               Color(0xFF00695C),
               Color(0xFF00796B),
             ],
@@ -1501,7 +1502,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
 
     return RefreshIndicator(
       onRefresh: _loadShops,
-      color: Color(0xFF004D40),
+      color: AppColors.primaryGreen,
       backgroundColor: Colors.white,
       child: ListView.builder(
         padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
@@ -1567,7 +1568,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
-                        color: Color(0xFF004D40).withOpacity(0.3),
+                        color: AppColors.primaryGreen.withOpacity(0.3),
                         blurRadius: 8,
                         offset: Offset(0, 4),
                       ),
@@ -1627,12 +1628,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     Container(
                       padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
-                        color: Color(0xFF004D40).withOpacity(0.1),
+                        color: AppColors.primaryGreen.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(14.r),
                       ),
                       child: Icon(
                         Icons.edit_rounded,
-                        color: Color(0xFF004D40),
+                        color: AppColors.primaryGreen,
                         size: 22,
                       ),
                     ),
@@ -1706,7 +1707,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.store, color: Color(0xFF004D40), size: 20),
+                      Icon(Icons.store, color: AppColors.primaryGreen, size: 20),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(

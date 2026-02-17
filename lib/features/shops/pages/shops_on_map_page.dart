@@ -11,6 +11,7 @@ import '../../employees/models/user_role_model.dart';
 import '../models/shop_model.dart';
 import '../services/shop_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница списка магазинов с возможностью построения маршрута
 class ShopsOnMapPage extends StatefulWidget {
@@ -41,12 +42,6 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
   int _cooldownHours = 24;
   bool _isSavingSettings = false;
   bool _isLoadingSettings = false;
-
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
-
   @override
   void initState() {
     super.initState();
@@ -412,17 +407,17 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     // Показываем загрузку пока определяем роль
     if (_isLoadingRole) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
-          child: Center(child: CircularProgressIndicator(color: _gold)),
+          child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
         ),
       );
     }
@@ -430,13 +425,13 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     final isAdmin = _userRole == UserRole.admin || _userRole == UserRole.developer;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -455,11 +450,11 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   ),
                   child: TabBar(
                     controller: _tabController!,
-                    labelColor: _gold,
+                    labelColor: AppColors.gold,
                     unselectedLabelColor: Colors.white.withOpacity(0.5),
                     indicatorSize: TabBarIndicatorSize.tab,
                     indicator: BoxDecoration(
-                      color: _gold.withOpacity(0.15),
+                      color: AppColors.gold.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12.r),
                     ),
                     tabs: [
@@ -607,10 +602,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             Container(
               padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.1),
+                color: AppColors.gold.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: CircularProgressIndicator(color: _gold),
+              child: CircularProgressIndicator(color: AppColors.gold),
             ),
             SizedBox(height: 24),
             Text(
@@ -655,12 +650,12 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: _loadData,
-                icon: Icon(Icons.refresh, color: _gold),
-                label: Text('Повторить', style: TextStyle(color: _gold)),
+                icon: Icon(Icons.refresh, color: AppColors.gold),
+                label: Text('Повторить', style: TextStyle(color: AppColors.gold)),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: _gold.withOpacity(0.4)),
+                  side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                  backgroundColor: _gold.withOpacity(0.1),
+                  backgroundColor: AppColors.gold.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.r),
                   ),
@@ -797,14 +792,14 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.15),
+                  color: AppColors.gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(color: _gold.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                 ),
                 child: Text(
                   'Разрешить',
                   style: TextStyle(
-                    color: _gold,
+                    color: AppColors.gold,
                     fontWeight: FontWeight.bold,
                     fontSize: 13.sp,
                   ),
@@ -928,13 +923,13 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.12),
+                    color: AppColors.gold.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: _gold.withOpacity(0.2)),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                   ),
                   child: Icon(
                     Icons.directions,
-                    color: _gold.withOpacity(0.8),
+                    color: AppColors.gold.withOpacity(0.8),
                     size: 22,
                   ),
                 ),
@@ -950,7 +945,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
   Widget _buildSettingsTab() {
     if (_isLoadingSettings) {
       return Center(
-        child: CircularProgressIndicator(color: _gold),
+        child: CircularProgressIndicator(color: AppColors.gold),
       );
     }
 
@@ -1010,7 +1005,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 Switch(
                   value: _geofenceEnabled,
                   onChanged: (v) => setState(() => _geofenceEnabled = v),
-                  activeColor: _gold,
+                  activeColor: AppColors.gold,
                 ),
               ],
             ),
@@ -1027,7 +1022,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               controller: _radiusController,
               keyboardType: TextInputType.number,
               style: TextStyle(color: Colors.white, fontSize: 16.sp),
-              cursorColor: _gold,
+              cursorColor: AppColors.gold,
               decoration: InputDecoration(
                 hintText: '500',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -1041,7 +1036,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: _gold.withOpacity(0.4)),
+                  borderSide: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                 ),
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
@@ -1058,7 +1053,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             child: TextField(
               controller: _titleController,
               style: TextStyle(color: Colors.white, fontSize: 16.sp),
-              cursorColor: _gold,
+              cursorColor: AppColors.gold,
               decoration: InputDecoration(
                 hintText: 'Arabica рядом!',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -1070,7 +1065,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: _gold.withOpacity(0.4)),
+                  borderSide: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                 ),
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
@@ -1088,7 +1083,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               controller: _bodyController,
               maxLines: 3,
               style: TextStyle(color: Colors.white, fontSize: 16.sp),
-              cursorColor: _gold,
+              cursorColor: AppColors.gold,
               decoration: InputDecoration(
                 hintText: 'Заходите за ароматным кофе!',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -1100,7 +1095,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: _gold.withOpacity(0.4)),
+                  borderSide: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                 ),
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
@@ -1122,7 +1117,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
               ),
               child: DropdownButtonFormField<int>(
                 value: _cooldownHours,
-                dropdownColor: _emeraldDark,
+                dropdownColor: AppColors.emeraldDark,
                 style: TextStyle(color: Colors.white, fontSize: 16.sp),
                 decoration: InputDecoration(
                   border: InputBorder.none,
@@ -1151,17 +1146,17 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   ? SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
                     )
-                  : Icon(Icons.save, color: _gold),
+                  : Icon(Icons.save, color: AppColors.gold),
               label: Text(
                 _isSavingSettings ? 'Сохранение...' : 'Сохранить настройки',
-                style: TextStyle(fontSize: 16.sp, color: _gold, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16.sp, color: AppColors.gold, fontWeight: FontWeight.bold),
               ),
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: _gold.withOpacity(0.4)),
+                side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                 padding: EdgeInsets.symmetric(vertical: 16.h),
-                backgroundColor: _gold.withOpacity(0.1),
+                backgroundColor: AppColors.gold.withOpacity(0.1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14.r),
                 ),
@@ -1175,13 +1170,13 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
           Container(
             padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.08),
+              color: AppColors.gold.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: _gold.withOpacity(0.15)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.15)),
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: _gold.withOpacity(0.7), size: 20),
+                Icon(Icons.info_outline, color: AppColors.gold.withOpacity(0.7), size: 20),
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -1224,10 +1219,10 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 Container(
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.12),
+                    color: AppColors.gold.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: Icon(icon, color: _gold.withOpacity(0.8), size: 20),
+                  child: Icon(icon, color: AppColors.gold.withOpacity(0.8), size: 20),
                 ),
                 SizedBox(width: 12),
                 Expanded(

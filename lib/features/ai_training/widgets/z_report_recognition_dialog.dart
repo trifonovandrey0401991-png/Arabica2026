@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/z_report_sample_model.dart';
 import '../services/z_report_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -261,7 +262,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
           ElevatedButton(
             onPressed: _confirm,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF004D40),
+              backgroundColor: AppColors.primaryGreen,
             ),
             child: Text('Подтвердить'),
           ),
@@ -273,7 +274,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
           ElevatedButton(
             onPressed: _isSaving ? null : _confirm,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF004D40),
+              backgroundColor: AppColors.primaryGreen,
             ),
             child: _isSaving
                 ? SizedBox(
@@ -394,7 +395,7 @@ Future<void> showRecognitionErrorDialog(BuildContext context) {
         ElevatedButton(
           onPressed: () => Navigator.pop(context),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF004D40),
+            backgroundColor: AppColors.primaryGreen,
           ),
           child: Text('Понятно'),
         ),

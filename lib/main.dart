@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'core/theme/app_colors.dart';
 import 'app/pages/main_menu_page.dart';
 import 'features/clients/pages/registration_page.dart';
 import 'features/auth/services/auth_service.dart';
@@ -20,12 +21,16 @@ import 'features/employees/services/user_role_service.dart';
 import 'core/utils/logger.dart';
 import 'features/clients/services/registration_service.dart';
 import 'core/services/app_update_service.dart';
+import 'core/services/base_http_service.dart';
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
 
 /// Глобальный флаг - показывать ли диалог об уведомлениях при запуске
 bool _shouldShowNotificationDialog = false;
+
+/// Глобальный ключ навигатора для auto-logout при 401
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,6 +96,19 @@ void main() async {
     });
   });
 
+  // Auto-logout при 401: очистка сессии + навигация на экран регистрации
+  BaseHttpService.onUnauthorized = () async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('is_registered');
+    await prefs.remove('user_name');
+    await prefs.remove('user_phone');
+    await UserRoleService.clearUserRole();
+    _navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => RegistrationPage()),
+      (_) => false,
+    );
+  };
+
   runApp(const ArabicaApp());
 }
 
@@ -99,18 +117,21 @@ class ArabicaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const MaterialColor primaryGreen = MaterialColor(0xFF004D40, {
-      50: Color(0xFFE0F2F1),
-      100: Color(0xFFB2DFDB),
-      200: Color(0xFF80CBC4),
-      300: Color(0xFF4DB6AC),
-      400: Color(0xFF26A69A),
-      500: Color(0xFF009688),
-      600: Color(0xFF00897B),
-      700: Color(0xFF00796B),
-      800: Color(0xFF00695C),
-      900: Color(0xFF004D40),
-    });
+    final MaterialColor primaryGreen = MaterialColor(
+      AppColors.primaryGreen.value,
+      {
+        50: AppColors.teal50,
+        100: AppColors.teal100,
+        200: AppColors.teal200,
+        300: AppColors.teal300,
+        400: AppColors.teal400,
+        500: AppColors.teal500,
+        600: AppColors.teal600,
+        700: AppColors.teal700,
+        800: AppColors.teal800,
+        900: AppColors.primaryGreen,
+      },
+    );
 
     return ScreenUtilInit(
       designSize: const Size(390, 844),
@@ -120,17 +141,18 @@ class ArabicaApp extends StatelessWidget {
         return CartProviderScope(
           child: OrderProviderScope(
             child: MaterialApp(
+              navigatorKey: _navigatorKey,
               debugShowCheckedModeBanner: false,
               title: 'Arabica',
               theme: ThemeData(
                 primarySwatch: primaryGreen,
-                appBarTheme: const AppBarTheme(
-                  backgroundColor: Color(0xFF004D40),
+                appBarTheme: AppBarTheme(
+                  backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   centerTitle: true,
                 ),
-                scaffoldBackgroundColor: const Color(0xFF004D40), // Темно-бирюзовый фон
+                scaffoldBackgroundColor: AppColors.primaryGreen, // Темно-бирюзовый фон
               ),
               routes: {
                 '/home': (context) => Builder(
@@ -415,13 +437,13 @@ class _SplashScreen extends StatelessWidget {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A4D4D), // Основной тёмно-бирюзовый
-              Color(0xFF0D3030), // Ещё темнее внизу
+              AppColors.emerald, // Основной тёмно-бирюзовый
+              AppColors.deepEmerald, // Ещё темнее внизу
             ],
           ),
         ),

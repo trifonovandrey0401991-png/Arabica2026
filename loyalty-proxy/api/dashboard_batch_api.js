@@ -8,19 +8,9 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function countJsonFiles(dirPath, filterFn) {
   let count = 0;

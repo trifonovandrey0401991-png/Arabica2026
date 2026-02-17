@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class EmployeeRegistrationPage extends StatefulWidget {
   final String? employeePhone; // Если указан - редактирование существующей регистрации
@@ -382,7 +383,6 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     }
   }
 
-  static final _primaryColor = Color(0xFF004D40);
   static final _accentColor = Color(0xFF00897B);
 
   /// Красивое поле ввода
@@ -403,7 +403,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: _primaryColor.withOpacity(0.08),
+            color: AppColors.primaryGreen.withOpacity(0.08),
             blurRadius: 10,
             offset: Offset(0, 4),
           ),
@@ -418,16 +418,16 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          labelStyle: TextStyle(color: _primaryColor.withOpacity(0.7)),
+          labelStyle: TextStyle(color: AppColors.primaryGreen.withOpacity(0.7)),
           hintStyle: TextStyle(color: Colors.grey[400]),
           prefixIcon: Container(
             margin: EdgeInsets.all(12.w),
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.1),
+              color: AppColors.primaryGreen.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Icon(icon, color: _primaryColor, size: 20),
+            child: Icon(icon, color: AppColors.primaryGreen, size: 20),
           ),
           filled: true,
           fillColor: Colors.white,
@@ -442,7 +442,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: _primaryColor, width: 2),
+            borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
@@ -475,7 +475,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [_primaryColor, _accentColor],
+                      colors: [AppColors.primaryGreen, _accentColor],
                     ),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
@@ -523,7 +523,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF004D40),
+              AppColors.primaryGreen,
               Color(0xFF00695C),
               Color(0xFF00796B),
             ],
@@ -848,18 +848,18 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           gradient: isSelected
-              ? LinearGradient(colors: [_primaryColor, _accentColor])
+              ? LinearGradient(colors: [AppColors.primaryGreen, _accentColor])
               : null,
           color: isSelected ? null : Colors.grey.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
-            color: isSelected ? _primaryColor : Colors.grey.withOpacity(0.2),
+            color: isSelected ? AppColors.primaryGreen : Colors.grey.withOpacity(0.2),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: _primaryColor.withOpacity(0.3),
+                    color: AppColors.primaryGreen.withOpacity(0.3),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
@@ -905,7 +905,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           // Заголовок
           Row(
             children: [
-              Icon(icon, size: 18, color: _primaryColor),
+              Icon(icon, size: 18, color: AppColors.primaryGreen),
               SizedBox(width: 8),
               Text(
                 label,
@@ -988,7 +988,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                           ),
                         ],
                       ),
-                      child: Icon(Icons.edit, size: 18, color: _primaryColor),
+                      child: Icon(Icons.edit, size: 18, color: AppColors.primaryGreen),
                     ),
                   ),
                 ),
@@ -1025,7 +1025,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: _primaryColor.withOpacity(0.1),
+      color: AppColors.primaryGreen.withOpacity(0.1),
       borderRadius: BorderRadius.circular(12.r),
       child: InkWell(
         onTap: _isLoading ? null : onTap,
@@ -1035,12 +1035,12 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20, color: _primaryColor),
+              Icon(icon, size: 20, color: AppColors.primaryGreen),
               SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  color: _primaryColor,
+                  color: AppColors.primaryGreen,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1056,12 +1056,12 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       height: 56,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_primaryColor, _accentColor],
+          colors: [AppColors.primaryGreen, _accentColor],
         ),
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: _primaryColor.withOpacity(0.4),
+            color: AppColors.primaryGreen.withOpacity(0.4),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),

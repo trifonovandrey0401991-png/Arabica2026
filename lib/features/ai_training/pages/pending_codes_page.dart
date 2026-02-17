@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/pending_code_model.dart';
 import '../services/master_catalog_service.dart';
 import '../../../core/constants/api_constants.dart';
@@ -23,10 +24,10 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   String? _error;
 
   // Цвета
-  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
-  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
-  static final _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
-  static final _redGradient = [Color(0xFFEF4444), Color(0xFFF87171)];
+  static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
+  static final _blueGradient = [AppColors.info, AppColors.infoLight];
+  static final _orangeGradient = [AppColors.warning, AppColors.warningLight];
+  static final _redGradient = [AppColors.error, AppColors.errorLight];
 
   @override
   void initState() {
@@ -78,7 +79,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     return RefreshIndicator(
       onRefresh: _loadData,
       color: _greenGradient[0],
-      backgroundColor: Color(0xFF1A1A2E),
+      backgroundColor: AppColors.darkNavy,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: _pendingCodes.length + 1, // +1 для заголовка
@@ -385,7 +386,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   void _showApproveDialog(PendingCode code) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Color(0xFF1A1A2E),
+      backgroundColor: AppColors.darkNavy,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
@@ -527,7 +528,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
-          backgroundColor: Color(0xFF1A1A2E),
+          backgroundColor: AppColors.darkNavy,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
           child: Container(
             padding: EdgeInsets.all(24.w),
@@ -704,7 +705,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                                 value: groups.contains(selectedGroup) ? selectedGroup : null,
                                 hint: Text('Выберите группу', style: TextStyle(color: Colors.white.withOpacity(0.5))),
                                 isExpanded: true,
-                                dropdownColor: Color(0xFF1A1A2E),
+                                dropdownColor: AppColors.darkNavy,
                                 icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
                                 items: groups.map((g) => DropdownMenuItem(
                                   value: g,
@@ -844,7 +845,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: AppColors.darkNavy,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(
           'Отклонить код?',
@@ -937,8 +938,8 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
   bool _isAssigning = false;
   Timer? _debounce;
 
-  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
-  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static final _blueGradient = [AppColors.info, AppColors.infoLight];
+  static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
 
   @override
   void dispose() {
@@ -969,7 +970,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: AppColors.darkNavy,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Подтвердите', style: TextStyle(color: Colors.white)),
         content: Text(
@@ -1021,7 +1022,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Color(0xFF1A1A2E),
+      backgroundColor: AppColors.darkNavy,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 40.h),
       child: Container(

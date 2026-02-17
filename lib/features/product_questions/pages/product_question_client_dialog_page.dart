@@ -3,12 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_personal_dialog_page.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница чата клиента по поиску товара (единый чат со всеми магазинами)
 class ProductQuestionClientDialogPage extends StatefulWidget {
@@ -19,12 +21,6 @@ class ProductQuestionClientDialogPage extends StatefulWidget {
 }
 
 class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientDialogPage> {
-  // Dark emerald + gold palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -132,9 +128,9 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
         backgroundColor: Colors.transparent,
         builder: (context) => Container(
           decoration: BoxDecoration(
-            color: _night.withOpacity(0.98),
+            color: AppColors.night.withOpacity(0.98),
             borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-            border: Border(top: BorderSide(color: _gold.withOpacity(0.2))),
+            border: Border(top: BorderSide(color: AppColors.gold.withOpacity(0.2))),
           ),
           child: SafeArea(
             child: Column(
@@ -164,7 +160,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                   leading: Container(
                     padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
-                      color: _emerald.withOpacity(0.3),
+                      color: AppColors.emerald.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Icon(Icons.photo_library, color: Colors.white.withOpacity(0.8)),
@@ -176,7 +172,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                   leading: Container(
                     padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
-                      color: _emerald.withOpacity(0.3),
+                      color: AppColors.emerald.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Icon(Icons.camera_alt, color: Colors.white.withOpacity(0.8)),
@@ -390,7 +386,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                         ? LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [_emerald, _emeraldDark],
+                            colors: [AppColors.emerald, AppColors.emeraldDark],
                           )
                         : null,
                     color: isClientMessage ? null : Colors.white.withOpacity(0.08),
@@ -401,7 +397,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                       bottomRight: isClientMessage ? Radius.circular(4.r) : Radius.circular(18.r),
                     ),
                     border: Border.all(
-                      color: _gold.withOpacity(0.5),
+                      color: AppColors.gold.withOpacity(0.5),
                       width: 1.0,
                     ),
                   ),
@@ -414,7 +410,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                           style: TextStyle(
                             fontSize: 11.sp,
                             fontWeight: FontWeight.w600,
-                            color: _gold.withOpacity(0.8),
+                            color: AppColors.gold.withOpacity(0.8),
                           ),
                         ),
                         SizedBox(height: 4),
@@ -425,7 +421,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                           child: AppCachedImage(
                             imageUrl: message.imageUrl!.startsWith('http')
                                 ? message.imageUrl!
-                                : 'https://arabica26.ru${message.imageUrl}',
+                                : '${ApiConstants.serverUrl}${message.imageUrl}',
                             width: double.infinity,
                             fit: BoxFit.cover,
                             errorWidget: (context, error, stackTrace) {
@@ -475,13 +471,13 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
               icon: Icon(Icons.store_rounded, size: 16),
               label: Text('Написать в магазин'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _emerald,
-                foregroundColor: _gold,
+                backgroundColor: AppColors.emerald,
+                foregroundColor: AppColors.gold,
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 textStyle: TextStyle(fontSize: 12.sp),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.r),
-                  side: BorderSide(color: _gold.withOpacity(0.3)),
+                  side: BorderSide(color: AppColors.gold.withOpacity(0.3)),
                 ),
               ),
             ),
@@ -494,7 +490,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
               'Диалог создан',
               style: TextStyle(
                 fontSize: 11.sp,
-                color: _gold.withOpacity(0.5),
+                color: AppColors.gold.withOpacity(0.5),
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -507,13 +503,13 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.15, 0.4],
           ),
         ),
@@ -550,7 +546,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                             'Все диалоги',
                             style: TextStyle(
                               fontSize: 12.sp,
-                              color: _gold.withOpacity(0.7),
+                              color: AppColors.gold.withOpacity(0.7),
                             ),
                           ),
                         ],
@@ -566,7 +562,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
               // Messages
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _messages.isEmpty
                         ? Center(
                             child: Column(
@@ -578,12 +574,12 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.06),
                                     borderRadius: BorderRadius.circular(18.r),
-                                    border: Border.all(color: _gold.withOpacity(0.3)),
+                                    border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                                   ),
                                   child: Icon(
                                     Icons.chat_bubble_outline,
                                     size: 32,
-                                    color: _gold.withOpacity(0.5),
+                                    color: AppColors.gold.withOpacity(0.5),
                                   ),
                                 ),
                                 SizedBox(height: 20),
@@ -612,7 +608,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                 Container(
                   height: 100,
                   padding: EdgeInsets.all(8.w),
-                  color: _night.withOpacity(0.95),
+                  color: AppColors.night.withOpacity(0.95),
                   child: Stack(
                     children: [
                       ClipRRect(
@@ -645,8 +641,8 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                 decoration: BoxDecoration(
-                  color: _night.withOpacity(0.95),
-                  border: Border(top: BorderSide(color: _gold.withOpacity(0.15))),
+                  color: AppColors.night.withOpacity(0.95),
+                  border: Border(top: BorderSide(color: AppColors.gold.withOpacity(0.15))),
                 ),
                 child: SafeArea(
                   child: Row(
@@ -659,10 +655,10 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(color: _gold.withOpacity(0.2)),
+                          border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                         ),
                         child: IconButton(
-                          icon: Icon(Icons.attach_file_rounded, color: _gold.withOpacity(0.7)),
+                          icon: Icon(Icons.attach_file_rounded, color: AppColors.gold.withOpacity(0.7)),
                           onPressed: _isSending ? null : _pickImage,
                           iconSize: 22,
                           constraints: BoxConstraints(minWidth: 44, minHeight: 44),
@@ -675,7 +671,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(22.r),
-                            border: Border.all(color: _gold.withOpacity(0.2)),
+                            border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                           ),
                           child: TextField(
                             controller: _messageController,
@@ -709,9 +705,9 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                             width: 46,
                             height: 46,
                             decoration: BoxDecoration(
-                              color: _emerald,
+                              color: AppColors.emerald,
                               borderRadius: BorderRadius.circular(23.r),
-                              border: Border.all(color: _gold.withOpacity(0.3)),
+                              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                             ),
                             child: Center(
                               child: _isSending
@@ -720,12 +716,12 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                                       height: 22,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2.5,
-                                        color: _gold,
+                                        color: AppColors.gold,
                                       ),
                                     )
                                   : Icon(
                                       Icons.send_rounded,
-                                      color: _gold,
+                                      color: AppColors.gold,
                                       size: 22,
                                     ),
                             ),

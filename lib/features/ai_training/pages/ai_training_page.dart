@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'z_report_training_page.dart';
 import 'cigarette_training_page.dart';
 import 'shift_training_page.dart';
@@ -60,9 +61,9 @@ class _AITrainingPageState extends State<AITrainingPage>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
+              AppColors.darkNavy,
+              AppColors.navy,
+              AppColors.deepBlue,
             ],
           ),
         ),
@@ -88,7 +89,7 @@ class _AITrainingPageState extends State<AITrainingPage>
                         title: 'Z-отчёт',
                         description: 'Обучение распознаванию кассовых Z-отчётов',
                         icon: Icons.receipt_long,
-                        gradient: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                        gradient: [AppColors.indigo, AppColors.purple],
                         stats: '3 шаблона',
                         onTap: () {
                           Navigator.push(
@@ -106,7 +107,7 @@ class _AITrainingPageState extends State<AITrainingPage>
                         title: 'Подсчёт сигарет',
                         description: 'Распознавание и подсчёт пачек сигарет на витрине',
                         icon: Icons.grid_view_rounded,
-                        gradient: [Color(0xFF10B981), Color(0xFF34D399)],
+                        gradient: [AppColors.emeraldGreen, AppColors.emeraldGreenLight],
                         stats: 'Обучение',
                         onTap: () {
                           Navigator.push(
@@ -126,7 +127,7 @@ class _AITrainingPageState extends State<AITrainingPage>
                           title: 'Пересменка',
                           description: 'ИИ проверка наличия товаров на полках при пересменке',
                           icon: Icons.swap_horiz_rounded,
-                          gradient: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+                          gradient: [AppColors.warning, AppColors.warningLight],
                           stats: 'Товары',
                           onTap: () {
                             Navigator.push(
@@ -144,7 +145,7 @@ class _AITrainingPageState extends State<AITrainingPage>
                           title: 'Кофемашины',
                           description: 'Шаблоны счётчиков для разных типов кофемашин',
                           icon: Icons.coffee_outlined,
-                          gradient: [Color(0xFFD4AF37), Color(0xFFF0C850)],
+                          gradient: [AppColors.gold, Color(0xFFF0C850)],
                           stats: 'Шаблоны',
                           onTap: () {
                             Navigator.push(
@@ -231,11 +232,11 @@ class _AITrainingPageState extends State<AITrainingPage>
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    colors: [AppColors.indigo, AppColors.purple],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF6366F1).withOpacity(0.4),
+                      color: AppColors.indigo.withOpacity(0.4),
                       blurRadius: 30,
                       spreadRadius: 5,
                     ),
@@ -256,7 +257,7 @@ class _AITrainingPageState extends State<AITrainingPage>
         // Заголовок
         ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
-            colors: [Color(0xFF6366F1), Color(0xFFA78BFA), Color(0xFF8B5CF6)],
+            colors: [AppColors.indigo, AppColors.purpleLight, AppColors.purple],
           ).createShader(bounds),
           child: Text(
             'Машинное зрение',
@@ -407,7 +408,7 @@ class _AITrainingPageState extends State<AITrainingPage>
           title: 'Как это работает?',
           description:
               'Загружайте фото документов, проверяйте распознанные данные и обучайте ИИ на своих примерах.',
-          gradient: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+          gradient: [AppColors.warning, AppColors.warningLight],
         ),
         SizedBox(height: 12),
         _buildInfoCard(
@@ -415,7 +416,7 @@ class _AITrainingPageState extends State<AITrainingPage>
           title: 'Улучшение точности',
           description:
               'С каждым новым образцом система становится умнее и точнее распознаёт ваши документы.',
-          gradient: [Color(0xFF10B981), Color(0xFF34D399)],
+          gradient: [AppColors.emeraldGreen, AppColors.emeraldGreenLight],
         ),
       ],
     );

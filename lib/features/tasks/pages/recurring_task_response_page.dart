@@ -7,6 +7,7 @@ import '../models/task_model.dart' show TaskResponseType, TaskResponseTypeExtens
 import '../services/recurring_task_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница ответа на циклическую задачу
 class RecurringTaskResponsePage extends StatefulWidget {
@@ -23,11 +24,6 @@ class RecurringTaskResponsePage extends StatefulWidget {
 }
 
 class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   final _textController = TextEditingController();
   final List<File> _photos = [];
   bool _isSubmitting = false;
@@ -53,9 +49,9 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
 
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(source: ImageSource.camera, maxWidth: 1280, imageQuality: 75);
 
-    if (pickedFile != null) {
+    if (pickedFile != null && mounted) {
       setState(() {
         _photos.add(File(pickedFile.path));
       });
@@ -64,8 +60,9 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
 
   Future<void> _pickFromGallery() async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
+    final pickedFiles = await picker.pickMultiImage(maxWidth: 1280, imageQuality: 75);
 
+    if (!mounted) return;
     setState(() {
       for (final file in pickedFiles) {
         _photos.add(File(file.path));
@@ -181,13 +178,13 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
         instance.responseType == TaskResponseType.photoAndText;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -249,7 +246,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.repeat, color: _gold),
+                                  Icon(Icons.repeat, color: AppColors.gold),
                                   SizedBox(width: 8),
                                   Container(
                                     padding: EdgeInsets.symmetric(
@@ -257,14 +254,14 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                                       vertical: 2.h,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: _gold.withOpacity(0.15),
+                                      color: AppColors.gold.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(8.r),
                                     ),
                                     child: Text(
                                       'Циклическая',
                                       style: TextStyle(
                                         fontSize: 11.sp,
-                                        color: _gold,
+                                        color: AppColors.gold,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -360,10 +357,10 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: _pickPhoto,
-                                icon: Icon(Icons.camera_alt, color: _gold),
-                                label: Text('Камера', style: TextStyle(color: _gold)),
+                                icon: Icon(Icons.camera_alt, color: AppColors.gold),
+                                label: Text('Камера', style: TextStyle(color: AppColors.gold)),
                                 style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: _gold),
+                                  side: BorderSide(color: AppColors.gold),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
@@ -375,10 +372,10 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: _pickFromGallery,
-                                icon: Icon(Icons.photo_library, color: _gold),
-                                label: Text('Галерея', style: TextStyle(color: _gold)),
+                                icon: Icon(Icons.photo_library, color: AppColors.gold),
+                                label: Text('Галерея', style: TextStyle(color: AppColors.gold)),
                                 style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: _gold),
+                                  side: BorderSide(color: AppColors.gold),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
@@ -421,7 +418,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12.r),
-                              borderSide: BorderSide(color: _gold.withOpacity(0.6)),
+                              borderSide: BorderSide(color: AppColors.gold.withOpacity(0.6)),
                             ),
                           ),
                           onChanged: (_) => setState(() {}),
@@ -464,10 +461,10 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                               ? _completeTask
                               : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _gold,
-                            foregroundColor: _night,
-                            disabledBackgroundColor: _gold.withOpacity(0.3),
-                            disabledForegroundColor: _night.withOpacity(0.5),
+                            backgroundColor: AppColors.gold,
+                            foregroundColor: AppColors.night,
+                            disabledBackgroundColor: AppColors.gold.withOpacity(0.3),
+                            disabledForegroundColor: AppColors.night.withOpacity(0.5),
                             padding: EdgeInsets.symmetric(vertical: 16.h),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
@@ -479,7 +476,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                                   width: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(_night),
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.night),
                                   ),
                                 )
                               : Text(

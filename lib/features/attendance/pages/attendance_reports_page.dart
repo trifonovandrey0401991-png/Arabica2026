@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import '../models/shop_attendance_summary.dart';
 import '../models/pending_attendance_model.dart';
@@ -33,10 +34,6 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   final Set<String> _expandedShops = {};
   String _searchQuery = '';
 
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -89,13 +86,13 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -209,10 +206,10 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         duration: Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
         decoration: BoxDecoration(
-          color: isSelected ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
+          color: isSelected ? AppColors.gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
-            color: isSelected ? _gold : Colors.white.withOpacity(0.1),
+            color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Row(
@@ -231,14 +228,14 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             Icon(
               icon,
               size: 18,
-              color: isSelected ? _gold : Colors.white,
+              color: isSelected ? AppColors.gold : Colors.white,
             ),
             SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? _gold : Colors.white,
+                  color: isSelected ? AppColors.gold : Colors.white,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 12.sp,
                 ),
@@ -254,7 +251,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   Widget _buildBody() {
     if (_isLoading) {
       return Center(
-        child: CircularProgressIndicator(color: _gold),
+        child: CircularProgressIndicator(color: AppColors.gold),
       );
     }
 
@@ -298,7 +295,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
               icon: Icon(Icons.refresh),
               label: Text('Повторить'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _gold,
+                backgroundColor: AppColors.gold,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -324,11 +321,11 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           child: TextField(
             onChanged: (value) => setState(() => _searchQuery = value),
             style: TextStyle(color: Colors.white),
-            cursorColor: _gold,
+            cursorColor: AppColors.gold,
             decoration: InputDecoration(
               hintText: 'Поиск по имени...',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-              prefixIcon: Icon(Icons.search, color: _gold),
+              prefixIcon: Icon(Icons.search, color: AppColors.gold),
               border: InputBorder.none,
               contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             ),
@@ -368,8 +365,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: 16.w),
         itemCount: filtered.length,
@@ -500,8 +497,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: _shopsSummary.length,
@@ -612,7 +609,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             ),
             trailing: Icon(
               isExpanded ? Icons.expand_less : Icons.expand_more,
-              color: _gold,
+              color: AppColors.gold,
             ),
             onTap: () {
               setState(() {
@@ -713,8 +710,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: _pendingReports.length,
@@ -861,8 +858,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: _failedReports.length,

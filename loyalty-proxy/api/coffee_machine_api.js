@@ -3,10 +3,17 @@
  *
  * Управление шаблонами кофемашин, привязками к магазинам,
  * отчётами по счётчикам и OCR распознаванием.
+ *
+ * REFACTORED: Added PostgreSQL support for coffee_machine_reports (2026-02-17)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_COFFEE_MACHINE === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -21,16 +28,6 @@ const TRAINING_SAMPLES_FILE = `${TRAINING_DIR}/samples.json`;
 const INTELLIGENCE_FILE = `${TRAINING_DIR}/machine-intelligence.json`;
 const MAX_TRAINING_SAMPLES = 200;
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // Ensure directories exist
 (async () => {
   for (const dir of [TEMPLATES_DIR, SHOP_CONFIGS_DIR, REPORTS_DIR, PHOTOS_DIR, TRAINING_DIR, TRAINING_IMAGES_DIR]) {
@@ -40,10 +37,64 @@ async function fileExists(filePath) {
   }
 })();
 
-// Sanitize ID for filename
-function sanitizeId(str) {
-  return str.replace(/[^a-zA-Z0-9_\-]/g, '_');
+// ==================== DB CONVERSION (coffee_machine_reports) ====================
+
+function dbCmReportToCamel(row) {
+  return {
+    id: row.id,
+    employeeName: row.employee_name,
+    employeePhone: row.employee_phone,
+    shopAddress: row.shop_address,
+    shiftType: row.shift_type,
+    date: row.date,
+    readings: typeof row.readings === 'string' ? JSON.parse(row.readings) : (row.readings || []),
+    computerNumber: row.computer_number,
+    computerPhotoUrl: row.computer_photo_url,
+    sumOfMachines: row.sum_of_machines,
+    hasDiscrepancy: row.has_discrepancy,
+    discrepancyAmount: row.discrepancy_amount,
+    status: row.status,
+    rating: row.rating,
+    createdAt: row.created_at,
+    confirmedAt: row.confirmed_at,
+    confirmedByAdmin: row.confirmed_by_admin,
+    rejectedAt: row.rejected_at,
+    rejectedByAdmin: row.rejected_by_admin,
+    rejectReason: row.reject_reason,
+    failedAt: row.failed_at,
+    completedBy: row.completed_by,
+    updatedAt: row.updated_at,
+  };
 }
+
+function camelToDbCm(body) {
+  const data = {};
+  if (body.id !== undefined) data.id = body.id;
+  if (body.employeeName !== undefined) data.employee_name = body.employeeName;
+  if (body.employeePhone !== undefined) data.employee_phone = body.employeePhone;
+  if (body.shopAddress !== undefined) data.shop_address = body.shopAddress;
+  if (body.shiftType !== undefined) data.shift_type = body.shiftType;
+  if (body.date !== undefined) data.date = body.date;
+  if (body.readings !== undefined) data.readings = JSON.stringify(body.readings);
+  if (body.computerNumber !== undefined) data.computer_number = body.computerNumber;
+  if (body.computerPhotoUrl !== undefined) data.computer_photo_url = body.computerPhotoUrl;
+  if (body.sumOfMachines !== undefined) data.sum_of_machines = body.sumOfMachines;
+  if (body.hasDiscrepancy !== undefined) data.has_discrepancy = body.hasDiscrepancy;
+  if (body.discrepancyAmount !== undefined) data.discrepancy_amount = body.discrepancyAmount;
+  if (body.status !== undefined) data.status = body.status;
+  if (body.rating != null) data.rating = body.rating;
+  if (body.createdAt !== undefined) data.created_at = body.createdAt;
+  if (body.confirmedAt !== undefined) data.confirmed_at = body.confirmedAt;
+  if (body.confirmedByAdmin !== undefined) data.confirmed_by_admin = body.confirmedByAdmin;
+  if (body.rejectedAt !== undefined) data.rejected_at = body.rejectedAt;
+  if (body.rejectedByAdmin !== undefined) data.rejected_by_admin = body.rejectedByAdmin;
+  if (body.rejectReason !== undefined) data.reject_reason = body.rejectReason;
+  if (body.failedAt !== undefined) data.failed_at = body.failedAt;
+  if (body.completedBy !== undefined) data.completed_by = body.completedBy;
+  return data;
+}
+
+// ====================================================================================
 
 function setupCoffeeMachineAPI(app) {
 
@@ -270,34 +321,69 @@ function setupCoffeeMachineAPI(app) {
   // GET /api/coffee-machine/reports — список отчётов
   app.get('/api/coffee-machine/reports', async (req, res) => {
     try {
-      const reports = [];
-      if (await fileExists(REPORTS_DIR)) {
-        const files = (await fsp.readdir(REPORTS_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(REPORTS_DIR, file), 'utf8');
-            const report = JSON.parse(content);
+      let reports;
 
-            // Фильтры
-            if (req.query.shopAddress && report.shopAddress !== req.query.shopAddress) continue;
-            if (req.query.status && report.status !== req.query.status) continue;
-            if (req.query.employeeName && report.employeeName !== req.query.employeeName) continue;
-            if (req.query.fromDate) {
-              const fromDate = new Date(req.query.fromDate);
-              if (new Date(report.createdAt) < fromDate) continue;
-            }
-            if (req.query.toDate) {
-              const toDate = new Date(req.query.toDate);
-              if (new Date(report.createdAt) > toDate) continue;
-            }
+      if (USE_DB) {
+        let query = 'SELECT * FROM coffee_machine_reports WHERE 1=1';
+        const params = [];
+        let idx = 1;
 
-            reports.push(report);
-          } catch (e) {
-            console.error(`[CoffeeMachine] Ошибка чтения отчёта ${file}:`, e.message);
+        if (req.query.shopAddress) {
+          query += ` AND shop_address = $${idx++}`;
+          params.push(req.query.shopAddress);
+        }
+        if (req.query.status) {
+          query += ` AND status = $${idx++}`;
+          params.push(req.query.status);
+        }
+        if (req.query.employeeName) {
+          query += ` AND employee_name = $${idx++}`;
+          params.push(req.query.employeeName);
+        }
+        if (req.query.fromDate) {
+          query += ` AND created_at >= $${idx++}`;
+          params.push(req.query.fromDate);
+        }
+        if (req.query.toDate) {
+          query += ` AND created_at <= $${idx++}`;
+          params.push(req.query.toDate);
+        }
+
+        query += ' ORDER BY created_at DESC';
+
+        const result = await db.query(query, params);
+        reports = result.rows.map(dbCmReportToCamel);
+      } else {
+        reports = [];
+        if (await fileExists(REPORTS_DIR)) {
+          const files = (await fsp.readdir(REPORTS_DIR)).filter(f => f.endsWith('.json'));
+          for (const file of files) {
+            try {
+              const content = await fsp.readFile(path.join(REPORTS_DIR, file), 'utf8');
+              const report = JSON.parse(content);
+
+              // Фильтры
+              if (req.query.shopAddress && report.shopAddress !== req.query.shopAddress) continue;
+              if (req.query.status && report.status !== req.query.status) continue;
+              if (req.query.employeeName && report.employeeName !== req.query.employeeName) continue;
+              if (req.query.fromDate) {
+                const fromDate = new Date(req.query.fromDate);
+                if (new Date(report.createdAt) < fromDate) continue;
+              }
+              if (req.query.toDate) {
+                const toDate = new Date(req.query.toDate);
+                if (new Date(report.createdAt) > toDate) continue;
+              }
+
+              reports.push(report);
+            } catch (e) {
+              console.error(`[CoffeeMachine] Ошибка чтения отчёта ${file}:`, e.message);
+            }
           }
         }
+        reports.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       }
-      reports.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
       res.json({ success: true, reports });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -307,15 +393,25 @@ function setupCoffeeMachineAPI(app) {
   // GET /api/coffee-machine/reports/:id — один отчёт
   app.get('/api/coffee-machine/reports/:id', async (req, res) => {
     try {
-      const { id } = req.params;
-      const filePath = path.join(REPORTS_DIR, `${sanitizeId(id)}.json`);
+      const id = sanitizeId(req.params.id);
 
-      if (await fileExists(filePath)) {
-        const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
-        res.json({ success: true, report });
+      let report;
+      if (USE_DB) {
+        const row = await db.findById('coffee_machine_reports', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        }
+        report = dbCmReportToCamel(row);
       } else {
-        res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        const filePath = path.join(REPORTS_DIR, `${id}.json`);
+        if (await fileExists(filePath)) {
+          report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+        } else {
+          return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        }
       }
+
+      res.json({ success: true, report });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
@@ -371,8 +467,17 @@ function setupCoffeeMachineAPI(app) {
         delete report.computerPhotoBase64;
       }
 
+      if (USE_DB) {
+        const dbData = camelToDbCm(report);
+        dbData.id = report.id;
+        dbData.date = report.date || (report.createdAt ? report.createdAt.split('T')[0] : null);
+        dbData.updated_at = new Date().toISOString();
+        await db.upsert('coffee_machine_reports', dbData);
+      }
+
+      // Dual-write: файл нужен для efficiency_calc.js и execution_chain_api.js
       const filePath = path.join(REPORTS_DIR, `${sanitizeId(report.id)}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await writeJsonFile(filePath, report);
 
       console.log(`[CoffeeMachine] ✅ Отчёт создан: ${report.employeeName} - ${report.shopAddress} (${report.shiftType})`);
 
@@ -394,21 +499,43 @@ function setupCoffeeMachineAPI(app) {
   // PUT /api/coffee-machine/reports/:id/confirm — подтвердить отчёт
   app.put('/api/coffee-machine/reports/:id/confirm', async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = sanitizeId(req.params.id);
       const { confirmedByAdmin, rating } = req.body;
-      const filePath = path.join(REPORTS_DIR, `${sanitizeId(id)}.json`);
 
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+      let report;
+      if (USE_DB) {
+        const row = await db.findById('coffee_machine_reports', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        }
+        report = dbCmReportToCamel(row);
+      } else {
+        const filePath = path.join(REPORTS_DIR, `${id}.json`);
+        if (!(await fileExists(filePath))) {
+          return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        }
+        report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       }
 
-      const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       report.status = 'confirmed';
       report.confirmedAt = new Date().toISOString();
       report.confirmedByAdmin = confirmedByAdmin;
       report.rating = rating;
 
-      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+      if (USE_DB) {
+        await db.updateById('coffee_machine_reports', id, {
+          status: 'confirmed',
+          confirmed_at: report.confirmedAt,
+          confirmed_by_admin: confirmedByAdmin,
+          rating: rating,
+          updated_at: new Date().toISOString()
+        });
+      }
+
+      // Dual-write: файл
+      const filePath = path.join(REPORTS_DIR, `${id}.json`);
+      await writeJsonFile(filePath, report);
+
       console.log(`[CoffeeMachine] ✅ Отчёт подтверждён: ${id} (оценка: ${rating})`);
       res.json({ success: true, report });
     } catch (error) {
@@ -419,21 +546,43 @@ function setupCoffeeMachineAPI(app) {
   // PUT /api/coffee-machine/reports/:id/reject — отклонить отчёт
   app.put('/api/coffee-machine/reports/:id/reject', async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = sanitizeId(req.params.id);
       const { rejectedByAdmin, rejectReason } = req.body;
-      const filePath = path.join(REPORTS_DIR, `${sanitizeId(id)}.json`);
 
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+      let report;
+      if (USE_DB) {
+        const row = await db.findById('coffee_machine_reports', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        }
+        report = dbCmReportToCamel(row);
+      } else {
+        const filePath = path.join(REPORTS_DIR, `${id}.json`);
+        if (!(await fileExists(filePath))) {
+          return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        }
+        report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       }
 
-      const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       report.status = 'rejected';
       report.rejectedAt = new Date().toISOString();
       report.rejectedByAdmin = rejectedByAdmin;
       report.rejectReason = rejectReason;
 
-      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+      if (USE_DB) {
+        await db.updateById('coffee_machine_reports', id, {
+          status: 'rejected',
+          rejected_at: report.rejectedAt,
+          rejected_by_admin: rejectedByAdmin,
+          reject_reason: rejectReason,
+          updated_at: new Date().toISOString()
+        });
+      }
+
+      // Dual-write: файл
+      const filePath = path.join(REPORTS_DIR, `${id}.json`);
+      await writeJsonFile(filePath, report);
+
       console.log(`[CoffeeMachine] ❌ Отчёт отклонён: ${id}`);
       res.json({ success: true, report });
     } catch (error) {
@@ -444,14 +593,24 @@ function setupCoffeeMachineAPI(app) {
   // DELETE /api/coffee-machine/reports/:id — удалить отчёт
   app.delete('/api/coffee-machine/reports/:id', async (req, res) => {
     try {
-      const { id } = req.params;
-      const filePath = path.join(REPORTS_DIR, `${sanitizeId(id)}.json`);
+      const id = sanitizeId(req.params.id);
 
-      if (!(await fileExists(filePath))) {
+      if (USE_DB) {
+        const row = await db.findById('coffee_machine_reports', id);
+        if (!row) {
+          return res.status(404).json({ success: false, error: 'Отчёт не найден' });
+        }
+        await db.deleteById('coffee_machine_reports', id);
+      }
+
+      // Dual-write: удаляем файл тоже
+      const filePath = path.join(REPORTS_DIR, `${id}.json`);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
+      } else if (!USE_DB) {
         return res.status(404).json({ success: false, error: 'Отчёт не найден' });
       }
 
-      await fsp.unlink(filePath);
       console.log(`[CoffeeMachine] ❌ Отчёт удалён: ${id}`);
       res.json({ success: true });
     } catch (error) {

@@ -4,6 +4,7 @@ import 'create_recurring_task_page.dart';
 import '../models/recurring_task_model.dart';
 import '../services/recurring_task_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления задачами с вкладками (Обычные / Циклические)
 class TaskManagementPage extends StatefulWidget {
@@ -22,11 +23,6 @@ class _TaskManagementPageState extends State<TaskManagementPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   @override
   void initState() {
     super.initState();
@@ -42,13 +38,13 @@ class _TaskManagementPageState extends State<TaskManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -95,7 +91,7 @@ class _TaskManagementPageState extends State<TaskManagementPage>
                         Text(
                           'Обычные и циклические',
                           style: TextStyle(
-                            color: _gold,
+                            color: AppColors.gold,
                             fontSize: 13.sp,
                           ),
                         ),
@@ -110,7 +106,7 @@ class _TaskManagementPageState extends State<TaskManagementPage>
                 margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: _gold,
+                  indicatorColor: AppColors.gold,
                   indicatorWeight: 2.5,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
@@ -147,9 +143,6 @@ class _RegularTasksTab extends StatelessWidget {
   final String createdBy;
 
   _RegularTasksTab({required this.createdBy});
-
-  static final Color _gold = Color(0xFFD4AF37);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
 
   @override
   Widget build(BuildContext context) {
@@ -201,13 +194,13 @@ class _RegularTasksTab extends StatelessWidget {
                   ),
                 );
               },
-              icon: Icon(Icons.add, color: _emeraldDark),
+              icon: Icon(Icons.add, color: AppColors.emeraldDark),
               label: Text(
                 'Создать задачу',
-                style: TextStyle(color: _emeraldDark),
+                style: TextStyle(color: AppColors.emeraldDark),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _gold,
+                backgroundColor: AppColors.gold,
                 padding: EdgeInsets.symmetric(
                   horizontal: 32.w,
                   vertical: 16.h,
@@ -238,9 +231,6 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
   List<RecurringTask> _tasks = [];
   bool _isLoading = true;
   String? _error;
-
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -292,7 +282,7 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Text(
           'Удалить задачу?',
           style: TextStyle(color: Colors.white.withOpacity(0.9)),
@@ -347,7 +337,7 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Center(
-        child: CircularProgressIndicator(color: _gold),
+        child: CircularProgressIndicator(color: AppColors.gold),
       );
     }
 
@@ -375,8 +365,8 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
             ElevatedButton(
               onPressed: _loadTasks,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _gold,
-                foregroundColor: _emeraldDark,
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.emeraldDark,
               ),
               child: Text('Повторить'),
             ),
@@ -405,13 +395,13 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
                   _loadTasks();
                 }
               },
-              icon: Icon(Icons.add, color: _emeraldDark),
+              icon: Icon(Icons.add, color: AppColors.emeraldDark),
               label: Text(
                 'Создать циклическую задачу',
-                style: TextStyle(color: _emeraldDark),
+                style: TextStyle(color: AppColors.emeraldDark),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _gold,
+                backgroundColor: AppColors.gold,
                 padding: EdgeInsets.symmetric(vertical: 16.h),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.r),
@@ -457,8 +447,8 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
                 )
               : RefreshIndicator(
                   onRefresh: _loadTasks,
-                  color: _gold,
-                  backgroundColor: _emeraldDark,
+                  color: AppColors.gold,
+                  backgroundColor: AppColors.emeraldDark,
                   child: ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16.w),
                     itemCount: _tasks.length,
@@ -506,8 +496,6 @@ class _RecurringTaskCard extends StatelessWidget {
     required this.onEdit,
   });
 
-  static final Color _gold = Color(0xFFD4AF37);
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -531,7 +519,7 @@ class _RecurringTaskCard extends StatelessWidget {
                   Icons.repeat,
                   color: task.isPaused
                       ? Colors.white.withOpacity(0.3)
-                      : _gold,
+                      : AppColors.gold,
                 ),
                 SizedBox(width: 8),
                 Expanded(

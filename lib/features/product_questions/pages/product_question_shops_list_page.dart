@@ -7,6 +7,7 @@ import 'product_question_dialog_page.dart';
 import 'product_question_client_dialog_page.dart';
 import 'product_question_personal_dialog_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница списка магазинов для поиска товара
 class ProductQuestionShopsListPage extends StatefulWidget {
@@ -17,12 +18,6 @@ class ProductQuestionShopsListPage extends StatefulWidget {
 }
 
 class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListPage> {
-  // Dark emerald + gold palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-
   ProductQuestionGroupedData? _groupedData;
   bool _isLoading = true;
   Timer? _refreshTimer;
@@ -71,13 +66,13 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.15, 0.4],
           ),
         ),
@@ -113,7 +108,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                             'Мои диалоги',
                             style: TextStyle(
                               fontSize: 12.sp,
-                              color: _gold.withOpacity(0.7),
+                              color: AppColors.gold.withOpacity(0.7),
                             ),
                           ),
                         ],
@@ -125,7 +120,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
               // Content
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _groupedData == null || (_groupedData!.byShop.isEmpty && _groupedData!.networkWideQuestions.isEmpty)
                         ? Center(
                             child: Column(
@@ -137,12 +132,12 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.06),
                                     borderRadius: BorderRadius.circular(18.r),
-                                    border: Border.all(color: _gold.withOpacity(0.3)),
+                                    border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                                   ),
                                   child: Icon(
                                     Icons.forum_outlined,
                                     size: 32,
-                                    color: _gold.withOpacity(0.5),
+                                    color: AppColors.gold.withOpacity(0.5),
                                   ),
                                 ),
                                 SizedBox(height: 20),
@@ -159,8 +154,8 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                           )
                         : RefreshIndicator(
                             onRefresh: _loadData,
-                            color: _gold,
-                            backgroundColor: _emeraldDark,
+                            color: AppColors.gold,
+                            backgroundColor: AppColors.emeraldDark,
                             child: ListView(
                               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                               children: [
@@ -184,10 +179,10 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
-        color: unread > 0 ? _emerald.withOpacity(0.4) : Colors.white.withOpacity(0.06),
+        color: unread > 0 ? AppColors.emerald.withOpacity(0.4) : Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: unread > 0 ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+          color: unread > 0 ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
         ),
       ),
       child: ListTile(
@@ -198,11 +193,11 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.3),
+                color: AppColors.emerald.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(14.r),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
-              child: Icon(Icons.public_rounded, size: 28, color: _gold),
+              child: Icon(Icons.public_rounded, size: 28, color: AppColors.gold),
             ),
             if (unread > 0)
               Positioned(
@@ -213,7 +208,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                   decoration: BoxDecoration(
                     color: Colors.red,
                     shape: BoxShape.circle,
-                    border: Border.all(color: _night, width: 2),
+                    border: Border.all(color: AppColors.night, width: 2),
                   ),
                   child: Text(
                     unread > 99 ? '99+' : unread.toString(),
@@ -238,7 +233,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
           '${_groupedData!.networkWideQuestions.length} вопрос(ов)',
           style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
         ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: _gold.withOpacity(0.5)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.gold.withOpacity(0.5)),
         onTap: () async {
           await Navigator.push(
             context,
@@ -263,10 +258,10 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
       return Container(
         margin: EdgeInsets.only(bottom: 8.h),
         decoration: BoxDecoration(
-          color: unread > 0 ? _emerald.withOpacity(0.4) : Colors.white.withOpacity(0.06),
+          color: unread > 0 ? AppColors.emerald.withOpacity(0.4) : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
-            color: unread > 0 ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+            color: unread > 0 ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
           ),
         ),
         child: ListTile(
@@ -277,11 +272,11 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _emerald.withOpacity(0.3),
+                  color: AppColors.emerald.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(14.r),
-                  border: Border.all(color: _gold.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                 ),
-                child: Icon(Icons.store_rounded, size: 28, color: _gold),
+                child: Icon(Icons.store_rounded, size: 28, color: AppColors.gold),
               ),
               if (unread > 0)
                 Positioned(
@@ -292,7 +287,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                     decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
-                      border: Border.all(color: _night, width: 2),
+                      border: Border.all(color: AppColors.night, width: 2),
                     ),
                     child: Text(
                       unread > 99 ? '99+' : unread.toString(),
@@ -326,7 +321,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                             : Icons.arrow_downward_rounded,
                         size: 14,
                         color: lastMessage.senderType == 'client'
-                            ? _gold.withOpacity(0.7)
+                            ? AppColors.gold.withOpacity(0.7)
                             : Colors.tealAccent.withOpacity(0.7),
                       ),
                       SizedBox(width: 4),
@@ -349,7 +344,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                   '${group.questions.length + group.dialogs.length} сообщени(й/я)',
                   style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
                 ),
-          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: _gold.withOpacity(0.5)),
+          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.gold.withOpacity(0.5)),
           onTap: () async {
             if (group.dialogs.isNotEmpty) {
               final personalDialog = group.dialogs.last;

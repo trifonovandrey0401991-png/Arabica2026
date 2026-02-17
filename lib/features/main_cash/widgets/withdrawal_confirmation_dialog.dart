@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/withdrawal_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -117,7 +118,7 @@ class WithdrawalConfirmationDialog extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF004D40),
+                      color: AppColors.primaryGreen,
                     ),
                   ),
                 ],

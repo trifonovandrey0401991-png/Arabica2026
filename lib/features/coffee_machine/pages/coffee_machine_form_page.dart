@@ -10,6 +10,7 @@ import '../services/coffee_machine_report_service.dart';
 import '../services/coffee_machine_ocr_service.dart';
 import '../widgets/counter_region_selector.dart';
 import '../../../core/services/media_upload_service.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Форма сдачи показаний счётчиков кофемашин
@@ -28,11 +29,6 @@ class CoffeeMachineFormPage extends StatefulWidget {
 }
 
 class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   final _imagePicker = ImagePicker();
 
   bool _isLoading = true;
@@ -197,7 +193,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: _emerald),
+                CircularProgressIndicator(color: AppColors.emerald),
                 SizedBox(height: 16),
                 Text('Распознавание числа...'),
               ],
@@ -265,7 +261,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
-            Icon(Icons.smart_toy, color: _gold, size: 24),
+            Icon(Icons.smart_toy, color: AppColors.gold, size: 24),
             SizedBox(width: 8),
             Text(
               isRetry ? 'Повторное распознавание' : 'Результат распознавания',
@@ -417,7 +413,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
-            Icon(Icons.edit, color: _gold, size: 22),
+            Icon(Icons.edit, color: AppColors.gold, size: 22),
             SizedBox(width: 8),
             Text('Введите число', style: TextStyle(color: Colors.white, fontSize: 16.sp)),
           ],
@@ -445,7 +441,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.r),
-                  borderSide: BorderSide(color: _gold, width: 2),
+                  borderSide: BorderSide(color: AppColors.gold, width: 2),
                 ),
               ),
               textAlign: TextAlign.center,
@@ -472,14 +468,14 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: _gold,
+              backgroundColor: AppColors.gold,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
             child: Text('Подтвердить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
-    );
+    ).then((_) => manualController.dispose());
   }
 
   /// Диалог при ошибке OCR: только выделить область
@@ -515,7 +511,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             icon: Icon(Icons.crop_free, color: Colors.white, size: 20),
             label: Text('Выделить область', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _gold,
+              backgroundColor: AppColors.gold,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
           ),
@@ -677,13 +673,13 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
           child: _isLoading
-              ? Center(child: CircularProgressIndicator(color: _gold))
+              ? Center(child: CircularProgressIndicator(color: AppColors.gold))
               : _error != null
                   ? _buildError()
                   : _buildForm(),
@@ -709,7 +705,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(backgroundColor: _emerald),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.emerald),
               child: Text('Назад', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -743,7 +739,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
           SizedBox(width: 8),
-          Icon(Icons.coffee_outlined, color: _gold, size: 24),
+          Icon(Icons.coffee_outlined, color: AppColors.gold, size: 24),
           SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -781,7 +777,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               ),
               Text(
                 _getStepTitle(),
-                style: TextStyle(color: _gold, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppColors.gold, fontSize: 12.sp, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -791,7 +787,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor: Colors.white.withOpacity(0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(_gold),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
               minHeight: 4,
             ),
           ),
@@ -843,10 +839,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.15),
+                    color: AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: Icon(Icons.coffee, color: _gold, size: 28),
+                  child: Icon(Icons.coffee, color: AppColors.gold, size: 28),
                 ),
                 SizedBox(width: 14),
                 Expanded(
@@ -963,7 +959,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           // Заголовок
           Text(
             'Итоги',
-            style: TextStyle(color: _gold, fontSize: 20.sp, fontWeight: FontWeight.bold),
+            style: TextStyle(color: AppColors.gold, fontSize: 20.sp, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 16),
 
@@ -976,7 +972,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           Divider(color: Colors.white24, height: 24),
 
           // Сумма
-          _buildSummaryRow('Сумма машин', '+$sum', isBold: true, color: _gold),
+          _buildSummaryRow('Сумма машин', '+$sum', isBold: true, color: AppColors.gold),
           SizedBox(height: 8),
           _buildSummaryRow('Компьютер', '${computer.toStringAsFixed(2)}', isBold: true, color: Colors.blue),
 
@@ -1097,7 +1093,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
-            color: photo != null ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.15),
+            color: photo != null ? AppColors.gold.withOpacity(0.4) : Colors.white.withOpacity(0.15),
             width: photo != null ? 2 : 1,
           ),
         ),
@@ -1114,7 +1110,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                         decoration: BoxDecoration(
-                          color: _gold,
+                          color: AppColors.gold,
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Row(
@@ -1164,11 +1160,11 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           if (ocrDone && aiNumber != null) ...[
             Row(
               children: [
-                Icon(Icons.smart_toy, color: _gold, size: 18),
+                Icon(Icons.smart_toy, color: AppColors.gold, size: 18),
                 SizedBox(width: 6),
                 Text(
                   'ИИ распознал: $aiNumber',
-                  style: TextStyle(color: _gold, fontSize: 13.sp),
+                  style: TextStyle(color: AppColors.gold, fontSize: 13.sp),
                 ),
               ],
             ),
@@ -1188,7 +1184,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: _gold, width: 2),
+                borderSide: BorderSide(color: AppColors.gold, width: 2),
               ),
               prefixIcon: Icon(Icons.numbers, color: Colors.white.withOpacity(0.4)),
             ),
@@ -1214,11 +1210,11 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           if (_computerOcrDone && _computerAiNumber != null) ...[
             Row(
               children: [
-                Icon(Icons.smart_toy, color: _gold, size: 18),
+                Icon(Icons.smart_toy, color: AppColors.gold, size: 18),
                 SizedBox(width: 6),
                 Text(
                   'ИИ распознал: $_computerAiNumber',
-                  style: TextStyle(color: _gold, fontSize: 13.sp),
+                  style: TextStyle(color: AppColors.gold, fontSize: 13.sp),
                 ),
               ],
             ),
@@ -1240,7 +1236,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: _gold, width: 2),
+                borderSide: BorderSide(color: AppColors.gold, width: 2),
               ),
               prefixIcon: Icon(Icons.computer, color: Colors.white.withOpacity(0.4)),
               prefixText: '− ',
@@ -1293,7 +1289,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                           ? _submitReport
                           : () => setState(() => _currentStep++),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isLastStep ? _gold : _emerald,
+                backgroundColor: isLastStep ? AppColors.gold : AppColors.emerald,
                 padding: EdgeInsets.symmetric(vertical: 14.h),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               ),

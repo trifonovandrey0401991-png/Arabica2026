@@ -7,25 +7,14 @@ const multer = require('multer');
 const fsp = require('fs').promises;
 const path = require('path');
 
-// ============================================
-// ASYNC HELPERS (for sync->async refactoring)
-// ============================================
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const { spawn } = require('child_process');
 const { preloadAdminCache, startPeriodicRebuild, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
 const { writeJsonFile } = require('./utils/async_fs');
 const dataCache = require('./utils/data_cache');
-const { maskPhone } = require('./utils/file_helpers');
+const { maskPhone, fileExists } = require('./utils/file_helpers');
 const { compressUpload } = require('./utils/image_compress');
+const db = require('./utils/db');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 
@@ -883,6 +872,11 @@ const gracefulShutdown = (signal) => {
       console.log('✅ WebSocket server closed');
     });
   }
+
+  // Закрываем пул PostgreSQL
+  db.close().catch(err => {
+    console.error('❌ Error closing DB pool:', err.message);
+  });
 
   // Остановить приём новых соединений
   server.close((err) => {

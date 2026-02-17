@@ -306,7 +306,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
           ),
         ],
       ),
-    );
+    ).whenComplete(() => nameController.dispose());
 
     if (result != null && result.isNotEmpty) {
       // Создаем шаблон из текущей недели

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../core/theme/app_colors.dart';
 
 // Отчёты
 import '../../features/rko/pages/rko_reports_page.dart';
@@ -67,11 +68,6 @@ class ManagerGridPage extends StatefulWidget {
 }
 
 class _ManagerGridPageState extends State<ManagerGridPage> {
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   // Счётчики
   UnviewedCounts _reportCounts = UnviewedCounts();
@@ -218,13 +214,13 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
     final spacing = 4.w;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -320,7 +316,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                                 child: Text(
                                   section['title'] as String,
                                   style: TextStyle(
-                                    color: _gold,
+                                    color: AppColors.gold,
                                     fontSize: 10.sp,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.5,
@@ -362,7 +358,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                         context,
                         icon: Icons.badge_outlined,
                         label: 'Сотрудники',
-                        color: Color(0xFF4CAF50),
+                        color: AppColors.success,
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => EmployeePanelPage()),
@@ -375,7 +371,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                         context,
                         icon: Icons.person_outline_rounded,
                         label: 'Клиенты',
-                        color: Color(0xFF42A5F5),
+                        color: AppColors.blue,
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => ClientFunctionsPage()),
@@ -455,7 +451,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                 child: Text(
                   badge > 99 ? '99+' : badge.toString(),
                   style: TextStyle(
-                    color: _emerald,
+                    color: AppColors.emerald,
                     fontSize: 9.sp,
                     fontWeight: FontWeight.w700,
                   ),

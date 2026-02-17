@@ -12,16 +12,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const { fileExists } = require('../utils/file_helpers');
 
 // YOLO ML Wrapper для детекции
 let yoloWrapper = null;

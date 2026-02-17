@@ -22,6 +22,7 @@ class ChatWebSocketService {
   String? _userPhone;
   bool _isConnected = false;
   Timer? _reconnectTimer;
+  Timer? _retryResetTimer;
   Timer? _pingTimer;
 
   // BUG-003 fix: Reconnection logic with exponential backoff
@@ -91,6 +92,7 @@ class ChatWebSocketService {
   /// Отключиться от WebSocket сервера
   void disconnect() {
     _reconnectTimer?.cancel();
+    _retryResetTimer?.cancel();
     _pingTimer?.cancel();
     _channel?.sink.close();
     _channel = null;
@@ -290,7 +292,15 @@ class ChatWebSocketService {
 
     // BUG-003 fix: Limit reconnection attempts
     if (_reconnectAttempts >= _maxReconnectAttempts) {
-      Logger.error('WebSocket: максимальное количество попыток переподключения ($_maxReconnectAttempts) исчерпано');
+      Logger.error('WebSocket: максимальное количество попыток переподключения ($_maxReconnectAttempts) исчерпано. Повтор через 5 минут');
+      _retryResetTimer?.cancel();
+      _retryResetTimer = Timer(const Duration(minutes: 5), () {
+        _reconnectAttempts = 0;
+        Logger.debug('WebSocket: сброс счётчика попыток, повторное подключение');
+        if (_userPhone != null && !_isConnected) {
+          connect(_userPhone!);
+        }
+      });
       return;
     }
 

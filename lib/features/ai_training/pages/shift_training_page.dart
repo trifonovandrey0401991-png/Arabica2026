@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/shift_ai_verification_service.dart';
 import '../models/shift_ai_verification_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -105,9 +106,9 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
+              AppColors.darkNavy,
+              AppColors.navy,
+              AppColors.deepBlue,
             ],
           ),
         ),
@@ -196,13 +197,13 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFF59E0B).withOpacity(0.2),
-            Color(0xFFFBBF24).withOpacity(0.1),
+            AppColors.warning.withOpacity(0.2),
+            AppColors.warningLight.withOpacity(0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: Color(0xFFF59E0B).withOpacity(0.3),
+          color: AppColors.warning.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -215,19 +216,19 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                 icon: Icons.check_circle,
                 value: '$activeCount',
                 label: 'Активных',
-                color: Color(0xFF10B981),
+                color: AppColors.emeraldGreen,
               ),
               _buildStatItem(
                 icon: Icons.inventory_2,
                 value: '$totalCount',
                 label: 'Всего',
-                color: Color(0xFF6366F1),
+                color: AppColors.indigo,
               ),
               _buildStatItem(
                 icon: Icons.photo_library,
                 value: '$trainingPhotos',
                 label: 'Фото',
-                color: Color(0xFFF59E0B),
+                color: AppColors.warning,
               ),
             ],
           ),
@@ -236,8 +237,8 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
             decoration: BoxDecoration(
               color: isTrained
-                  ? Color(0xFF10B981).withOpacity(0.2)
-                  : Color(0xFFEF4444).withOpacity(0.2),
+                  ? AppColors.emeraldGreen.withOpacity(0.2)
+                  : AppColors.error.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Row(
@@ -246,8 +247,8 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                 Icon(
                   isTrained ? Icons.check_circle : Icons.pending,
                   color: isTrained
-                      ? Color(0xFF10B981)
-                      : Color(0xFFEF4444),
+                      ? AppColors.emeraldGreen
+                      : AppColors.error,
                   size: 16,
                 ),
                 SizedBox(width: 6),
@@ -255,8 +256,8 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                   isTrained ? 'Модель обучена' : 'Модель не обучена',
                   style: TextStyle(
                     color: isTrained
-                        ? Color(0xFF10B981)
-                        : Color(0xFFEF4444),
+                        ? AppColors.emeraldGreen
+                        : AppColors.error,
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
                   ),
@@ -346,12 +347,12 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         decoration: BoxDecoration(
           color: isSelected
-              ? Color(0xFFF59E0B)
+              ? AppColors.warning
               : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: isSelected
-                ? Color(0xFFF59E0B)
+                ? AppColors.warning
                 : Colors.white.withOpacity(0.2),
             width: 1,
           ),
@@ -418,7 +419,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: product.isAiActive
-              ? Color(0xFF10B981).withOpacity(0.5)
+              ? AppColors.emeraldGreen.withOpacity(0.5)
               : Colors.white.withOpacity(0.1),
           width: 1,
         ),
@@ -438,12 +439,12 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                   height: 28,
                   decoration: BoxDecoration(
                     color: product.isAiActive
-                        ? Color(0xFF10B981)
+                        ? AppColors.emeraldGreen
                         : Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8.r),
                     border: Border.all(
                       color: product.isAiActive
-                          ? Color(0xFF10B981)
+                          ? AppColors.emeraldGreen
                           : Colors.white.withOpacity(0.3),
                       width: 2,
                     ),
@@ -514,7 +515,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                       vertical: 4.h,
                     ),
                     decoration: BoxDecoration(
-                      color: Color(0xFFF59E0B).withOpacity(0.2),
+                      color: AppColors.warning.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
@@ -522,14 +523,14 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                       children: [
                         Icon(
                           Icons.photo,
-                          color: Color(0xFFF59E0B),
+                          color: AppColors.warning,
                           size: 14,
                         ),
                         SizedBox(width: 4),
                         Text(
                           '${product.trainingPhotosCount}',
                           style: TextStyle(
-                            color: Color(0xFFF59E0B),
+                            color: AppColors.warning,
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w600,
                           ),

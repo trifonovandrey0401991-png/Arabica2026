@@ -8,6 +8,7 @@ import '../../../core/services/media_upload_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница ответа на задачу (для работника)
 class TaskResponsePage extends StatefulWidget {
@@ -25,11 +26,6 @@ class TaskResponsePage extends StatefulWidget {
 }
 
 class _TaskResponsePageState extends State<TaskResponsePage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   final _textController = TextEditingController();
   final List<File> _selectedPhotos = [];
   bool _isSubmitting = false;
@@ -56,9 +52,9 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
 
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(source: ImageSource.camera, maxWidth: 1280, imageQuality: 75);
 
-    if (pickedFile != null) {
+    if (pickedFile != null && mounted) {
       setState(() {
         _selectedPhotos.add(File(pickedFile.path));
       });
@@ -67,8 +63,9 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
 
   Future<void> _pickFromGallery() async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
+    final pickedFiles = await picker.pickMultiImage(maxWidth: 1280, imageQuality: 75);
 
+    if (!mounted) return;
     setState(() {
       for (final file in pickedFiles) {
         _selectedPhotos.add(File(file.path));
@@ -175,13 +172,13 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -221,7 +218,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                           Text(
                             'Ответ на задание',
                             style: TextStyle(
-                              color: _gold,
+                              color: AppColors.gold,
                               fontSize: 13.sp,
                             ),
                           ),
@@ -417,7 +414,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         child: Stack(
           children: [
             InteractiveViewer(
@@ -476,7 +473,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
@@ -484,7 +481,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                 style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
-                  color: _gold,
+                  color: AppColors.gold,
                 ),
               ),
             ),
@@ -528,10 +525,10 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _pickPhoto,
-                icon: Icon(Icons.camera_alt, color: _gold),
-                label: Text('Камера', style: TextStyle(color: _gold)),
+                icon: Icon(Icons.camera_alt, color: AppColors.gold),
+                label: Text('Камера', style: TextStyle(color: AppColors.gold)),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: _gold),
+                  side: BorderSide(color: AppColors.gold),
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.r),
@@ -543,10 +540,10 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _pickFromGallery,
-                icon: Icon(Icons.photo_library, color: _gold),
-                label: Text('Галерея', style: TextStyle(color: _gold)),
+                icon: Icon(Icons.photo_library, color: AppColors.gold),
+                label: Text('Галерея', style: TextStyle(color: AppColors.gold)),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: _gold),
+                  side: BorderSide(color: AppColors.gold),
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.r),
@@ -630,7 +627,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: BorderSide(color: _gold),
+              borderSide: BorderSide(color: AppColors.gold),
             ),
           ),
           onChanged: (_) => setState(() {}),
@@ -647,10 +644,10 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
           child: ElevatedButton(
             onPressed: _isFormValid && !_isSubmitting ? _submitResponse : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _gold,
-              foregroundColor: _night,
-              disabledBackgroundColor: _gold.withOpacity(0.3),
-              disabledForegroundColor: _night.withOpacity(0.5),
+              backgroundColor: AppColors.gold,
+              foregroundColor: AppColors.night,
+              disabledBackgroundColor: AppColors.gold.withOpacity(0.3),
+              disabledForegroundColor: AppColors.night.withOpacity(0.5),
               padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.r),
@@ -662,7 +659,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(_night),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.night),
                     ),
                   )
                 : Text(
@@ -874,18 +871,26 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
 }
 
 /// Диалог для указания причины отклонения
-class _DeclineDialog extends StatelessWidget {
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _gold = Color(0xFFD4AF37);
+class _DeclineDialog extends StatefulWidget {
+  const _DeclineDialog();
 
+  @override
+  State<_DeclineDialog> createState() => _DeclineDialogState();
+}
+
+class _DeclineDialogState extends State<_DeclineDialog> {
   final _reasonController = TextEditingController();
 
-  _DeclineDialog();
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
       title: Text(
         'Отклонить задачу?',
@@ -918,7 +923,7 @@ class _DeclineDialog extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: _gold),
+                borderSide: BorderSide(color: AppColors.gold),
               ),
             ),
             maxLines: 2,

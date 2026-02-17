@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/shift_ai_verification_model.dart';
 import '../services/shift_ai_verification_service.dart';
@@ -24,12 +25,6 @@ class ShiftAiVerificationPage extends StatefulWidget {
 }
 
 class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = true;
   ShiftAiVerificationResult? _result;
   final List<ShiftShortage> _confirmedShortages = [];
@@ -138,7 +133,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: _emeraldDark,
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Подтверждение недостачи', style: TextStyle(color: Colors.white)),
           content: Column(
@@ -276,7 +271,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             onPressed: _skipVerification,
             child: Text(
               'Пропустить',
-              style: TextStyle(color: _gold.withOpacity(0.8), fontSize: 14.sp),
+              style: TextStyle(color: AppColors.gold.withOpacity(0.8), fontSize: 14.sp),
             ),
           ),
         ],
@@ -287,13 +282,13 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -307,7 +302,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(color: _gold),
+                            CircularProgressIndicator(color: AppColors.gold),
                             SizedBox(height: 20),
                             Text(
                               'Анализируем фотографии...',
@@ -327,8 +322,8 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                   child: ElevatedButton(
                     onPressed: _finishVerification,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _gold,
-                      foregroundColor: _night,
+                      backgroundColor: AppColors.gold,
+                      foregroundColor: AppColors.night,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14.r),
@@ -367,11 +362,11 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.1),
+                  color: AppColors.gold.withOpacity(0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: _gold.withOpacity(0.3), width: 2),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3), width: 2),
                 ),
-                child: Icon(Icons.model_training, size: 50, color: _gold),
+                child: Icon(Icons.model_training, size: 50, color: AppColors.gold),
               ),
               SizedBox(height: 24),
               Text(
@@ -395,8 +390,8 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
               ElevatedButton(
                 onPressed: _skipVerification,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _gold,
-                  foregroundColor: _night,
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: AppColors.night,
                   padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14.r),
@@ -474,8 +469,8 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
               ElevatedButton(
                 onPressed: _skipVerification,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _gold,
-                  foregroundColor: _night,
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: AppColors.night,
                   padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14.r),
@@ -959,17 +954,12 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
     });
   }
 
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   @override
   Widget build(BuildContext context) {
     final remaining = MissingProductInfo.maxVerificationAttempts - widget.currentAttempts;
 
     return Dialog(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       child: Container(
         constraints: BoxConstraints(maxWidth: 500, maxHeight: 750),
@@ -977,7 +967,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
           borderRadius: BorderRadius.circular(16.r),
@@ -999,7 +989,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.crop_free, color: _gold),
+                  Icon(Icons.crop_free, color: AppColors.gold),
                   SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1035,7 +1025,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                   // Кнопка камеры
                   IconButton(
                     onPressed: _takeNewPhoto,
-                    icon: Icon(Icons.camera_alt, color: _gold),
+                    icon: Icon(Icons.camera_alt, color: AppColors.gold),
                     tooltip: 'Сделать новое фото',
                   ),
                   IconButton(
@@ -1063,7 +1053,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                         margin: EdgeInsets.only(right: 8.w),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: _isNewPhoto ? _gold : Colors.white.withOpacity(0.2),
+                            color: _isNewPhoto ? AppColors.gold : Colors.white.withOpacity(0.2),
                             width: _isNewPhoto ? 3 : 1,
                           ),
                           borderRadius: BorderRadius.circular(8.r),
@@ -1080,10 +1070,10 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                               child: Container(
                                 padding: EdgeInsets.all(2.w),
                                 decoration: BoxDecoration(
-                                  color: _gold,
+                                  color: AppColors.gold,
                                   borderRadius: BorderRadius.circular(4.r),
                                 ),
-                                child: Icon(Icons.camera_alt, size: 10, color: _night),
+                                child: Icon(Icons.camera_alt, size: 10, color: AppColors.night),
                               ),
                             ),
                           ],
@@ -1103,7 +1093,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                         margin: EdgeInsets.only(right: 8.w),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: isSelected ? _gold : Colors.white.withOpacity(0.2),
+                            color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.2),
                             width: isSelected ? 3 : 1,
                           ),
                           borderRadius: BorderRadius.circular(8.r),
@@ -1198,8 +1188,8 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                     child: ElevatedButton(
                       onPressed: _boundingBox != null && !_isVerifying ? _verifyAndSave : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _gold,
-                        foregroundColor: _night,
+                        backgroundColor: AppColors.gold,
+                        foregroundColor: AppColors.night,
                         disabledBackgroundColor: Colors.white.withOpacity(0.1),
                         disabledForegroundColor: Colors.white.withOpacity(0.3),
                       ),
@@ -1209,7 +1199,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: _night,
+                                color: AppColors.night,
                               ),
                             )
                           : Text('Проверить', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -1279,14 +1269,13 @@ class _BoundingBoxPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const gold = Color(0xFFD4AF37);
     final paint = Paint()
-      ..color = gold
+      ..color = AppColors.gold
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
     final fillPaint = Paint()
-      ..color = gold.withOpacity(0.2)
+      ..color = AppColors.gold.withOpacity(0.2)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(boundingBox, fillPaint);

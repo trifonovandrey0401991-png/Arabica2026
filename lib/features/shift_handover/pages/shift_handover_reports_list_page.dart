@@ -11,6 +11,7 @@ import '../../shops/services/shop_service.dart';
 import '../../efficiency/models/points_settings_model.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Тип группы для иерархической группировки отчётов
 enum HandoverReportGroupType { today, yesterday, day, week, month }
@@ -61,12 +62,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
   // Состояние раскрытия групп (ключ = уникальный идентификатор группы)
   final Map<String, bool> _expandedGroups = {};
-
-  // Dark emerald color palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -430,7 +425,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -740,8 +735,8 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          dropdownColor: _emeraldDark,
-          icon: Icon(Icons.arrow_drop_down, color: _gold),
+          dropdownColor: AppColors.emeraldDark,
+          icon: Icon(Icons.arrow_drop_down, color: AppColors.gold),
           hint: Row(
             children: [
               Icon(icon, size: 18, color: Colors.white.withOpacity(0.5)),
@@ -753,14 +748,14 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             return [
               Row(
                 children: [
-                  Icon(icon, size: 18, color: _gold),
+                  Icon(icon, size: 18, color: AppColors.gold),
                   SizedBox(width: 8),
                   Expanded(child: Text('Все', style: TextStyle(fontSize: 13.sp, color: Colors.white))),
                 ],
               ),
               ...items.map((item) => Row(
                 children: [
-                  Icon(icon, size: 18, color: _gold),
+                  Icon(icon, size: 18, color: AppColors.gold),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -798,7 +793,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.calendar_today, size: 18, color: _gold),
+            Icon(Icons.calendar_today, size: 18, color: AppColors.gold),
             SizedBox(width: 8),
             Text(
               _selectedDate == null
@@ -833,7 +828,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       ),
     );
   }
-
 
   /// Виджет для списка непройденных сдач смен (в срок)
   Widget _buildPendingShiftsList() {
@@ -1330,7 +1324,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: report.isConfirmed ? Colors.green.withOpacity(0.8) : _emerald,
+                  backgroundColor: report.isConfirmed ? Colors.green.withOpacity(0.8) : AppColors.emerald,
                   child: Icon(
                     report.isConfirmed ? Icons.check : Icons.assignment_turned_in,
                     color: Colors.white,
@@ -1658,7 +1652,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return result;
   }
 
-
   /// Построить сгруппированный список отчётов по сдаче смены
   Widget _buildGroupedHandoverReportsList(List<ShiftHandoverReport> reports, {required bool isConfirmed, required String prefix}) {
     final groups = _groupHandoverReports(reports, prefix);
@@ -1852,12 +1845,12 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isConfirmed ? Colors.green.withOpacity(0.15) : _emerald.withOpacity(0.3),
+                color: isConfirmed ? Colors.green.withOpacity(0.15) : AppColors.emerald.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 isConfirmed ? Icons.check : Icons.assignment_turned_in,
-                color: isConfirmed ? Colors.green : _gold,
+                color: isConfirmed ? Colors.green : AppColors.gold,
                 size: 22,
               ),
             ),

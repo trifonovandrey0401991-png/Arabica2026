@@ -5,6 +5,7 @@ import '../../shops/services/shop_service.dart';
 import '../services/employee_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class EmployeePreferencesDialog extends StatefulWidget {
   final Employee employee;
@@ -162,7 +163,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: Color(0xFF004D40),
+                color: AppColors.primaryGreen,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(8.r),
                   topRight: Radius.circular(8.r),
@@ -203,7 +204,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                         child: Row(
                           children: [
                             CircleAvatar(
-                              backgroundColor: Color(0xFF004D40),
+                              backgroundColor: AppColors.primaryGreen,
                               child: Text(
                                 widget.employee.name.isNotEmpty
                                     ? widget.employee.name[0].toUpperCase()
@@ -357,7 +358,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                                   title: Text(
                                     _gradeDescriptions[grade] ?? 'Градация $grade',
                                     style: TextStyle(
-                                      color: isSelected ? Color(0xFF004D40) : Colors.black87,
+                                      color: isSelected ? AppColors.primaryGreen : Colors.black87,
                                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                     ),
                                   ),
@@ -400,7 +401,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                   ElevatedButton(
                     onPressed: _isSaving ? null : _savePreferences,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF004D40),
+                      backgroundColor: AppColors.primaryGreen,
                     ),
                     child: _isSaving
                         ? SizedBox(

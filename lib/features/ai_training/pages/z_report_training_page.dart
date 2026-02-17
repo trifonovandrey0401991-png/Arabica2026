@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/z_report_service.dart';
@@ -25,7 +26,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
   bool _isInitialized = false;
 
   // Цвета для градиентов
-  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static final _purpleGradient = [AppColors.indigo, AppColors.purple];
 
   /// Количество вкладок зависит от роли: админ видит 3 вкладки, остальные - 2
   int get _tabCount => _isAdmin ? 3 : 2;
@@ -64,9 +65,9 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
+              AppColors.darkNavy,
+              AppColors.navy,
+              AppColors.deepBlue,
             ],
           ),
         ),
@@ -237,8 +238,8 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   final _resourceKeysController = TextEditingController();
 
   // Цвета
-  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
-  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static final _purpleGradient = [AppColors.indigo, AppColors.purple];
+  static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
 
   @override
   void initState() {
@@ -497,7 +498,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
               ),
               child: DropdownButtonFormField<ZReportTemplate>(
                 value: _selectedTemplate,
-                dropdownColor: Color(0xFF1A1A2E),
+                dropdownColor: AppColors.darkNavy,
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
@@ -553,7 +554,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                 child: _buildGradientButton(
                   icon: Icons.photo_library,
                   label: 'Галерея',
-                  gradient: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                  gradient: [AppColors.info, AppColors.infoLight],
                   onTap: _isLoading || _isParsing
                       ? null
                       : () => _pickImage(ImageSource.gallery),
@@ -1016,7 +1017,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
   List<ZReportTemplate> _templates = [];
   bool _isLoading = true;
 
-  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static final _purpleGradient = [AppColors.indigo, AppColors.purple];
 
   @override
   void initState() {
@@ -1041,7 +1042,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: AppColors.darkNavy,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Удалить шаблон?', style: TextStyle(color: Colors.white)),
         content: Text(
@@ -1359,9 +1360,9 @@ class _StatsTabState extends State<_StatsTab> {
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
 
-  static final _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
-  static final _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
-  static final _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
+  static final _purpleGradient = [AppColors.indigo, AppColors.purple];
+  static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
+  static final _blueGradient = [AppColors.info, AppColors.infoLight];
 
   @override
   void initState() {
@@ -1442,7 +1443,7 @@ class _StatsTabState extends State<_StatsTab> {
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+                      colors: [AppColors.warning, AppColors.warningLight],
                     ),
                     borderRadius: BorderRadius.circular(10.r),
                   ),

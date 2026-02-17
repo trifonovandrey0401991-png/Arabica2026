@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/fortune_wheel_model.dart';
 import '../services/fortune_wheel_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница отчёта по Колесу Удачи (для админа)
 class WheelReportsPage extends StatefulWidget {
@@ -12,11 +13,6 @@ class WheelReportsPage extends StatefulWidget {
 }
 
 class _WheelReportsPageState extends State<WheelReportsPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<WheelSpinRecord> _records = [];
   bool _isLoading = true;
   String _selectedMonth = '';
@@ -50,7 +46,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Text(
           'Обработать приз?',
           style: TextStyle(color: Colors.white),
@@ -127,7 +123,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     final selected = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Text(
           'Выберите месяц',
           style: TextStyle(color: Colors.white),
@@ -166,13 +162,13 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     final unprocessedCount = _records.where((r) => !r.isProcessed).length;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -210,7 +206,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                     ),
                     TextButton.icon(
                       onPressed: _showMonthPicker,
-                      icon: Icon(Icons.calendar_today, color: _gold, size: 18),
+                      icon: Icon(Icons.calendar_today, color: AppColors.gold, size: 18),
                       label: Text(
                         _formatMonth(_selectedMonth),
                         style: TextStyle(color: Colors.white),
@@ -224,7 +220,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
               if (_isLoading)
                 Expanded(
                   child: Center(
-                    child: CircularProgressIndicator(color: _gold),
+                    child: CircularProgressIndicator(color: AppColors.gold),
                   ),
                 )
               else ...[
@@ -266,8 +262,8 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
                   child: _records.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
-                          color: _gold,
-                          backgroundColor: _emeraldDark,
+                          color: AppColors.gold,
+                          backgroundColor: AppColors.emeraldDark,
                           onRefresh: _loadRecords,
                           child: ListView.builder(
                             padding: EdgeInsets.all(16.w),
@@ -289,7 +285,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
   Widget _buildStatItem(String label, String value, IconData icon, {Color? color}) {
     return Column(
       children: [
-        Icon(icon, color: color ?? _gold, size: 28),
+        Icon(icon, color: color ?? AppColors.gold, size: 28),
         SizedBox(height: 4),
         Text(
           value,
@@ -396,9 +392,9 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
             Container(
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.1),
+                color: AppColors.gold.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: _gold.withOpacity(0.2)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.2)),
               ),
               child: Row(
                 children: [

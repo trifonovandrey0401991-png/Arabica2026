@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/employee_rating_model.dart';
 import '../services/rating_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Виджет бейджа рейтинга для главного меню
 class RatingBadgeWidget extends StatefulWidget {
@@ -101,7 +102,7 @@ class _RatingBadgeWidgetState extends State<RatingBadgeWidget> {
       case 3:
         return Color(0xFFCD7F32); // Бронза
       default:
-        return Color(0xFF004D40); // Тёмно-зелёный
+        return AppColors.primaryGreen; // Тёмно-зелёный
     }
   }
 }
@@ -163,7 +164,7 @@ class RatingBadgeInline extends StatelessWidget {
       case 3:
         return Color(0xFFCD7F32);
       default:
-        return Color(0xFFD4AF37);
+        return AppColors.gold;
     }
   }
 }

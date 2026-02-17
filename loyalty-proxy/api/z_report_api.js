@@ -8,16 +8,11 @@ const path = require('path');
 
 const templatesModule = require('../modules/z-report-templates');
 const visionModule = require('../modules/z-report-vision');
+const { sanitizeId } = require('../utils/file_helpers');
 
 // Директория для изображений шаблонов
 const TEMPLATE_IMAGES_DIR = path.join(__dirname, '../data/template-images');
 const REGION_SET_IMAGES_DIR = path.join(__dirname, '../data/region-set-images');
-
-// Sanitize ID to prevent path traversal
-function sanitizeId(id) {
-  if (!id || typeof id !== 'string') return '';
-  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
-}
 
 /**
  * Настройка API для Z-отчётов

@@ -65,12 +65,34 @@ class BaseHttpService {
     }
   }
 
+  // ==================== Auto-logout при 401 ====================
+
+  /// Callback, вызываемый при получении 401 (Unauthorized).
+  /// Устанавливается в main.dart для очистки сессии и навигации на экран входа.
+  static void Function()? onUnauthorized;
+
+  static bool _isHandlingUnauthorized = false;
+
+  static void _handleUnauthorized() {
+    if (_isHandlingUnauthorized) return;
+    _isHandlingUnauthorized = true;
+
+    ApiConstants.sessionToken = null;
+    onUnauthorized?.call();
+
+    // Сброс флага через 5 секунд (защита от повторных вызовов)
+    Future.delayed(const Duration(seconds: 5), () {
+      _isHandlingUnauthorized = false;
+    });
+  }
+
   // ==================== Логирование ====================
 
   /// Логирование ошибок HTTP с детальной диагностикой 401/403
   static void _logHttpError(int statusCode, String endpoint, String body) {
     if (statusCode == 401) {
       Logger.error('🔒 Требуется авторизация: $endpoint (токен: ${ApiConstants.sessionToken != null ? "есть" : "НЕТ"})');
+      _handleUnauthorized();
     } else if (statusCode == 403) {
       Logger.error('🚫 Недостаточно прав: $endpoint');
     } else {

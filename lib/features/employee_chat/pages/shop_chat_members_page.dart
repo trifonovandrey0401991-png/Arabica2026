@@ -3,6 +3,7 @@ import '../services/employee_chat_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления участниками чата магазина — dark emerald стиль
 class ShopChatMembersPage extends StatefulWidget {
@@ -20,11 +21,6 @@ class ShopChatMembersPage extends StatefulWidget {
 }
 
 class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   List<ShopChatMember> _members = [];
   List<Employee> _allEmployees = [];
   bool _isLoading = true;
@@ -94,7 +90,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _night.withOpacity(0.98),
+          backgroundColor: AppColors.night.withOpacity(0.98),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Добавить сотрудников',
               style: TextStyle(color: Colors.white.withOpacity(0.9))),
@@ -113,7 +109,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                       style: TextStyle(color: Colors.white.withOpacity(0.9))),
                   subtitle: Text(employee.phone ?? '',
                       style: TextStyle(color: Colors.white.withOpacity(0.4))),
-                  activeColor: _emerald,
+                  activeColor: AppColors.emerald,
                   checkColor: Colors.white,
                   onChanged: (value) {
                     setDialogState(() {
@@ -141,7 +137,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                       await _addMembers(selectedPhones.toList());
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: _emerald,
+                backgroundColor: AppColors.emerald,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
               ),
               child: Text('Добавить (${selectedPhones.length})'),
@@ -184,7 +180,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _night.withOpacity(0.98),
+        backgroundColor: AppColors.night.withOpacity(0.98),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Удалить участника?',
             style: TextStyle(color: Colors.white.withOpacity(0.9))),
@@ -240,13 +236,13 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -336,7 +332,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
                         : RefreshIndicator(
                             onRefresh: _loadData,
                             color: Colors.white,
-                            backgroundColor: _emerald,
+                            backgroundColor: AppColors.emerald,
                             child: ListView.builder(
                               padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 80.h),
                               itemCount: _members.length,
@@ -415,7 +411,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           decoration: BoxDecoration(
-            color: _emerald,
+            color: AppColors.emerald,
             borderRadius: BorderRadius.circular(14.r),
             border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),

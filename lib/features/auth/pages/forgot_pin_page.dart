@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
@@ -38,10 +39,8 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   final AuthService _authService = AuthService();
   final TextEditingController _phoneController = TextEditingController();
 
-  // Брендовые цвета Arabica
-  static final Color _primaryColor = Color(0xFF1A4D4D);
+  // Цвет не из палитры AppColors
   static final Color _primaryDark = Color(0xFF0D3333);
-  static final Color _accentGold = Color(0xFFD4AF37);
 
   // Шаги: 0 = ввод телефона, 1 = ожидание кода, 2 = ввод кода
   int _step = 0;
@@ -175,7 +174,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _primaryColor,
+              AppColors.emerald,
               _primaryDark,
               Color(0xFF0A2626),
             ],
@@ -228,7 +227,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
                         borderRadius: BorderRadius.circular(16.r),
                       ),
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(_accentGold),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                       ),
                     ),
                   ),
@@ -268,14 +267,14 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
               borderRadius: BorderRadius.circular(50.r),
               color: Colors.white.withOpacity(0.1),
               border: Border.all(
-                color: _accentGold.withOpacity(0.4),
+                color: AppColors.gold.withOpacity(0.4),
                 width: 2,
               ),
             ),
             child: Icon(
               Icons.lock_reset,
               size: 60,
-              color: _accentGold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 24),
@@ -311,14 +310,14 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
               decoration: InputDecoration(
                 labelText: 'Номер телефона',
                 hintText: '9001234567',
-                prefixIcon: Icon(Icons.phone_outlined, color: _primaryColor),
+                prefixIcon: Icon(Icons.phone_outlined, color: AppColors.emerald),
                 prefixText: '+7 ',
                 prefixStyle: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
-                  color: _primaryColor,
+                  color: AppColors.emerald,
                 ),
-                labelStyle: TextStyle(color: _primaryColor.withOpacity(0.8)),
+                labelStyle: TextStyle(color: AppColors.emerald.withOpacity(0.8)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide.none,
@@ -340,13 +339,13 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
           ElevatedButton(
             onPressed: _isPhoneValid ? _requestCode : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _accentGold,
+              backgroundColor: AppColors.gold,
               foregroundColor: Colors.black87,
               padding: EdgeInsets.symmetric(vertical: 16.h),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.r),
               ),
-              disabledBackgroundColor: _accentGold.withOpacity(0.3),
+              disabledBackgroundColor: AppColors.gold.withOpacity(0.3),
             ),
             child: Text(
               'Получить код',
@@ -426,20 +425,20 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: _accentGold.withOpacity(0.4)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, color: _accentGold),
+                    Icon(Icons.info_outline, color: AppColors.gold),
                     SizedBox(width: 8),
                     Text(
                       'Инструкция',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: _accentGold,
+                        color: AppColors.gold,
                       ),
                     ),
                   ],
@@ -482,7 +481,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
             errorMessage: _errorMessage,
             resendTimeout: 60,
             lightTheme: true,
-            accentColor: _accentGold,
+            accentColor: AppColors.gold,
           ),
 
           SizedBox(height: 24),
@@ -512,20 +511,20 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: _accentGold.withOpacity(0.3)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.lightbulb_outline, color: _accentGold, size: 20),
+                    Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 20),
                     SizedBox(width: 8),
                     Text(
                       'Как получить код?',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: _accentGold,
+                        color: AppColors.gold,
                         fontSize: 14.sp,
                       ),
                     ),

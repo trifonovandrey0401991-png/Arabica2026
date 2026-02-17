@@ -5,6 +5,7 @@ import 'employee_registration_page.dart';
 import '../services/employee_registration_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница выбора сотрудника для регистрации (только для админа)
 class EmployeeRegistrationSelectEmployeePage extends StatefulWidget {
@@ -67,7 +68,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
     return Scaffold(
       appBar: AppBar(
         title: Text('Выберите сотрудника'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Column(
         children: [
@@ -157,7 +158,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                         leading: Stack(
                           children: [
                             CircleAvatar(
-                              backgroundColor: Color(0xFF004D40),
+                              backgroundColor: AppColors.primaryGreen,
                               child: Text(
                                 employee.name.isNotEmpty
                                     ? employee.name[0].toUpperCase()

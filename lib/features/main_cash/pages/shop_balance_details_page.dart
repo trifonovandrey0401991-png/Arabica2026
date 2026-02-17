@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../services/main_cash_service.dart';
@@ -23,12 +24,6 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
   late TabController _tabController;
   ShopCashBalance? _balance;
   bool _isLoading = true;
-
-  // Dark Emerald palette
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -75,13 +70,13 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -151,7 +146,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: _gold,
+                  indicatorColor: AppColors.gold,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
                   dividerColor: Colors.transparent,
@@ -168,7 +163,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
               Expanded(
                 child: _isLoading
                     ? Center(
-                        child: CircularProgressIndicator(color: _gold),
+                        child: CircularProgressIndicator(color: AppColors.gold),
                       )
                     : TabBarView(
                         controller: _tabController,
@@ -208,7 +203,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             style: TextStyle(
               fontSize: 20.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 40),
@@ -251,7 +246,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                   fontWeight: FontWeight.bold,
                   color: _balance!.totalBalance < 0
                       ? Colors.red
-                      : _gold,
+                      : AppColors.gold,
                 ),
               ),
             ],

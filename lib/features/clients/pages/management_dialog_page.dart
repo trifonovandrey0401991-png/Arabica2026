@@ -6,6 +6,7 @@ import '../services/management_message_service.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница диалога "Связь с Руководством"
@@ -28,11 +29,6 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
-
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -95,7 +91,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   Future<void> _showMediaPicker() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      backgroundColor: _emeraldDark,
+      backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
@@ -113,22 +109,22 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
               ),
             ),
             ListTile(
-              leading: Icon(Icons.photo_camera, color: _gold),
+              leading: Icon(Icons.photo_camera, color: AppColors.gold),
               title: Text('Сделать фото', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
             ),
             ListTile(
-              leading: Icon(Icons.photo_library, color: _gold),
+              leading: Icon(Icons.photo_library, color: AppColors.gold),
               title: Text('Выбрать фото из галереи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
             ),
             ListTile(
-              leading: Icon(Icons.videocam, color: _gold),
+              leading: Icon(Icons.videocam, color: AppColors.gold),
               title: Text('Записать видео', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
             ),
             ListTile(
-              leading: Icon(Icons.video_library, color: _gold),
+              leading: Icon(Icons.video_library, color: AppColors.gold),
               title: Text('Выбрать видео из галереи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
@@ -270,12 +266,12 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
         decoration: BoxDecoration(
           color: isFromManager
               ? Colors.white.withOpacity(0.08)
-              : _gold.withOpacity(0.15),
+              : AppColors.gold.withOpacity(0.15),
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
             color: isFromManager
                 ? Colors.white.withOpacity(0.1)
-                : _gold.withOpacity(0.25),
+                : AppColors.gold.withOpacity(0.25),
           ),
         ),
         child: Column(
@@ -287,13 +283,13 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.business, size: 14, color: _gold.withOpacity(0.7)),
+                    Icon(Icons.business, size: 14, color: AppColors.gold.withOpacity(0.7)),
                     SizedBox(width: 4),
                     Text(
                       'Руководство',
                       style: TextStyle(
                         fontSize: 12.sp,
-                        color: _gold.withOpacity(0.8),
+                        color: AppColors.gold.withOpacity(0.8),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -331,13 +327,13 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -366,10 +362,10 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                     Container(
                       padding: EdgeInsets.all(8.w),
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.12),
+                        color: AppColors.gold.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10.r),
                       ),
-                      child: Icon(Icons.business, size: 20, color: _gold),
+                      child: Icon(Icons.business, size: 20, color: AppColors.gold),
                     ),
                     SizedBox(width: 10),
                     Expanded(
@@ -402,7 +398,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
               // Messages
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _messages.isEmpty
                         ? Center(
                             child: Column(
@@ -443,7 +439,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _night.withOpacity(0.9),
+                    color: AppColors.night.withOpacity(0.9),
                     border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
                   ),
                   child: Row(
@@ -458,7 +454,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                                   color: Colors.white.withOpacity(0.06),
                                   borderRadius: BorderRadius.circular(10.r),
                                 ),
-                                child: Icon(Icons.videocam, color: _gold),
+                                child: Icon(Icons.videocam, color: AppColors.gold),
                               )
                             : AppCachedImage(
                                 imageUrl: _pendingMediaUrl!,
@@ -502,7 +498,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
               Container(
                 padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: _night.withOpacity(0.9),
+                  color: AppColors.night.withOpacity(0.9),
                   border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
                 ),
                 child: SafeArea(
@@ -523,10 +519,10 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                                   child: SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
                                   ),
                                 )
-                              : Icon(Icons.attach_file, color: _gold.withOpacity(0.7), size: 20),
+                              : Icon(Icons.attach_file, color: AppColors.gold.withOpacity(0.7), size: 20),
                         ),
                       ),
                       SizedBox(width: 8),
@@ -534,7 +530,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                         child: TextField(
                           controller: _messageController,
                           style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15.sp),
-                          cursorColor: _gold,
+                          cursorColor: AppColors.gold,
                           decoration: InputDecoration(
                             hintText: 'Написать руководству...',
                             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -557,19 +553,19 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: _gold.withOpacity(0.15),
+                            color: AppColors.gold.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: _gold.withOpacity(0.25)),
+                            border: Border.all(color: AppColors.gold.withOpacity(0.25)),
                           ),
                           child: _isSending
                               ? Center(
                                   child: SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
                                   ),
                                 )
-                              : Icon(Icons.send, color: _gold, size: 20),
+                              : Icon(Icons.send, color: AppColors.gold, size: 20),
                         ),
                       ),
                     ],

@@ -7,6 +7,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../../clients/pages/management_dialogs_list_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница списка отзывов, сгруппированных по магазинам (для админа)
 class ReviewsListPage extends StatefulWidget {
@@ -17,11 +18,6 @@ class ReviewsListPage extends StatefulWidget {
 }
 
 class _ReviewsListPageState extends State<ReviewsListPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = true;
   Map<String, ShopReviewStats> _shopStats = {};
   int _managementUnreadCount = 0;
@@ -99,13 +95,13 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -161,7 +157,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _shopStats.isEmpty
                         ? Center(
                             child: Column(
@@ -186,8 +182,8 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                           )
                         : RefreshIndicator(
                             onRefresh: _loadReviews,
-                            color: _gold,
-                            backgroundColor: _emeraldDark,
+                            color: AppColors.gold,
+                            backgroundColor: AppColors.emeraldDark,
                             child: ListView.builder(
                               padding: EdgeInsets.all(16.w),
                               itemCount: _shopStats.length + 1,
@@ -334,7 +330,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _emerald,
+                    color: AppColors.emerald,
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(Icons.store, color: Colors.white, size: 24),

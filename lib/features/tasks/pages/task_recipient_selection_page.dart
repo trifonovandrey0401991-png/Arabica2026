@@ -3,6 +3,7 @@ import '../models/task_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Группа получателей
 enum RecipientGroup {
@@ -38,11 +39,6 @@ class TaskRecipientSelectionPage extends StatefulWidget {
 }
 
 class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   RecipientGroup _selectedGroup = RecipientGroup.all;
   List<Employee> _allEmployees = [];
   Set<String> _selectedIds = {};
@@ -134,13 +130,13 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
     final totalSelected = _selectedIds.length;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -189,7 +185,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                         child: Text(
                           _filteredEmployees.length == filteredCount ? 'Снять все' : 'Выбрать все',
                           style: TextStyle(
-                            color: _gold,
+                            color: AppColors.gold,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -224,14 +220,14 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                             setState(() => _selectedGroup = group);
                           }
                         },
-                        selectedColor: _gold,
+                        selectedColor: AppColors.gold,
                         backgroundColor: Colors.white.withOpacity(0.06),
                         side: isSelected
                             ? BorderSide.none
                             : BorderSide(color: Colors.white.withOpacity(0.1)),
                         labelStyle: TextStyle(
                           fontSize: 13.sp,
-                          color: isSelected ? _night : Colors.white,
+                          color: isSelected ? AppColors.night : Colors.white,
                         ),
                       ),
                     ),
@@ -245,7 +241,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
             // Список сотрудников
             Expanded(
               child: _isLoading
-                  ? Center(child: CircularProgressIndicator(color: _gold))
+                  ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                   : _filteredEmployees.isEmpty
                       ? Center(
                           child: Text(
@@ -281,19 +277,19 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                               ),
                               secondary: CircleAvatar(
                                 backgroundColor: role == 'manager'
-                                    ? _gold.withOpacity(0.15)
-                                    : _emerald.withOpacity(0.3),
+                                    ? AppColors.gold.withOpacity(0.15)
+                                    : AppColors.emerald.withOpacity(0.3),
                                 child: Icon(
                                   role == 'manager'
                                       ? Icons.star
                                       : Icons.person,
                                   color: role == 'manager'
-                                      ? _gold
+                                      ? AppColors.gold
                                       : Colors.white.withOpacity(0.7),
                                 ),
                               ),
-                              activeColor: _gold,
-                              checkColor: _night,
+                              activeColor: AppColors.gold,
+                              checkColor: AppColors.night,
                             );
                           },
                         ),
@@ -303,7 +299,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: _emeraldDark,
+                color: AppColors.emeraldDark,
                 border: Border(
                   top: BorderSide(color: Colors.white.withOpacity(0.1)),
                 ),
@@ -314,8 +310,8 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                   child: ElevatedButton(
                     onPressed: totalSelected > 0 ? _confirm : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _gold,
-                      foregroundColor: _night,
+                      backgroundColor: AppColors.gold,
+                      foregroundColor: AppColors.night,
                       disabledBackgroundColor: Colors.white.withOpacity(0.06),
                       disabledForegroundColor: Colors.white.withOpacity(0.3),
                       padding: EdgeInsets.symmetric(vertical: 16.h),

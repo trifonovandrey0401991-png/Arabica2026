@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import 'withdrawal_form_page.dart';
@@ -22,11 +23,6 @@ class WithdrawalEmployeeSelectionPage extends StatefulWidget {
 
 class _WithdrawalEmployeeSelectionPageState
     extends State<WithdrawalEmployeeSelectionPage> {
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
-
   List<Employee> _managerEmployees = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -83,13 +79,13 @@ class _WithdrawalEmployeeSelectionPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -135,7 +131,7 @@ class _WithdrawalEmployeeSelectionPageState
               Expanded(
                 child: _isLoading
                     ? Center(
-                        child: CircularProgressIndicator(color: _gold),
+                        child: CircularProgressIndicator(color: AppColors.gold),
                       )
                     : _errorMessage != null
                         ? Center(
@@ -222,7 +218,7 @@ class _WithdrawalEmployeeSelectionPageState
                                           children: [
                                             CircleAvatar(
                                               radius: 28,
-                                              backgroundColor: _emerald,
+                                              backgroundColor: AppColors.emerald,
                                               child: Text(
                                                 employee.name.isNotEmpty
                                                     ? employee.name[0]

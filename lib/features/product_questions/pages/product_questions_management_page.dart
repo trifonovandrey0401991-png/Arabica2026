@@ -7,6 +7,7 @@ import 'product_question_answer_page.dart';
 import 'product_question_employee_dialog_page.dart';
 import '../../shops/models/shop_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class ProductQuestionsManagementPage extends StatefulWidget {
   const ProductQuestionsManagementPage({super.key});
@@ -16,12 +17,6 @@ class ProductQuestionsManagementPage extends StatefulWidget {
 }
 
 class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagementPage> {
-  // Dark emerald + gold palette
-  static const Color _emerald = Color(0xFF1A4D4D);
-  static const Color _emeraldDark = Color(0xFF0D2E2E);
-  static const Color _night = Color(0xFF051515);
-  static const Color _gold = Color(0xFFD4AF37);
-
   List<ProductQuestion> _allQuestions = [];
   List<PersonalProductDialog> _personalDialogs = [];
   List<Shop> _shops = [];
@@ -142,7 +137,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: isError ? Colors.red[700] : (isSuccess ? Colors.green[700] : _emerald),
+        backgroundColor: isError ? Colors.red[700] : (isSuccess ? Colors.green[700] : AppColors.emerald),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         margin: EdgeInsets.all(16.w),
@@ -183,7 +178,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     return await showDialog<Shop>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -193,20 +188,20 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
               width: double.infinity,
               padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
-                color: _emerald,
+                color: AppColors.emerald,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-                border: Border(bottom: BorderSide(color: _gold.withOpacity(0.3))),
+                border: Border(bottom: BorderSide(color: AppColors.gold.withOpacity(0.3))),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
-                      color: _gold.withOpacity(0.15),
+                      color: AppColors.gold.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: _gold.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                     ),
-                    child: Icon(Icons.store, color: _gold, size: 24),
+                    child: Icon(Icons.store, color: AppColors.gold, size: 24),
                   ),
                   SizedBox(width: 12),
                   Text(
@@ -245,11 +240,11 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: _emerald.withOpacity(0.5),
+                              color: AppColors.emerald.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(12.r),
-                              border: Border.all(color: _gold.withOpacity(0.3)),
+                              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                             ),
-                            child: Icon(Icons.storefront, color: _gold, size: 24),
+                            child: Icon(Icons.storefront, color: AppColors.gold, size: 24),
                           ),
                           SizedBox(width: 12),
                           Expanded(
@@ -280,7 +275,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                           Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
-                            color: _gold.withOpacity(0.5),
+                            color: AppColors.gold.withOpacity(0.5),
                           ),
                         ],
                       ),
@@ -294,7 +289,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
               padding: EdgeInsets.all(16.w),
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(foregroundColor: _gold),
+                style: TextButton.styleFrom(foregroundColor: AppColors.gold),
                 child: Text('Отмена'),
               ),
             ),
@@ -367,13 +362,13 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.15, 0.4],
           ),
         ),
@@ -410,7 +405,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                       },
                       icon: Icon(
                         Icons.refresh_rounded,
-                        color: _gold.withOpacity(0.7),
+                        color: AppColors.gold.withOpacity(0.7),
                         size: 24,
                       ),
                     ),
@@ -458,10 +453,10 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
         duration: Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(vertical: 12.h),
         decoration: BoxDecoration(
-          color: isSelected ? _emerald.withOpacity(0.8) : Colors.white.withOpacity(0.06),
+          color: isSelected ? AppColors.emerald.withOpacity(0.8) : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
-            color: isSelected ? _gold.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+            color: isSelected ? AppColors.gold.withOpacity(0.6) : Colors.white.withOpacity(0.1),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -513,20 +508,20 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
       ),
       child: Row(
         children: [
-          Icon(Icons.store_rounded, color: _gold.withOpacity(0.7), size: 20),
+          Icon(Icons.store_rounded, color: AppColors.gold.withOpacity(0.7), size: 20),
           SizedBox(width: 12),
           Expanded(
             child: Theme(
               data: Theme.of(context).copyWith(
-                canvasColor: _emeraldDark,
+                canvasColor: AppColors.emeraldDark,
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedShopAddress,
                   hint: Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.6))),
                   isExpanded: true,
-                  icon: Icon(Icons.keyboard_arrow_down, color: _gold.withOpacity(0.5)),
-                  dropdownColor: _emeraldDark,
+                  icon: Icon(Icons.keyboard_arrow_down, color: AppColors.gold.withOpacity(0.5)),
+                  dropdownColor: AppColors.emeraldDark,
                   style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
                   items: [
                     DropdownMenuItem<String>(
@@ -617,7 +612,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     List<PersonalProductDialog>? personalDialogs,
   }) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: _gold));
+      return Center(child: CircularProgressIndicator(color: AppColors.gold));
     }
 
     final totalCount = (personalDialogs?.length ?? 0) + questions.length;
@@ -627,8 +622,8 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 8.h),
         itemCount: totalCount,
@@ -673,9 +668,9 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(18.r),
-              border: Border.all(color: _gold.withOpacity(0.3)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
             ),
-            child: Icon(icon, size: 32, color: _gold.withOpacity(0.5)),
+            child: Icon(icon, size: 32, color: AppColors.gold.withOpacity(0.5)),
           ),
           SizedBox(height: 20),
           Text(
@@ -703,12 +698,12 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
       margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: hasClientReply
-            ? _emerald.withOpacity(0.4)
+            ? AppColors.emerald.withOpacity(0.4)
             : Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: hasClientReply
-              ? _gold.withOpacity(0.6)
+              ? AppColors.gold.withOpacity(0.6)
               : Colors.white.withOpacity(0.1),
           width: hasClientReply ? 1.5 : 1,
         ),
@@ -763,7 +758,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                                 ? Color(0xFF00b09b).withOpacity(0.2)
                                 : isExpired
                                     ? Colors.red.withOpacity(0.2)
-                                    : _gold.withOpacity(0.15),
+                                    : AppColors.gold.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(
                           color: hasClientReply
@@ -772,7 +767,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                                   ? Color(0xFF00b09b).withOpacity(0.4)
                                   : isExpired
                                       ? Colors.red.withOpacity(0.4)
-                                      : _gold.withOpacity(0.3),
+                                      : AppColors.gold.withOpacity(0.3),
                         ),
                       ),
                       child: Icon(
@@ -789,7 +784,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                                 ? Color(0xFF96c93d)
                                 : isExpired
                                     ? Colors.red[300]
-                                    : _gold,
+                                    : AppColors.gold,
                         size: 20,
                       ),
                     ),
@@ -824,7 +819,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                     if (hasClientReply)
                       _buildBadge('Ответ клиента', Color(0xFFFF6B35)),
                     if (isPending && !hasClientReply)
-                      _buildBadge(_formatTimeRemaining(question), _gold),
+                      _buildBadge(_formatTimeRemaining(question), AppColors.gold),
                     if (isExpired && !hasClientReply)
                       _buildBadge('Просрочено', Colors.red),
                     if (!canAnswer && !isAnswered)
@@ -849,7 +844,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.store_rounded, size: 14, color: _gold.withOpacity(0.6)),
+                      Icon(Icons.store_rounded, size: 14, color: AppColors.gold.withOpacity(0.6)),
                       SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -948,7 +943,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                     Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 14,
-                      color: _gold.withOpacity(0.4),
+                      color: AppColors.gold.withOpacity(0.4),
                     ),
                   ],
                 ),
@@ -987,12 +982,12 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
       margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
         color: hasUnread
-            ? _emerald.withOpacity(0.4)
+            ? AppColors.emerald.withOpacity(0.4)
             : Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: hasUnread
-              ? _gold.withOpacity(0.6)
+              ? AppColors.gold.withOpacity(0.6)
               : Colors.white.withOpacity(0.1),
           width: hasUnread ? 1.5 : 1,
         ),
@@ -1031,17 +1026,17 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                           decoration: BoxDecoration(
                             color: hasUnread
                                 ? Color(0xFFFF6B35).withOpacity(0.2)
-                                : _emerald.withOpacity(0.5),
+                                : AppColors.emerald.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(12.r),
                             border: Border.all(
                               color: hasUnread
                                   ? Color(0xFFFF6B35).withOpacity(0.4)
-                                  : _gold.withOpacity(0.3),
+                                  : AppColors.gold.withOpacity(0.3),
                             ),
                           ),
                           child: Icon(
                             Icons.chat_bubble_rounded,
-                            color: hasUnread ? Color(0xFFFF6B35) : _gold,
+                            color: hasUnread ? Color(0xFFFF6B35) : AppColors.gold,
                             size: 20,
                           ),
                         ),
@@ -1055,7 +1050,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                               decoration: BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: _night, width: 2),
+                                border: Border.all(color: AppColors.night, width: 2),
                               ),
                               child: Center(
                                 child: Text(
@@ -1112,7 +1107,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.store_rounded, size: 14, color: _gold.withOpacity(0.6)),
+                      Icon(Icons.store_rounded, size: 14, color: AppColors.gold.withOpacity(0.6)),
                       SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -1136,12 +1131,12 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                     padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
                       color: hasUnread
-                          ? _gold.withOpacity(0.08)
+                          ? AppColors.gold.withOpacity(0.08)
                           : Colors.white.withOpacity(0.04),
                       borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(
                         color: hasUnread
-                            ? _gold.withOpacity(0.2)
+                            ? AppColors.gold.withOpacity(0.2)
                             : Colors.white.withOpacity(0.06),
                       ),
                     ),
@@ -1173,7 +1168,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                       Icon(
                         Icons.arrow_forward_ios_rounded,
                         size: 14,
-                        color: _gold.withOpacity(0.4),
+                        color: AppColors.gold.withOpacity(0.4),
                       ),
                     ],
                   ),

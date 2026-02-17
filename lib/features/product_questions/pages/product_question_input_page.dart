@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../services/product_question_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class ProductQuestionInputPage extends StatefulWidget {
   final String shopAddress;
@@ -23,11 +24,6 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   final FocusNode _focusNode = FocusNode();
   File? _selectedImage;
   bool _isSending = false;
-
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
 
   Future<void> _pickImage() async {
     try {
@@ -92,7 +88,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
       builder: (context) => Container(
         margin: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
@@ -218,7 +214,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Вопрос отправлен! Ответ придёт в "Мои диалоги"'),
-            backgroundColor: Color(0xFF4CAF50),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             duration: Duration(seconds: 3),
@@ -257,13 +253,13 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -542,7 +538,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14.r),
                 gradient: LinearGradient(
-                  colors: [_emerald, _emerald.withOpacity(0.8)],
+                  colors: [AppColors.emerald, AppColors.emerald.withOpacity(0.8)],
                 ),
               ),
               child: Center(

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../shops/models/shop_model.dart';
 import '../services/review_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница ввода текста отзыва
 class ReviewTextInputPage extends StatefulWidget {
@@ -23,14 +24,9 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
   final _textController = TextEditingController();
   bool _isLoading = false;
 
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   bool get _isPositive => widget.reviewType == 'positive';
   Color get _accentColor => _isPositive
-      ? Color(0xFF4CAF50)
+      ? AppColors.success
       : Color(0xFFEF5350);
 
   @override
@@ -88,7 +84,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Отзыв успешно отправлен!'),
-              backgroundColor: Color(0xFF4CAF50),
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             ),
@@ -128,13 +124,13 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),

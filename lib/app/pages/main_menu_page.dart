@@ -28,6 +28,7 @@ import 'data_management_page.dart';
 import 'reports_page.dart';
 import '../services/my_dialogs_counter_service.dart';
 import '../services/reports_counter_service.dart';
+import '../services/dashboard_batch_service.dart';
 // Импорты для функций сотрудника
 import 'client_functions_page.dart';
 import '../../features/training/pages/training_page.dart';
@@ -67,6 +68,7 @@ import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/execution_chain/services/execution_chain_service.dart';
 import '../../features/execution_chain/models/execution_chain_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../core/theme/app_colors.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -102,15 +104,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
   ExecutionChainStatus? _chainStatus;
   DateTime? _chainStatusLoadedAt;
 
-  // ═══════════════════════════════════════════════════════════════
-  // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - только изумруд и белый
-  // ═══════════════════════════════════════════════════════════════
-  static final Color _emerald = Color(0xFF1A4D4D);       // Из логотипа
-  static final Color _emeraldLight = Color(0xFF2A6363); // Светлее
-  static final Color _emeraldDark = Color(0xFF0D2E2E);  // Темнее
-  static final Color _night = Color(0xFF051515);        // Почти чёрный
-  static final Color _gold = Color(0xFFD4AF37);         // Золотой акцент
-
   @override
   void initState() {
     super.initState();
@@ -126,7 +119,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     await _loadEmployeeId();
 
     // ФАЗА 2: Бейджи (видны на кнопках меню)
-    _loadTotalReportsCount();
+    _loadDashboardBatch();
     _loadMyDialogsCount();
     _loadEmployeeCounters();
 
@@ -169,7 +162,31 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  /// Загрузка общего счётчика для бейджа "Отчёты" (сумма всех дочерних)
+  /// Batch-загрузка счётчиков: один запрос вместо 3 отдельных
+  /// (totalReports, pendingOrders, activeTasks)
+  Future<void> _loadDashboardBatch() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone');
+      final counters = await DashboardBatchService.getCounters(
+        phone: phone,
+        employeeId: _employeeId,
+      );
+      if (counters != null && mounted) {
+        setState(() {
+          _totalReportsCount = counters.totalPendingReports;
+          _pendingOrdersCount = counters.pendingOrders;
+          _activeTasksCount = counters.activeTaskAssignments;
+        });
+      }
+    } catch (e) {
+      Logger.warning('Dashboard batch fallback to individual calls');
+      // Fallback: индивидуальные вызовы
+      _loadTotalReportsCount();
+    }
+  }
+
+  /// Загрузка общего счётчика для бейджа "Отчёты" (fallback)
   Future<void> _loadTotalReportsCount() async {
     try {
       final count = await ReportsCounterService.getTotalUnreadCount();
@@ -193,9 +210,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
   /// вместо 5 параллельных вызовов getCurrentEmployeeId().
   Future<void> _loadEmployeeCounters() async {
     final employeeId = await EmployeesPage.getCurrentEmployeeId();
-    _loadPendingOrdersCount();
+    // pendingOrders и activeTasks загружены через batch в _loadDashboardBatch
     _loadUnreadProductQuestionsCount();
-    _loadActiveTasksCount(employeeId);
     _loadAvailableSpins(employeeId);
     _loadShiftTransferUnreadCount(employeeId);
     _loadReferralCode(employeeId);
@@ -384,7 +400,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.2)),
@@ -439,13 +455,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -719,7 +735,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     child: Text(
                       badge > 99 ? '99+' : '$badge',
                       style: TextStyle(
-                        color: _emerald,
+                        color: AppColors.emerald,
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                       ),
@@ -840,15 +856,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            _emeraldLight.withOpacity(0.8),
-            _emerald,
+            AppColors.emeraldLight.withOpacity(0.8),
+            AppColors.emerald,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: Color(0xFF4ECDC4).withOpacity(0.6), // Бирюзовый акцент
+          color: AppColors.turquoise.withOpacity(0.6), // Бирюзовый акцент
           width: 1.5,
         ),
       ),
@@ -886,17 +902,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                   decoration: BoxDecoration(
-                    color: Color(0xFF4ECDC4).withOpacity(0.3),
+                    color: AppColors.turquoise.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(6.r),
                     border: Border.all(
-                      color: Color(0xFF4ECDC4).withOpacity(0.5),
+                      color: AppColors.turquoise.withOpacity(0.5),
                       width: 1,
                     ),
                   ),
                   child: Text(
                     'AI',
                     style: TextStyle(
-                      color: Color(0xFF4ECDC4),
+                      color: AppColors.turquoise,
                       fontSize: 11.sp,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
@@ -922,15 +938,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _emeraldLight.withOpacity(0.8),
-                  _emerald,
+                  AppColors.emeraldLight.withOpacity(0.8),
+                  AppColors.emerald,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16.r),
               border: Border.all(
-                color: Color(0xFF4ECDC4).withOpacity(0.6),
+                color: AppColors.turquoise.withOpacity(0.6),
                 width: 1.5,
               ),
             ),
@@ -961,17 +977,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
                       decoration: BoxDecoration(
-                        color: Color(0xFF4ECDC4).withOpacity(0.3),
+                        color: AppColors.turquoise.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(6.r),
                         border: Border.all(
-                          color: Color(0xFF4ECDC4).withOpacity(0.5),
+                          color: AppColors.turquoise.withOpacity(0.5),
                           width: 1,
                         ),
                       ),
                       child: Text(
                         'AI',
                         style: TextStyle(
-                          color: Color(0xFF4ECDC4),
+                          color: AppColors.turquoise,
                           fontSize: 10.sp,
                           fontWeight: FontWeight.w700,
                         ),
@@ -991,15 +1007,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _gold.withOpacity(0.9),
-                  Color(0xFFB8960C),
+                  AppColors.gold.withOpacity(0.9),
+                  AppColors.darkGold,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16.r),
               border: Border.all(
-                color: _gold.withOpacity(0.7),
+                color: AppColors.gold.withOpacity(0.7),
                 width: 1.5,
               ),
             ),
@@ -1120,18 +1136,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _isUpdateAvailable
-                                      ? Color(0xFF4CAF50) // Зелёный если есть обновление
+                                      ? AppColors.success // Зелёный если есть обновление
                                       : Colors.white.withOpacity(0.1),
                                   border: Border.all(
                                     color: _isUpdateAvailable
-                                        ? Color(0xFF81C784)
+                                        ? AppColors.successLight
                                         : Colors.white.withOpacity(0.3),
                                     width: 2,
                                   ),
                                   boxShadow: _isUpdateAvailable
                                       ? [
                                           BoxShadow(
-                                            color: Color(0xFF4CAF50).withOpacity(0.4),
+                                            color: AppColors.success.withOpacity(0.4),
                                             blurRadius: 8,
                                             offset: Offset(0, 2),
                                           ),
@@ -1155,7 +1171,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: Colors.red,
-                                      border: Border.all(color: _emerald, width: 2),
+                                      border: Border.all(color: AppColors.emerald, width: 2),
                                     ),
                                     child: Center(
                                       child: Text(
@@ -1186,11 +1202,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
                             height: isEmployee ? 32 : 40,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color(0xFFFFC107), // Жёлтый цвет
-                              border: Border.all(color: Color(0xFFFFD54F), width: 2),
+                              color: AppColors.amber, // Жёлтый цвет
+                              border: Border.all(color: AppColors.amberLight, width: 2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Color(0xFFFFC107).withOpacity(0.4),
+                                  color: AppColors.amber.withOpacity(0.4),
                                   blurRadius: 8,
                                   offset: Offset(0, 2),
                                 ),
@@ -1305,11 +1321,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
           color: isPositive
-              ? Color(0xFF4CAF50).withOpacity(0.5)
+              ? AppColors.success.withOpacity(0.5)
               : Colors.orange.withOpacity(0.5),
         ),
         color: isPositive
-            ? Color(0xFF4CAF50).withOpacity(0.15)
+            ? AppColors.success.withOpacity(0.15)
             : Colors.orange.withOpacity(0.15),
       ),
       child: Row(
@@ -1318,7 +1334,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
           Icon(
             isPositive ? Icons.trending_up_outlined : Icons.trending_down_outlined,
             color: isPositive
-                ? Color(0xFF81C784)
+                ? AppColors.successLight
                 : Colors.orange.shade300,
             size: 14,
           ),
@@ -1327,7 +1343,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             formattedPoints,
             style: TextStyle(
               color: isPositive
-                  ? Color(0xFF81C784)
+                  ? AppColors.successLight
                   : Colors.orange.shade300,
               fontSize: 11.sp,
               fontWeight: FontWeight.w600,
@@ -1577,7 +1593,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1673,14 +1689,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
-          side: BorderSide(color: _gold.withOpacity(0.3)),
+          side: BorderSide(color: AppColors.gold.withOpacity(0.3)),
         ),
         title: Row(
           children: [
-            Icon(Icons.link_rounded, color: _gold, size: 24),
+            Icon(Icons.link_rounded, color: AppColors.gold, size: 24),
             SizedBox(width: 10),
             Expanded(
               child: Text('Цепочка действий',
@@ -1703,12 +1719,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12.r),
-                color: _gold.withOpacity(0.1),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                color: AppColors.gold.withOpacity(0.1),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(_getStepIcon(blockingStep.id), color: _gold, size: 22),
+                  Icon(_getStepIcon(blockingStep.id), color: AppColors.gold, size: 22),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1736,8 +1752,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
               _navigateToStep(blockingStep.id);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: _gold,
-              foregroundColor: _night,
+              backgroundColor: AppColors.gold,
+              foregroundColor: AppColors.night,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
             child: Text('Перейти'),
@@ -1831,7 +1847,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1873,7 +1889,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2013,7 +2029,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2046,7 +2062,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2099,7 +2115,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2177,7 +2193,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2294,7 +2310,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
               child: Text(
                 badge > 99 ? '99+' : badge.toString(),
                 style: TextStyle(
-                  color: _emerald,
+                  color: AppColors.emerald,
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2334,10 +2350,6 @@ class _ShopSelectionPage extends StatefulWidget {
 }
 
 class _ShopSelectionPageState extends State<_ShopSelectionPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   List<Shop>? _shops;
   bool _isLoading = true;
   String? _error;
@@ -2371,13 +2383,13 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),

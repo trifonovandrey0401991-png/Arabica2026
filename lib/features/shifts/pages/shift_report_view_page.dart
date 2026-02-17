@@ -9,6 +9,7 @@ import 'shift_photo_gallery_page.dart';
 import '../../../core/utils/logger.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница просмотра отчета пересменки
 class ShiftReportViewPage extends StatefulWidget {
@@ -26,11 +27,6 @@ class ShiftReportViewPage extends StatefulWidget {
 }
 
 class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late ShiftReport _currentReport;
 
   @override
@@ -91,7 +87,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: _emeraldDark,
+              backgroundColor: AppColors.emeraldDark,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.r),
                 side: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -148,7 +144,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                 : Colors.white.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(8.r),
                             border: isSelected
-                                ? Border.all(color: _gold, width: 2)
+                                ? Border.all(color: AppColors.gold, width: 2)
                                 : Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
                           child: Center(
@@ -175,8 +171,8 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(selectedRating),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _gold,
-                    foregroundColor: _night,
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: AppColors.night,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10.r),
                     ),
@@ -384,7 +380,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
-                                  color: _gold.withOpacity(0.8),
+                                  color: AppColors.gold.withOpacity(0.8),
                                 ),
                               ),
                               SizedBox(height: 4),
@@ -432,7 +428,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
-                                  color: _gold.withOpacity(0.8),
+                                  color: AppColors.gold.withOpacity(0.8),
                                 ),
                               ),
                               SizedBox(height: 4),
@@ -508,7 +504,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: _emeraldDark.withOpacity(0.8),
+        color: AppColors.emeraldDark.withOpacity(0.8),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
       ),
       child: SafeArea(
@@ -687,8 +683,8 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                     style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _gold,
-                    foregroundColor: _night,
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: AppColors.night,
                     padding: EdgeInsets.symmetric(vertical: 16.h),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14.r),
@@ -703,13 +699,13 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),

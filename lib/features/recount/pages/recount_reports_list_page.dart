@@ -15,6 +15,7 @@ import 'recount_report_view_page.dart';
 import 'recount_summary_report_page.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Модель строки сводного отчёта (дата + смена) - аналог ShiftSummaryItem
 class RecountSummaryItem {
@@ -73,11 +74,6 @@ class RecountReportsListPage extends StatefulWidget {
 
 class _RecountReportsListPageState extends State<RecountReportsListPage>
     with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
   String? _selectedShop;
   String? _selectedEmployee;
@@ -671,13 +667,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -903,17 +899,17 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
           DropdownButtonFormField<String>(
             value: _selectedShop,
             isExpanded: true,
-            dropdownColor: _emeraldDark,
+            dropdownColor: AppColors.emeraldDark,
             style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
             decoration: InputDecoration(
               labelText: 'Магазин',
               labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _gold)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: AppColors.gold)),
               contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
             ),
-            iconEnabledColor: _gold,
+            iconEnabledColor: AppColors.gold,
             items: [
               DropdownMenuItem<String>(
                 value: null,
@@ -938,17 +934,17 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                 child: DropdownButtonFormField<String>(
                   value: _selectedEmployee,
                   isExpanded: true,
-                  dropdownColor: _emeraldDark,
+                  dropdownColor: AppColors.emeraldDark,
                   style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
                   decoration: InputDecoration(
                     labelText: 'Сотрудник',
                     labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _gold)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: AppColors.gold)),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   ),
-                  iconEnabledColor: _gold,
+                  iconEnabledColor: AppColors.gold,
                   items: [
                     DropdownMenuItem<String>(
                       value: null,
@@ -993,7 +989,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                             ],
                           ),
                         ),
-                        Icon(Icons.calendar_today, size: 18, color: _gold),
+                        Icon(Icons.calendar_today, size: 18, color: AppColors.gold),
                       ],
                     ),
                   ),
@@ -1293,7 +1289,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                         child: Container(
                           padding: EdgeInsets.all(2.w),
                           decoration: BoxDecoration(
-                            color: _emeraldDark,
+                            color: AppColors.emeraldDark,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(Icons.error, color: Colors.red, size: 14),
@@ -1431,8 +1427,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
@@ -2116,8 +2112,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
@@ -2151,8 +2147,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
@@ -2574,8 +2570,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(8.w),
         itemCount: groups.length,
@@ -2780,7 +2776,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Center(child: CircularProgressIndicator(color: _gold)),
+      builder: (ctx) => Center(child: CircularProgressIndicator(color: AppColors.gold)),
     );
 
     try {

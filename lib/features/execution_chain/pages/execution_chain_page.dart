@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/execution_chain_model.dart';
 import '../services/execution_chain_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница настройки цепочки выполнений (только для админа)
 class ExecutionChainPage extends StatefulWidget {
@@ -12,11 +13,6 @@ class ExecutionChainPage extends StatefulWidget {
 }
 
 class _ExecutionChainPageState extends State<ExecutionChainPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = true;
   bool _isSaving = false;
   bool _enabled = false;
@@ -120,13 +116,13 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -137,7 +133,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
               if (_isLoading)
                 Expanded(
                   child: Center(
-                    child: CircularProgressIndicator(color: _gold),
+                    child: CircularProgressIndicator(color: AppColors.gold),
                   ),
                 )
               else
@@ -220,15 +216,15 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: _enabled ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.15),
+          color: _enabled ? AppColors.gold.withOpacity(0.4) : Colors.white.withOpacity(0.15),
         ),
-        color: _enabled ? _gold.withOpacity(0.08) : Colors.transparent,
+        color: _enabled ? AppColors.gold.withOpacity(0.08) : Colors.transparent,
       ),
       child: Row(
         children: [
           Icon(
             _enabled ? Icons.link_rounded : Icons.link_off_rounded,
-            color: _enabled ? _gold : Colors.white.withOpacity(0.5),
+            color: _enabled ? AppColors.gold : Colors.white.withOpacity(0.5),
             size: 24,
           ),
           SizedBox(width: 12),
@@ -236,7 +232,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
             child: Text(
               _enabled ? 'Цепочка активна' : 'Цепочка выключена',
               style: TextStyle(
-                color: _enabled ? _gold : Colors.white.withOpacity(0.7),
+                color: _enabled ? AppColors.gold : Colors.white.withOpacity(0.7),
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w500,
               ),
@@ -245,8 +241,8 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
           Switch(
             value: _enabled,
             onChanged: (v) => setState(() => _enabled = v),
-            activeColor: _gold,
-            activeTrackColor: _gold.withOpacity(0.3),
+            activeColor: AppColors.gold,
+            activeTrackColor: AppColors.gold.withOpacity(0.3),
             inactiveThumbColor: Colors.white.withOpacity(0.5),
             inactiveTrackColor: Colors.white.withOpacity(0.1),
           ),
@@ -283,15 +279,15 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
-                color: isActive ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+                color: isActive ? AppColors.gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
               ),
-              color: isActive ? _gold.withOpacity(0.05) : Colors.transparent,
+              color: isActive ? AppColors.gold.withOpacity(0.05) : Colors.transparent,
             ),
             child: Row(
               children: [
                 Icon(
                   module.icon,
-                  color: isActive ? _gold : Colors.white.withOpacity(0.5),
+                  color: isActive ? AppColors.gold : Colors.white.withOpacity(0.5),
                   size: 22,
                 ),
                 SizedBox(width: 12),
@@ -307,8 +303,8 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
                 Checkbox(
                   value: isActive,
                   onChanged: (_) => _toggleModule(module),
-                  activeColor: _gold,
-                  checkColor: _night,
+                  activeColor: AppColors.gold,
+                  checkColor: AppColors.night,
                   side: BorderSide(color: Colors.white.withOpacity(0.3)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4.r),
@@ -331,7 +327,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
         return Material(
           color: Colors.transparent,
           elevation: 4,
-          shadowColor: _gold.withOpacity(0.3),
+          shadowColor: AppColors.gold.withOpacity(0.3),
           borderRadius: BorderRadius.circular(12.r),
           child: child,
         );
@@ -351,8 +347,8 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: _gold.withOpacity(0.25)),
-            color: _gold.withOpacity(0.06),
+            border: Border.all(color: AppColors.gold.withOpacity(0.25)),
+            color: AppColors.gold.withOpacity(0.06),
           ),
           child: Row(
             children: [
@@ -362,13 +358,13 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
                 height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _gold.withOpacity(0.2),
+                  color: AppColors.gold.withOpacity(0.2),
                 ),
                 child: Center(
                   child: Text(
                     '${index + 1}',
                     style: TextStyle(
-                      color: _gold,
+                      color: AppColors.gold,
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -378,7 +374,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
               SizedBox(width: 12),
               Icon(
                 module.icon,
-                color: _gold.withOpacity(0.8),
+                color: AppColors.gold.withOpacity(0.8),
                 size: 20,
               ),
               SizedBox(width: 10),
@@ -413,9 +409,9 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
       child: ElevatedButton(
         onPressed: _isSaving ? null : _saveConfig,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _gold,
-          foregroundColor: _night,
-          disabledBackgroundColor: _gold.withOpacity(0.3),
+          backgroundColor: AppColors.gold,
+          foregroundColor: AppColors.night,
+          disabledBackgroundColor: AppColors.gold.withOpacity(0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14.r),
           ),
@@ -426,7 +422,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: _night,
+                  color: AppColors.night,
                 ),
               )
             : Text(

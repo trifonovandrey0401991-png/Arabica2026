@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../services/loyalty_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -19,9 +20,9 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
   String? _lastQr;
 
   // Градиенты и цвета
-  static final _primaryColor = Color(0xFF004D40);
+  static final _primaryColor = AppColors.primaryGreen;
   static final _accentColor = Color(0xFF00897B);
-  static final _gradientColors = [Color(0xFF004D40), Color(0xFF00796B)];
+  static final _gradientColors = [AppColors.primaryGreen, Color(0xFF00796B)];
   static final _bonusGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
   static final _successGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
 
@@ -263,7 +264,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           ),
         ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
   @override

@@ -1,6 +1,8 @@
 /**
  * Shops API - Управление магазинами
  * Extracted from index.js inline routes
+ *
+ * Feature flag: USE_DB_SHOPS=true → PostgreSQL, false → JSON files
  */
 
 const fsp = require('fs').promises;
@@ -9,18 +11,20 @@ const dataCache = require('../utils/data_cache');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHOPS_DIR = `${DATA_DIR}/shops`;
+const USE_DB = process.env.USE_DB_SHOPS === 'true';
 
 // Дефолтные магазины (создаются при первом запуске) — загружаются из config/default_shops.json
 const DEFAULT_SHOPS = require('../config/default_shops.json');
 
-// Инициализация директории магазинов
+// Инициализация директории магазинов (только для JSON-режима)
 async function initShopsDir() {
+  if (USE_DB) return; // В DB-режиме не нужно
   if (!await fileExists(SHOPS_DIR)) {
     await fsp.mkdir(SHOPS_DIR, { recursive: true });
-    // Создаем дефолтные магазины
     for (const shop of DEFAULT_SHOPS) {
       const shopFile = path.join(SHOPS_DIR, `${shop.id}.json`);
       await writeJsonFile(shopFile, shop);
@@ -35,19 +39,26 @@ function setupShopsAPI(app) {
   app.get('/api/shops', async (req, res) => {
     try {
       console.log('GET /api/shops');
+      let shops;
 
-      // SCALABILITY: Используем кэш если доступен
-      let shops = dataCache.getShops();
+      if (USE_DB) {
+        shops = await db.findAll('shops', { orderBy: 'created_at', orderDir: 'ASC' });
+        // Преобразуем snake_case → camelCase для совместимости с Flutter
+        shops = shops.map(dbShopToCamel);
+      } else {
+        // SCALABILITY: Используем кэш если доступен
+        shops = dataCache.getShops();
 
-      if (!shops) {
-        shops = [];
-        const files = (await fsp.readdir(SHOPS_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
-            shops.push(JSON.parse(content));
-          } catch (e) {
-            console.error(`Ошибка чтения файла ${file}:`, e.message);
+        if (!shops) {
+          shops = [];
+          const files = (await fsp.readdir(SHOPS_DIR)).filter(f => f.endsWith('.json'));
+          for (const file of files) {
+            try {
+              const content = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
+              shops.push(JSON.parse(content));
+            } catch (e) {
+              console.error(`Ошибка чтения файла ${file}:`, e.message);
+            }
           }
         }
       }
@@ -70,12 +81,20 @@ function setupShopsAPI(app) {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/shops/' + id);
 
-      const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-      if (!await fileExists(shopFile)) {
-        return res.status(404).json({ success: false, error: 'Магазин не найден' });
+      let shop;
+
+      if (USE_DB) {
+        const row = await db.findById('shops', id);
+        if (!row) return res.status(404).json({ success: false, error: 'Магазин не найден' });
+        shop = dbShopToCamel(row);
+      } else {
+        const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+        if (!await fileExists(shopFile)) {
+          return res.status(404).json({ success: false, error: 'Магазин не найден' });
+        }
+        shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
       }
 
-      const shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
       res.json({ success: true, shop });
     } catch (error) {
       console.error('Ошибка получения магазина:', error);
@@ -91,20 +110,36 @@ function setupShopsAPI(app) {
       console.log('POST /api/shops', name, address);
 
       const id = 'shop_' + Date.now();
-      const shop = {
-        id,
-        name: name || '',
-        address: address || '',
-        icon: icon || 'store_outlined',
-        latitude: latitude || null,
-        longitude: longitude || null,
-        createdAt: new Date().toISOString(),
-      };
+      const now = new Date().toISOString();
 
-      const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-      await writeJsonFile(shopFile, shop);
+      let shop;
+
+      if (USE_DB) {
+        const row = await db.insert('shops', {
+          id,
+          name: name || '',
+          address: address || '',
+          latitude: latitude || null,
+          longitude: longitude || null,
+          created_at: now,
+          updated_at: now
+        });
+        shop = dbShopToCamel(row);
+      } else {
+        shop = {
+          id,
+          name: name || '',
+          address: address || '',
+          icon: icon || 'store_outlined',
+          latitude: latitude || null,
+          longitude: longitude || null,
+          createdAt: now,
+        };
+        const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+        await writeJsonFile(shopFile, shop);
+      }
+
       dataCache.invalidateShops();
-
       console.log('✅ Магазин создан:', id);
       res.json({ success: true, shop });
     } catch (error) {
@@ -121,24 +156,38 @@ function setupShopsAPI(app) {
       const updates = req.body;
       console.log('PUT /api/shops/' + id, updates);
 
-      const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-      if (!await fileExists(shopFile)) {
-        return res.status(404).json({ success: false, error: 'Магазин не найден' });
+      let shop;
+
+      if (USE_DB) {
+        const existing = await db.findById('shops', id);
+        if (!existing) return res.status(404).json({ success: false, error: 'Магазин не найден' });
+
+        const updateData = { updated_at: new Date().toISOString() };
+        if (updates.name !== undefined) updateData.name = updates.name;
+        if (updates.address !== undefined) updateData.address = updates.address;
+        if (updates.latitude !== undefined) updateData.latitude = updates.latitude;
+        if (updates.longitude !== undefined) updateData.longitude = updates.longitude;
+
+        const row = await db.updateById('shops', id, updateData);
+        shop = dbShopToCamel(row);
+      } else {
+        const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+        if (!await fileExists(shopFile)) {
+          return res.status(404).json({ success: false, error: 'Магазин не найден' });
+        }
+
+        shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
+        if (updates.name !== undefined) shop.name = updates.name;
+        if (updates.address !== undefined) shop.address = updates.address;
+        if (updates.latitude !== undefined) shop.latitude = updates.latitude;
+        if (updates.longitude !== undefined) shop.longitude = updates.longitude;
+        if (updates.icon !== undefined) shop.icon = updates.icon;
+        shop.updatedAt = new Date().toISOString();
+
+        await writeJsonFile(shopFile, shop);
       }
 
-      const shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
-
-      // Обновляем только переданные поля
-      if (updates.name !== undefined) shop.name = updates.name;
-      if (updates.address !== undefined) shop.address = updates.address;
-      if (updates.latitude !== undefined) shop.latitude = updates.latitude;
-      if (updates.longitude !== undefined) shop.longitude = updates.longitude;
-      if (updates.icon !== undefined) shop.icon = updates.icon;
-      shop.updatedAt = new Date().toISOString();
-
-      await writeJsonFile(shopFile, shop);
       dataCache.invalidateShops();
-
       console.log('✅ Магазин обновлен:', id);
       res.json({ success: true, shop });
     } catch (error) {
@@ -154,14 +203,18 @@ function setupShopsAPI(app) {
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/shops/' + id);
 
-      const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-      if (!await fileExists(shopFile)) {
-        return res.status(404).json({ success: false, error: 'Магазин не найден' });
+      if (USE_DB) {
+        const deleted = await db.deleteById('shops', id);
+        if (!deleted) return res.status(404).json({ success: false, error: 'Магазин не найден' });
+      } else {
+        const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+        if (!await fileExists(shopFile)) {
+          return res.status(404).json({ success: false, error: 'Магазин не найден' });
+        }
+        await fsp.unlink(shopFile);
       }
 
-      await fsp.unlink(shopFile);
       dataCache.invalidateShops();
-
       console.log('✅ Магазин удален:', id);
       res.json({ success: true });
     } catch (error) {
@@ -170,7 +223,23 @@ function setupShopsAPI(app) {
     }
   });
 
-  console.log('✅ Shops API initialized');
+  console.log(`✅ Shops API initialized (storage: ${USE_DB ? 'PostgreSQL' : 'JSON files'})`);
+}
+
+/**
+ * Преобразование DB row (snake_case) → camelCase (для совместимости с Flutter)
+ * Flutter ожидает: { id, name, address, latitude, longitude, createdAt, updatedAt }
+ */
+function dbShopToCamel(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
 }
 
 module.exports = { setupShopsAPI };

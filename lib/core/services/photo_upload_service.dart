@@ -75,9 +75,14 @@ class PhotoUploadService {
       Logger.debug('📦 Размер оригинала: ${originalSize} байт (${(originalSize / 1024).toStringAsFixed(2)} KB)');
 
       // Сжатие фото если больше 500 KB (resize 1280px + JPEG quality 75%)
-      if (!kIsWeb && originalSize > 512 * 1024) {
+      if (originalSize > 512 * 1024) {
         try {
-          bytes = await compute(_compressImageIsolate, bytes);
+          if (kIsWeb) {
+            // На web isolate недоступен — сжимаем в основном потоке
+            bytes = _compressImageIsolate(bytes);
+          } else {
+            bytes = await compute(_compressImageIsolate, bytes);
+          }
           final saved = originalSize - bytes.length;
           Logger.debug('📦 После сжатия: ${bytes.length} байт (сэкономлено ${(saved / 1024).toStringAsFixed(0)} KB)');
         } catch (e) {

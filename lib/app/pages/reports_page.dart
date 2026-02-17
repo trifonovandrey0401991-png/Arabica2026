@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../../features/rko/pages/rko_reports_page.dart';
 import '../../features/shifts/pages/shift_reports_list_page.dart';
 import '../../features/shift_handover/pages/shift_handover_reports_list_page.dart';
@@ -63,13 +64,6 @@ class _ReportsPageState extends State<ReportsPage> {
   int _envelopeUnconfirmedCount = 0;
   int _coffeeMachineUnconfirmedCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
-
-  // ═══════════════════════════════════════════════════════════════
-  // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - как в главном меню
-  // ═══════════════════════════════════════════════════════════════
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
 
   @override
   void initState() {
@@ -240,7 +234,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: _buildGradient(),
           child: Center(
@@ -255,7 +249,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
     if (!canViewReports) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: _buildGradient(),
           child: SafeArea(
@@ -278,7 +272,7 @@ class _ReportsPageState extends State<ReportsPage> {
     }
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: _buildGradient(),
         child: SafeArea(
@@ -303,7 +297,7 @@ class _ReportsPageState extends State<ReportsPage> {
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [_emerald, _emeraldDark, _night],
+        colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
         stops: [0.0, 0.3, 1.0],
       ),
     );
@@ -676,7 +670,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     child: Text(
                       badge > 99 ? '99+' : '$badge',
                       style: TextStyle(
-                        color: _emerald,
+                        color: AppColors.emerald,
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
                       ),

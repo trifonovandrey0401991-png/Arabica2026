@@ -11,6 +11,7 @@ import '../../../shared/dialogs/schedule_validation_dialog.dart';
 import '../services/employee_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница расписания сотрудника для проставления смен
 class EmployeeSchedulePage extends StatefulWidget {
@@ -381,7 +382,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_employee.name),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.settings),
@@ -411,7 +412,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isSaving ? null : _saveShifts,
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         icon: _isSaving
             ? SizedBox(
                 width: 20,

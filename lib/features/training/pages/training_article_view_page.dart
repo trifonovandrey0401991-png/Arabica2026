@@ -4,18 +4,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/training_model.dart';
 import '../models/content_block.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница просмотра статьи обучения
 class TrainingArticleViewPage extends StatelessWidget {
   final TrainingArticle article;
 
   const TrainingArticleViewPage({super.key, required this.article});
-
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   Future<void> _openUrl(BuildContext context, String url) async {
     try {
@@ -51,13 +46,13 @@ class TrainingArticleViewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -115,7 +110,7 @@ class TrainingArticleViewPage extends StatelessWidget {
                     child: Text(
                       article.group,
                       style: TextStyle(
-                        color: _gold.withOpacity(0.7),
+                        color: AppColors.gold.withOpacity(0.7),
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w500,
                       ),
@@ -182,11 +177,11 @@ class TrainingArticleViewPage extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            _gold.withOpacity(0.15),
-            _gold.withOpacity(0.05),
+            AppColors.gold.withOpacity(0.15),
+            AppColors.gold.withOpacity(0.05),
           ],
         ),
-        border: Border.all(color: _gold.withOpacity(0.3)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -194,12 +189,12 @@ class TrainingArticleViewPage extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.2),
+              color: AppColors.gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12.r),
             ),
             child: Icon(
               Icons.auto_stories_rounded,
-              color: _gold,
+              color: AppColors.gold,
               size: 22,
             ),
           ),
@@ -223,7 +218,7 @@ class TrainingArticleViewPage extends StatelessWidget {
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
                       decoration: BoxDecoration(
-                        color: _emerald.withOpacity(0.5),
+                        color: AppColors.emerald.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
@@ -330,7 +325,7 @@ class TrainingArticleViewPage extends StatelessWidget {
               width: double.infinity,
               padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 10.h),
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.3),
+                color: AppColors.emerald.withOpacity(0.3),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(14.r),
                   topRight: Radius.circular(14.r),
@@ -364,14 +359,14 @@ class TrainingArticleViewPage extends StatelessWidget {
                 placeholder: (context, url) => Container(
                   width: double.infinity,
                   height: 200,
-                  color: _emeraldDark.withOpacity(0.5),
+                  color: AppColors.emeraldDark.withOpacity(0.5),
                   child: Center(
                     child: SizedBox(
                       width: 28,
                       height: 28,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color: _gold.withOpacity(0.6),
+                        color: AppColors.gold.withOpacity(0.6),
                       ),
                     ),
                   ),
@@ -379,7 +374,7 @@ class TrainingArticleViewPage extends StatelessWidget {
                 errorWidget: (context, url, error) => Container(
                   width: double.infinity,
                   height: 180,
-                  color: _emeraldDark.withOpacity(0.3),
+                  color: AppColors.emeraldDark.withOpacity(0.3),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -421,7 +416,7 @@ class TrainingArticleViewPage extends StatelessWidget {
                 fit: BoxFit.contain,
                 placeholder: (context, url) => Center(
                   child: CircularProgressIndicator(
-                    color: _gold,
+                    color: AppColors.gold,
                   ),
                 ),
                 errorWidget: (context, url, error) => Icon(
@@ -454,7 +449,7 @@ class TrainingArticleViewPage extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.4),
+                color: AppColors.emerald.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(Icons.link_rounded, color: Colors.white.withOpacity(0.7), size: 18),
@@ -510,7 +505,7 @@ class TrainingArticleViewPage extends StatelessWidget {
               child: Icon(
                 Icons.link_rounded,
                 size: 36,
-                color: _gold.withOpacity(0.6),
+                color: AppColors.gold.withOpacity(0.6),
               ),
             ),
             SizedBox(height: 24),
@@ -538,12 +533,12 @@ class TrainingArticleViewPage extends StatelessWidget {
               icon: Icon(Icons.open_in_new_rounded),
               label: Text('Открыть источник'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _gold.withOpacity(0.2),
-                foregroundColor: _gold,
+                backgroundColor: AppColors.gold.withOpacity(0.2),
+                foregroundColor: AppColors.gold,
                 padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.r),
-                  side: BorderSide(color: _gold.withOpacity(0.4)),
+                  side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
                 ),
                 elevation: 0,
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app_settings/app_settings.dart';
+import '../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Диалог с просьбой включить уведомления
@@ -76,7 +77,7 @@ class NotificationRequiredDialog extends StatelessWidget {
               style: TextStyle(
                 fontSize: 22.sp,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF333333),
+                color: AppColors.darkGray,
               ),
               textAlign: TextAlign.center,
             ),
@@ -125,7 +126,7 @@ class NotificationRequiredDialog extends StatelessWidget {
                       Navigator.pop(context, true);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF004D40),
+                      backgroundColor: AppColors.primaryGreen,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 14.h),
                       shape: RoundedRectangleBorder(

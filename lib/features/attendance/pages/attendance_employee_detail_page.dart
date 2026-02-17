@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import '../models/attendance_model.dart';
 import '../services/attendance_report_service.dart';
@@ -22,7 +23,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
   bool _isLoading = true;
   String _selectedPeriod = 'month'; // week, month, all
 
-  static final _gradientColors = [Color(0xFF004D40), Color(0xFF00695C)];
+  static final _gradientColors = [AppColors.primaryGreen, Color(0xFF00695C)];
 
   @override
   void initState() {

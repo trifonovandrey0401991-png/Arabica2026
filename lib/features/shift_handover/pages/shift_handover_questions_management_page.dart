@@ -10,6 +10,7 @@ import '../../envelope/models/envelope_question_model.dart';
 import '../../envelope/services/envelope_question_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления вопросами сдачи смены
 class ShiftHandoverQuestionsManagementPage extends StatefulWidget {
@@ -22,12 +23,6 @@ class ShiftHandoverQuestionsManagementPage extends StatefulWidget {
 class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQuestionsManagementPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // Цвета для тёмного изумрудного дизайна
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
 
   // Вопросы сдачи смены
   List<ShiftHandoverQuestion> _questions = [];
@@ -173,7 +168,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         child: Container(
           constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             borderRadius: BorderRadius.circular(20.r),
             boxShadow: [
               BoxShadow(
@@ -420,7 +415,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -457,7 +452,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
           if (_tabController.index == 0) {
             return FloatingActionButton.extended(
               onPressed: _showAddQuestionDialog,
-              backgroundColor: _gold,
+              backgroundColor: AppColors.gold,
               elevation: 4,
               icon: Icon(Icons.add_rounded, color: Colors.white),
               label: Text(
@@ -557,13 +552,13 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         child: TabBar(
           controller: _tabController,
           indicator: BoxDecoration(
-            color: _gold.withOpacity(0.3),
+            color: AppColors.gold.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12.r),
           ),
           indicatorSize: TabBarIndicatorSize.tab,
           indicatorPadding: EdgeInsets.all(4.w),
           dividerColor: Colors.transparent,
-          labelColor: _gold,
+          labelColor: AppColors.gold,
           unselectedLabelColor: Colors.white.withOpacity(0.6),
           labelStyle: TextStyle(
             fontWeight: FontWeight.w600,
@@ -613,7 +608,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 borderRadius: BorderRadius.circular(16.r),
               ),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                 strokeWidth: 3,
               ),
             ),
@@ -831,7 +826,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                       children: [
                         _buildCardActionButton(
                           icon: Icons.edit_rounded,
-                          color: _gold,
+                          color: AppColors.gold,
                           onTap: () => _showEditQuestionDialog(question),
                         ),
                         SizedBox(height: 6),
@@ -996,7 +991,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 borderRadius: BorderRadius.circular(16.r),
               ),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                 strokeWidth: 3,
               ),
             ),
@@ -1194,12 +1189,12 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                       child: Switch(
                         value: question.isActive,
                         onChanged: (value) => _toggleEnvelopeQuestionActive(question),
-                        activeColor: _gold,
+                        activeColor: AppColors.gold,
                       ),
                     ),
                     _buildCardActionButton(
                       icon: Icons.edit_rounded,
-                      color: _gold,
+                      color: AppColors.gold,
                       onTap: () => _showEditEnvelopeQuestionDialog(question),
                     ),
                   ],
@@ -1267,11 +1262,6 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
   final Map<String, Uint8List?> _referencePhotoBytes = {}; // Для веб-платформы
   bool _isLoadingShops = true;
   bool _isUploadingPhotos = false;
-
-  // Цвета для тёмного изумрудного дизайна
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -1559,7 +1549,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         decoration: BoxDecoration(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           borderRadius: BorderRadius.circular(24.r),
           boxShadow: [
             BoxShadow(
@@ -1577,7 +1567,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
               padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_emerald, _emeraldDark],
+                  colors: [AppColors.emerald, AppColors.emeraldDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -1648,7 +1638,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
               _buildSectionHeader(
                 icon: Icons.help_outline,
                 title: 'Текст вопроса',
-                color: _gold,
+                color: AppColors.gold,
               ),
               SizedBox(height: 12),
               TextFormField(
@@ -1668,7 +1658,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14.r),
-                    borderSide: BorderSide(color: _gold, width: 2),
+                    borderSide: BorderSide(color: AppColors.gold, width: 2),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14.r),
@@ -1694,7 +1684,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
               _buildSectionHeader(
                 icon: Icons.people_alt_outlined,
                 title: 'Кому задавать вопрос',
-                color: Color(0xFF42A5F5),
+                color: AppColors.blue,
               ),
               SizedBox(height: 12),
               Row(
@@ -1803,7 +1793,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   child: Padding(
                     padding: EdgeInsets.all(20.w),
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                     ),
                   ),
                 )
@@ -1811,10 +1801,10 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                 // Переключатель "Все магазины"
                 Container(
                   decoration: BoxDecoration(
-                    color: _isForAllShops ? _gold.withOpacity(0.12) : Colors.white.withOpacity(0.06),
+                    color: _isForAllShops ? AppColors.gold.withOpacity(0.12) : Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(14.r),
                     border: Border.all(
-                      color: _isForAllShops ? _gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+                      color: _isForAllShops ? AppColors.gold.withOpacity(0.3) : Colors.white.withOpacity(0.1),
                     ),
                   ),
                   child: CheckboxListTile(
@@ -1836,7 +1826,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       });
                     },
                     controlAffinity: ListTileControlAffinity.leading,
-                    activeColor: _gold,
+                    activeColor: AppColors.gold,
                     checkColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14.r),
@@ -1860,7 +1850,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                             final isSelected = _selectedShopAddresses.contains(shop.address);
                             return Container(
                               decoration: BoxDecoration(
-                                color: isSelected ? _gold.withOpacity(0.08) : Colors.transparent,
+                                color: isSelected ? AppColors.gold.withOpacity(0.08) : Colors.transparent,
                                 border: Border(
                                   bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
                                 ),
@@ -1891,7 +1881,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                                   });
                                 },
                                 controlAffinity: ListTileControlAffinity.leading,
-                                activeColor: _gold,
+                                activeColor: AppColors.gold,
                                 checkColor: Colors.white,
                               ),
                             );
@@ -1958,7 +1948,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
             Container(
               padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
-                color: _emeraldDark,
+                color: AppColors.emeraldDark,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(24.r),
                   bottomRight: Radius.circular(24.r),
@@ -1995,7 +1985,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveQuestion,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _gold,
+                        backgroundColor: AppColors.gold,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 14.h),
                         shape: RoundedRectangleBorder(
@@ -2075,7 +2065,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     Color? color,
   }) {
     final isSelected = _selectedAnswerType == value;
-    final cardColor = color ?? _emerald;
+    final cardColor = color ?? AppColors.emerald;
 
     return GestureDetector(
       onTap: () {
@@ -2334,7 +2324,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     bool isDestructive = false,
   }) {
     return Material(
-      color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : _emeraldDark,
+      color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : AppColors.emeraldDark,
       borderRadius: BorderRadius.circular(8.r),
       child: InkWell(
         onTap: onPressed,
@@ -2367,7 +2357,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     required String value,
   }) {
     final isSelected = _selectedTargetRole == value;
-    final cardColor = Color(0xFF42A5F5);
+    final cardColor = AppColors.blue;
 
     return GestureDetector(
       onTap: () {
@@ -2478,11 +2468,6 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
   String? _referencePhotoUrl;
   File? _selectedPhotoFile;
   Uint8List? _selectedPhotoBytes;
-
-  // Цвета для тёмного изумрудного дизайна
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -2654,7 +2639,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           borderRadius: BorderRadius.circular(16.r),
         ),
         child: Column(
@@ -2664,7 +2649,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: _emerald,
+                color: AppColors.emerald,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16.r),
                   topRight: Radius.circular(16.r),
@@ -2674,7 +2659,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                 children: [
                   Icon(
                     _getTypeIcon(widget.question.type),
-                    color: _gold,
+                    color: AppColors.gold,
                     size: 28,
                   ),
                   SizedBox(width: 12),
@@ -2755,7 +2740,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.r),
-                            borderSide: BorderSide(color: _gold, width: 2),
+                            borderSide: BorderSide(color: AppColors.gold, width: 2),
                           ),
                           hintText: 'Введите название',
                           hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -2786,7 +2771,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.r),
-                            borderSide: BorderSide(color: _gold, width: 2),
+                            borderSide: BorderSide(color: AppColors.gold, width: 2),
                           ),
                           hintText: 'Введите описание для сотрудника',
                           hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -2859,7 +2844,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                                     icon: Icon(Icons.delete, color: Colors.red),
                                     onPressed: _isUploadingPhoto ? null : _removePhoto,
                                     style: IconButton.styleFrom(
-                                      backgroundColor: _emeraldDark,
+                                      backgroundColor: AppColors.emeraldDark,
                                     ),
                                   ),
                                 ),
@@ -2899,7 +2884,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                               icon: Icon(Icons.photo_camera, size: 18),
                               label: Text('Изменить фото'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _gold,
+                                backgroundColor: AppColors.gold,
                                 foregroundColor: Colors.white,
                               ),
                             ),
@@ -2928,7 +2913,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                   ElevatedButton(
                     onPressed: (_isSaving || _isUploadingPhoto) ? null : _saveQuestion,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _gold,
+                      backgroundColor: AppColors.gold,
                       foregroundColor: Colors.white,
                     ),
                     child: _isSaving

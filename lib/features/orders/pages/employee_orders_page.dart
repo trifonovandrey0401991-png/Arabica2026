@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/order_service.dart';
 import 'employee_order_detail_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -214,7 +215,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Заказы клиентов (${_pendingOrders.length})'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/order_provider.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,11 +14,6 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = true;
   late AnimationController _animationController;
 
@@ -126,13 +122,13 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -158,7 +154,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       ),
                     ),
                     SizedBox(width: 12),
-                    Icon(Icons.receipt_long_rounded, color: _gold, size: 24),
+                    Icon(Icons.receipt_long_rounded, color: AppColors.gold, size: 24),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -204,7 +200,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                                 shape: BoxShape.circle,
                               ),
                               child: CircularProgressIndicator(
-                                color: _gold,
+                                color: AppColors.gold,
                                 strokeWidth: 3,
                               ),
                             ),
@@ -230,8 +226,8 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
 
                           return RefreshIndicator(
                             onRefresh: _loadOrders,
-                            color: _gold,
-                            backgroundColor: _emeraldDark,
+                            color: AppColors.gold,
+                            backgroundColor: AppColors.emeraldDark,
                             child: ListView.builder(
                               padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
                               itemCount: orderProvider.orders.length,
@@ -313,12 +309,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_back_rounded, color: _gold, size: 18),
+                  Icon(Icons.arrow_back_rounded, color: AppColors.gold, size: 18),
                   SizedBox(width: 8),
                   Text(
                     'Вернуться в меню',
                     style: TextStyle(
-                      color: _gold,
+                      color: AppColors.gold,
                       fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -546,16 +542,16 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: _gold.withOpacity(0.15),
+        color: AppColors.gold.withOpacity(0.15),
         borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: _gold.withOpacity(0.3)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
       ),
       child: Text(
         '${order.totalPrice.toStringAsFixed(0)} р.',
         style: TextStyle(
           fontSize: 15.sp,
           fontWeight: FontWeight.bold,
-          color: _gold,
+          color: AppColors.gold,
         ),
       ),
     );
@@ -579,12 +575,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               Container(
                 padding: EdgeInsets.all(6.w),
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.15),
+                  color: AppColors.gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
                   Icons.shopping_basket_rounded,
-                  color: _gold,
+                  color: AppColors.gold,
                   size: 18,
                 ),
               ),
@@ -615,7 +611,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: _emerald,
+                        color: AppColors.emerald,
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Center(
@@ -645,7 +641,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.bold,
-                        color: _gold,
+                        color: AppColors.gold,
                       ),
                     ),
                   ],
@@ -692,12 +688,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                   decoration: BoxDecoration(
                     color: order.comment != null && order.comment!.isNotEmpty
                         ? Colors.amber.withOpacity(0.15)
-                        : _gold.withOpacity(0.15),
+                        : AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                     border: Border.all(
                       color: order.comment != null && order.comment!.isNotEmpty
                           ? Colors.amber.withOpacity(0.3)
-                          : _gold.withOpacity(0.3),
+                          : AppColors.gold.withOpacity(0.3),
                     ),
                   ),
                   child: Row(
@@ -710,7 +706,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                         size: 14,
                         color: order.comment != null && order.comment!.isNotEmpty
                             ? Colors.amber
-                            : _gold,
+                            : AppColors.gold,
                       ),
                       SizedBox(width: 4),
                       Text(
@@ -720,7 +716,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                         style: TextStyle(
                           color: order.comment != null && order.comment!.isNotEmpty
                               ? Colors.amber
-                              : _gold,
+                              : AppColors.gold,
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
                         ),
@@ -781,18 +777,18 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.r),
         ),
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 Icons.comment_rounded,
-                color: _gold,
+                color: AppColors.gold,
                 size: 24,
               ),
             ),
@@ -811,7 +807,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           controller: controller,
           maxLines: 5,
           style: TextStyle(color: Colors.white.withOpacity(0.9)),
-          cursorColor: _gold,
+          cursorColor: AppColors.gold,
           decoration: InputDecoration(
             hintText: 'Введите комментарий к заказу...',
             hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -827,7 +823,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14.r),
-              borderSide: BorderSide(color: _gold, width: 2),
+              borderSide: BorderSide(color: AppColors.gold, width: 2),
             ),
           ),
         ),
@@ -870,7 +866,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       ),
                     ],
                   ),
-                  backgroundColor: _emerald,
+                  backgroundColor: AppColors.emerald,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.r),
@@ -884,7 +880,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_gold.withOpacity(0.9), _gold],
+                  colors: [AppColors.gold.withOpacity(0.9), AppColors.gold],
                 ),
                 borderRadius: BorderRadius.circular(12.r),
               ),

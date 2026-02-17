@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница детального просмотра отзыва/диалога
 class ReviewDetailPage extends StatefulWidget {
@@ -140,11 +141,11 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isAdmin ? 'Отзыв покупателя' : 'Мой отзыв'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -339,7 +340,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
                     onPressed: _isLoading ? null : _sendMessage,
                     color: Colors.white,
                     style: IconButton.styleFrom(
-                      backgroundColor: Color(0xFF004D40),
+                      backgroundColor: AppColors.primaryGreen,
                     ),
                   ),
                 ],
@@ -374,19 +375,3 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

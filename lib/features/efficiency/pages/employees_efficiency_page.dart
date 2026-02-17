@@ -2,27 +2,24 @@ import 'package:flutter/material.dart';
 import 'efficiency_by_shop_page.dart';
 import 'efficiency_by_employee_page.dart';
 import 'efficiency_analytics_page.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница выбора типа отчета эффективности
 class EmployeesEfficiencyPage extends StatelessWidget {
   const EmployeesEfficiencyPage({super.key});
 
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -65,7 +62,7 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w500,
-                          color: _gold,
+                          color: AppColors.gold,
                         ),
                       ),
                       SizedBox(height: 24),
@@ -130,7 +127,7 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: _gold,
+                              color: AppColors.gold,
                               size: 24,
                             ),
                             SizedBox(width: 12),
@@ -184,13 +181,13 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: _emerald.withOpacity(0.5),
+                  color: AppColors.emerald.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(
                   icon,
                   size: 28,
-                  color: _gold,
+                  color: AppColors.gold,
                 ),
               ),
               SizedBox(width: 16),
@@ -219,7 +216,7 @@ class EmployeesEfficiencyPage extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right,
-                color: _gold,
+                color: AppColors.gold,
                 size: 24,
               ),
             ],

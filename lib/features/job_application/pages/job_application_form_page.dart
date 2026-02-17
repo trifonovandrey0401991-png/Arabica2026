@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../../shops/models/shop_model.dart';
 import '../services/job_application_service.dart';
@@ -18,11 +19,6 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
-
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   String _selectedShift = 'day'; // 'day' или 'night'
   List<Shop> _shops = [];
@@ -77,12 +73,12 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
             SnackBar(
               content: Row(
                 children: [
-                  Icon(Icons.restore, color: _gold, size: 20),
+                  Icon(Icons.restore, color: AppColors.gold, size: 20),
                   SizedBox(width: 8),
                   Text('Черновик восстановлен', style: TextStyle(color: Colors.white.withOpacity(0.9))),
                 ],
               ),
-              backgroundColor: _emeraldDark,
+              backgroundColor: AppColors.emeraldDark,
               duration: Duration(seconds: 2),
             ),
           );
@@ -180,7 +176,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
               Text('Анкета успешно отправлена!'),
             ],
           ),
-          backgroundColor: _emerald,
+          backgroundColor: AppColors.emerald,
         ),
       );
 
@@ -201,13 +197,13 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -250,7 +246,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : Form(
                         key: _formKey,
                         child: ListView(
@@ -260,7 +256,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                             _buildSectionCard(
                               title: 'Личные данные',
                               icon: Icons.person_outline,
-                              accentColor: _gold,
+                              accentColor: AppColors.gold,
                               children: [
                                 _buildInputLabel('ФИО', required: true),
                                 SizedBox(height: 8),
@@ -347,7 +343,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                             _buildSectionCard(
                               title: 'Где хотите работать',
                               icon: Icons.store_outlined,
-                              accentColor: _gold,
+                              accentColor: AppColors.gold,
                               subtitle: 'Можно выбрать несколько магазинов',
                               children: [
                                 // Счётчик выбранных
@@ -356,18 +352,18 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                                     padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                                     margin: EdgeInsets.only(bottom: 12.h),
                                     decoration: BoxDecoration(
-                                      color: _gold.withOpacity(0.1),
+                                      color: AppColors.gold.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(10.r),
-                                      border: Border.all(color: _gold.withOpacity(0.2)),
+                                      border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                                     ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.check_circle, color: _gold, size: 18),
+                                        Icon(Icons.check_circle, color: AppColors.gold, size: 18),
                                         SizedBox(width: 8),
                                         Text(
                                           'Выбрано магазинов: ${_selectedShopAddresses.length}',
                                           style: TextStyle(
-                                            color: _gold,
+                                            color: AppColors.gold,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -386,9 +382,9 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                               child: OutlinedButton(
                                 onPressed: _isSubmitting ? null : _submitApplication,
                                 style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: _gold.withOpacity(0.5)),
+                                  side: BorderSide(color: AppColors.gold.withOpacity(0.5)),
                                   padding: EdgeInsets.symmetric(vertical: 18.h),
-                                  backgroundColor: _gold.withOpacity(0.12),
+                                  backgroundColor: AppColors.gold.withOpacity(0.12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14.r),
                                   ),
@@ -398,21 +394,21 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                                         width: 24,
                                         height: 24,
                                         child: CircularProgressIndicator(
-                                          color: _gold,
+                                          color: AppColors.gold,
                                           strokeWidth: 2,
                                         ),
                                       )
                                     : Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.send_rounded, size: 22, color: _gold),
+                                          Icon(Icons.send_rounded, size: 22, color: AppColors.gold),
                                           SizedBox(width: 10),
                                           Text(
                                             'Отправить анкету',
                                             style: TextStyle(
                                               fontSize: 18.sp,
                                               fontWeight: FontWeight.w600,
-                                              color: _gold,
+                                              color: AppColors.gold,
                                             ),
                                           ),
                                         ],
@@ -525,7 +521,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
           Text(
             '*',
             style: TextStyle(
-              color: _gold,
+              color: AppColors.gold,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -555,7 +551,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.r),
-        borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 2),
+        borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5), width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.r),
@@ -659,11 +655,11 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
           padding: EdgeInsets.all(14.w),
           decoration: BoxDecoration(
             color: isSelected
-                ? _gold.withOpacity(0.1)
+                ? AppColors.gold.withOpacity(0.1)
                 : Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(
-              color: isSelected ? _gold.withOpacity(0.4) : Colors.white.withOpacity(0.1),
+              color: isSelected ? AppColors.gold.withOpacity(0.4) : Colors.white.withOpacity(0.1),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -675,10 +671,10 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: isSelected ? _gold : Colors.transparent,
+                  color: isSelected ? AppColors.gold : Colors.transparent,
                   borderRadius: BorderRadius.circular(6.r),
                   border: Border.all(
-                    color: isSelected ? _gold : Colors.white.withOpacity(0.3),
+                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.3),
                     width: 2,
                   ),
                 ),
@@ -696,13 +692,13 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? _gold.withOpacity(0.15)
+                      ? AppColors.gold.withOpacity(0.15)
                       : Colors.white.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
                   shop.icon,
-                  color: isSelected ? _gold : Colors.white.withOpacity(0.4),
+                  color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.4),
                   size: 20,
                 ),
               ),

@@ -9,6 +9,7 @@ import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Главная страница отчетов по РКО с вкладками
 class RKOReportsPage extends StatefulWidget {
@@ -30,12 +31,6 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   bool _isLoading = true;
   String _employeeSearchQuery = '';
   String _shopSearchQuery = '';
-
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -100,13 +95,13 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -121,7 +116,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
               Expanded(
                 child: _isLoading
                     ? Center(
-                        child: CircularProgressIndicator(color: _gold),
+                        child: CircularProgressIndicator(color: AppColors.gold),
                       )
                     : TabBarView(
                         controller: _tabController,
@@ -371,11 +366,11 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             ),
             child: TextField(
               style: TextStyle(color: Colors.white),
-              cursorColor: _gold,
+              cursorColor: AppColors.gold,
               decoration: InputDecoration(
                 hintText: 'Поиск сотрудника...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                prefixIcon: Icon(Icons.search, color: _gold),
+                prefixIcon: Icon(Icons.search, color: AppColors.gold),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
@@ -502,7 +497,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: _gold,
+                    color: AppColors.gold,
                     size: 16,
                   ),
                 ),
@@ -532,11 +527,11 @@ class _RKOReportsPageState extends State<RKOReportsPage>
             ),
             child: TextField(
               style: TextStyle(color: Colors.white),
-              cursorColor: _gold,
+              cursorColor: AppColors.gold,
               decoration: InputDecoration(
                 hintText: 'Поиск магазина...',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                prefixIcon: Icon(Icons.search, color: _gold),
+                prefixIcon: Icon(Icons.search, color: AppColors.gold),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
@@ -647,7 +642,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: _gold,
+                    color: AppColors.gold,
                     size: 16,
                   ),
                 ),
@@ -808,7 +803,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  color: _gold.withOpacity(0.15),
+                  color: AppColors.gold.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Text(
@@ -816,7 +811,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                   style: TextStyle(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
-                    color: _gold,
+                    color: AppColors.gold,
                   ),
                 ),
               ),

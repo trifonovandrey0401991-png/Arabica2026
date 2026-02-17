@@ -16,6 +16,7 @@ import '../../../core/utils/logger.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class EnvelopeFormPage extends StatefulWidget {
   final String employeeName;
@@ -77,8 +78,6 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   final _ipOfdNotSentController = TextEditingController();
   // ИП - ресурс ключей
   final _ipResourceKeysController = TextEditingController();
-
-  static final _primaryColor = Color(0xFF004D40);
 
   @override
   void initState() {
@@ -537,7 +536,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text('Конверт'),
-          backgroundColor: _primaryColor,
+          backgroundColor: AppColors.primaryGreen,
         ),
         body: Center(child: CircularProgressIndicator()),
       );
@@ -548,7 +547,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text('Конверт'),
-          backgroundColor: _primaryColor,
+          backgroundColor: AppColors.primaryGreen,
         ),
         body: Center(
           child: Padding(
@@ -563,7 +562,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                   style: TextStyle(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF004D40),
+                    color: AppColors.primaryGreen,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -580,7 +579,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                   decoration: BoxDecoration(
-                    color: Color(0xFF004D40).withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Text(
@@ -588,7 +587,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                     style: TextStyle(
                       fontSize: 20.sp,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF004D40),
+                      color: AppColors.primaryGreen,
                     ),
                   ),
                 ),
@@ -598,7 +597,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                   icon: Icon(Icons.arrow_back),
                   label: Text('Назад'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
+                    backgroundColor: AppColors.primaryGreen,
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
                     shape: RoundedRectangleBorder(
@@ -616,7 +615,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_stepTitles[_currentStep]),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -626,7 +625,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 LinearProgressIndicator(
                   value: _progress,
                   backgroundColor: Colors.grey[300],
-                  valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
                 ),
                 Padding(
                   padding: EdgeInsets.all(8.0.w),
@@ -1239,7 +1238,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           icon: Icon(Icons.camera_alt),
           label: Text(photo != null ? 'Переснять' : 'Сделать фото'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: _primaryColor,
+            backgroundColor: AppColors.primaryGreen,
             foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(vertical: 16.h),
           ),
@@ -1393,7 +1392,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             icon: Icon(Icons.add),
             label: Text('Добавить расход'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryColor,
+              backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(vertical: 16.h),
             ),
@@ -1469,7 +1468,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             icon: Icon(Icons.add),
             label: Text('Добавить расход'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryColor,
+              backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(vertical: 16.h),
             ),
@@ -1667,7 +1666,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
         // Итого
         Card(
-          color: _primaryColor.withOpacity(0.1),
+          color: AppColors.primaryGreen.withOpacity(0.1),
           child: Padding(
             padding: EdgeInsets.all(16.w),
             child: Row(
@@ -1682,7 +1681,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                   style: TextStyle(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
-                    color: _primaryColor,
+                    color: AppColors.primaryGreen,
                   ),
                 ),
               ],
@@ -1746,7 +1745,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                     icon: Icon(Icons.arrow_forward),
                     label: Text('Далее'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
+                      backgroundColor: AppColors.primaryGreen,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                     ),

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/task_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Общие константы и виджеты для модуля задач
 class TaskStyles {
   // Основные цвета — Dark Emerald Theme
-  static final primaryColor = Color(0xFF1A4D4D);
-  static final accentColor = Color(0xFFD4AF37);
+  static final primaryColor = AppColors.emerald;
+  static final accentColor = AppColors.gold;
 
   // Градиенты для статусов
   static final orangeGradient = [Color(0xFFFF6B35), Color(0xFFF7C200)];
@@ -377,7 +378,7 @@ class TaskSectionHeader extends StatelessWidget {
             child: Text(
               count.toString(),
               style: TextStyle(
-                color: Color(0xFF051515),
+                color: AppColors.night,
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
               ),

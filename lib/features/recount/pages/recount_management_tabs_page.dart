@@ -7,6 +7,7 @@ import '../models/recount_question_model.dart';
 import '../services/recount_question_service.dart';
 import 'recount_points_settings_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница с вкладками для управления пересчётом
 /// Содержит вкладки: Товары и Настройка баллов
@@ -20,12 +21,6 @@ class RecountManagementTabsPage extends StatefulWidget {
 class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   // Для вкладки товаров
   List<RecountQuestion> _products = [];
@@ -91,7 +86,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         child: Container(
           constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             borderRadius: BorderRadius.circular(20.r),
           ),
           child: Column(
@@ -103,7 +98,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 padding: EdgeInsets.all(20.w),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [_emerald, _emeraldDark],
+                    colors: [AppColors.emerald, AppColors.emeraldDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -117,10 +112,10 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                     Container(
                       padding: EdgeInsets.all(10.w),
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.2),
+                        color: AppColors.gold.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12.r),
                       ),
-                      child: Icon(Icons.upload_file, color: _gold, size: 24),
+                      child: Icon(Icons.upload_file, color: AppColors.gold, size: 24),
                     ),
                     SizedBox(width: 14),
                     Expanded(
@@ -202,8 +197,8 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                         icon: Icon(Icons.add, size: 20),
                         label: Text('Добавить новые'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _gold,
-                          foregroundColor: _night,
+                          backgroundColor: AppColors.gold,
+                          foregroundColor: AppColors.night,
                           padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12.r),
@@ -269,11 +264,11 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
             child: Container(
               padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: _emeraldDark,
+                color: AppColors.emeraldDark,
                 borderRadius: BorderRadius.circular(16.r),
               ),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
               ),
             ),
           ),
@@ -389,7 +384,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
           child: Container(
             constraints: BoxConstraints(maxWidth: 400),
             decoration: BoxDecoration(
-              color: _emeraldDark,
+              color: AppColors.emeraldDark,
               borderRadius: BorderRadius.circular(20.r),
             ),
             child: Column(
@@ -402,7 +397,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                     gradient: LinearGradient(
                       colors: mode == 'replace'
                           ? [Colors.orange[400]!, Colors.orange[700]!]
-                          : [_emerald, _emeraldDark],
+                          : [AppColors.emerald, AppColors.emeraldDark],
                     ),
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(20.r),
@@ -471,8 +466,8 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(context, true),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: mode == 'replace' ? Colors.orange[700] : _gold,
-                                foregroundColor: mode == 'replace' ? Colors.white : _night,
+                                backgroundColor: mode == 'replace' ? Colors.orange[700] : AppColors.gold,
+                                foregroundColor: mode == 'replace' ? Colors.white : AppColors.night,
                                 padding: EdgeInsets.symmetric(vertical: 14.h),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12.r),
@@ -508,11 +503,11 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
             child: Container(
               padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: _emeraldDark,
+                color: AppColors.emeraldDark,
                 borderRadius: BorderRadius.circular(16.r),
               ),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
               ),
             ),
           ),
@@ -586,7 +581,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         child: Container(
           constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             borderRadius: BorderRadius.circular(20.r),
           ),
           child: Column(
@@ -755,13 +750,13 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -893,14 +888,14 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
         child: TabBar(
           controller: _tabController,
           indicator: BoxDecoration(
-            color: _gold.withOpacity(0.2),
+            color: AppColors.gold.withOpacity(0.2),
             borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: _gold, width: 1.5),
+            border: Border.all(color: AppColors.gold, width: 1.5),
           ),
           indicatorSize: TabBarIndicatorSize.tab,
           indicatorPadding: EdgeInsets.all(4.w),
           dividerColor: Colors.transparent,
-          labelColor: _gold,
+          labelColor: AppColors.gold,
           unselectedLabelColor: Colors.white.withOpacity(0.6),
           labelStyle: TextStyle(
             fontWeight: FontWeight.w600,
@@ -951,7 +946,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                 strokeWidth: 3,
               ),
             ),
@@ -999,7 +994,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
-              cursorColor: _gold,
+              cursorColor: AppColors.gold,
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -1019,13 +1014,13 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.15),
+                    color: AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Text(
                     'Найдено: ${_filteredProducts.length}',
                     style: TextStyle(
-                      color: _gold,
+                      color: AppColors.gold,
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1040,7 +1035,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
               ? _buildEmptyState()
               : RefreshIndicator(
                   onRefresh: _loadProducts,
-                  color: _gold,
+                  color: AppColors.gold,
                   child: ListView.builder(
                     padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
                     itemCount: _filteredProducts.length,
@@ -1106,7 +1101,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
             child: Icon(
               _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.inventory_2_outlined,
               size: 48,
-              color: _gold.withOpacity(0.6),
+              color: AppColors.gold.withOpacity(0.6),
             ),
           ),
           SizedBox(height: 24),
@@ -1115,7 +1110,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
             style: TextStyle(
               fontSize: 22.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 8),

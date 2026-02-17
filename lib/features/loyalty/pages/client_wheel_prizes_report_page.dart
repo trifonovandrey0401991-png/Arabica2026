@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -15,11 +16,6 @@ class ClientWheelPrizesReportPage extends StatefulWidget {
 
 class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPage>
     with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
   List<ClientPrize> _allPrizes = [];
   bool _isLoading = true;
@@ -112,13 +108,13 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     final issuedCount = _issuedPrizes.length;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -161,12 +157,12 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(color: _gold.withOpacity(0.3)),
+                          border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.calendar_today, color: _gold, size: 16),
+                            Icon(Icons.calendar_today, color: AppColors.gold, size: 16),
                             SizedBox(width: 6),
                             Text(
                               _formatMonth(_selectedMonth),
@@ -190,9 +186,9 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: _gold,
+                  indicatorColor: AppColors.gold,
                   indicatorWeight: 3,
-                  labelColor: _gold,
+                  labelColor: AppColors.gold,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
                   labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
                   unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
@@ -235,7 +231,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -279,8 +275,8 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
 
     return RefreshIndicator(
       onRefresh: _loadPrizes,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: prizes.length,

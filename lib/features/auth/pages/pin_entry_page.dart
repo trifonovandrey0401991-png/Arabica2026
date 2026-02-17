@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
@@ -34,10 +35,8 @@ class _PinEntryPageState extends State<PinEntryPage> {
   final AuthService _authService = AuthService();
   final BiometricService _biometricService = BiometricService();
 
-  // Брендовые цвета Arabica
-  static final Color _primaryColor = Color(0xFF1A4D4D);
+  // Цвет не из палитры AppColors
   static final Color _primaryDark = Color(0xFF0D3333);
-  static final Color _accentGold = Color(0xFFD4AF37);
 
   bool _isLoading = false;
   bool _showError = false;
@@ -299,7 +298,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _primaryColor,
+              AppColors.emerald,
               _primaryDark,
               Color(0xFF0A2626),
             ],
@@ -334,7 +333,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                         borderRadius: BorderRadius.circular(16.r),
                         color: Colors.white.withOpacity(0.1),
                         border: Border.all(
-                          color: _accentGold.withOpacity(0.4),
+                          color: AppColors.gold.withOpacity(0.4),
                           width: 2,
                         ),
                       ),
@@ -358,7 +357,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                         errorMessage: _errorMessage,
                         clear: _clearPin,
                         lightTheme: true,
-                        accentColor: _accentGold,
+                        accentColor: AppColors.gold,
                       ),
                     ),
 
@@ -372,7 +371,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                             _biometricName == 'Face ID'
                                 ? Icons.face
                                 : Icons.fingerprint,
-                            color: _accentGold,
+                            color: AppColors.gold,
                             size: 24,
                           ),
                           label: Text(
@@ -383,7 +382,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
                             side: BorderSide(
-                              color: _accentGold.withOpacity(0.6),
+                              color: AppColors.gold.withOpacity(0.6),
                               width: 1.5,
                             ),
                             padding: EdgeInsets.symmetric(
@@ -401,7 +400,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                     TextButton(
                       onPressed: _forgotPin,
                       style: TextButton.styleFrom(
-                        foregroundColor: _accentGold,
+                        foregroundColor: AppColors.gold,
                       ),
                       child: Text(
                         'Забыли PIN-код?',
@@ -427,7 +426,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                         borderRadius: BorderRadius.circular(16.r),
                       ),
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(_accentGold),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                       ),
                     ),
                   ),

@@ -3,6 +3,7 @@ import '../models/recount_points_model.dart';
 import '../models/recount_settings_model.dart';
 import '../services/recount_points_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница настройки баллов сотрудников для пересчёта
 class RecountPointsSettingsPage extends StatefulWidget {
@@ -18,12 +19,6 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
   bool _isLoading = true;
   String _searchQuery = '';
   final _searchController = TextEditingController();
-
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -84,7 +79,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
         child: Container(
           constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             borderRadius: BorderRadius.circular(20.r),
           ),
           child: Column(
@@ -95,7 +90,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                 padding: EdgeInsets.symmetric(vertical: 24.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [_emerald, _emeraldDark],
+                    colors: [AppColors.emerald, AppColors.emeraldDark],
                   ),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(20.r),
@@ -107,10 +102,10 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                     Container(
                       padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.2),
+                        color: AppColors.gold.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.help_outline_rounded, color: _gold, size: 32),
+                      child: Icon(Icons.help_outline_rounded, color: AppColors.gold, size: 32),
                     ),
                     SizedBox(height: 12),
                     Text(
@@ -158,8 +153,8 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                           child: ElevatedButton(
                             onPressed: () => Navigator.pop(context, true),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _gold,
-                              foregroundColor: _night,
+                              backgroundColor: AppColors.gold,
+                              foregroundColor: AppColors.night,
                               padding: EdgeInsets.symmetric(vertical: 14.h),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12.r),
@@ -290,7 +285,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                 strokeWidth: 3,
               ),
             ),
@@ -333,7 +328,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
               ? _buildEmptyState()
               : RefreshIndicator(
                   onRefresh: _loadData,
-                  color: _gold,
+                  color: AppColors.gold,
                   child: ListView.builder(
                     padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
                     itemCount: _filteredEmployees.length,
@@ -354,7 +349,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_emerald, _emeraldDark],
+          colors: [AppColors.emerald, AppColors.emeraldDark],
         ),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
@@ -374,12 +369,12 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                     Container(
                       padding: EdgeInsets.all(10.w),
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.2),
+                        color: AppColors.gold.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Icon(
                         Icons.settings_outlined,
-                        color: _gold,
+                        color: AppColors.gold,
                         size: 22,
                       ),
                     ),
@@ -516,7 +511,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
-        cursorColor: _gold,
+        cursorColor: AppColors.gold,
         onChanged: (value) => setState(() => _searchQuery = value),
       ),
     );
@@ -538,7 +533,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
         // Кнопка инициализации
         Container(
           decoration: BoxDecoration(
-            color: _gold.withOpacity(0.15),
+            color: AppColors.gold.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12.r),
           ),
           child: Material(
@@ -551,12 +546,12 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_circle_outline, size: 16, color: _gold),
+                    Icon(Icons.add_circle_outline, size: 16, color: AppColors.gold),
                     SizedBox(width: 6),
                     Text(
                       'Добавить',
                       style: TextStyle(
-                        color: _gold,
+                        color: AppColors.gold,
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
                       ),
@@ -619,7 +614,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
             child: Icon(
               _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.people_outline_rounded,
               size: 48,
-              color: _gold.withOpacity(0.6),
+              color: AppColors.gold.withOpacity(0.6),
             ),
           ),
           SizedBox(height: 24),
@@ -630,7 +625,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
             style: TextStyle(
               fontSize: 22.sp,
               fontWeight: FontWeight.bold,
-              color: _gold,
+              color: AppColors.gold,
             ),
           ),
           SizedBox(height: 8),
@@ -648,8 +643,8 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
               icon: Icon(Icons.add_circle_outline),
               label: Text('Инициализировать баллы'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _gold,
-                foregroundColor: _night,
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.night,
                 padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.r),
@@ -743,7 +738,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
-                              color: _gold.withOpacity(0.15),
+                              color: AppColors.gold.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Row(
@@ -752,13 +747,13 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                                 Icon(
                                   Icons.camera_alt_outlined,
                                   size: 12,
-                                  color: _gold,
+                                  color: AppColors.gold,
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   '$requiredPhotos фото',
                                   style: TextStyle(
-                                    color: _gold,
+                                    color: AppColors.gold,
                                     fontSize: 11.sp,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -792,12 +787,12 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.12),
+                    color: AppColors.gold.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.edit_outlined,
-                    color: _gold,
+                    color: AppColors.gold,
                     size: 18,
                   ),
                 ),
@@ -836,12 +831,6 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
   late TextEditingController _incorrectPenaltyController;
   late TextEditingController _questionsCountController;
 
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   @override
   void initState() {
     super.initState();
@@ -870,7 +859,7 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: Column(
@@ -894,10 +883,10 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.2),
+                    color: AppColors.gold.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
-                  child: Icon(Icons.settings_outlined, color: _gold),
+                  child: Icon(Icons.settings_outlined, color: AppColors.gold),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -1025,8 +1014,8 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
                       Navigator.pop(context, settings);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _gold,
-                      foregroundColor: _night,
+                      backgroundColor: AppColors.gold,
+                      foregroundColor: AppColors.night,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14.r),
@@ -1053,10 +1042,10 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
         Container(
           padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
-            color: _gold.withOpacity(0.15),
+            color: AppColors.gold.withOpacity(0.15),
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Icon(icon, size: 18, color: _gold),
+          child: Icon(icon, size: 18, color: AppColors.gold),
         ),
         SizedBox(width: 10),
         Text(
@@ -1064,7 +1053,7 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 14.sp,
-            color: _gold,
+            color: AppColors.gold,
           ),
         ),
       ],
@@ -1078,7 +1067,7 @@ class _GeneralSettingsBottomSheetState extends State<_GeneralSettingsBottomSheet
     String? prefixText,
     Color? fieldColor,
   }) {
-    final color = fieldColor ?? _gold;
+    final color = fieldColor ?? AppColors.gold;
     return Container(
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
@@ -1125,11 +1114,6 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
   late TextEditingController _pointsController;
   double _previewPoints = 0;
 
-  // Dark Emerald palette
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   @override
   void initState() {
     super.initState();
@@ -1167,7 +1151,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: Padding(
@@ -1363,21 +1347,21 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
             Container(
               padding: EdgeInsets.all(14.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.1),
+                color: AppColors.gold.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: _gold.withOpacity(0.2)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.2)),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
-                      color: _gold.withOpacity(0.15),
+                      color: AppColors.gold.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Icon(
                       Icons.camera_alt_outlined,
-                      color: _gold,
+                      color: AppColors.gold,
                       size: 18,
                     ),
                   ),
@@ -1389,14 +1373,14 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                         Text(
                           'Требуется фотографий',
                           style: TextStyle(
-                            color: _gold.withOpacity(0.7),
+                            color: AppColors.gold.withOpacity(0.7),
                             fontSize: 12.sp,
                           ),
                         ),
                         Text(
                           '$requiredPhotos шт.',
                           style: TextStyle(
-                            color: _gold,
+                            color: AppColors.gold,
                             fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1442,8 +1426,8 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _gold,
-                      foregroundColor: _night,
+                      backgroundColor: AppColors.gold,
+                      foregroundColor: AppColors.night,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14.r),

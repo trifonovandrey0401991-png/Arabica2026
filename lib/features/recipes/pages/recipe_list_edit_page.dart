@@ -5,6 +5,7 @@ import 'recipe_form_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class RecipeListEditPage extends StatefulWidget {
   const RecipeListEditPage({super.key});
@@ -14,7 +15,6 @@ class RecipeListEditPage extends StatefulWidget {
 }
 
 class _RecipeListEditPageState extends State<RecipeListEditPage> {
-  static final _primaryColor = Color(0xFF004D40);
   static final _primaryColorLight = Color(0xFF00695C);
 
   List<Recipe> _recipes = [];
@@ -194,7 +194,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: _primaryColor,
+        color: AppColors.primaryGreen,
         image: DecorationImage(
           image: AssetImage('assets/images/arabica_background.png'),
           fit: BoxFit.cover,
@@ -239,14 +239,14 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                         height: 48,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [_primaryColor, _primaryColorLight],
+                            colors: [AppColors.primaryGreen, _primaryColorLight],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(14.r),
                           boxShadow: [
                             BoxShadow(
-                              color: _primaryColor.withOpacity(0.3),
+                              color: AppColors.primaryGreen.withOpacity(0.3),
                               blurRadius: 8,
                               offset: Offset(0, 3),
                             ),
@@ -268,7 +268,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                               style: TextStyle(
                                 fontSize: 17.sp,
                                 fontWeight: FontWeight.bold,
-                                color: _primaryColor,
+                                color: AppColors.primaryGreen,
                               ),
                             ),
                             SizedBox(height: 2),
@@ -284,7 +284,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                       ),
                       Icon(
                         Icons.arrow_forward_ios_rounded,
-                        color: _primaryColor,
+                        color: AppColors.primaryGreen,
                         size: 20,
                       ),
                     ],
@@ -320,7 +320,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                     decoration: InputDecoration(
                       hintText: 'Поиск рецепта...',
                       hintStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: Icon(Icons.search_rounded, color: _primaryColor),
+                      prefixIcon: Icon(Icons.search_rounded, color: AppColors.primaryGreen),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -354,8 +354,8 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                     value: _selectedCategory,
                     decoration: InputDecoration(
                       labelText: 'Категория',
-                      labelStyle: TextStyle(color: _primaryColor),
-                      prefixIcon: Icon(Icons.category_rounded, color: _primaryColor),
+                      labelStyle: TextStyle(color: AppColors.primaryGreen),
+                      prefixIcon: Icon(Icons.category_rounded, color: AppColors.primaryGreen),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -477,7 +477,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                 borderRadius: BorderRadius.circular(12.r),
                 boxShadow: [
                   BoxShadow(
-                    color: _primaryColor.withOpacity(0.15),
+                    color: AppColors.primaryGreen.withOpacity(0.15),
                     blurRadius: 6,
                     offset: Offset(0, 2),
                   ),
@@ -529,7 +529,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
-                        color: _primaryColor,
+                        color: AppColors.primaryGreen,
                       ),
                     ),
                   ],
@@ -611,13 +611,12 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
     return Container(
       width: 70,
       height: 70,
-      color: _primaryColor.withOpacity(0.1),
+      color: AppColors.primaryGreen.withOpacity(0.1),
       child: Icon(
         Icons.coffee_rounded,
         size: 32,
-        color: _primaryColor.withOpacity(0.4),
+        color: AppColors.primaryGreen.withOpacity(0.4),
       ),
     );
   }
 }
-

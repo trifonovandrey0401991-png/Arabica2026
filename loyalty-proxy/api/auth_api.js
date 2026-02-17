@@ -261,35 +261,36 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'PIN должен быть от 4 до 6 цифр' });
     }
 
-    // SECURITY: Регистрация только для сотрудников из списка
+    // SECURITY: Регистрация только для известных пользователей (сотрудники или клиенты)
     const employees = dataCache.getEmployees();
-    let phoneInEmployees = false;
+    let phoneKnown = false;
+
+    // 1. Проверяем в списке сотрудников
     if (employees) {
-      phoneInEmployees = employees.some(e => {
+      phoneKnown = employees.some(e => {
         const empPhone = (e.phone || '').replace(/[^\d]/g, '');
         return empPhone === normalizedPhone;
       });
-    } else {
-      // Fallback: кэш не готов, проверяем файлы напрямую
-      const EMPLOYEES_DIR = path.join(DATA_DIR, 'employees');
+    }
+
+    // 2. Если не сотрудник — проверяем в клиентах (они регистрируются через RegistrationPage)
+    if (!phoneKnown) {
       try {
-        const files = (await fs.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
-          try {
-            const emp = JSON.parse(await fs.readFile(path.join(EMPLOYEES_DIR, file), 'utf8'));
-            if (emp.phone && emp.phone.replace(/[^\d]/g, '') === normalizedPhone) {
-              phoneInEmployees = true;
-              break;
-            }
-          } catch (e) { /* skip broken files */ }
+        if (USE_DB) {
+          const row = await db.findById('clients', normalizedPhone, 'phone');
+          if (row) phoneKnown = true;
+        }
+        if (!phoneKnown) {
+          const clientFile = path.join(DATA_DIR, 'clients', `${normalizedPhone}.json`);
+          try { await fs.access(clientFile); phoneKnown = true; } catch (_) {}
         }
       } catch (e) {
-        console.error('[Auth] Error checking employees directory:', e.message);
+        console.error('[Auth] Error checking clients:', e.message);
       }
     }
 
-    if (!phoneInEmployees) {
-      return res.status(403).json({ error: 'Регистрация доступна только для сотрудников. Обратитесь к администратору.' });
+    if (!phoneKnown) {
+      return res.status(403).json({ error: 'Сначала пройдите регистрацию в приложении.' });
     }
 
     // Проверяем, не зарегистрирован ли уже пользователь

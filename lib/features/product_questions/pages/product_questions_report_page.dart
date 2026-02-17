@@ -3,6 +3,7 @@ import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница отчёта по поиску товаров - статистика по магазинам
 class ProductQuestionsReportPage extends StatefulWidget {
@@ -13,11 +14,6 @@ class ProductQuestionsReportPage extends StatefulWidget {
 }
 
 class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = true;
   Map<String, ShopQuestionStats> _shopStats = {};
   Map<String, int> _unreadByShop = {};
@@ -90,13 +86,13 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -152,7 +148,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _shopStats.isEmpty
                         ? Center(
                             child: Column(
@@ -177,8 +173,8 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                           )
                         : RefreshIndicator(
                             onRefresh: _loadData,
-                            color: _gold,
-                            backgroundColor: _emeraldDark,
+                            color: AppColors.gold,
+                            backgroundColor: AppColors.emeraldDark,
                             child: ListView.builder(
                               padding: EdgeInsets.all(16.w),
                               itemCount: _shopStats.length,
@@ -246,7 +242,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: _emerald,
+                            color: AppColors.emerald,
                             borderRadius: BorderRadius.circular(10.r),
                           ),
                           child: Icon(Icons.store, color: Colors.white, size: 22),
@@ -323,7 +319,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.calendar_month, size: 20, color: _gold),
+                      Icon(Icons.calendar_month, size: 20, color: AppColors.gold),
                       SizedBox(width: 8),
                       Text(
                         'За текущий месяц (${_getCurrentMonthName()}):',
@@ -420,7 +416,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
         Container(
           padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
-            color: _emerald.withOpacity(0.3),
+            color: AppColors.emerald.withOpacity(0.3),
             borderRadius: BorderRadius.circular(10.r),
           ),
           child: Row(

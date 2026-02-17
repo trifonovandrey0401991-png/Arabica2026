@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/job_application_model.dart';
 import '../services/job_application_service.dart';
 import 'job_application_detail_page.dart';
@@ -14,11 +15,6 @@ class JobApplicationsListPage extends StatefulWidget {
 }
 
 class _JobApplicationsListPageState extends State<JobApplicationsListPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<JobApplication> _applications = [];
   bool _isLoading = true;
   String _adminName = '';
@@ -50,13 +46,13 @@ class _JobApplicationsListPageState extends State<JobApplicationsListPage> {
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -112,11 +108,11 @@ class _JobApplicationsListPageState extends State<JobApplicationsListPage> {
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : RefreshIndicator(
                         onRefresh: _refresh,
-                        color: _gold,
-                        backgroundColor: _emeraldDark,
+                        color: AppColors.gold,
+                        backgroundColor: AppColors.emeraldDark,
                         child: _applications.isEmpty
                             ? _buildEmptyState()
                             : ListView.builder(

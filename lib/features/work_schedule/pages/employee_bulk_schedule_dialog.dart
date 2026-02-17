@@ -4,6 +4,7 @@ import '../../employees/pages/employees_page.dart' show Employee;
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Диалог массового редактирования смен сотрудника
 /// Строки = магазины, столбцы = дни (каждый день делится на 2 клетки: утро и вечер)
@@ -35,7 +36,6 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
   ShiftType _selectedShiftType = ShiftType.morning;
   final Map<String, WorkScheduleEntry> _pendingEntries = {};
 
-  // Цвета для смен
   static final Color _morningColor = Color(0xFFB9F6CA); // салатовый
   static final Color _dayColor = Color(0xFFFFF59D); // светло-жёлтый
   static final Color _eveningColor = Color(0xFFE0E0E0); // светло-серый
@@ -196,7 +196,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Color(0xFF004D40),
+        color: AppColors.primaryGreen,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(4.r),
           topRight: Radius.circular(4.r),
@@ -517,7 +517,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
           SizedBox(width: 12),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF004D40),
+              backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
             ),
             onPressed: () {

@@ -16,6 +16,7 @@ import '../../recount/services/recount_service.dart';
 // Сервис настроек баллов для проверки временного окна
 import '../../efficiency/services/points_settings_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {
@@ -33,8 +34,6 @@ class RKOAmountInputPage extends StatefulWidget {
 }
 
 class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
-  static final _primaryColor = Color(0xFF004D40);
-
   final _amountController = TextEditingController();
   Shop? _selectedShop;
   List<Shop> _shops = [];
@@ -529,7 +528,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: _primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
             child: Text('Да, продолжить', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -561,7 +560,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text('РКО: ${widget.rkoType}'),
-          backgroundColor: _primaryColor,
+          backgroundColor: AppColors.primaryGreen,
         ),
         body: Center(
           child: CircularProgressIndicator(),
@@ -574,7 +573,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text('РКО: ${widget.rkoType}'),
-          backgroundColor: _primaryColor,
+          backgroundColor: AppColors.primaryGreen,
         ),
         body: Center(
           child: Padding(
@@ -630,7 +629,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Text(
@@ -638,7 +637,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     style: TextStyle(
                       fontSize: 20.sp,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF004D40),
+                      color: AppColors.primaryGreen,
                     ),
                   ),
                 ),
@@ -648,7 +647,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                   icon: Icon(Icons.arrow_back),
                   label: Text('Назад'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
+                    backgroundColor: AppColors.primaryGreen,
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
                   ),
@@ -663,7 +662,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('РКО: ${widget.rkoType}'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
       body: Container(
@@ -672,8 +671,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _primaryColor,
-              _primaryColor.withOpacity(0.85),
+              AppColors.primaryGreen,
+              AppColors.primaryGreen.withOpacity(0.85),
             ],
           ),
         ),
@@ -807,12 +806,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.1),
+                color: AppColors.primaryGreen.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14.r),
               ),
               child: Icon(
                 Icons.person_rounded,
-                color: _primaryColor,
+                color: AppColors.primaryGreen,
                 size: 26,
               ),
             ),
@@ -876,12 +875,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.store_rounded,
-                    color: _primaryColor,
+                    color: AppColors.primaryGreen,
                     size: 24,
                   ),
                 ),
@@ -954,14 +953,14 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
               Container(
                 padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  color: _primaryColor.withOpacity(0.08),
+                  color: AppColors.primaryGreen.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.location_on_rounded,
-                      color: _primaryColor,
+                      color: AppColors.primaryGreen,
                       size: 18,
                     ),
                     SizedBox(width: 8),
@@ -970,7 +969,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                         _selectedShop!.address,
                         style: TextStyle(
                           fontSize: 13.sp,
-                          color: _primaryColor,
+                          color: AppColors.primaryGreen,
                         ),
                       ),
                     ),
@@ -1044,7 +1043,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14.r),
-                  borderSide: BorderSide(color: _primaryColor, width: 2),
+                  borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14.r),
@@ -1058,7 +1057,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                 ),
                 suffixText: 'руб.',
                 suffixStyle: TextStyle(
-                  color: _primaryColor,
+                  color: AppColors.primaryGreen,
                   fontWeight: FontWeight.bold,
                   fontSize: 18.sp,
                 ),
@@ -1099,13 +1098,13 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
           decoration: BoxDecoration(
-            border: Border.all(color: _primaryColor.withOpacity(0.3)),
+            border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
             borderRadius: BorderRadius.circular(10.r),
           ),
           child: Text(
             '$amount',
             style: TextStyle(
-              color: _primaryColor,
+              color: AppColors.primaryGreen,
               fontWeight: FontWeight.w600,
               fontSize: 14.sp,
             ),
@@ -1143,7 +1142,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                       width: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
                       ),
                     ),
                   )
@@ -1152,7 +1151,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     children: [
                       Icon(
                         Icons.description_rounded,
-                        color: _primaryColor,
+                        color: AppColors.primaryGreen,
                         size: 24,
                       ),
                       SizedBox(width: 12),
@@ -1161,7 +1160,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
-                          color: _primaryColor,
+                          color: AppColors.primaryGreen,
                         ),
                       ),
                     ],

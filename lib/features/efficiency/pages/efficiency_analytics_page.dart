@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/efficiency_data_model.dart';
 import '../services/efficiency_data_service.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница аналитики эффективности за 3 месяца
@@ -13,11 +14,6 @@ class EfficiencyAnalyticsPage extends StatefulWidget {
 }
 
 class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
-  // === Dark Emerald Palette ===
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   /// Режим отображения: 'shops' или 'employees'
   String _mode = 'shops';
@@ -93,13 +89,13 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emeraldDark, _night],
+            colors: [AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3],
           ),
         ),
@@ -127,7 +123,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                     ),
                     PopupMenuButton<String>(
                       icon: Icon(Icons.filter_list, color: Colors.white.withOpacity(0.9)),
-                      color: _emeraldDark,
+                      color: AppColors.emeraldDark,
                       onSelected: (value) => setState(() => _mode = value),
                       itemBuilder: (context) => [
                         PopupMenuItem(
@@ -136,7 +132,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                             children: [
                               Icon(
                                 Icons.store,
-                                color: _mode == 'shops' ? _gold : Colors.white.withOpacity(0.5),
+                                color: _mode == 'shops' ? AppColors.gold : Colors.white.withOpacity(0.5),
                               ),
                               SizedBox(width: 8),
                               Text(
@@ -155,7 +151,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                             children: [
                               Icon(
                                 Icons.person,
-                                color: _mode == 'employees' ? _gold : Colors.white.withOpacity(0.5),
+                                color: _mode == 'employees' ? AppColors.gold : Colors.white.withOpacity(0.5),
                               ),
                               SizedBox(width: 8),
                               Text(
@@ -188,7 +184,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: _gold),
+            CircularProgressIndicator(color: AppColors.gold),
             SizedBox(height: 16),
             Text(
               'Загрузка данных за 3 месяца...',
@@ -214,8 +210,8 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
             ElevatedButton(
               onPressed: _loadData,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _emerald,
-                foregroundColor: _gold,
+                backgroundColor: AppColors.emerald,
+                foregroundColor: AppColors.gold,
               ),
               child: Text('Повторить'),
             ),
@@ -235,8 +231,8 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: SingleChildScrollView(
         physics: AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.all(16.w),
@@ -261,16 +257,16 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: _emerald.withOpacity(0.5),
+        color: AppColors.emerald.withOpacity(0.5),
         borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: _gold.withOpacity(0.3)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             _mode == 'shops' ? Icons.store : Icons.person,
-            color: _gold,
+            color: AppColors.gold,
             size: 20,
           ),
           SizedBox(width: 8),
@@ -314,9 +310,9 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: _emerald.withOpacity(0.5)),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.5)),
       ),
       child: Padding(
         padding: EdgeInsets.all(16.w),
@@ -328,7 +324,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               style: TextStyle(
                 fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 16),
@@ -403,7 +399,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                       spots: spots,
                       isCurved: true,
                       curveSmoothness: 0.3,
-                      color: _gold,
+                      color: AppColors.gold,
                       barWidth: 3,
                       isStrokeCapRound: true,
                       dotData: FlDotData(
@@ -411,21 +407,21 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
                         getDotPainter: (spot, percent, barData, index) {
                           return FlDotCirclePainter(
                             radius: 6,
-                            color: _emeraldDark,
+                            color: AppColors.emeraldDark,
                             strokeWidth: 3,
-                            strokeColor: _gold,
+                            strokeColor: AppColors.gold,
                           );
                         },
                       ),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: _gold.withOpacity(0.1),
+                        color: AppColors.gold.withOpacity(0.1),
                       ),
                     ),
                   ],
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (touchedSpot) => _emerald,
+                      getTooltipColor: (touchedSpot) => AppColors.emerald,
                       getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
                           final index = spot.x.toInt();
@@ -456,9 +452,9 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
   Widget _buildMonthsTable() {
     return Container(
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: _emerald.withOpacity(0.5)),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.5)),
       ),
       child: Padding(
         padding: EdgeInsets.all(16.w),
@@ -470,7 +466,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               style: TextStyle(
                 fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 16),
@@ -478,7 +474,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
             Container(
               padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.5),
+                color: AppColors.emerald.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: Row(
@@ -609,9 +605,9 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: _emeraldDark,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: _emerald.withOpacity(0.5)),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.5)),
       ),
       child: Padding(
         padding: EdgeInsets.all(16.w),
@@ -623,7 +619,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
               style: TextStyle(
                 fontSize: 18.sp,
                 fontWeight: FontWeight.w600,
-                color: _gold,
+                color: AppColors.gold,
               ),
             ),
             SizedBox(height: 8),

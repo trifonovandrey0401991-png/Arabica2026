@@ -8,6 +8,7 @@ import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
 import 'create_group_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница создания нового чата — dark emerald стиль
 class NewChatPage extends StatefulWidget {
@@ -27,11 +28,6 @@ class NewChatPage extends StatefulWidget {
 }
 
 class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStateMixin {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   late TabController _tabController;
   List<Employee> _employees = [];
   List<Shop> _shops = [];
@@ -247,13 +243,13 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -350,7 +346,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         controller: _tabController,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: _emerald,
+          color: AppColors.emerald,
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
@@ -455,7 +451,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 36.w, vertical: 16.h),
                 decoration: BoxDecoration(
-                  color: _emerald,
+                  color: AppColors.emerald,
                   borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(color: Colors.white.withOpacity(0.15)),
                 ),
@@ -591,7 +587,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                   Container(
                     padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
-                      color: _emerald.withOpacity(0.3),
+                      color: AppColors.emerald.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(

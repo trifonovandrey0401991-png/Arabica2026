@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -15,16 +16,6 @@ const SHIFT_AI_SETTINGS_DIR = `${DATA_DIR}/shift-ai-settings`;
 const SHIFT_AI_ANNOTATIONS_DIR = `${DATA_DIR}/shift-ai-annotations`;
 const MASTER_CATALOG_DIR = `${DATA_DIR}/master-catalog`;
 const DBF_STOCKS_DIR = `${DATA_DIR}/dbf-stocks`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Убедимся что директории существуют
 (async () => {

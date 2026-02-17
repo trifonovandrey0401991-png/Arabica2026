@@ -11,6 +11,7 @@ import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
 import 'group_info_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница чата — dark emerald стиль
 class EmployeeChatPage extends StatefulWidget {
@@ -33,11 +34,6 @@ class EmployeeChatPage extends StatefulWidget {
 
 class _EmployeeChatPageState extends State<EmployeeChatPage>
     with TickerProviderStateMixin {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -369,7 +365,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
           duration: Duration(seconds: 30),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-          backgroundColor: _emerald,
+          backgroundColor: AppColors.emerald,
         ),
       );
     }
@@ -418,7 +414,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: _night.withOpacity(0.98),
+          color: AppColors.night.withOpacity(0.98),
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
           border: Border(
             top: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -452,7 +448,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                 leading: Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: _emerald.withOpacity(0.3),
+                    color: AppColors.emerald.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(Icons.camera_alt, color: Colors.white.withOpacity(0.8)),
@@ -504,7 +500,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _night.withOpacity(0.98),
+        backgroundColor: AppColors.night.withOpacity(0.98),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
@@ -565,7 +561,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _night.withOpacity(0.98),
+        backgroundColor: AppColors.night.withOpacity(0.98),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(
           'Подтверждение',
@@ -624,7 +620,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Функция пересылки будет доступна в следующем обновлении'),
-        backgroundColor: _emerald,
+        backgroundColor: AppColors.emerald,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
       ),
@@ -714,13 +710,13 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.15, 0.4],
           ),
         ),
@@ -750,7 +746,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                         leading: Container(
                           padding: EdgeInsets.all(8.w),
                           decoration: BoxDecoration(
-                            color: _emerald.withOpacity(0.3),
+                            color: AppColors.emerald.withOpacity(0.3),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(
@@ -945,7 +941,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert_rounded, color: Colors.white.withOpacity(0.7), size: 22),
-            color: _night.withOpacity(0.98),
+            color: AppColors.night.withOpacity(0.98),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             onSelected: (value) {
               if (value == 'refresh') _loadMessages();

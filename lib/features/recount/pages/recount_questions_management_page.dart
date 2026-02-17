@@ -6,6 +6,7 @@ import 'dart:io';
 import '../models/recount_question_model.dart';
 import '../services/recount_question_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница управления товарами пересчета
 class RecountQuestionsManagementPage extends StatefulWidget {
@@ -20,9 +21,6 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   bool _isLoading = true;
   String _searchQuery = '';
   final _searchController = TextEditingController();
-
-  static final _primaryColor = Color(0xFF004D40);
-
   @override
   void initState() {
     super.initState();
@@ -112,7 +110,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                 icon: Icon(Icons.add),
                 label: Text('Добавить новые'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 16.h),
                 ),
@@ -325,7 +323,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(
-                foregroundColor: mode == 'replace' ? Colors.orange : _primaryColor,
+                foregroundColor: mode == 'replace' ? Colors.orange : AppColors.primaryGreen,
               ),
               child: Text(mode == 'replace' ? 'Заменить' : 'Добавить'),
             ),
@@ -498,7 +496,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     return Scaffold(
       appBar: AppBar(
         title: Text('Товары пересчета'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.upload_file),

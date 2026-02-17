@@ -7,6 +7,7 @@ import '../../employees/models/user_role_model.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class RecipesListPage extends StatefulWidget {
   const RecipesListPage({super.key});
@@ -16,8 +17,6 @@ class RecipesListPage extends StatefulWidget {
 }
 
 class _RecipesListPageState extends State<RecipesListPage> with TickerProviderStateMixin {
-  static final _primaryColor = Color(0xFF004D40);
-
   TabController? _tabController;
   late Future<List<Recipe>> _recipesFuture;
   String _searchQuery = '';
@@ -85,7 +84,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
       return Scaffold(
         appBar: AppBar(
           title: Text('Рецепты'),
-          backgroundColor: Color(0xFF004D40),
+          backgroundColor: AppColors.primaryGreen,
         ),
         body: Center(child: CircularProgressIndicator()),
       );
@@ -96,7 +95,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
     return Scaffold(
       appBar: AppBar(
         title: Text('Рецепты'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         bottom: isAdmin && _tabController != null
             ? TabBar(
                 controller: _tabController!,
@@ -112,7 +111,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -164,7 +163,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                   decoration: InputDecoration(
                     hintText: 'Поиск рецепта...',
                     hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: Icon(Icons.search_rounded, color: _primaryColor),
+                    prefixIcon: Icon(Icons.search_rounded, color: AppColors.primaryGreen),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -202,8 +201,8 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                         value: _selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Категория',
-                          labelStyle: TextStyle(color: _primaryColor),
-                          prefixIcon: Icon(Icons.category_rounded, color: _primaryColor),
+                          labelStyle: TextStyle(color: AppColors.primaryGreen),
+                          prefixIcon: Icon(Icons.category_rounded, color: AppColors.primaryGreen),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -426,7 +425,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                       borderRadius: BorderRadius.circular(14.r),
                       boxShadow: [
                         BoxShadow(
-                          color: _primaryColor.withOpacity(0.2),
+                          color: AppColors.primaryGreen.withOpacity(0.2),
                           blurRadius: 8,
                           offset: Offset(0, 2),
                         ),
@@ -459,13 +458,13 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            color: _primaryColor.withOpacity(0.1),
+                            color: AppColors.primaryGreen.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             '${recipe.price} руб.',
                             style: TextStyle(
-                              color: _primaryColor,
+                              color: AppColors.primaryGreen,
                               fontWeight: FontWeight.bold,
                               fontSize: 14.sp,
                             ),
@@ -479,12 +478,12 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: _primaryColor,
+                    color: AppColors.primaryGreen,
                     size: 16,
                   ),
                 ),
@@ -525,11 +524,11 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
     return Container(
       width: 80,
       height: 80,
-      color: _primaryColor.withOpacity(0.1),
+      color: AppColors.primaryGreen.withOpacity(0.1),
       child: Icon(
         Icons.coffee_rounded,
         size: 36,
-        color: _primaryColor.withOpacity(0.4),
+        color: AppColors.primaryGreen.withOpacity(0.4),
       ),
     );
   }

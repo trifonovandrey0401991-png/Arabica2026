@@ -4,6 +4,7 @@ import '../services/client_service.dart';
 import '../../../shared/dialogs/send_message_dialog.dart';
 import 'client_chat_page.dart';
 import 'admin_management_dialog_page.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления клиентами
@@ -15,11 +16,6 @@ class ClientsManagementPage extends StatefulWidget {
 }
 
 class _ClientsManagementPageState extends State<ClientsManagementPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<Client> _clients = [];
   List<Client> _filteredClients = [];
   bool _isLoading = true;
@@ -110,7 +106,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
         child: Container(
           constraints: BoxConstraints(maxWidth: 400),
           decoration: BoxDecoration(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             borderRadius: BorderRadius.circular(20.r),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
@@ -124,7 +120,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [_emerald, _emeraldDark],
+                    colors: [AppColors.emerald, AppColors.emeraldDark],
                   ),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(20.r),
@@ -137,11 +133,11 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.15),
+                        color: AppColors.gold.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(color: _gold.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                       ),
-                      child: Icon(Icons.person, color: _gold, size: 24),
+                      child: Icon(Icons.person, color: AppColors.gold, size: 24),
                     ),
                     SizedBox(width: 14),
                     Expanded(
@@ -174,7 +170,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                   children: [
                     _buildActionTile(
                       icon: Icons.message,
-                      color: _gold,
+                      color: AppColors.gold,
                       title: 'Отправить сообщение',
                       onTap: () => Navigator.pop(context, 'send'),
                     ),
@@ -186,7 +182,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                     ),
                     _buildActionTile(
                       icon: Icons.business,
-                      color: client.hasUnreadManagement ? Colors.orange : Color(0xFF81C784),
+                      color: client.hasUnreadManagement ? Colors.orange : AppColors.successLight,
                       title: 'Связь с руководством',
                       badge: client.hasUnreadManagement ? 'NEW' : null,
                       onTap: () => Navigator.pop(context, 'management'),
@@ -332,11 +328,11 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
             icon: Container(
               padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
-              child: Icon(Icons.send, size: 18, color: _gold),
+              child: Icon(Icons.send, size: 18, color: AppColors.gold),
             ),
             onPressed: () => _showSendMessageDialog(null),
             tooltip: 'Отправить всем',
@@ -362,7 +358,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -381,7 +377,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                   child: TextField(
                     controller: _searchController,
                     style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                    cursorColor: _gold,
+                    cursorColor: AppColors.gold,
                     decoration: InputDecoration(
                       hintText: 'Поиск по имени или телефону',
                       hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
@@ -408,14 +404,14 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.15),
+                        color: AppColors.gold.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8.r),
-                        border: Border.all(color: _gold.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                       ),
                       child: Text(
                         '${_filteredClients.length}',
                         style: TextStyle(
-                          color: _gold,
+                          color: AppColors.gold,
                           fontSize: 13.sp,
                           fontWeight: FontWeight.bold,
                         ),
@@ -438,7 +434,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                 child: _isLoading
                     ? Center(
                         child: CircularProgressIndicator(
-                          color: _gold.withOpacity(0.7),
+                          color: AppColors.gold.withOpacity(0.7),
                           strokeWidth: 2,
                         ),
                       )
@@ -457,7 +453,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                   child: Icon(
                                     Icons.people_outline,
                                     size: 48,
-                                    color: _gold.withOpacity(0.5),
+                                    color: AppColors.gold.withOpacity(0.5),
                                   ),
                                 ),
                                 SizedBox(height: 16),
@@ -527,12 +523,12 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                     end: Alignment.bottomRight,
                                                     colors: hasUnread
                                                         ? [Colors.red.withOpacity(0.6), Colors.red.withOpacity(0.3)]
-                                                        : [_gold.withOpacity(0.3), _emerald],
+                                                        : [AppColors.gold.withOpacity(0.3), AppColors.emerald],
                                                   ),
                                                   border: Border.all(
                                                     color: hasUnread
                                                         ? Colors.red.withOpacity(0.5)
-                                                        : _gold.withOpacity(0.3),
+                                                        : AppColors.gold.withOpacity(0.3),
                                                     width: 1.5,
                                                   ),
                                                 ),
@@ -542,7 +538,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                         ? client.name[0].toUpperCase()
                                                         : client.phone.isNotEmpty ? client.phone[0] : '?',
                                                     style: TextStyle(
-                                                      color: hasUnread ? Colors.white : _gold,
+                                                      color: hasUnread ? Colors.white : AppColors.gold,
                                                       fontSize: 20.sp,
                                                       fontWeight: FontWeight.bold,
                                                     ),
@@ -560,7 +556,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                     decoration: BoxDecoration(
                                                       color: Colors.red,
                                                       shape: BoxShape.circle,
-                                                      border: Border.all(color: _emeraldDark, width: 2),
+                                                      border: Border.all(color: AppColors.emeraldDark, width: 2),
                                                     ),
                                                     child: Center(
                                                       child: Icon(
@@ -641,12 +637,12 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
                                                       decoration: BoxDecoration(
                                                         color: client.freeDrinksGiven > 0
-                                                            ? _gold.withOpacity(0.15)
+                                                            ? AppColors.gold.withOpacity(0.15)
                                                             : Colors.white.withOpacity(0.06),
                                                         borderRadius: BorderRadius.circular(8.r),
                                                         border: Border.all(
                                                           color: client.freeDrinksGiven > 0
-                                                              ? _gold.withOpacity(0.3)
+                                                              ? AppColors.gold.withOpacity(0.3)
                                                               : Colors.white.withOpacity(0.1),
                                                         ),
                                                       ),
@@ -657,7 +653,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                             Icons.local_cafe,
                                                             size: 11,
                                                             color: client.freeDrinksGiven > 0
-                                                                ? _gold
+                                                                ? AppColors.gold
                                                                 : Colors.white.withOpacity(0.4),
                                                           ),
                                                           SizedBox(width: 3),
@@ -665,7 +661,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                             '${client.freeDrinksGiven}',
                                                             style: TextStyle(
                                                               color: client.freeDrinksGiven > 0
-                                                                  ? _gold
+                                                                  ? AppColors.gold
                                                                   : Colors.white.withOpacity(0.4),
                                                               fontSize: 11.sp,
                                                               fontWeight: FontWeight.bold,

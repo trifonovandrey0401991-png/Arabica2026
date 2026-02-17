@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:pdf/pdf.dart';
-import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../models/work_schedule_model.dart';
@@ -23,6 +20,9 @@ import '../../../shared/dialogs/shift_edit_dialog.dart';
 import '../../../shared/dialogs/schedule_errors_dialog.dart';
 import 'employee_bulk_schedule_dialog.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
+import 'period_selection_dialog.dart';
+import 'pdf_preview_page.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -57,13 +57,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   final ScrollController _namesVerticalController = ScrollController();
   final ScrollController _gridVerticalController = ScrollController();
   bool _isSyncingScroll = false;
-
-  // Dark Emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-  static final Color _emeraldLight = Color(0xFF2A6363);
 
   @override
   void initState() {
@@ -194,7 +187,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -300,7 +293,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         barrierDismissible: false,
         builder: (context) => Center(
           child: Card(
-            color: _emeraldDark,
+            color: AppColors.emeraldDark,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.r),
               side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -310,7 +303,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: _gold),
+                  CircularProgressIndicator(color: AppColors.gold),
                   SizedBox(height: 16),
                   Text('Очистка графика...', style: TextStyle(color: Colors.white.withOpacity(0.8))),
                 ],
@@ -929,7 +922,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     final maxDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
     final result = await showDialog<Map<String, int>>(
       context: context,
-      builder: (context) => _PeriodSelectionDialog(
+      builder: (context) => PeriodSelectionDialog(
         startDay: _startDay,
         endDay: _endDay,
         maxDay: maxDay,
@@ -1004,23 +997,23 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         child: Container(
           padding: EdgeInsets.symmetric(vertical: 10.h),
           decoration: BoxDecoration(
-            color: isSelected ? _gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+            color: isSelected ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(
-              color: isSelected ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+              color: isSelected ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: isSelected ? _gold : Colors.white.withOpacity(0.6)),
+              Icon(icon, size: 18, color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.6)),
               SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 14.sp,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? _gold : Colors.white.withOpacity(0.6),
+                  color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.6),
                 ),
               ),
             ],
@@ -1039,7 +1032,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           Container(
             padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
-              color: _emerald.withOpacity(0.3),
+              color: AppColors.emerald.withOpacity(0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.error_outline, size: 64, color: Colors.red.withOpacity(0.7)),
@@ -1054,7 +1047,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           ElevatedButton(
             onPressed: _loadData,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _emerald,
+              backgroundColor: AppColors.emerald,
               foregroundColor: Colors.white,
             ),
             child: Text('Повторить'),
@@ -1067,13 +1060,13 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -1143,7 +1136,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold, strokeWidth: 3))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold, strokeWidth: 3))
                     : _error != null
                         ? _buildErrorState()
                         : Column(
@@ -1170,7 +1163,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       floatingActionButton: _schedule != null
           ? FloatingActionButton(
               onPressed: _showErrorsDialog,
-              backgroundColor: _hasErrors ? Colors.red : _emerald,
+              backgroundColor: _hasErrors ? Colors.red : AppColors.emerald,
               foregroundColor: Colors.white,
               child: Badge(
                 label: Text('$_errorCount'),
@@ -1331,7 +1324,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [_emerald, _emeraldDark],
+              colors: [AppColors.emerald, AppColors.emeraldDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -1340,7 +1333,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             children: [
               Icon(
                 Icons.calendar_month,
-                color: _gold,
+                color: AppColors.gold,
                 size: 20,
               ),
               SizedBox(width: 10),
@@ -1389,7 +1382,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                     Container(
                       height: 48,
                       decoration: BoxDecoration(
-                        color: _emeraldDark,
+                        color: AppColors.emeraldDark,
                         border: Border(
                           bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
                           right: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
@@ -1458,7 +1451,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                         Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: _emeraldDark,
+                            color: AppColors.emeraldDark,
                             border: Border(
                               bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
                             ),
@@ -1471,10 +1464,10 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                                 width: 70,
                                 decoration: BoxDecoration(
                                   color: isValid
-                                      ? _emerald.withOpacity(0.6)
+                                      ? AppColors.emerald.withOpacity(0.6)
                                       : isWeekend
-                                          ? _emeraldDark.withOpacity(0.8)
-                                          : _emeraldDark,
+                                          ? AppColors.emeraldDark.withOpacity(0.8)
+                                          : AppColors.emeraldDark,
                                   border: Border(
                                     right: BorderSide(color: Colors.white.withOpacity(0.06)),
                                   ),
@@ -1562,7 +1555,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     Color getCellBackgroundColor(ShiftType type) {
       switch (type) {
         case ShiftType.morning:
-          return Color(0xFF81C784).withOpacity(0.3); // зелёный
+          return AppColors.successLight.withOpacity(0.3); // зелёный
         case ShiftType.day:
           return Color(0xFFFFF176).withOpacity(0.25); // жёлтый
         case ShiftType.evening:
@@ -1617,7 +1610,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                       child: Container(
                         padding: EdgeInsets.all(1.w),
                         decoration: BoxDecoration(
-                          color: _night.withOpacity(0.7),
+                          color: AppColors.night.withOpacity(0.7),
                           shape: BoxShape.circle,
                         ),
                         child: errorIcon,
@@ -1713,7 +1706,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       barrierDismissible: false,
       builder: (context) => Center(
         child: Card(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.r),
             side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1723,7 +1716,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: _gold),
+                CircularProgressIndicator(color: AppColors.gold),
                 SizedBox(height: 16),
                 Text('Создание PDF...', style: TextStyle(color: Colors.white.withOpacity(0.8))),
               ],
@@ -1776,7 +1769,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => _PdfPreviewPage(
+            builder: (context) => SchedulePdfPreviewPage(
               pdfBytes: pdfBytes,
               fileName: fileName,
               title: 'График - ${monthNames[_selectedMonth.month - 1]} ${_selectedMonth.year}',
@@ -1813,7 +1806,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       barrierDismissible: false,
       builder: (context) => Center(
         child: Card(
-          color: _emeraldDark,
+          color: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.r),
             side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1823,7 +1816,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: _gold),
+                CircularProgressIndicator(color: AppColors.gold),
                 SizedBox(height: 16),
                 Text('Выполняется автозаполнение...', style: TextStyle(color: Colors.white.withOpacity(0.8))),
               ],
@@ -1945,7 +1938,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -1955,7 +1948,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('ОК', style: TextStyle(color: _gold)),
+            child: Text('ОК', style: TextStyle(color: AppColors.gold)),
           ),
         ],
       ),
@@ -2215,7 +2208,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2274,7 +2267,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2380,7 +2373,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -2522,7 +2515,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: _emerald,
+              backgroundColor: AppColors.emerald,
               foregroundColor: Colors.white,
             ),
             icon: Icon(Icons.edit),
@@ -2543,7 +2536,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             Container(
               padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.3),
+                color: AppColors.emerald.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.4)),
@@ -2583,7 +2576,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [_emerald, _emeraldDark],
+              colors: [AppColors.emerald, AppColors.emeraldDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -2596,7 +2589,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: Icon(Icons.people, color: _gold, size: 28),
+                child: Icon(Icons.people, color: AppColors.gold, size: 28),
               ),
               SizedBox(width: 16),
               Expanded(
@@ -2657,7 +2650,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             height: 56,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [_emerald, _emeraldLight],
+                                colors: [AppColors.emerald, AppColors.emeraldLight],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -2703,7 +2696,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                                       ),
                                       decoration: BoxDecoration(
                                         color: shiftCount > 0
-                                            ? _emerald.withOpacity(0.3)
+                                            ? AppColors.emerald.withOpacity(0.3)
                                             : Colors.white.withOpacity(0.04),
                                         borderRadius: BorderRadius.circular(8.r),
                                       ),
@@ -2714,7 +2707,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                                             Icons.calendar_today,
                                             size: 14,
                                             color: shiftCount > 0
-                                                ? _gold
+                                                ? AppColors.gold
                                                 : Colors.white.withOpacity(0.3),
                                           ),
                                           SizedBox(width: 4),
@@ -2778,318 +2771,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           ),
         ),
       ],
-    );
-  }
-}
-
-// Диалог для выбора периода (числа месяца)
-class _PeriodSelectionDialog extends StatefulWidget {
-  final int startDay;
-  final int endDay;
-  final int maxDay;
-
-  _PeriodSelectionDialog({
-    required this.startDay,
-    required this.endDay,
-    required this.maxDay,
-  });
-
-  @override
-  State<_PeriodSelectionDialog> createState() => _PeriodSelectionDialogState();
-}
-
-class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
-  late int _startDay;
-  late int _endDay;
-
-  @override
-  void initState() {
-    super.initState();
-    // Ограничиваем значения максимальным днём месяца
-    _startDay = widget.startDay.clamp(1, widget.maxDay);
-    _endDay = widget.endDay.clamp(_startDay, widget.maxDay);
-  }
-
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _gold = Color(0xFFD4AF37);
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: _emeraldDark,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.white.withOpacity(0.15)),
-      ),
-      title: Text('Выберите период', style: TextStyle(color: Colors.white.withOpacity(0.95))),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Text('С: ', style: TextStyle(color: Colors.white.withOpacity(0.7))),
-              Expanded(
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    canvasColor: _emeraldDark,
-                  ),
-                  child: DropdownButtonFormField<int>(
-                    value: _startDay,
-                    dropdownColor: _emeraldDark,
-                    style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: _gold),
-                      ),
-                    ),
-                    items: List.generate(widget.maxDay, (i) => i + 1).map((day) {
-                      return DropdownMenuItem<int>(
-                        value: day,
-                        child: Text('$day'),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _startDay = value;
-                          if (_endDay < _startDay) {
-                            _endDay = _startDay;
-                          }
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Row(
-            children: [
-              Text('По: ', style: TextStyle(color: Colors.white.withOpacity(0.7))),
-              Expanded(
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    canvasColor: _emeraldDark,
-                  ),
-                  child: DropdownButtonFormField<int>(
-                    value: _endDay,
-                    dropdownColor: _emeraldDark,
-                    style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: _gold),
-                      ),
-                    ),
-                    items: List.generate(widget.maxDay - _startDay + 1, (i) => _startDay + i).map((day) {
-                      return DropdownMenuItem<int>(
-                        value: day,
-                        child: Text('$day'),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _endDay = value;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop({
-              'startDay': _startDay,
-              'endDay': _endDay,
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _gold,
-            foregroundColor: Colors.white,
-          ),
-          child: Text('Применить'),
-        ),
-      ],
-    );
-  }
-}
-
-/// Страница предпросмотра PDF в горизонтальном режиме на весь экран
-class _PdfPreviewPage extends StatefulWidget {
-  final Uint8List pdfBytes;
-  final String fileName;
-  final String title;
-
-  _PdfPreviewPage({
-    required this.pdfBytes,
-    required this.fileName,
-    required this.title,
-  });
-
-  @override
-  State<_PdfPreviewPage> createState() => _PdfPreviewPageState();
-}
-
-class _PdfPreviewPageState extends State<_PdfPreviewPage> {
-  @override
-  void initState() {
-    super.initState();
-    // Принудительно переключаем в горизонтальный режим
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    // Скрываем системный UI для полноэкранного режима
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  }
-
-  @override
-  void dispose() {
-    // Восстанавливаем портретный режим
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    // Восстанавливаем системный UI
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // PDF на весь экран
-            Positioned.fill(
-              child: PdfPreview(
-                build: (format) async => widget.pdfBytes,
-                canChangeOrientation: false,
-                canChangePageFormat: false,
-                canDebug: false,
-                pdfFileName: widget.fileName,
-                initialPageFormat: PdfPageFormat.a4.landscape,
-                useActions: false,
-                allowSharing: false,
-                allowPrinting: false,
-                padding: EdgeInsets.zero,
-                previewPageMargin: EdgeInsets.zero,
-              ),
-            ),
-            // Кнопки управления сверху
-            Positioned(
-              top: 8.h,
-              left: 8.w,
-              right: 8.w,
-              child: Row(
-                children: [
-                  // Кнопка назад
-                  _buildControlButton(
-                    icon: Icons.arrow_back,
-                    onTap: () => Navigator.pop(context),
-                    tooltip: 'Назад',
-                  ),
-                  SizedBox(width: 8),
-                  // Заголовок
-                  Expanded(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Text(
-                        widget.title,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  // Кнопка поделиться
-                  _buildControlButton(
-                    icon: Icons.share,
-                    onTap: () async {
-                      await Printing.sharePdf(
-                        bytes: widget.pdfBytes,
-                        filename: widget.fileName,
-                      );
-                    },
-                    tooltip: 'Поделиться',
-                  ),
-                  SizedBox(width: 8),
-                  // Кнопка печати
-                  _buildControlButton(
-                    icon: Icons.print,
-                    onTap: () async {
-                      await Printing.layoutPdf(
-                        onLayout: (format) async => widget.pdfBytes,
-                        name: widget.fileName,
-                        format: PdfPageFormat.a4.landscape,
-                      );
-                    },
-                    tooltip: 'Печать',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    required String tooltip,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8.r),
-        child: Container(
-          padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(
-            color: Colors.black54,
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-      ),
     );
   }
 }

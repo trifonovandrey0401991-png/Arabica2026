@@ -6,6 +6,7 @@ import '../services/pending_shift_handover_service.dart';
 import '../models/pending_shift_handover_report_model.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница выбора типа сдачи смены
 class ShiftHandoverRoleSelectionPage extends StatefulWidget {
@@ -27,12 +28,6 @@ class ShiftHandoverRoleSelectionPage extends StatefulWidget {
 class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelectionPage> {
   List<PendingShiftHandoverReport> _pendingReports = [];
   bool _isLoading = true;
-
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -84,7 +79,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         child: Padding(
           padding: EdgeInsets.all(24.w),
@@ -130,9 +125,9 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 14.h),
                     decoration: BoxDecoration(
-                      color: _gold.withOpacity(0.2),
+                      color: AppColors.gold.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: _gold.withOpacity(0.4)),
+                      border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                     ),
                     child: Text(
                       'Понятно',
@@ -177,13 +172,13 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -195,7 +190,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                 child: _isLoading
                     ? Center(
                         child: CircularProgressIndicator(
-                          color: _gold.withOpacity(0.7),
+                          color: AppColors.gold.withOpacity(0.7),
                           strokeWidth: 3,
                         ),
                       )
@@ -272,7 +267,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                               title: 'Сдать Смену',
                               icon: Icons.assignment_turned_in_rounded,
                               description: 'Ответить на вопросы по смене',
-                              accentColor: _hasPendingReport() ? _gold : Colors.grey,
+                              accentColor: _hasPendingReport() ? AppColors.gold : Colors.grey,
                               onTap: () => _onQuestionsCardTap(widget.isCurrentUserManager ? 'manager' : 'employee'),
                               isDisabled: !_hasPendingReport(),
                             ),
@@ -283,7 +278,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                               title: 'Счётчик кофемашин',
                               icon: Icons.coffee_outlined,
                               description: 'Показания счётчиков кофемашин',
-                              accentColor: _gold,
+                              accentColor: AppColors.gold,
                               onTap: () {
                                 Navigator.push(
                                   context,

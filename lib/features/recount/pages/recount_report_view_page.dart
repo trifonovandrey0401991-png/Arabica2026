@@ -9,6 +9,7 @@ import '../services/recount_points_service.dart';
 import '../../ai_training/services/cigarette_vision_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница просмотра отчета пересчета с возможностью оценки
 class RecountReportViewPage extends StatefulWidget {
@@ -764,11 +765,11 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Отчет пересчета'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
@@ -794,7 +795,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                             style: TextStyle(
                               fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF004D40),
+                              color: AppColors.primaryGreen,
                             ),
                           ),
                           SizedBox(height: 8),
@@ -936,7 +937,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                               style: TextStyle(
                                 fontSize: 18.sp,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF004D40),
+                                color: AppColors.primaryGreen,
                               ),
                             ),
                             SizedBox(height: 16),
@@ -969,7 +970,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                               child: ElevatedButton(
                                 onPressed: _isRating ? null : _rateReport,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF004D40),
+                                  backgroundColor: AppColors.primaryGreen,
                                   padding: EdgeInsets.symmetric(vertical: 16.h),
                                 ),
                                 child: _isRating
@@ -1049,7 +1050,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF004D40),
+                                color: AppColors.primaryGreen,
                               ),
                             ),
                             SizedBox(height: 8),
@@ -1477,4 +1478,3 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     );
   }
 }
-

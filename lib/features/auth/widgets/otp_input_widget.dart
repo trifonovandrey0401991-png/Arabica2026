@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/theme/app_colors.dart';
 import 'dart:async';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -70,11 +71,7 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
   Timer? _resendTimer;
   int _remainingSeconds = 0;
 
-  // Брендовые цвета
-  static final Color _primaryColor = Color(0xFF1A4D4D);
-  static final Color _accentGold = Color(0xFFD4AF37);
-
-  Color get _activeColor => widget.accentColor ?? (widget.lightTheme ? _accentGold : _primaryColor);
+  Color get _activeColor => widget.accentColor ?? (widget.lightTheme ? AppColors.gold : AppColors.emerald);
   Color get _textColor => widget.lightTheme ? Colors.white : Colors.black87;
   Color get _subtitleColor => widget.lightTheme ? Colors.white70 : Colors.grey[600]!;
 

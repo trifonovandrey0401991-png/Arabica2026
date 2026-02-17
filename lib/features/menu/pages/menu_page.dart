@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../orders/pages/cart_page.dart';
@@ -55,7 +57,7 @@ class MenuItem {
       if (photoUrl!.startsWith('http')) {
         return photoUrl;
       }
-      return 'https://arabica26.ru$photoUrl';
+      return '${ApiConstants.serverUrl}$photoUrl';
     }
     return null;
   }
@@ -150,7 +152,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF004D40).withOpacity(0.15),
+            AppColors.primaryGreen.withOpacity(0.15),
             Color(0xFF00695C).withOpacity(0.1),
           ],
         ),
@@ -159,7 +161,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
         child: Icon(
           Icons.local_cafe_rounded,
           size: 48,
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
         ),
       ),
     );
@@ -232,7 +234,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                   padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                      colors: [AppColors.primaryGreen, Color(0xFF00695C)],
                     ),
                     borderRadius: BorderRadius.circular(20.r),
                     boxShadow: [
@@ -300,7 +302,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                           Expanded(child: Text('${item.name} добавлен в корзину')),
                         ],
                       ),
-                      backgroundColor: Color(0xFF004D40),
+                      backgroundColor: AppColors.primaryGreen,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                       margin: EdgeInsets.all(16.w),
@@ -314,7 +316,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16.sp),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF004D40),
+                  backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 14.h),
                   shape: RoundedRectangleBorder(
@@ -336,13 +338,13 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     Logger.debug('Категория: ${widget.selectedCategory}');
 
     return Scaffold(
-      backgroundColor: Color(0xFF004D40),
+      backgroundColor: AppColors.primaryGreen,
       appBar: AppBar(
         title: Text(
           widget.selectedCategory ?? 'Меню напитков',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
       body: Container(
@@ -351,7 +353,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF004D40),
+              AppColors.primaryGreen,
               Color(0xFF00695C),
               Color(0xFF00796B),
             ],
@@ -691,7 +693,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                   padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                      colors: [AppColors.primaryGreen, Color(0xFF00695C)],
                     ),
                     borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
@@ -731,7 +733,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                   ),
                   child: Icon(
                     Icons.add_rounded,
-                    color: Color(0xFF004D40),
+                    color: AppColors.primaryGreen,
                     size: 20,
                   ),
                 ),
@@ -783,12 +785,12 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF004D40), Color(0xFF00695C)],
+              colors: [AppColors.primaryGreen, Color(0xFF00695C)],
             ),
             borderRadius: BorderRadius.circular(18.r),
             boxShadow: [
               BoxShadow(
-                color: Color(0xFF004D40).withOpacity(0.4),
+                color: AppColors.primaryGreen.withOpacity(0.4),
                 blurRadius: 16,
                 offset: Offset(0, 8),
               ),
@@ -842,7 +844,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                       child: Text(
                         '${cart.itemCount}',
                         style: TextStyle(
-                          color: Color(0xFF004D40),
+                          color: AppColors.primaryGreen,
                           fontWeight: FontWeight.bold,
                           fontSize: 16.sp,
                         ),

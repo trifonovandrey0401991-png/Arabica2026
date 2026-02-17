@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 import '../services/loyalty_storage.dart';
@@ -32,13 +33,6 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   ClientGamificationData? _gamificationData;
   GamificationSettings? _gamificationSettings;
   ClientPrize? _pendingPrize; // Pending приз клиента
-
-  // ═══════════════════════════════════════════════════════════════
-  // МИНИМАЛИСТИЧНАЯ ПАЛИТРА
-  // ═══════════════════════════════════════════════════════════════
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
 
   @override
   void initState() {
@@ -147,13 +141,13 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final info = _info;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -172,7 +166,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                         ? _errorMessage()
                         : RefreshIndicator(
                             onRefresh: _refresh,
-                            color: _emerald,
+                            color: AppColors.emerald,
                             child: SingleChildScrollView(
                               physics: AlwaysScrollableScrollPhysics(),
                               padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
@@ -490,7 +484,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                       ? Icon(
                           Icons.star_rounded,
                           size: 14,
-                          color: _emerald,
+                          color: AppColors.emerald,
                         )
                       : null,
                 );
@@ -768,7 +762,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                     style: TextStyle(
                       fontSize: 13.sp,
                       color: data.wheelSpinsAvailable > 0
-                          ? Color(0xFF4CAF50)
+                          ? AppColors.success
                           : Colors.white.withOpacity(0.7),
                       fontWeight: data.wheelSpinsAvailable > 0
                           ? FontWeight.bold

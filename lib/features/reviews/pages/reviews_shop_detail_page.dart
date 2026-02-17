@@ -4,6 +4,7 @@ import '../models/review_model.dart';
 import '../services/review_service.dart';
 import 'review_detail_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница списка отзывов конкретного магазина (для админа)
 class ReviewsShopDetailPage extends StatefulWidget {
@@ -68,11 +69,11 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
           widget.shopAddress,
           style: TextStyle(fontSize: 16.sp),
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF004D40),
+          color: AppColors.primaryGreen,
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,

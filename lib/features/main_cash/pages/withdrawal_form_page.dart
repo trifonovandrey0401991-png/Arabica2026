@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../suppliers/models/supplier_model.dart';
 import '../../suppliers/services/supplier_service.dart';
 import '../models/withdrawal_model.dart';
@@ -66,11 +67,6 @@ class WithdrawalFormPage extends StatefulWidget {
 }
 
 class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
-  static final _emerald = Color(0xFF1A4D4D);
-  static final _emeraldDark = Color(0xFF0D2E2E);
-  static final _night = Color(0xFF051515);
-  static final _gold = Color(0xFFD4AF37);
-
   String _selectedType = 'ooo'; // 'ooo' или 'ip'
   List<Supplier> _allSuppliers = [];
   List<Supplier> _filteredSuppliers = [];
@@ -252,13 +248,13 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -304,7 +300,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
               Expanded(
                 child: _isLoadingSuppliers
                     ? Center(
-                        child: CircularProgressIndicator(color: _gold))
+                        child: CircularProgressIndicator(color: AppColors.gold))
                     : SingleChildScrollView(
                         padding: EdgeInsets.all(20.w),
                         child: Column(
@@ -389,13 +385,13 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                       vertical: 4.h,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: _emerald.withOpacity(0.3),
+                                      color: AppColors.emerald.withOpacity(0.3),
                                       borderRadius: BorderRadius.circular(12.r),
                                     ),
                                     child: Text(
                                       '${_expenses.length}',
                                       style: TextStyle(
-                                        color: _gold,
+                                        color: AppColors.gold,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14.sp,
                                       ),
@@ -461,7 +457,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                   child: _buildActionButton(
                                     icon: Icons.add_circle_outline,
                                     label: 'Добавить расход',
-                                    color: _emerald,
+                                    color: AppColors.emerald,
                                     onPressed: _addSupplierExpense,
                                   ),
                                 ),
@@ -484,7 +480,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                 padding: EdgeInsets.all(20.w),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [_emeraldDark, _emerald],
+                                    colors: [AppColors.emeraldDark, AppColors.emerald],
                                   ),
                                   borderRadius: BorderRadius.circular(16.r),
                                 ),
@@ -596,10 +592,10 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
         Container(
           padding: EdgeInsets.all(10.w),
           decoration: BoxDecoration(
-            color: _emerald.withOpacity(0.3),
+            color: AppColors.emerald.withOpacity(0.3),
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Icon(icon, color: _gold, size: 20),
+          child: Icon(icon, color: AppColors.gold, size: 20),
         ),
         SizedBox(width: 12),
         Expanded(
@@ -731,7 +727,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     vertical: 4.h,
                   ),
                   decoration: BoxDecoration(
-                    color: _emerald.withOpacity(0.3),
+                    color: AppColors.emerald.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Text(
@@ -739,7 +735,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     style: TextStyle(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.bold,
-                      color: _gold,
+                      color: AppColors.gold,
                     ),
                   ),
                 ),
@@ -814,7 +810,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     ),
                     prefixIcon: Icon(
                       Icons.business,
-                      color: _gold,
+                      color: AppColors.gold,
                     ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(
@@ -822,7 +818,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                       vertical: 14.h,
                     ),
                   ),
-                  dropdownColor: _emeraldDark,
+                  dropdownColor: AppColors.emeraldDark,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 14.sp,

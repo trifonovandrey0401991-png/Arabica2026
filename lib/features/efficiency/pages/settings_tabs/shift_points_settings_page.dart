@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../widgets/points_settings_scaffold.dart';
 
 /// Page for configuring shift points settings (Пересменка)
 class ShiftPointsSettingsPage extends StatefulWidget {
@@ -13,9 +14,6 @@ class ShiftPointsSettingsPage extends StatefulWidget {
 }
 
 class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
-  bool _isLoading = true;
-  bool _isSaving = false;
-
   // Editable values
   double _minPoints = -3;
   int _zeroThreshold = 7;
@@ -27,98 +25,10 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
   String _eveningStartTime = '14:00';
   String _eveningEndTime = '23:00';
   double _missedPenalty = -3.0;
-  int _adminReviewTimeout = 2; // Время на проверку админом (1, 2 или 3 часа)
+  int _adminReviewTimeout = 2;
 
   // Gradient colors for this page (orange theme)
   static final _gradientColors = [Color(0xFFf46b45), Color(0xFFeea849)];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final settings = await PointsSettingsService.getShiftPointsSettings();
-      setState(() {
-        _minPoints = settings.minPoints;
-        _zeroThreshold = settings.zeroThreshold;
-        _maxPoints = settings.maxPoints;
-        _morningStartTime = settings.morningStartTime;
-        _morningEndTime = settings.morningEndTime;
-        _eveningStartTime = settings.eveningStartTime;
-        _eveningEndTime = settings.eveningEndTime;
-        _missedPenalty = settings.missedPenalty;
-        _adminReviewTimeout = settings.adminReviewTimeout;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки настроек: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
-
-    try {
-      final result = await PointsSettingsService.saveShiftPointsSettings(
-        minPoints: _minPoints,
-        zeroThreshold: _zeroThreshold,
-        maxPoints: _maxPoints,
-        morningStartTime: _morningStartTime,
-        morningEndTime: _morningEndTime,
-        eveningStartTime: _eveningStartTime,
-        eveningEndTime: _eveningEndTime,
-        missedPenalty: _missedPenalty,
-        adminReviewTimeout: _adminReviewTimeout,
-      );
-
-      if (result != null) {
-        setState(() {
-          _isSaving = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('Настройки сохранены'),
-                ],
-              ),
-              backgroundColor: Colors.green[400],
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-            ),
-          );
-        }
-      } else {
-        throw Exception('Не удалось сохранить настройки');
-      }
-    } catch (e) {
-      setState(() => _isSaving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка сохранения: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   /// Calculate points using current settings (local calculation)
   double _calculatePoints(int rating) {
@@ -136,159 +46,153 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: Text('Баллы за пересменку'),
-        backgroundColor: _gradientColors[0],
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: _gradientColors[0]))
-          : Column(
-              children: [
-                // Заголовок
-                SettingsHeaderCard(
-                  icon: Icons.swap_horiz_rounded,
-                  title: 'Оценка пересменки: 1-10',
-                  subtitle: 'Баллы начисляются при оценке отчета',
-                  gradientColors: _gradientColors,
-                ),
-                // Контент
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(16.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Min points slider
-                        SettingsSliderWidget(
-                          title: 'Минимальная оценка (1)',
-                          subtitle: 'Штраф за плохую пересменку',
-                          value: _minPoints,
-                          min: -5,
-                          max: 0,
-                          divisions: 50,
-                          onChanged: (value) => setState(() => _minPoints = value),
-                          valueLabel: _minPoints.toStringAsFixed(1),
-                          accentColor: Colors.red,
-                          icon: Icons.remove_circle_outline,
-                        ),
-                        SizedBox(height: 16),
+    return PointsSettingsScaffold(
+      title: 'Баллы за пересменку',
+      headerIcon: Icons.swap_horiz_rounded,
+      headerTitle: 'Оценка пересменки: 1-10',
+      headerSubtitle: 'Баллы начисляются при оценке отчета',
+      gradientColors: _gradientColors,
+      onLoad: () async {
+        final settings = await PointsSettingsService.getShiftPointsSettings();
+        _minPoints = settings.minPoints;
+        _zeroThreshold = settings.zeroThreshold;
+        _maxPoints = settings.maxPoints;
+        _morningStartTime = settings.morningStartTime;
+        _morningEndTime = settings.morningEndTime;
+        _eveningStartTime = settings.eveningStartTime;
+        _eveningEndTime = settings.eveningEndTime;
+        _missedPenalty = settings.missedPenalty;
+        _adminReviewTimeout = settings.adminReviewTimeout;
+      },
+      onSave: () async {
+        final result = await PointsSettingsService.saveShiftPointsSettings(
+          minPoints: _minPoints,
+          zeroThreshold: _zeroThreshold,
+          maxPoints: _maxPoints,
+          morningStartTime: _morningStartTime,
+          morningEndTime: _morningEndTime,
+          eveningStartTime: _eveningStartTime,
+          eveningEndTime: _eveningEndTime,
+          missedPenalty: _missedPenalty,
+          adminReviewTimeout: _adminReviewTimeout,
+        );
+        return result != null;
+      },
+      bodyBuilder: (context) => [
+        // Min points slider
+        SettingsSliderWidget(
+          title: 'Минимальная оценка (1)',
+          subtitle: 'Штраф за плохую пересменку',
+          value: _minPoints,
+          min: -5,
+          max: 0,
+          divisions: 50,
+          onChanged: (value) => setState(() => _minPoints = value),
+          valueLabel: _minPoints.toStringAsFixed(1),
+          accentColor: Colors.red,
+          icon: Icons.remove_circle_outline,
+        ),
+        SizedBox(height: 16),
 
-                        // Zero threshold slider
-                        SettingsSliderWidget(
-                          title: 'Нулевая граница',
-                          subtitle: 'Оценка, дающая 0 баллов',
-                          value: _zeroThreshold.toDouble(),
-                          min: 2,
-                          max: 9,
-                          divisions: 7,
-                          onChanged: (value) => setState(() => _zeroThreshold = value.round()),
-                          valueLabel: _zeroThreshold.toString(),
-                          isInteger: true,
-                          accentColor: Colors.orange,
-                          icon: Icons.adjust,
-                        ),
-                        SizedBox(height: 16),
+        // Zero threshold slider
+        SettingsSliderWidget(
+          title: 'Нулевая граница',
+          subtitle: 'Оценка, дающая 0 баллов',
+          value: _zeroThreshold.toDouble(),
+          min: 2,
+          max: 9,
+          divisions: 7,
+          onChanged: (value) => setState(() => _zeroThreshold = value.round()),
+          valueLabel: _zeroThreshold.toString(),
+          isInteger: true,
+          accentColor: Colors.orange,
+          icon: Icons.adjust,
+        ),
+        SizedBox(height: 16),
 
-                        // Max points slider
-                        SettingsSliderWidget(
-                          title: 'Максимальная оценка (10)',
-                          subtitle: 'Награда за отличную пересменку',
-                          value: _maxPoints,
-                          min: 0,
-                          max: 5,
-                          divisions: 50,
-                          onChanged: (value) => setState(() => _maxPoints = value),
-                          valueLabel: '+${_maxPoints.toStringAsFixed(1)}',
-                          accentColor: Colors.green,
-                          icon: Icons.add_circle_outline,
-                        ),
-                        SizedBox(height: 24),
+        // Max points slider
+        SettingsSliderWidget(
+          title: 'Максимальная оценка (10)',
+          subtitle: 'Награда за отличную пересменку',
+          value: _maxPoints,
+          min: 0,
+          max: 5,
+          divisions: 50,
+          onChanged: (value) => setState(() => _maxPoints = value),
+          valueLabel: '+${_maxPoints.toStringAsFixed(1)}',
+          accentColor: Colors.green,
+          icon: Icons.add_circle_outline,
+        ),
+        SizedBox(height: 24),
 
-                        // Time windows section
-                        SettingsSectionTitle(
-                          title: 'Временные окна пересменок',
-                          gradientColors: _gradientColors,
-                        ),
-                        SizedBox(height: 12),
-                        TimeWindowsSection(
-                          windows: [
-                            TimeWindowPickerWidget(
-                              icon: Icons.wb_sunny_outlined,
-                              iconColor: Colors.orange,
-                              title: 'Утренняя смена',
-                              startTime: _morningStartTime,
-                              endTime: _morningEndTime,
-                              onStartChanged: (time) => setState(() => _morningStartTime = time),
-                              onEndChanged: (time) => setState(() => _morningEndTime = time),
-                              primaryColor: _gradientColors[0],
-                            ),
-                            TimeWindowPickerWidget(
-                              icon: Icons.nights_stay_outlined,
-                              iconColor: Colors.indigo,
-                              title: 'Вечерняя смена',
-                              startTime: _eveningStartTime,
-                              endTime: _eveningEndTime,
-                              onStartChanged: (time) => setState(() => _eveningStartTime = time),
-                              onEndChanged: (time) => setState(() => _eveningEndTime = time),
-                              primaryColor: _gradientColors[0],
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 24),
-
-                        // Missed penalty slider
-                        SettingsSliderWidget(
-                          title: 'Штраф за пропуск',
-                          subtitle: 'Баллы за непройденную пересменку',
-                          value: _missedPenalty,
-                          min: -10,
-                          max: 0,
-                          divisions: 100,
-                          onChanged: (value) => setState(() => _missedPenalty = value),
-                          valueLabel: _missedPenalty.toStringAsFixed(1),
-                          accentColor: Colors.deepOrange,
-                          icon: Icons.warning_amber_outlined,
-                        ),
-                        SizedBox(height: 24),
-
-                        // Admin review timeout section
-                        SettingsSectionTitle(
-                          title: 'Время на проверку админом',
-                          gradientColors: _gradientColors,
-                        ),
-                        SizedBox(height: 12),
-                        _buildAdminReviewTimeoutSection(),
-                        SizedBox(height: 24),
-
-                        // Preview section
-                        SettingsSectionTitle(
-                          title: 'Предпросмотр расчета баллов',
-                          gradientColors: _gradientColors,
-                        ),
-                        SizedBox(height: 12),
-                        RatingPreviewWidget(
-                          previewRatings: [1, 4, _zeroThreshold, 8, 10],
-                          calculatePoints: _calculatePoints,
-                          gradientColors: _gradientColors,
-                        ),
-                        SizedBox(height: 24),
-
-                        // Save button
-                        SettingsSaveButton(
-                          isSaving: _isSaving,
-                          onPressed: _saveSettings,
-                          gradientColors: _gradientColors,
-                        ),
-                        SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+        // Time windows section
+        SettingsSectionTitle(
+          title: 'Временные окна пересменок',
+          gradientColors: _gradientColors,
+        ),
+        SizedBox(height: 12),
+        TimeWindowsSection(
+          windows: [
+            TimeWindowPickerWidget(
+              icon: Icons.wb_sunny_outlined,
+              iconColor: Colors.orange,
+              title: 'Утренняя смена',
+              startTime: _morningStartTime,
+              endTime: _morningEndTime,
+              onStartChanged: (time) => setState(() => _morningStartTime = time),
+              onEndChanged: (time) => setState(() => _morningEndTime = time),
+              primaryColor: _gradientColors[0],
             ),
+            TimeWindowPickerWidget(
+              icon: Icons.nights_stay_outlined,
+              iconColor: Colors.indigo,
+              title: 'Вечерняя смена',
+              startTime: _eveningStartTime,
+              endTime: _eveningEndTime,
+              onStartChanged: (time) => setState(() => _eveningStartTime = time),
+              onEndChanged: (time) => setState(() => _eveningEndTime = time),
+              primaryColor: _gradientColors[0],
+            ),
+          ],
+        ),
+        SizedBox(height: 24),
+
+        // Missed penalty slider
+        SettingsSliderWidget(
+          title: 'Штраф за пропуск',
+          subtitle: 'Баллы за непройденную пересменку',
+          value: _missedPenalty,
+          min: -10,
+          max: 0,
+          divisions: 100,
+          onChanged: (value) => setState(() => _missedPenalty = value),
+          valueLabel: _missedPenalty.toStringAsFixed(1),
+          accentColor: Colors.deepOrange,
+          icon: Icons.warning_amber_outlined,
+        ),
+        SizedBox(height: 24),
+
+        // Admin review timeout section
+        SettingsSectionTitle(
+          title: 'Время на проверку админом',
+          gradientColors: _gradientColors,
+        ),
+        SizedBox(height: 12),
+        _buildAdminReviewTimeoutSection(),
+        SizedBox(height: 24),
+
+        // Preview section
+        SettingsSectionTitle(
+          title: 'Предпросмотр расчета баллов',
+          gradientColors: _gradientColors,
+        ),
+        SizedBox(height: 12),
+        RatingPreviewWidget(
+          previewRatings: [1, 4, _zeroThreshold, 8, 10],
+          calculatePoints: _calculatePoints,
+          gradientColors: _gradientColors,
+        ),
+      ],
     );
   }
 

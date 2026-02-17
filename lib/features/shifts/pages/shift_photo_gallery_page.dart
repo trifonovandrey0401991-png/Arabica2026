@@ -5,6 +5,7 @@ import '../models/shift_report_model.dart';
 import '../../../core/services/photo_upload_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница галереи фото из отчетов
 class ShiftPhotoGalleryPage extends StatefulWidget {
@@ -22,9 +23,6 @@ class ShiftPhotoGalleryPage extends StatefulWidget {
 }
 
 class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late PageController _pageController;
   late int _currentIndex;
 
@@ -98,7 +96,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
             height: isActive ? 10 : 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isActive ? _gold : Colors.white.withOpacity(0.3),
+              color: isActive ? AppColors.gold : Colors.white.withOpacity(0.3),
             ),
           );
         }),
@@ -112,7 +110,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
 
     if (photos.isEmpty) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         appBar: null,
         body: SafeArea(
           child: Column(
@@ -133,7 +131,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
     }
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       appBar: null,
       body: SafeArea(
         child: Column(
@@ -159,7 +157,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                 fit: BoxFit.contain,
                                 errorWidget: (context, error, stackTrace) {
                                   return Center(
-                                    child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
+                                    child: Icon(Icons.error, size: 64, color: AppColors.gold.withOpacity(0.6)),
                                   );
                                 },
                               )
@@ -172,13 +170,13 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                       fit: BoxFit.contain,
                                       errorWidget: (context, error, stackTrace) {
                                         return Center(
-                                          child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
+                                          child: Icon(Icons.error, size: 64, color: AppColors.gold.withOpacity(0.6)),
                                         );
                                       },
                                     );
                                   }
                                   return Center(
-                                    child: CircularProgressIndicator(color: _gold),
+                                    child: CircularProgressIndicator(color: AppColors.gold),
                                   );
                                 },
                               )
@@ -188,7 +186,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                 fit: BoxFit.contain,
                                 errorWidget: (context, error, stackTrace) {
                                   return Center(
-                                    child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
+                                    child: Icon(Icons.error, size: 64, color: AppColors.gold.withOpacity(0.6)),
                                   );
                                 },
                               )
@@ -206,13 +204,13 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                                           fit: BoxFit.contain,
                                           errorWidget: (context, error, stackTrace) {
                                             return Center(
-                                              child: Icon(Icons.error, size: 64, color: _gold.withOpacity(0.6)),
+                                              child: Icon(Icons.error, size: 64, color: AppColors.gold.withOpacity(0.6)),
                                             );
                                           },
                                         );
                                       }
                                       return Center(
-                                        child: CircularProgressIndicator(color: _gold),
+                                        child: CircularProgressIndicator(color: AppColors.gold),
                                       );
                                     },
                                   ),

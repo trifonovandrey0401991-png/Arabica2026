@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -166,7 +167,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+            colors: [AppColors.darkNavy, AppColors.navy],
           ),
           borderRadius: BorderRadius.circular(24.r),
           border: Border.all(
@@ -425,9 +426,9 @@ class _ClientWheelPageState extends State<ClientWheelPage>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
+              AppColors.darkNavy,
+              AppColors.navy,
+              AppColors.deepBlue,
             ],
           ),
         ),
@@ -908,7 +909,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
             title: 'Как получить прокрутки?',
             description:
                 'Получайте бесплатные напитки по программе лояльности и зарабатывайте прокрутки колеса!',
-            gradient: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+            gradient: [AppColors.indigo, AppColors.purple],
           ),
           SizedBox(height: 12),
           _buildInfoCard(
@@ -916,7 +917,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
             title: 'Призы',
             description:
                 'Выигрывайте бонусные баллы, скидки, бесплатные напитки и фирменный мерч!',
-            gradient: [Color(0xFF10B981), Color(0xFF34D399)],
+            gradient: [AppColors.emeraldGreen, AppColors.emeraldGreenLight],
           ),
         ],
       ),

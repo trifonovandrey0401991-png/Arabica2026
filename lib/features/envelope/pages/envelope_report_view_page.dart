@@ -7,6 +7,7 @@ import '../../../core/utils/logger.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class EnvelopeReportViewPage extends StatefulWidget {
   final EnvelopeReport report;
@@ -26,8 +27,6 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
   late EnvelopeReport _report;
   bool _isLoading = false;
   int _selectedRating = 5;
-
-  static final _primaryColor = Color(0xFF004D40);
 
   @override
   void initState() {
@@ -256,7 +255,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Отчет конверта'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           if (widget.isAdmin && _report.status == 'pending')
             IconButton(
@@ -322,7 +321,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.person, color: _primaryColor),
+                Icon(Icons.person, color: AppColors.primaryGreen),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -584,7 +583,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
 
   Widget _buildTotalCard() {
     return Card(
-      color: _primaryColor.withOpacity(0.1),
+      color: AppColors.primaryGreen.withOpacity(0.1),
       child: Padding(
         padding: EdgeInsets.all(16.w),
         child: Row(
@@ -599,7 +598,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               style: TextStyle(
                 fontSize: 24.sp,
                 fontWeight: FontWeight.bold,
-                color: _primaryColor,
+                color: AppColors.primaryGreen,
               ),
             ),
           ],

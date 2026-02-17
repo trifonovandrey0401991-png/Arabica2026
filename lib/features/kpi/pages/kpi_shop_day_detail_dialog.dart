@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/kpi_models.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -33,7 +34,7 @@ class KPIShopDayDetailDialog extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
+                color: AppColors.primaryGreen,
               ),
             ),
             SizedBox(height: 8),
@@ -65,7 +66,7 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                       dataRowMinHeight: 36,
                       dataRowMaxHeight: 36,
                       headingRowColor: MaterialStateColor.resolveWith(
-                        (states) => Color(0xFF004D40).withOpacity(0.1),
+                        (states) => AppColors.primaryGreen.withOpacity(0.1),
                       ),
                       columns: [
                         DataColumn(

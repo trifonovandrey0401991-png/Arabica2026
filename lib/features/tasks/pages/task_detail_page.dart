@@ -4,6 +4,7 @@ import '../services/task_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница деталей задачи (для просмотра и проверки админом)
 class TaskDetailPage extends StatefulWidget {
@@ -16,11 +17,6 @@ class TaskDetailPage extends StatefulWidget {
 }
 
 class _TaskDetailPageState extends State<TaskDetailPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = false;
   final TextEditingController _commentController = TextEditingController();
 
@@ -38,7 +34,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14.r),
           side: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -110,13 +106,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     final assignment = widget.assignment;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -157,7 +153,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           Text(
                             assignment.status.displayName,
                             style: TextStyle(
-                              color: _gold.withOpacity(0.7),
+                              color: AppColors.gold.withOpacity(0.7),
                               fontSize: 13.sp,
                             ),
                           ),
@@ -171,7 +167,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : SingleChildScrollView(
                         padding: EdgeInsets.all(16.w),
                         child: Column(
@@ -606,7 +602,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8.r),
-                                    borderSide: BorderSide(color: _gold.withOpacity(0.5)),
+                                    borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5)),
                                   ),
                                   filled: true,
                                   fillColor: Colors.white.withOpacity(0.04),
@@ -639,7 +635,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                       icon: Icon(Icons.check_circle),
                                       label: Text('Подтвердить'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _gold,
+                                        backgroundColor: AppColors.gold,
                                         foregroundColor: Colors.white,
                                         padding: EdgeInsets.symmetric(vertical: 12.h),
                                         shape: RoundedRectangleBorder(
@@ -670,7 +666,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: _gold.withOpacity(0.7)),
+        Icon(icon, size: 18, color: AppColors.gold.withOpacity(0.7)),
         SizedBox(width: 8),
         Text(
           '$label: ',
@@ -693,7 +689,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         child: Stack(
           children: [
             InteractiveViewer(

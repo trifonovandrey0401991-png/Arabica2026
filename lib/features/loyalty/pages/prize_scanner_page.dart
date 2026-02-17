@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -27,7 +28,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   String? _employeeName;
 
   // Цвета
-  static final _primaryColor = Color(0xFF1A4D4D);
+  static final _primaryColor = AppColors.emerald;
   static final _successGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
   static final _errorColor = Color(0xFFE53935);
 
@@ -245,7 +246,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF051515),
+      backgroundColor: AppColors.night,
       appBar: AppBar(
         backgroundColor: _primaryColor,
         title: Text('Выдать приз'),
@@ -375,7 +376,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
       child: Container(
         padding: EdgeInsets.all(24.w),
         decoration: BoxDecoration(
-          color: Color(0xFF0D2E2E),
+          color: AppColors.emeraldDark,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
           boxShadow: [
             BoxShadow(
@@ -490,7 +491,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                     icon: Icon(Icons.check_circle),
                     label: Text('Выдать'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF4CAF50),
+                      backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       shape: RoundedRectangleBorder(

@@ -6,6 +6,7 @@ import '../services/recipe_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class RecipeFormPage extends StatefulWidget {
   final Recipe? recipe; // Если передан, то редактирование, иначе создание
@@ -20,8 +21,6 @@ class RecipeFormPage extends StatefulWidget {
 }
 
 class _RecipeFormPageState extends State<RecipeFormPage> {
-  static final _primaryColor = Color(0xFF004D40);
-
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
@@ -117,7 +116,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                   // Заголовок
                   Row(
                     children: [
-                      Icon(Icons.add_photo_alternate_rounded, color: _primaryColor, size: 28),
+                      Icon(Icons.add_photo_alternate_rounded, color: AppColors.primaryGreen, size: 28),
                       SizedBox(width: 12),
                       Text(
                         'Выберите источник фото',
@@ -348,7 +347,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Редактировать рецепт' : 'Новый рецепт'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
       body: Container(
@@ -357,8 +356,8 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _primaryColor,
-              _primaryColor.withOpacity(0.85),
+              AppColors.primaryGreen,
+              AppColors.primaryGreen.withOpacity(0.85),
             ],
           ),
         ),
@@ -540,7 +539,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               height: hasPhoto ? 220 : 160,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.08),
+                color: AppColors.primaryGreen.withOpacity(0.08),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20.r),
                   topRight: Radius.circular(20.r),
@@ -574,7 +573,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           Padding(
             padding: EdgeInsets.all(16.w),
             child: Material(
-              color: _primaryColor.withOpacity(0.1),
+              color: AppColors.primaryGreen.withOpacity(0.1),
               borderRadius: BorderRadius.circular(14.r),
               child: InkWell(
                 onTap: _isSaving ? null : _showImageSourceDialog,
@@ -586,7 +585,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     children: [
                       Icon(
                         hasPhoto ? Icons.edit_rounded : Icons.add_photo_alternate_rounded,
-                        color: _primaryColor,
+                        color: AppColors.primaryGreen,
                         size: 22,
                       ),
                       SizedBox(width: 10),
@@ -595,7 +594,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         style: TextStyle(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.w600,
-                          color: _primaryColor,
+                          color: AppColors.primaryGreen,
                         ),
                       ),
                     ],
@@ -618,14 +617,14 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           Icon(
             Icons.add_a_photo_rounded,
             size: 48,
-            color: _primaryColor.withOpacity(0.3),
+            color: AppColors.primaryGreen.withOpacity(0.3),
           ),
           SizedBox(height: 10),
           Text(
             'Нажмите, чтобы добавить фото',
             style: TextStyle(
               fontSize: 14.sp,
-              color: _primaryColor.withOpacity(0.5),
+              color: AppColors.primaryGreen.withOpacity(0.5),
             ),
           ),
         ],
@@ -675,10 +674,10 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: _primaryColor.withOpacity(0.1),
+            color: AppColors.primaryGreen.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12.r),
           ),
-          child: Icon(icon, color: _primaryColor, size: 22),
+          child: Icon(icon, color: AppColors.primaryGreen, size: 22),
         ),
         SizedBox(width: 14),
         Expanded(
@@ -687,12 +686,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             keyboardType: keyboardType,
             decoration: InputDecoration(
               labelText: isRequired ? '$label *' : label,
-              labelStyle: TextStyle(color: _primaryColor.withOpacity(0.7)),
+              labelStyle: TextStyle(color: AppColors.primaryGreen.withOpacity(0.7)),
               hintText: hint,
               hintStyle: TextStyle(color: Colors.grey[400]),
               suffixText: suffix,
               suffixStyle: TextStyle(
-                color: _primaryColor,
+                color: AppColors.primaryGreen,
                 fontWeight: FontWeight.bold,
                 fontSize: 16.sp,
               ),
@@ -702,7 +701,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: _primaryColor, width: 2),
+                borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
@@ -731,7 +730,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: _primaryColor.withOpacity(0.7)),
+        labelStyle: TextStyle(color: AppColors.primaryGreen.withOpacity(0.7)),
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[400]),
         alignLabelWithHint: true,
@@ -741,7 +740,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(color: _primaryColor, width: 2),
+          borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
@@ -784,7 +783,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     width: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
                     ),
                   ),
                   SizedBox(width: 14),
@@ -793,18 +792,18 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     style: TextStyle(
                       fontSize: 17.sp,
                       fontWeight: FontWeight.bold,
-                      color: _primaryColor,
+                      color: AppColors.primaryGreen,
                     ),
                   ),
                 ] else ...[
-                  Icon(Icons.check_circle_rounded, color: _primaryColor, size: 26),
+                  Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen, size: 26),
                   SizedBox(width: 12),
                   Text(
                     widget.recipe == null ? 'Создать рецепт' : 'Сохранить изменения',
                     style: TextStyle(
                       fontSize: 17.sp,
                       fontWeight: FontWeight.bold,
-                      color: _primaryColor,
+                      color: AppColors.primaryGreen,
                     ),
                   ),
                 ],
@@ -816,4 +815,3 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     );
   }
 }
-

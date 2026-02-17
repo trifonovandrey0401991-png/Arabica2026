@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Виджет прогресса до прокрутки колеса удачи
@@ -81,7 +82,7 @@ class WheelProgressWidget extends StatelessWidget {
                   padding:
                       EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
-                    color: Color(0xFF4CAF50),
+                    color: AppColors.success,
                     borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: Row(
@@ -116,7 +117,7 @@ class WheelProgressWidget extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13.sp,
                       color: spinsAvailable > 0
-                          ? Color(0xFF4CAF50)
+                          ? AppColors.success
                           : Colors.grey[600],
                       fontWeight: spinsAvailable > 0
                           ? FontWeight.bold

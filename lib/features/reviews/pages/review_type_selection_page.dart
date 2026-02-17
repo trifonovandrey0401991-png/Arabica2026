@@ -2,28 +2,24 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
 import 'review_shop_selection_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница выбора типа отзыва (положительный/отрицательный)
 class ReviewTypeSelectionPage extends StatelessWidget {
   const ReviewTypeSelectionPage({super.key});
-
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
 
   @override
   Widget build(BuildContext context) {
     Logger.debug('ReviewTypeSelectionPage.build() вызван');
     try {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -81,7 +77,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
                           title: 'Положительный отзыв',
                           subtitle: 'Нам понравилось!',
                           icon: Icons.thumb_up_rounded,
-                          accentColor: Color(0xFF4CAF50),
+                          accentColor: AppColors.success,
                           reviewType: 'positive',
                         ),
                         SizedBox(height: 16),
@@ -109,7 +105,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(
           title: Text('Ошибка'),
-          backgroundColor: _emerald,
+          backgroundColor: AppColors.emerald,
         ),
         body: Center(
           child: Text('Ошибка: $e'),

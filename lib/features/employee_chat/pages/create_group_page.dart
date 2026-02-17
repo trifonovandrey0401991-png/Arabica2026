@@ -5,6 +5,7 @@ import '../services/employee_chat_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../../employees/services/employee_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница создания группы — dark emerald стиль
 class CreateGroupPage extends StatefulWidget {
@@ -22,11 +23,6 @@ class CreateGroupPage extends StatefulWidget {
 }
 
 class _CreateGroupPageState extends State<CreateGroupPage> {
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-
   final _nameController = TextEditingController();
   final _searchController = TextEditingController();
   File? _selectedImage;
@@ -152,13 +148,13 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -267,7 +263,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         decoration: BoxDecoration(
           color: _selectedParticipants.isEmpty || _isCreating
               ? Colors.grey[700]
-              : _emerald,
+              : AppColors.emerald,
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
@@ -340,9 +336,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
-                color: _emerald.withOpacity(0.4),
+                color: AppColors.emerald.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: _emerald.withOpacity(0.6)),
+                border: Border.all(color: AppColors.emerald.withOpacity(0.6)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -478,14 +474,14 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
             ? Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.4)))
             : null,
         secondary: CircleAvatar(
-          backgroundColor: isEmployee ? _emerald : Colors.green.withOpacity(0.3),
+          backgroundColor: isEmployee ? AppColors.emerald : Colors.green.withOpacity(0.3),
           child: Icon(
             isEmployee ? Icons.badge : Icons.person,
             color: Colors.white.withOpacity(0.8),
             size: 20,
           ),
         ),
-        activeColor: _emerald,
+        activeColor: AppColors.emerald,
         checkColor: Colors.white,
       ),
     );

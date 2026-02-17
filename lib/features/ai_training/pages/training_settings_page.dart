@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/cigarette_training_model.dart';
 import '../services/cigarette_vision_service.dart';
 import '../../../core/constants/api_constants.dart';
@@ -111,7 +112,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text('Настройки обучения'),
-          backgroundColor: Color(0xFF004D40),
+          backgroundColor: AppColors.primaryGreen,
           leading: IconButton(
             icon: Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
@@ -133,7 +134,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.folder_copy, color: Color(0xFF004D40)),
+                Icon(Icons.folder_copy, color: AppColors.primaryGreen),
                 SizedBox(width: 8),
                 Text(
                   'Источник каталога товаров',
@@ -201,13 +202,13 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
-                ? Color(0xFF004D40)
+                ? AppColors.primaryGreen
                 : (isDisabled ? Colors.grey[300]! : Colors.grey[400]!),
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(8.r),
           color: isSelected
-              ? Color(0xFF004D40).withOpacity(0.05)
+              ? AppColors.primaryGreen.withOpacity(0.05)
               : (isDisabled ? Colors.grey[100] : null),
         ),
         child: Row(
@@ -221,7 +222,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                   : (val) {
                       if (val != null) setState(() => _catalogSource = val);
                     },
-              activeColor: Color(0xFF004D40),
+              activeColor: AppColors.primaryGreen,
             ),
 
             // Icon
@@ -285,7 +286,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
             if (isSelected)
               Icon(
                 Icons.check_circle,
-                color: Color(0xFF004D40),
+                color: AppColors.primaryGreen,
               ),
           ],
         ),
@@ -302,7 +303,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.settings, color: Color(0xFF004D40)),
+                Icon(Icons.settings, color: AppColors.primaryGreen),
                 SizedBox(width: 8),
                 Text(
                   'Количество фото для обучения',
@@ -370,7 +371,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                     : Icon(Icons.save),
                 label: Text(_isSaving ? 'Сохранение...' : 'Сохранить настройки'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF004D40),
+                  backgroundColor: AppColors.primaryGreen,
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                 ),
               ),
@@ -462,7 +463,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.photo_library, color: Color(0xFF004D40)),
+                Icon(Icons.photo_library, color: AppColors.primaryGreen),
                 SizedBox(width: 8),
                 Text(
                   'Управление фотографиями',
@@ -871,7 +872,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
             widget.product.productName,
             style: TextStyle(fontSize: 16.sp),
           ),
-          backgroundColor: Color(0xFF004D40),
+          backgroundColor: AppColors.primaryGreen,
           leading: IconButton(
             icon: Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context, _hasChanges),
@@ -972,7 +973,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
   Widget _buildTypeFilterChip(String? type, String label, IconData icon, {Color? badgeColor}) {
     final isSelected = _selectedType == type;
-    final chipColor = badgeColor ?? Color(0xFF004D40);
+    final chipColor = badgeColor ?? AppColors.primaryGreen;
 
     return FilterChip(
       selected: isSelected,

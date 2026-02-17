@@ -15,7 +15,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, fileExists } = require('../utils/file_helpers');
 
 // Directories
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -31,16 +31,6 @@ const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 
 // Import efficiency calculation settings
 const efficiencyCalc = require('../efficiency_calc.js');
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Load JSON file safely

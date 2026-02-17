@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Generic страница настроек баллов
@@ -153,7 +154,7 @@ class _GenericPointsSettingsPageState<T>
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -240,7 +241,7 @@ class _GenericPointsSettingsPageState<T>
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveSettings,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF004D40),
+                        backgroundColor: AppColors.primaryGreen,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.r),
                         ),
@@ -309,7 +310,7 @@ class _GenericPointsSettingsPageState<T>
                 label: isInteger
                     ? value.toInt().toString()
                     : value.toStringAsFixed(1),
-                activeColor: Color(0xFF004D40),
+                activeColor: AppColors.primaryGreen,
                 onChanged: onChanged,
               ),
             ),
@@ -323,7 +324,7 @@ class _GenericPointsSettingsPageState<T>
                 style: TextStyle(
                   fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF004D40),
+                  color: AppColors.primaryGreen,
                 ),
               ),
             ),
@@ -335,7 +336,7 @@ class _GenericPointsSettingsPageState<T>
 
   Widget _buildPreviewCard() {
     return Card(
-      color: Color(0xFFE0F2F1),
+      color: AppColors.teal50,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
         padding: EdgeInsets.all(16.w),
@@ -347,7 +348,7 @@ class _GenericPointsSettingsPageState<T>
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
+                color: AppColors.primaryGreen,
               ),
             ),
             SizedBox(height: 16),

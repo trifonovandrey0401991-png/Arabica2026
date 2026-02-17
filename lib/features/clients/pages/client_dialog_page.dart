@@ -4,6 +4,7 @@ import '../models/client_dialog_model.dart';
 import '../services/client_dialog_service.dart';
 import '../../../shared/models/unified_dialog_message_model.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ClientDialogPage extends StatefulWidget {
@@ -124,7 +125,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
         margin: EdgeInsets.only(bottom: 8.h),
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isFromClient ? Colors.grey[300] : Color(0xFF004D40),
+          color: isFromClient ? Colors.grey[300] : AppColors.primaryGreen,
           borderRadius: BorderRadius.circular(12.r),
         ),
         constraints: BoxConstraints(
@@ -387,7 +388,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_dialog?.shopAddress ?? widget.shopAddress),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),

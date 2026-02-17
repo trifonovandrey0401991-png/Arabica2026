@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -134,7 +135,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
     return Scaffold(
       appBar: AppBar(
         title: Text('Управление акцией'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -193,7 +194,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
                                   style: TextStyle(
                                     fontSize: 24.sp,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF004D40),
+                                    color: AppColors.primaryGreen,
                                   ),
                                 ),
                               ),
@@ -324,7 +325,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
                           : Icon(Icons.save),
                       label: Text(_isSaving ? 'Сохранение...' : 'Сохранить настройки'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF004D40),
+                        backgroundColor: AppColors.primaryGreen,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 16.h),
                       ),

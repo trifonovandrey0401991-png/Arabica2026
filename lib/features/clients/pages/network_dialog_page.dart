@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/network_message_model.dart';
 import '../services/network_message_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница диалога "Сообщение от Всей Сети"
@@ -150,7 +151,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
         ),
         padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
-          color: isFromAdmin ? Colors.grey[200] : Color(0xFF004D40),
+          color: isFromAdmin ? Colors.grey[200] : AppColors.primaryGreen,
           borderRadius: BorderRadius.circular(16.r),
         ),
         child: Column(
@@ -211,7 +212,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
             Text('Сообщение от Всей Сети'),
           ],
         ),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -285,7 +286,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Icon(Icons.send, color: Color(0xFF004D40)),
+                      : Icon(Icons.send, color: AppColors.primaryGreen),
                 ),
               ],
             ),

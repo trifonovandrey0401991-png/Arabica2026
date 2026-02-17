@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../services/kpi_service.dart';
@@ -15,9 +16,6 @@ class KPIShopsListPage extends StatefulWidget {
 }
 
 class _KPIShopsListPageState extends State<KPIShopsListPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<Shop> _shops = [];
   bool _isLoading = true;
   String _searchQuery = '';
@@ -260,11 +258,11 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
           padding: EdgeInsets.all(12.0.w),
           child: TextField(
             style: TextStyle(color: Colors.white),
-            cursorColor: _gold,
+            cursorColor: AppColors.gold,
             decoration: InputDecoration(
               hintText: 'Поиск магазина...',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-              prefixIcon: Icon(Icons.search, color: _gold),
+              prefixIcon: Icon(Icons.search, color: AppColors.gold),
               filled: true,
               fillColor: Colors.white.withOpacity(0.08),
               border: OutlineInputBorder(
@@ -279,7 +277,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
         ),
         _isLoading
             ? Expanded(
-                child: Center(child: CircularProgressIndicator(color: _gold)),
+                child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
               )
             : _filteredShops.isEmpty
                 ? Expanded(
@@ -331,7 +329,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                                         // Иконка магазина
                                         CircleAvatar(
                                           radius: 16,
-                                          backgroundColor: _emerald,
+                                          backgroundColor: AppColors.emerald,
                                           child: Icon(
                                             Icons.store,
                                             color: Colors.white,
@@ -374,7 +372,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                                                           height: 16,
                                                           child: CircularProgressIndicator(
                                                             strokeWidth: 2,
-                                                            valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                                                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                                                           ),
                                                         ),
                                             ],

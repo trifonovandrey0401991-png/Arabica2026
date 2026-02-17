@@ -131,13 +131,3 @@ class ShopSettings {
   }
 }
 
-
-
-
-
-
-
-
-
-
-

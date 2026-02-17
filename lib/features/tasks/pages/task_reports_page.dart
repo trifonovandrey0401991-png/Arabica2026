@@ -7,6 +7,7 @@ import '../../employees/services/user_role_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/models/user_role_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница отчетов по задачам (для админа)
 /// 4 вкладки: Ожидают, Выполнено, Отказано, Не выполнено в срок
@@ -18,11 +19,6 @@ class TaskReportsPage extends StatefulWidget {
 }
 
 class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
   List<TaskAssignment> _allAssignments = [];
   bool _isLoading = true;
@@ -123,13 +119,13 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -201,7 +197,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                 child: TabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  indicatorColor: _gold,
+                  indicatorColor: AppColors.gold,
                   indicatorWeight: 3,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white.withOpacity(0.5),
@@ -249,7 +245,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
               // Body content
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _error != null
                         ? Center(
                             child: Column(
@@ -263,7 +259,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                                 ElevatedButton(
                                   onPressed: _loadAssignments,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _emerald,
+                                    backgroundColor: AppColors.emerald,
                                     foregroundColor: Colors.white,
                                   ),
                                   child: Text('Повторить'),
@@ -331,8 +327,8 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
 
     return RefreshIndicator(
       onRefresh: _loadAssignments,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: assignments.length,

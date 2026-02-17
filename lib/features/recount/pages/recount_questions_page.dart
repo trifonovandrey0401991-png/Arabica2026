@@ -21,6 +21,7 @@ import '../../shops/services/shop_service.dart';
 import '../../ai_training/services/cigarette_vision_service.dart';
 import '../../coffee_machine/widgets/counter_region_selector.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница с вопросами пересчета
 class RecountQuestionsPage extends StatefulWidget {
@@ -40,11 +41,6 @@ class RecountQuestionsPage extends StatefulWidget {
 }
 
 class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
-  // Dark emerald palette (единый стиль приложения)
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
   static final Color _goldLight = Color(0xFFE8C860);
 
   List<RecountQuestion>? _selectedQuestions; // 30 выбранных вопросов
@@ -415,11 +411,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
-            Icon(Icons.smart_toy, color: _gold, size: 28),
+            Icon(Icons.smart_toy, color: AppColors.gold, size: 28),
             SizedBox(width: 8),
             Flexible(child: Text('Результат ИИ', style: TextStyle(color: Colors.white))),
           ],
@@ -514,7 +510,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
@@ -538,7 +534,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             onPressed: () => Navigator.pop(ctx, 'region'),
             icon: Icon(Icons.crop, size: 18),
             label: Text('Обвести товар'),
-            style: ElevatedButton.styleFrom(backgroundColor: _gold),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
           ),
         ],
       ),
@@ -637,11 +633,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
-            Icon(Icons.smart_toy, color: _gold, size: 28),
+            Icon(Icons.smart_toy, color: AppColors.gold, size: 28),
             SizedBox(width: 8),
             Flexible(child: Text('Повторный результат', style: TextStyle(color: Colors.white))),
           ],
@@ -730,7 +726,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: _emeraldDark,
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text('Введите количество', style: TextStyle(color: Colors.white)),
         content: Column(
@@ -755,11 +751,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                 fillColor: Colors.white.withOpacity(0.08),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: _gold.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppColors.gold.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: _gold),
+                  borderSide: BorderSide(color: AppColors.gold),
                 ),
               ),
             ),
@@ -775,7 +771,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               final value = int.tryParse(controller.text.trim());
               Navigator.pop(ctx, value);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: _gold),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
             child: Text('Подтвердить'),
           ),
         ],
@@ -1075,13 +1071,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -1090,7 +1086,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               children: [
                 _buildAppBar(context, 'Пересчет товаров'),
                 Expanded(
-                  child: Center(child: CircularProgressIndicator(color: _gold)),
+                  child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
                 ),
               ],
             ),
@@ -1101,13 +1097,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     if (_selectedQuestions == null || _selectedQuestions!.isEmpty) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -1146,16 +1142,16 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         ? Color(0xFFEF5350)
         : question.grade == 2
             ? Colors.orange
-            : Color(0xFF42A5F5);
+            : AppColors.blue;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.25, 1.0],
           ),
         ),
@@ -1176,7 +1172,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.white.withOpacity(0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(_gold.withOpacity(0.8)),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold.withOpacity(0.8)),
                     minHeight: 4,
                   ),
                 ),
@@ -1196,12 +1192,12 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              _gold.withOpacity(0.12),
-                              _gold.withOpacity(0.04),
+                              AppColors.gold.withOpacity(0.12),
+                              AppColors.gold.withOpacity(0.04),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(18.r),
-                          border: Border.all(color: _gold.withOpacity(0.25)),
+                          border: Border.all(color: AppColors.gold.withOpacity(0.25)),
                         ),
                         child: Padding(
                           padding: EdgeInsets.all(18.w),
@@ -1272,14 +1268,14 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 width: double.infinity,
                                 padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
                                 decoration: BoxDecoration(
-                                  color: _gold.withOpacity(0.1),
+                                  color: AppColors.gold.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(14.r),
-                                  border: Border.all(color: _gold.withOpacity(0.25)),
+                                  border: Border.all(color: AppColors.gold.withOpacity(0.25)),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.inventory_2_rounded, color: _gold, size: 22),
+                                    Icon(Icons.inventory_2_rounded, color: AppColors.gold, size: 22),
                                     SizedBox(width: 10),
                                     Text(
                                       'По программе: ${question.stock} шт',
@@ -1310,13 +1306,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                             width: 60,
                                             height: 60,
                                             decoration: BoxDecoration(
-                                              color: _gold.withOpacity(0.1),
+                                              color: AppColors.gold.withOpacity(0.1),
                                               borderRadius: BorderRadius.circular(10.r),
-                                              border: Border.all(color: _gold.withOpacity(0.2)),
+                                              border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                                             ),
                                             child: Icon(
                                               Icons.inventory_2_outlined,
-                                              color: _gold.withOpacity(0.5),
+                                              color: AppColors.gold.withOpacity(0.5),
                                               size: 28,
                                             ),
                                           ),
@@ -1369,7 +1365,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       label: 'Сходится',
                                       icon: Icons.check_circle_rounded,
                                       isSelected: _selectedAnswer == 'сходится',
-                                      color: Color(0xFF4CAF50),
+                                      color: AppColors.success,
                                       onPressed: _answerSaved ? null : () {
                                         setState(() {
                                           _selectedAnswer = 'сходится';
@@ -1403,13 +1399,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                         Container(
                           padding: EdgeInsets.all(16.w),
                           decoration: BoxDecoration(
-                            color: Color(0xFF4CAF50).withOpacity(0.1),
+                            color: AppColors.success.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(14.r),
-                            border: Border.all(color: Color(0xFF4CAF50).withOpacity(0.25)),
+                            border: Border.all(color: AppColors.success.withOpacity(0.25)),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 28),
+                              Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Text(
@@ -1417,7 +1413,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                   style: TextStyle(
                                     fontSize: 15.sp,
                                     fontWeight: FontWeight.w600,
-                                    color: Color(0xFF4CAF50),
+                                    color: AppColors.success,
                                   ),
                                 ),
                               ),
@@ -1448,11 +1444,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 // Поле "Больше на"
                                 _buildDiscrepancyField(
                                   icon: Icons.add_circle_rounded,
-                                  iconColor: Color(0xFF42A5F5),
+                                  iconColor: AppColors.blue,
                                   label: 'Больше на:',
                                   controller: _moreByController,
                                   enabled: !_answerSaved,
-                                  fillColor: Color(0xFF42A5F5),
+                                  fillColor: AppColors.blue,
                                   onChanged: (value) {
                                     if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
                                       _lessByController.clear();
@@ -1482,9 +1478,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                   Container(
                                     padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
                                     decoration: BoxDecoration(
-                                      color: _gold.withOpacity(0.1),
+                                      color: AppColors.gold.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12.r),
-                                      border: Border.all(color: _gold.withOpacity(0.25)),
+                                      border: Border.all(color: AppColors.gold.withOpacity(0.25)),
                                     ),
                                     child: Builder(
                                       builder: (context) {
@@ -1494,7 +1490,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                         return Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.summarize_rounded, size: 18, color: _gold),
+                                            Icon(Icons.summarize_rounded, size: 18, color: AppColors.gold),
                                             SizedBox(width: 8),
                                             Text(
                                               'По факту: $actualBalance шт',
@@ -1588,7 +1584,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               Container(
                 padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
                 decoration: BoxDecoration(
-                  color: _night.withOpacity(0.9),
+                  color: AppColors.night.withOpacity(0.9),
                   border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
                 ),
                 child: Row(
@@ -1634,10 +1630,10 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
                               ? Colors.orange.withOpacity(0.2)
-                              : _gold.withOpacity(0.2),
+                              : AppColors.gold.withOpacity(0.2),
                           foregroundColor: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
                               ? Colors.orange[300]
-                              : _gold,
+                              : AppColors.gold,
                           disabledBackgroundColor: Colors.white.withOpacity(0.05),
                           disabledForegroundColor: Colors.white.withOpacity(0.3),
                           padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -1646,7 +1642,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                             side: BorderSide(
                               color: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
                                   ? Colors.orange.withOpacity(0.4)
-                                  : _gold.withOpacity(0.4),
+                                  : AppColors.gold.withOpacity(0.4),
                             ),
                           ),
                           elevation: 0,
@@ -1660,7 +1656,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                     width: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                                     ),
                                   ),
                                   if (_isVerifyingAI) ...[
@@ -1799,4 +1795,3 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     );
   }
 }
-

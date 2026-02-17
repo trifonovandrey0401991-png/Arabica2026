@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/job_application_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -11,11 +12,6 @@ class JobApplicationDetailPage extends StatelessWidget {
     super.key,
     required this.application,
   });
-
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   Future<void> _callPhone(BuildContext context) async {
     final phone = application.phone.replaceAll(RegExp(r'[^\d+]'), '');
@@ -52,13 +48,13 @@ class JobApplicationDetailPage extends StatelessWidget {
     final shiftColor = application.preferredShift == 'day' ? Colors.orange : Colors.indigo[300]!;
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -119,9 +115,9 @@ class JobApplicationDetailPage extends StatelessWidget {
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: _gold.withOpacity(0.15),
+                                color: AppColors.gold.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(16.r),
-                                border: Border.all(color: _gold.withOpacity(0.25)),
+                                border: Border.all(color: AppColors.gold.withOpacity(0.25)),
                               ),
                               child: Center(
                                 child: Text(
@@ -131,7 +127,7 @@ class JobApplicationDetailPage extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 24.sp,
                                     fontWeight: FontWeight.bold,
-                                    color: _gold,
+                                    color: AppColors.gold,
                                   ),
                                 ),
                               ),
@@ -253,7 +249,7 @@ class JobApplicationDetailPage extends StatelessWidget {
                             Container(
                               padding: EdgeInsets.all(16.w),
                               decoration: BoxDecoration(
-                                color: _gold.withOpacity(0.08),
+                                color: AppColors.gold.withOpacity(0.08),
                                 borderRadius: BorderRadius.only(
                                   topLeft: Radius.circular(16.r),
                                   topRight: Radius.circular(16.r),
@@ -264,10 +260,10 @@ class JobApplicationDetailPage extends StatelessWidget {
                                   Container(
                                     padding: EdgeInsets.all(8.w),
                                     decoration: BoxDecoration(
-                                      color: _gold.withOpacity(0.15),
+                                      color: AppColors.gold.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(10.r),
                                     ),
-                                    child: Icon(Icons.store, color: _gold, size: 20),
+                                    child: Icon(Icons.store, color: AppColors.gold, size: 20),
                                   ),
                                   SizedBox(width: 12),
                                   Expanded(
@@ -283,14 +279,14 @@ class JobApplicationDetailPage extends StatelessWidget {
                                   Container(
                                     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                     decoration: BoxDecoration(
-                                      color: _gold.withOpacity(0.15),
+                                      color: AppColors.gold.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(10.r),
                                     ),
                                     child: Text(
                                       '${application.shopAddresses.length} магазин(ов)',
                                       style: TextStyle(
                                         fontSize: 12.sp,
-                                        color: _gold,
+                                        color: AppColors.gold,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -357,7 +353,7 @@ class JobApplicationDetailPage extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: _night.withOpacity(0.9),
+                  color: AppColors.night.withOpacity(0.9),
                   border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
                 ),
                 child: SafeArea(

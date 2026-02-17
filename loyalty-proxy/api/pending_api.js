@@ -6,6 +6,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -24,16 +25,6 @@ try {
   efficiencyPenalties = require('./efficiency_penalties_api.js');
 } catch (e) {
   console.log('Note: efficiency_penalties_api not loaded yet');
-}
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // Ensure directories exist (async IIFE)

@@ -144,62 +144,64 @@ async function processReports() {
 
 ---
 
-## ФАЗА 1: СТАБИЛЬНОСТЬ СЕРВЕРА
+## ФАЗА 1: СТАБИЛЬНОСТЬ СЕРВЕРА — ✅ ВЫПОЛНЕНА (17.02.2026)
 
 > Защита от падений при росте данных и нагрузки.
+> **Деплой**: commit 2c600ac, 55/55 API тестов, DataCache 4/4 кэша, sharp v0.33.5
 
-### 1.1 — Безопасная запись файлов в API
+### 1.1 — ✅ Безопасная запись файлов в API (17.02.2026)
 **Проблема**: Некоторые API-файлы используют сырой `fsp.writeFile` (при крэше = потеря файла)
 **Файлы**: geofence_api, order_timeout_api, recurring_tasks_api, report_notifications_api
 **Решение**: Заменить на `writeJsonFile` из `utils/async_fs.js`
 **Важно**: `writeJsonFile` использует file_lock для защиты от конкурентной записи, но НЕ использует temp+rename. Для критичных данных рекомендуется добавить temp+rename в будущем.
 
-### 1.2 — getMoscowTime() → общая утилита
+### 1.2 — ✅ getMoscowTime() → общая утилита (17.02.2026)
 **Проблема**: `getMoscowTime()` скопирована в 7 файлах шедулеров
 **Решение**: Создать `loyalty-proxy/utils/moscow_time.js`, заменить локальные копии
 
-### 1.3 — Пагинация: обязательная отправка page из Flutter
+### 1.3 — ✅ Пагинация: обязательная отправка page из Flutter (17.02.2026)
 **Проблема**: Без `?page=` сервер возвращает ВСЕ записи. Все файлы читаются с диска каждый раз.
 **Решение (поэтапно)**:
 1. Flutter — добавить `?page=1&limit=50` во ВСЕ запросы списков
 2. Сервер — дефолтная пагинация если параметры не переданы
 3. В будущем — индексные файлы
 
-### 1.4 — Расширить data_cache
+### 1.4 — ✅ Расширить data_cache (17.02.2026)
 **Проблема**: Кэш покрывает только employees + shops (2 из 35+ модулей)
 **Решение**: Добавить кэш для points_settings, шаблонов вопросов
 
-### 1.5 — Серверное сжатие фото
+### 1.5 — ✅ Серверное сжатие фото (17.02.2026)
 **Проблема**: 9 multer upload handlers принимают фото без сжатия (5-10 МБ каждое)
 **Решение**: middleware с sharp (resize 1920px, JPEG q80). Для бинарных данных использовать `fsp.writeFile` с обработкой ошибок (writeJsonFile работает только с JSON).
 
-### 1.6 — Очистка chat-media
+### 1.6 — ✅ Очистка chat-media (17.02.2026)
 **Проблема**: chat-media НЕ включена в категории очистки
 **Решение**: Добавить `chat-media` в data_cleanup_api.js
 
-### 1.7 — File locking для чатов (read-modify-write race)
+### 1.7 — ✅ File locking для чатов (read-modify-write race) (17.02.2026)
 **Проблема**: При одновременной отправке сообщений в чат (clients_api.js) — read/modify/write без блокировки. Одно сообщение теряется.
 **Решение**: Обернуть в `withLock(filePath, async () => { read → modify → write })`
 
-### 1.8 — File locking для заказов
+### 1.8 — ✅ File locking для заказов (17.02.2026)
 **Проблема**: Два сотрудника принимают один заказ одновременно (orders.js) — гонка данных
 **Решение**: `withLock` для `updateOrderStatus`
 
-### 1.9 — Graceful shutdown — закрытие WebSocket
+### 1.9 — ✅ Graceful shutdown — закрытие WebSocket (17.02.2026)
 **Проблема**: При pm2 restart WebSocket-подключения НЕ закрываются. Старые клиенты висят на мёртвом процессе.
 **Файл**: `loyalty-proxy/index.js`, gracefulShutdown
 **Решение**: Сохранить ссылку на `wss`, вызвать `wss.close()` в gracefulShutdown
 
-### 1.10 — WebSocket: лимит подключений на один телефон
+### 1.10 — ✅ WebSocket: лимит подключений на один телефон (17.02.2026)
 **Проблема**: Баг в клиенте может открыть сотни подключений с одного номера (reconnect loop)
 **Файл**: `employee_chat_websocket.js`
 **Решение**: Максимум 3 подключения на один телефон. При превышении — закрывать самое старое.
 
 ---
 
-## ФАЗА 2: FLUTTER — СТАБИЛЬНОСТЬ
+## ФАЗА 2: FLUTTER — СТАБИЛЬНОСТЬ — ✅ ВЫПОЛНЕНА (17.02.2026)
 
 > Предотвращение крашей и утечек памяти.
+> **Результат**: 8/8 задач, 55/55 API, 517/517 Flutter тестов, 0 ошибок analyze. +42 новых теста (test/core/).
 
 ### 2.1 — mounted guard для setState
 **Проблема**: ~844 вызовов setState БЕЗ `if (mounted)`. Краш при быстрой навигации.
@@ -301,8 +303,13 @@ async function processReports() {
 | `print()` убран из кода | ✅ Только в logger.dart (7 шт) |
 | Flutter сжатие фото на мобильном | ✅ PhotoUploadService: >500KB → 1280px, q75 |
 | `BaseReportService<T>` для Flutter | ✅ 153 строки, используется модулями отчётов |
-| `data_cache` для employees + shops | ✅ Работает, обновление каждые 5 мин |
-| `file_lock.js` с withLock | ✅ Существует (30s lock, 15s operation timeout) |
+| `data_cache` для employees + shops + points_settings + shift_handover_questions | ✅ 4 кэша, обновление каждые 5 мин |
+| `file_lock.js` с withLock | ✅ Существует (30s lock, 15s operation timeout), применён в чатах + заказах |
+| `image_compress.js` (серверное сжатие фото) | ✅ sharp middleware, 1920px, JPEG q80 |
+| `moscow_time.js` (общая утилита) | ✅ getMoscowTime() из 7 шедулеров вынесена |
+| `pagination.js` поддержка во Flutter | ✅ BaseHttpService отправляет page=1&limit=200 |
+| WebSocket graceful shutdown + лимит 3 conn/phone | ✅ index.js + employee_chat_websocket.js |
+| chat-media в data_cleanup | ✅ Добавлена категория очистки |
 | Rate limiting в index.js | ✅ 500/мин общий, 10/мин auth, 50/мин финансы |
 | Timer/AnimationController/ScrollController dispose | ✅ Все проверены, утечек нет |
 | StreamSubscription cancel в dispose | ✅ Все проверены, утечек нет |
@@ -318,16 +325,16 @@ async function processReports() {
 | Хардкод цветов (файлов) | 128 + 116 + 70 |
 | Шедулеры без overlap protection | ✅ 0 из 9 (все защищены 17.02.2026) |
 | API без проверки req.user | ✅ 0 из 8 (все защищены 17.02.2026) |
-| Публичные эндпоинты с опасными действиями | 2 (logout, register) |
-| isAdmin из body вместо session | 2 файла (shift_transfers, app_version) |
+| Публичные эндпоинты с опасными действиями | ✅ 0 (logout + register защищены 17.02.2026) |
+| isAdmin из body вместо session | ✅ 0 (заменено на req.user.isAdmin, 17.02.2026) |
 | Копии getMoscowTime | ✅ 0 (вынесено в moscow_time.js, 17.02.2026) |
-| API с сырым fsp.writeFile | 4 файла |
-| Read-modify-write без блокировки | 2 (чаты, заказы) |
+| API с сырым fsp.writeFile | ✅ 0 (заменены на writeJsonFile, 17.02.2026) |
+| Read-modify-write без блокировки | ✅ 0 (withLock в чатах + заказах, 17.02.2026) |
 | Файлы >1000 строк | 2 (4002 и 2949) |
 | pickImage без сжатия | 3 страницы |
 | Хардкод URL сервера | 9 мест |
 | TextEditingController без dispose | 3+ диалога |
-| Модули без серверного кэша | ~33 из 35 |
+| Модули без серверного кэша | ~31 из 35 (+ points_settings, shift_handover_questions, 17.02.2026) |
 | Swap не активен | ✅ Активен (2 GB, 17.02.2026) |
 | Мусор на сервере (SDK, кэш) | ✅ Удалено 12.6 GB (17.02.2026) |
 | Свободное место на диске | ✅ 29 GB (40% занято, было 66%) |

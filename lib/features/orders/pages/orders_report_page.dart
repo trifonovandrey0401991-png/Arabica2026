@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/order_service.dart';
 import 'employee_order_detail_page.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
@@ -14,11 +15,6 @@ class OrdersReportPage extends StatefulWidget {
 }
 
 class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
 
   List<Map<String, dynamic>> _pendingOrders = [];
@@ -162,7 +158,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
         statusIcon = Icons.warning_amber;
         break;
       default:
-        statusColor = _gold;
+        statusColor = AppColors.gold;
         statusIcon = Icons.receipt;
     }
 
@@ -363,7 +359,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
 
   Widget _buildOrdersList(List<Map<String, dynamic>> orders, String emptyMessage, {bool showStatusIcon = false}) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: _gold));
+      return Center(child: CircularProgressIndicator(color: AppColors.gold));
     }
 
     if (orders.isEmpty) {
@@ -392,8 +388,8 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
 
     return RefreshIndicator(
       onRefresh: _loadOrders,
-      color: _gold,
-      backgroundColor: _emeraldDark,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
         itemCount: orders.length,
@@ -476,13 +472,13 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -549,7 +545,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                             count: _pendingOrders.length,
                             icon: Icons.hourglass_empty,
                             tabIndex: 0,
-                            accentColor: _gold,
+                            accentColor: AppColors.gold,
                           ),
                         ),
                         SizedBox(width: 10),

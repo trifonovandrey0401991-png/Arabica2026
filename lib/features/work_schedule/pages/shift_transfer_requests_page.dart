@@ -5,6 +5,7 @@ import '../models/work_schedule_model.dart';
 import '../services/shift_transfer_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница заявок на передачу смен (для раздела Отчёты)
 class ShiftTransferRequestsPage extends StatefulWidget {
@@ -15,11 +16,6 @@ class ShiftTransferRequestsPage extends StatefulWidget {
 }
 
 class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<ShiftTransferRequest> _notifications = [];
   bool _isLoading = false;
 
@@ -55,13 +51,13 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -117,7 +113,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
               // Body
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _notifications.isEmpty
                         ? Center(
                             child: Column(
@@ -148,8 +144,8 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                           )
                         : RefreshIndicator(
                             onRefresh: _loadNotifications,
-                            color: _gold,
-                            backgroundColor: _emeraldDark,
+                            color: AppColors.gold,
+                            backgroundColor: AppColors.emeraldDark,
                             child: ListView.builder(
                               padding: EdgeInsets.all(16.w),
                               itemCount: _notifications.length,
@@ -176,7 +172,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
-          color: isUnread ? _gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+          color: isUnread ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
           width: isUnread ? 2 : 1,
         ),
       ),
@@ -206,7 +202,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         height: 10,
                         margin: EdgeInsets.only(right: 8.w),
                         decoration: BoxDecoration(
-                          color: _gold,
+                          color: AppColors.gold,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -216,7 +212,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16.sp,
-                          color: isUnread ? _gold : Colors.white.withOpacity(0.9),
+                          color: isUnread ? AppColors.gold : Colors.white.withOpacity(0.9),
                         ),
                       ),
                     ),
@@ -282,7 +278,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14.sp,
-                                color: _gold,
+                                color: AppColors.gold,
                               ),
                               textAlign: TextAlign.right,
                             )
@@ -312,23 +308,23 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                   Container(
                     padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
-                      color: _gold.withOpacity(0.08),
+                      color: AppColors.gold.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(color: _gold.withOpacity(0.2)),
+                      border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.people, size: 16, color: _gold),
+                            Icon(Icons.people, size: 16, color: AppColors.gold),
                             SizedBox(width: 8),
                             Text(
                               'Готовы принять смену:',
                               style: TextStyle(
                                 fontSize: 13.sp,
                                 fontWeight: FontWeight.w600,
-                                color: _gold,
+                                color: AppColors.gold,
                               ),
                             ),
                           ],

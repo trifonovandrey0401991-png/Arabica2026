@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/shop_attendance_summary.dart';
 import 'attendance_day_details_dialog.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,14 +20,14 @@ class AttendanceMonthPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('${monthSummary.displayName} ${monthSummary.year}'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF004D40), Color(0xFF00695C)],
+            colors: [AppColors.primaryGreen, Color(0xFF00695C)],
           ),
         ),
         child: Column(

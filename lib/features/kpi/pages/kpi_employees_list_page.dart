@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_employee_month_stats.dart';
 import 'kpi_employee_detail_page.dart';
@@ -14,11 +15,6 @@ class KPIEmployeesListPage extends StatefulWidget {
 }
 
 class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   List<String> _employees = [];
   bool _isLoading = true;
   String _searchQuery = '';
@@ -260,13 +256,13 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -326,11 +322,11 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                 padding: EdgeInsets.symmetric(horizontal: 12.0.w),
                 child: TextField(
                   style: TextStyle(color: Colors.white),
-                  cursorColor: _gold,
+                  cursorColor: AppColors.gold,
                   decoration: InputDecoration(
                     hintText: 'Поиск сотрудника...',
                     hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                    prefixIcon: Icon(Icons.search, color: _gold),
+                    prefixIcon: Icon(Icons.search, color: AppColors.gold),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.08),
                     border: OutlineInputBorder(
@@ -347,7 +343,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
               // Content
               _isLoading
                   ? Expanded(
-                      child: Center(child: CircularProgressIndicator(color: _gold)),
+                      child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
                     )
                   : _filteredEmployees.isEmpty
                       ? Expanded(
@@ -400,7 +396,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                                             // Аватар
                                             CircleAvatar(
                                               radius: 16,
-                                              backgroundColor: _emerald,
+                                              backgroundColor: AppColors.emerald,
                                               child: Text(
                                                 employee.isNotEmpty
                                                     ? employee[0].toUpperCase()
@@ -437,7 +433,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                                                       : SizedBox(
                                                           width: 16,
                                                           height: 16,
-                                                          child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                                                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
                                                         ),
                                                 ],
                                               ),

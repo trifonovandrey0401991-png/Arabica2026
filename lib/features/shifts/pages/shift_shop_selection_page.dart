@@ -6,6 +6,7 @@ import '../../efficiency/services/points_settings_service.dart';
 import '../services/shift_report_service.dart';
 import 'shift_questions_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница выбора магазина для пересменки
 class ShiftShopSelectionPage extends StatefulWidget {
@@ -21,11 +22,6 @@ class ShiftShopSelectionPage extends StatefulWidget {
 }
 
 class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   String? _currentShiftType;
   bool _isLoadingSettings = true;
   Set<String> _submittedShops = {};
@@ -136,13 +132,13 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -152,12 +148,12 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
               _buildAppBar(context),
               Expanded(
                 child: _isLoadingSettings
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : FutureBuilder<List<Shop>>(
                         future: ShopService.getShopsForCurrentUser(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
-                            return Center(child: CircularProgressIndicator(color: _gold));
+                            return Center(child: CircularProgressIndicator(color: AppColors.gold));
                           }
 
                           if (snapshot.hasError) {
@@ -176,8 +172,8 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                   ElevatedButton(
                                     onPressed: () => Navigator.pop(context),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: _gold,
-                                      foregroundColor: _night,
+                                      backgroundColor: AppColors.gold,
+                                      foregroundColor: AppColors.night,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12.r),
                                       ),
@@ -232,8 +228,8 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                     ElevatedButton(
                                       onPressed: () => Navigator.pop(context),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _gold,
-                                        foregroundColor: _night,
+                                        backgroundColor: AppColors.gold,
+                                        foregroundColor: AppColors.night,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12.r),
                                         ),
@@ -254,7 +250,7 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.timer_off, size: 64, color: _gold.withOpacity(0.8)),
+                                    Icon(Icons.timer_off, size: 64, color: AppColors.gold.withOpacity(0.8)),
                                     SizedBox(height: 16),
                                     Text(
                                       'Сейчас не время для пересменки',
@@ -275,8 +271,8 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                     ElevatedButton(
                                       onPressed: () => Navigator.pop(context),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _gold,
-                                        foregroundColor: _night,
+                                        backgroundColor: AppColors.gold,
+                                        foregroundColor: AppColors.night,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12.r),
                                         ),

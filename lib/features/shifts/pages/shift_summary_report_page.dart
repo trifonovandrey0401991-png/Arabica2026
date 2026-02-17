@@ -4,6 +4,7 @@ import '../models/shift_question_model.dart';
 import '../services/shift_question_service.dart';
 import '../../shops/models/shop_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница сводного отчёта по пересменке (таблица вопросы x магазины)
 class ShiftSummaryReportPage extends StatefulWidget {
@@ -42,12 +43,6 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
     '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
   ];
-
-  // Dark emerald palette
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -110,13 +105,13 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
     final isMorning = widget.shiftType == 'morning';
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -126,7 +121,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
               _buildAppBar(context, isMorning),
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _buildContent(),
               ),
             ],

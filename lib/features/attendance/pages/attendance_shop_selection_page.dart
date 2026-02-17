@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../services/attendance_service.dart';
@@ -51,7 +52,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.schedule, color: Color(0xFF004D40)),
+            Icon(Icons.schedule, color: AppColors.primaryGreen),
             SizedBox(width: 8),
             Expanded(child: Text('На какую смену вы заступили?')),
           ],
@@ -345,7 +346,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
     return Scaffold(
       appBar: AppBar(
         title: Text('Я на работе'),
-        backgroundColor: Color(0xFF004D40),
+        backgroundColor: AppColors.primaryGreen,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())

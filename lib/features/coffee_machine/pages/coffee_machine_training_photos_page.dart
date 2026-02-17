@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница просмотра и удаления обучающих фото для шаблона кофемашины
@@ -21,11 +22,6 @@ class CoffeeMachineTrainingPhotosPage extends StatefulWidget {
 }
 
 class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingPhotosPage> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   bool _isLoading = true;
   List<Map<String, dynamic>> _samples = [];
 
@@ -122,7 +118,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -138,7 +134,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
                       onPressed: () => Navigator.pop(context),
                       icon: Icon(Icons.arrow_back, color: Colors.white),
                     ),
-                    Icon(Icons.school, color: _gold, size: 22),
+                    Icon(Icons.school, color: AppColors.gold, size: 22),
                     SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -172,16 +168,16 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(10.r),
-                    border: Border.all(color: _gold.withOpacity(0.2)),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.2)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.photo_library, color: _gold, size: 18),
+                      Icon(Icons.photo_library, color: AppColors.gold, size: 18),
                       SizedBox(width: 8),
                       Text(
                         '${_samples.length} / 200 фото',
-                        style: TextStyle(color: _gold, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: AppColors.gold, fontSize: 14.sp, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -191,7 +187,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
               // Content
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _samples.isEmpty
                         ? Center(
                             child: Column(
@@ -307,7 +303,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
                         children: [
                           Text(
                             'Число: $correctNumber',
-                            style: TextStyle(color: _gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
                           ),
                           if (region != null) ...[
                             SizedBox(width: 8),

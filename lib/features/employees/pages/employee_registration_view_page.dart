@@ -13,6 +13,7 @@ import '../../shops/services/shop_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class EmployeeRegistrationViewPage extends StatefulWidget {
   final String employeePhone;
@@ -317,7 +318,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF004D40).withOpacity(0.9),
+                    AppColors.primaryGreen.withOpacity(0.9),
                     Color(0xFF00695C).withOpacity(0.9),
                   ],
                 ),
@@ -587,7 +588,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF004D40).withOpacity(0.1),
+                    AppColors.primaryGreen.withOpacity(0.1),
                     Color(0xFF00695C).withOpacity(0.05),
                   ],
                 ),
@@ -602,7 +603,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                     padding: EdgeInsets.all(10.w),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                        colors: [AppColors.primaryGreen, Color(0xFF00695C)],
                       ),
                       borderRadius: BorderRadius.circular(12.r),
                     ),
@@ -618,7 +619,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                     style: TextStyle(
                       fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF004D40),
+                      color: AppColors.primaryGreen,
                     ),
                   ),
                 ],
@@ -662,13 +663,13 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         Container(
           padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
-            color: Color(0xFF004D40).withOpacity(0.1),
+            color: AppColors.primaryGreen.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8.r),
           ),
           child: Icon(
             icon,
             size: 18,
-            color: Color(0xFF004D40),
+            color: AppColors.primaryGreen,
           ),
         ),
         SizedBox(width: 12),
@@ -734,7 +735,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF004D40).withOpacity(0.1),
+                    AppColors.primaryGreen.withOpacity(0.1),
                     Color(0xFF00695C).withOpacity(0.05),
                   ],
                 ),
@@ -752,7 +753,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                         padding: EdgeInsets.all(10.w),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                            colors: [AppColors.primaryGreen, Color(0xFF00695C)],
                           ),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
@@ -768,7 +769,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF004D40),
+                          color: AppColors.primaryGreen,
                         ),
                       ),
                     ],
@@ -782,13 +783,13 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                         child: Container(
                           padding: EdgeInsets.all(8.w),
                           decoration: BoxDecoration(
-                            color: Color(0xFF004D40).withOpacity(0.1),
+                            color: AppColors.primaryGreen.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10.r),
                           ),
                           child: Icon(
                             Icons.edit,
                             size: 20,
-                            color: Color(0xFF004D40),
+                            color: AppColors.primaryGreen,
                           ),
                         ),
                       ),
@@ -842,20 +843,20 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            Color(0xFF004D40).withOpacity(0.15),
+                                            AppColors.primaryGreen.withOpacity(0.15),
                                             Color(0xFF00695C).withOpacity(0.1),
                                           ],
                                         ),
                                         borderRadius: BorderRadius.circular(20.r),
                                         border: Border.all(
-                                          color: Color(0xFF004D40).withOpacity(0.3),
+                                          color: AppColors.primaryGreen.withOpacity(0.3),
                                         ),
                                       ),
                                       child: Text(
                                         dayNames[day] ?? day,
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: Color(0xFF004D40),
+                                          color: AppColors.primaryGreen,
                                         ),
                                       ),
                                     );
@@ -903,13 +904,13 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                             decoration: BoxDecoration(
                                               gradient: LinearGradient(
                                                 colors: [
-                                                  Color(0xFF004D40).withOpacity(0.08),
+                                                  AppColors.primaryGreen.withOpacity(0.08),
                                                   Color(0xFF00695C).withOpacity(0.04),
                                                 ],
                                               ),
                                               borderRadius: BorderRadius.circular(14.r),
                                               border: Border.all(
-                                                color: Color(0xFF004D40).withOpacity(0.15),
+                                                color: AppColors.primaryGreen.withOpacity(0.15),
                                               ),
                                             ),
                                             child: Row(
@@ -917,13 +918,13 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                                 Container(
                                                   padding: EdgeInsets.all(8.w),
                                                   decoration: BoxDecoration(
-                                                    color: Color(0xFF004D40).withOpacity(0.15),
+                                                    color: AppColors.primaryGreen.withOpacity(0.15),
                                                     borderRadius: BorderRadius.circular(8.r),
                                                   ),
                                                   child: Icon(
                                                     Icons.storefront,
                                                     size: 18,
-                                                    color: Color(0xFF004D40),
+                                                    color: AppColors.primaryGreen,
                                                   ),
                                                 ),
                                                 SizedBox(width: 12),
@@ -1195,7 +1196,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF004D40),
+              AppColors.primaryGreen,
               Color(0xFF00695C),
               Color(0xFF00796B),
               Color(0xFFE0F2F1),
@@ -1372,7 +1373,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                       icon: Icon(Icons.add),
                                       label: Text('Создать регистрацию'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Color(0xFF004D40),
+                                        backgroundColor: AppColors.primaryGreen,
                                         foregroundColor: Colors.white,
                                         padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                                         shape: RoundedRectangleBorder(

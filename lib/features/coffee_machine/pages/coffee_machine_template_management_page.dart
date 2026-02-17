@@ -5,6 +5,7 @@ import 'dart:io';
 import '../models/coffee_machine_template_model.dart';
 import '../services/coffee_machine_template_service.dart';
 import '../../shops/services/shop_service.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Управление шаблонами кофемашин (только для developer)
@@ -19,11 +20,6 @@ class CoffeeMachineTemplateManagementPage extends StatefulWidget {
 
 class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTemplateManagementPage>
     with SingleTickerProviderStateMixin {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
-
   late TabController _tabController;
   final _imagePicker = ImagePicker();
 
@@ -73,7 +69,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -83,8 +79,8 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
               _buildHeader(),
               TabBar(
                 controller: _tabController,
-                indicatorColor: _gold,
-                labelColor: _gold,
+                indicatorColor: AppColors.gold,
+                labelColor: AppColors.gold,
                 unselectedLabelColor: Colors.white54,
                 tabs: [
                   Tab(text: 'Шаблоны'),
@@ -93,7 +89,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
               ),
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: _gold))
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : TabBarView(
                         controller: _tabController,
                         children: [
@@ -107,7 +103,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: _gold,
+        backgroundColor: AppColors.gold,
         onPressed: _addTemplate,
         child: Icon(Icons.add, color: Colors.white),
       ),
@@ -123,7 +119,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
             onPressed: () => Navigator.pop(context),
             icon: Icon(Icons.arrow_back, color: Colors.white),
           ),
-          Icon(Icons.coffee_outlined, color: _gold, size: 22),
+          Icon(Icons.coffee_outlined, color: AppColors.gold, size: 22),
           SizedBox(width: 8),
           Text(
             'Кофемашины',
@@ -179,10 +175,10 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.15),
+              color: AppColors.gold.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Icon(Icons.coffee, color: _gold, size: 24),
+            child: Icon(Icons.coffee, color: AppColors.gold, size: 24),
           ),
           SizedBox(width: 14),
           Expanded(
@@ -200,7 +196,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                 ),
                 Text(
                   OcrPresets.getDisplayName(template.ocrPreset),
-                  style: TextStyle(color: _gold.withOpacity(0.6), fontSize: 11.sp),
+                  style: TextStyle(color: AppColors.gold.withOpacity(0.6), fontSize: 11.sp),
                 ),
                 if (template.counterRegion != null)
                   Text(
@@ -277,7 +273,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
     String selectedPreset = existing?.ocrPreset ?? OcrPresets.standard;
     Uint8List? imageBytes;
 
-    return await showDialog<Map<String, dynamic>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
@@ -368,6 +364,8 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
         },
       ),
     );
+    nameController.dispose();
+    return result;
   }
 
   // ===== Вкладка 2: Привязка к магазинам =====
@@ -399,12 +397,12 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: assignedCount > 0 ? _gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
+                color: assignedCount > 0 ? AppColors.gold.withOpacity(0.15) : Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: Icon(
                 Icons.store,
-                color: assignedCount > 0 ? _gold : Colors.white30,
+                color: assignedCount > 0 ? AppColors.gold : Colors.white30,
                 size: 20,
               ),
             ),
@@ -416,7 +414,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
             subtitle: Text(
               assignedCount > 0 ? 'Машин: $assignedCount' : 'Не настроено',
               style: TextStyle(
-                color: assignedCount > 0 ? _gold : Colors.white38,
+                color: assignedCount > 0 ? AppColors.gold : Colors.white38,
                 fontSize: 11.sp,
               ),
             ),
@@ -449,7 +447,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
                           value: isSelected,
                           title: Text(t.name),
                           subtitle: Text(CoffeeMachineTypes.getDisplayName(t.machineType)),
-                          activeColor: _gold,
+                          activeColor: AppColors.gold,
                           onChanged: (v) {
                             setDialogState(() {
                               if (v == true) {

@@ -1,4 +1,5 @@
 import '../services/recipe_service.dart';
+import '../../../core/constants/api_constants.dart';
 
 class Recipe {
   final String id;
@@ -71,7 +72,7 @@ class Recipe {
         return photoUrl;
       }
       // Если это относительный путь, добавляем базовый URL
-      return 'https://arabica26.ru$photoUrl';
+      return '${ApiConstants.serverUrl}$photoUrl';
     }
     // Для обратной совместимости с photoId
     return photoId;

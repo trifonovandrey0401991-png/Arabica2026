@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/services/media_upload_service.dart';
 import 'app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -23,22 +24,22 @@ class MediaPickerButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.photo_camera, color: Color(0xFF004D40)),
+              leading: Icon(Icons.photo_camera, color: AppColors.primaryGreen),
               title: Text('Сделать фото'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
             ),
             ListTile(
-              leading: Icon(Icons.photo_library, color: Color(0xFF004D40)),
+              leading: Icon(Icons.photo_library, color: AppColors.primaryGreen),
               title: Text('Выбрать фото из галереи'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
             ),
             ListTile(
-              leading: Icon(Icons.videocam, color: Color(0xFF004D40)),
+              leading: Icon(Icons.videocam, color: AppColors.primaryGreen),
               title: Text('Записать видео'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
             ),
             ListTile(
-              leading: Icon(Icons.video_library, color: Color(0xFF004D40)),
+              leading: Icon(Icons.video_library, color: AppColors.primaryGreen),
               title: Text('Выбрать видео из галереи'),
               onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
             ),
@@ -124,7 +125,7 @@ class MediaPickerButton extends StatelessWidget {
               height: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Icon(Icons.attach_file, color: Color(0xFF004D40)),
+          : Icon(Icons.attach_file, color: AppColors.primaryGreen),
       tooltip: 'Прикрепить фото/видео',
     );
   }

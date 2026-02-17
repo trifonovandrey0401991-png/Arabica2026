@@ -5,6 +5,7 @@ import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница отчетов по магазинам
 class RKOShopReportsPage extends StatefulWidget {
@@ -75,8 +76,6 @@ class RKOYearGroup {
 }
 
 class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
-  static final _primaryColor = Color(0xFF004D40);
-
   List<Shop> _shops = [];
   Shop? _selectedShop;
   List<dynamic> _currentMonthRKOs = [];
@@ -325,7 +324,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: _primaryColor.withOpacity(0.1),
+                        color: AppColors.primaryGreen.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Column(
@@ -336,7 +335,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                             style: TextStyle(
                               fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
-                              color: _primaryColor,
+                              color: AppColors.primaryGreen,
                             ),
                           ),
                         ],
@@ -372,7 +371,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
-                        color: _primaryColor,
+                        color: AppColors.primaryGreen,
                         borderRadius: BorderRadius.circular(16.r),
                       ),
                       child: Text(
@@ -388,7 +387,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     // Стрелка
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
-                      color: _primaryColor,
+                      color: AppColors.primaryGreen,
                     ),
                   ],
                 ),
@@ -907,7 +906,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: _primaryColor.withOpacity(0.1),
+                        color: AppColors.primaryGreen.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Center(
@@ -916,7 +915,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                           style: TextStyle(
                             fontSize: 13.sp,
                             fontWeight: FontWeight.bold,
-                            color: _primaryColor,
+                            color: AppColors.primaryGreen,
                           ),
                         ),
                       ),
@@ -942,7 +941,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
                       decoration: BoxDecoration(
-                        color: _primaryColor,
+                        color: AppColors.primaryGreen,
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
@@ -957,7 +956,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                     SizedBox(width: 4),
                     Icon(
                       isExpanded ? Icons.expand_less : Icons.expand_more,
-                      color: _primaryColor,
+                      color: AppColors.primaryGreen,
                       size: 18,
                     ),
                   ],
@@ -1021,7 +1020,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text('Отчет по магазину'),
-          backgroundColor: _primaryColor,
+          backgroundColor: AppColors.primaryGreen,
         ),
         body: _isLoading
             ? Center(child: CircularProgressIndicator())
@@ -1058,7 +1057,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text('История РКО'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
@@ -1086,7 +1085,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: _primaryColor,
+                    color: AppColors.primaryGreen,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(24.r),
                       bottomRight: Radius.circular(24.r),
@@ -1254,8 +1253,6 @@ class RKOShopDetailPage extends StatefulWidget {
 }
 
 class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
-  static final _primaryColor = Color(0xFF004D40);
-
   List<dynamic> _currentMonthRKOs = [];
   List<dynamic> _months = [];
   bool _isLoading = true;
@@ -1454,7 +1451,7 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text('История РКО'),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primaryGreen,
         elevation: 0,
         actions: [
           IconButton(
@@ -1472,7 +1469,7 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: _primaryColor,
+                    color: AppColors.primaryGreen,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(24.r),
                       bottomRight: Radius.circular(24.r),
@@ -1599,8 +1596,8 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                   children: [
                     Container(
                       width: 48, height: 48,
-                      decoration: BoxDecoration(color: _primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12.r)),
-                      child: Center(child: Text('${group.date.day}', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: _primaryColor))),
+                      decoration: BoxDecoration(color: AppColors.primaryGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(12.r)),
+                      child: Center(child: Text('${group.date.day}', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.primaryGreen))),
                     ),
                     SizedBox(width: 12),
                     Expanded(
@@ -1615,11 +1612,11 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                     ),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                      decoration: BoxDecoration(color: _primaryColor, borderRadius: BorderRadius.circular(16.r)),
+                      decoration: BoxDecoration(color: AppColors.primaryGreen, borderRadius: BorderRadius.circular(16.r)),
                       child: Text('${group.count}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp)),
                     ),
                     SizedBox(width: 8),
-                    Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: _primaryColor),
+                    Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: AppColors.primaryGreen),
                   ],
                 ),
               ),
@@ -1775,8 +1772,8 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                   children: [
                     Container(
                       width: 32, height: 32,
-                      decoration: BoxDecoration(color: _primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6.r)),
-                      child: Center(child: Text('${day.date.day}', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: _primaryColor))),
+                      decoration: BoxDecoration(color: AppColors.primaryGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(6.r)),
+                      child: Center(child: Text('${day.date.day}', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.primaryGreen))),
                     ),
                     SizedBox(width: 8),
                     Expanded(child: Text(day.displayTitle, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500))),
@@ -1784,11 +1781,11 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                     SizedBox(width: 6),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
-                      decoration: BoxDecoration(color: _primaryColor, borderRadius: BorderRadius.circular(8.r)),
+                      decoration: BoxDecoration(color: AppColors.primaryGreen, borderRadius: BorderRadius.circular(8.r)),
                       child: Text('${day.count}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.sp)),
                     ),
                     SizedBox(width: 4),
-                    Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: _primaryColor, size: 18),
+                    Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: AppColors.primaryGreen, size: 18),
                   ],
                 ),
               ),

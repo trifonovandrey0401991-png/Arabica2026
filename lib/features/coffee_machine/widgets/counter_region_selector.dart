@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Полноэкранный виджет для выделения области счётчика на фото
@@ -37,9 +38,6 @@ class CounterRegionSelector extends StatefulWidget {
 }
 
 class _CounterRegionSelectorState extends State<CounterRegionSelector> {
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _night = Color(0xFF051515);
-
   ui.Image? _image;
   Size? _imageSize;
 
@@ -88,7 +86,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _night],
+            colors: [AppColors.emerald, AppColors.night],
           ),
         ),
         child: SafeArea(
@@ -223,7 +221,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor:
-                _region != null ? Color(0xFFD4AF37) : Colors.grey,
+                _region != null ? AppColors.gold : Colors.grey,
             padding: EdgeInsets.symmetric(vertical: 14.h),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.r),

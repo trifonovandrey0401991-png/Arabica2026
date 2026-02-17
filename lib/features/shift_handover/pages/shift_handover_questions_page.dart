@@ -16,6 +16,7 @@ import '../../envelope/pages/envelope_form_page.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница с вопросами сдачи смены
 class ShiftHandoverQuestionsPage extends StatefulWidget {
@@ -44,12 +45,6 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
   String? _photoPath;
   String? _selectedYesNo; // 'Да' или 'Нет'
   bool _isSubmitting = false;
-
-  // Единая палитра приложения
-  static final Color _emerald = Color(0xFF1A4D4D);
-  static final Color _emeraldDark = Color(0xFF0D2E2E);
-  static final Color _night = Color(0xFF051515);
-  static final Color _gold = Color(0xFFD4AF37);
 
   /// Нормализовать адрес магазина для сравнения
   String _normalizeShopAddress(String address) {
@@ -197,7 +192,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           source = await showDialog<ImageSource>(
             context: context,
             builder: (context) => Dialog(
-              backgroundColor: _emeraldDark,
+              backgroundColor: AppColors.emeraldDark,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
               child: Padding(
                 padding: EdgeInsets.all(20.w),
@@ -295,7 +290,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         ),
         child: Row(
           children: [
-            Icon(icon, color: _gold, size: 22),
+            Icon(icon, color: AppColors.gold, size: 22),
             SizedBox(width: 14),
             Text(
               label,
@@ -569,7 +564,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             context: context,
             barrierDismissible: false,
             builder: (context) => Dialog(
-              backgroundColor: _emeraldDark,
+              backgroundColor: AppColors.emeraldDark,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
               child: Padding(
                 padding: EdgeInsets.all(24.w),
@@ -579,10 +574,10 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                     Container(
                       padding: EdgeInsets.all(14.w),
                       decoration: BoxDecoration(
-                        color: _gold.withOpacity(0.15),
+                        color: AppColors.gold.withOpacity(0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.mail_rounded, color: _gold, size: 36),
+                      child: Icon(Icons.mail_rounded, color: AppColors.gold, size: 36),
                     ),
                     SizedBox(height: 20),
                     Text(
@@ -636,9 +631,9 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 14.h),
                               decoration: BoxDecoration(
-                                color: _gold.withOpacity(0.2),
+                                color: AppColors.gold.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12.r),
-                                border: Border.all(color: _gold.withOpacity(0.4)),
+                                border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                               ),
                               child: Text(
                                 'Да',
@@ -699,13 +694,13 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -722,7 +717,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                           width: 48,
                           height: 48,
                           child: CircularProgressIndicator(
-                            color: _gold.withOpacity(0.7),
+                            color: AppColors.gold.withOpacity(0.7),
                             strokeWidth: 3,
                           ),
                         ),
@@ -747,13 +742,13 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
 
     if (_questions == null || _questions!.isEmpty) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_emerald, _emeraldDark, _night],
+              colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
               stops: [0.0, 0.3, 1.0],
             ),
           ),
@@ -807,9 +802,9 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                               width: double.infinity,
                               padding: EdgeInsets.symmetric(vertical: 16.h),
                               decoration: BoxDecoration(
-                                color: _gold.withOpacity(0.2),
+                                color: AppColors.gold.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(14.r),
-                                border: Border.all(color: _gold.withOpacity(0.4)),
+                                border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                               ),
                               child: Text(
                                 'Вернуться назад',
@@ -836,7 +831,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
 
     if (_currentQuestionIndex >= _questions!.length) {
       return Scaffold(
-        backgroundColor: _night,
+        backgroundColor: AppColors.night,
         body: Center(
           child: Text(
             'Все вопросы отвечены',
@@ -863,13 +858,13 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     }
 
     return Scaffold(
-      backgroundColor: _night,
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_emerald, _emeraldDark, _night],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
             stops: [0.0, 0.3, 1.0],
           ),
         ),
@@ -947,14 +942,14 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: AppColors.gold.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(color: _gold.withOpacity(0.3)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
               ),
               child: Text(
                 '${_currentQuestionIndex + 1}/${_questions!.length}',
                 style: TextStyle(
-                  color: _gold,
+                  color: AppColors.gold,
                   fontSize: 13.sp,
                   fontWeight: FontWeight.w600,
                 ),
@@ -982,7 +977,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             height: 4,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [_gold.withOpacity(0.8), _gold],
+                colors: [AppColors.gold.withOpacity(0.8), AppColors.gold],
               ),
               borderRadius: BorderRadius.circular(2.r),
             ),
@@ -999,7 +994,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: _gold.withOpacity(0.2)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1009,13 +1004,13 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: _gold.withOpacity(0.12),
+              color: AppColors.gold.withOpacity(0.12),
               borderRadius: BorderRadius.circular(14.r),
-              border: Border.all(color: _gold.withOpacity(0.25)),
+              border: Border.all(color: AppColors.gold.withOpacity(0.25)),
             ),
             child: Icon(
               _getQuestionIcon(question),
-              color: _gold,
+              color: AppColors.gold,
               size: 28,
             ),
           ),
@@ -1058,7 +1053,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         style: TextStyle(
           fontSize: 32.sp,
           fontWeight: FontWeight.bold,
-          color: _gold,
+          color: AppColors.gold,
         ),
         decoration: InputDecoration(
           hintText: '0',
@@ -1077,7 +1072,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 1.5),
+            borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5), width: 1.5),
           ),
           contentPadding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
         ),
@@ -1120,7 +1115,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: _gold.withOpacity(0.5), width: 1.5),
+            borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5), width: 1.5),
           ),
           contentPadding: EdgeInsets.all(20.w),
         ),
@@ -1237,7 +1232,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: _emerald.withOpacity(0.3)),
+              border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
             ),
             child: Column(
               children: [
@@ -1245,20 +1240,20 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
                   decoration: BoxDecoration(
-                    color: _gold.withOpacity(0.12),
+                    color: AppColors.gold.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.photo_library_rounded, color: _gold, size: 16),
+                      Icon(Icons.photo_library_rounded, color: AppColors.gold, size: 16),
                       SizedBox(width: 8),
                       Text(
                         'Образец',
                         style: TextStyle(
                           fontSize: 13.sp,
                           fontWeight: FontWeight.w600,
-                          color: _gold,
+                          color: AppColors.gold,
                         ),
                       ),
                     ],
@@ -1271,7 +1266,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12.r),
-                    color: _emeraldDark.withOpacity(0.5),
+                    color: AppColors.emeraldDark.withOpacity(0.5),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12.r),
@@ -1354,7 +1349,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12.r),
-                    color: _emeraldDark.withOpacity(0.5),
+                    color: AppColors.emeraldDark.withOpacity(0.5),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12.r),
@@ -1397,12 +1392,12 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             padding: EdgeInsets.symmetric(vertical: 16.h),
             decoration: BoxDecoration(
               color: _photoPath == null
-                  ? _gold.withOpacity(0.2)
+                  ? AppColors.gold.withOpacity(0.2)
                   : Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(14.r),
               border: Border.all(
                 color: _photoPath == null
-                    ? _gold.withOpacity(0.4)
+                    ? AppColors.gold.withOpacity(0.4)
                     : Colors.white.withOpacity(0.15),
               ),
             ),
@@ -1411,7 +1406,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
               children: [
                 Icon(
                   _photoPath == null ? Icons.camera_alt_rounded : Icons.refresh_rounded,
-                  color: _photoPath == null ? _gold : Colors.white.withOpacity(0.5),
+                  color: _photoPath == null ? AppColors.gold : Colors.white.withOpacity(0.5),
                   size: 22,
                 ),
                 SizedBox(width: 10),
@@ -1420,7 +1415,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                   style: TextStyle(
                     fontSize: 15.sp,
                     fontWeight: FontWeight.w600,
-                    color: _photoPath == null ? _gold : Colors.white.withOpacity(0.5),
+                    color: _photoPath == null ? AppColors.gold : Colors.white.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -1435,7 +1430,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     return Container(
       padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 16.h),
       decoration: BoxDecoration(
-        color: _emeraldDark.withOpacity(0.7),
+        color: AppColors.emeraldDark.withOpacity(0.7),
         border: Border(
           top: BorderSide(color: Colors.white.withOpacity(0.06)),
         ),
@@ -1505,12 +1500,12 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
               decoration: BoxDecoration(
                 color: (_isSubmitting || !canProceed)
                     ? Colors.white.withOpacity(0.04)
-                    : _gold.withOpacity(0.2),
+                    : AppColors.gold.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(14.r),
                 border: Border.all(
                   color: (_isSubmitting || !canProceed)
                       ? Colors.white.withOpacity(0.06)
-                      : _gold.withOpacity(0.4),
+                      : AppColors.gold.withOpacity(0.4),
                 ),
               ),
               child: _isSubmitting
@@ -1520,7 +1515,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: _gold.withOpacity(0.7),
+                          color: AppColors.gold.withOpacity(0.7),
                         ),
                       ),
                     )
@@ -1533,7 +1528,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                             size: 20,
                             color: (_isSubmitting || !canProceed)
                                 ? Colors.white.withOpacity(0.2)
-                                : _gold,
+                                : AppColors.gold,
                           ),
                           SizedBox(width: 8),
                         ],
@@ -1554,7 +1549,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                             size: 16,
                             color: (_isSubmitting || !canProceed)
                                 ? Colors.white.withOpacity(0.2)
-                                : _gold,
+                                : AppColors.gold,
                           ),
                         ],
                       ],
