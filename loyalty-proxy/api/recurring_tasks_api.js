@@ -3,19 +3,10 @@
  * Файл для размещения на сервере: /root/arabica_app/loyalty-proxy/api/recurring_tasks_api.js
  */
 
-const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
-
-// Async helper for file existence check
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 const { getTaskPointsConfig } = require('./task_points_settings_api');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 
@@ -66,9 +57,6 @@ async function loadJsonFile(filePath, defaultValue = []) {
   return defaultValue;
 }
 
-async function saveJsonFile(filePath, data) {
-  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-}
 
 // ==================== ШАБЛОНЫ ЗАДАЧ ====================
 
@@ -81,7 +69,7 @@ async function loadTemplates() {
 }
 
 async function saveTemplates(templates) {
-  await saveJsonFile(TEMPLATES_FILE, templates);
+  await writeJsonFile(TEMPLATES_FILE, templates);
 }
 
 async function loadSchedulerState() {
@@ -92,7 +80,7 @@ async function loadSchedulerState() {
 }
 
 async function saveSchedulerState(state) {
-  await saveJsonFile(SCHEDULER_STATE_FILE, state);
+  await writeJsonFile(SCHEDULER_STATE_FILE, state);
 }
 
 // ==================== ЭКЗЕМПЛЯРЫ ЗАДАЧ ====================
@@ -104,7 +92,7 @@ async function loadInstances(yearMonth) {
 
 async function saveInstances(yearMonth, instances) {
   const filePath = path.join(RECURRING_INSTANCES_DIR, yearMonth + '.json');
-  await saveJsonFile(filePath, instances);
+  await writeJsonFile(filePath, instances);
 }
 
 // ==================== ГЕНЕРАЦИЯ ЗАДАЧ ====================
@@ -300,7 +288,7 @@ async function checkExpiredTasks() {
     const penaltiesFile = path.join(EFFICIENCY_DIR, yearMonth + '.json');
     let existingPenalties = await loadJsonFile(penaltiesFile, []);
     existingPenalties = existingPenalties.concat(penalties);
-    await saveJsonFile(penaltiesFile, existingPenalties);
+    await writeJsonFile(penaltiesFile, existingPenalties);
 
     console.log('Expired', expiredCount, 'recurring task instances, created', penalties.length, 'penalties');
 
@@ -336,7 +324,7 @@ async function loadRemindersSent() {
 }
 
 async function saveRemindersSent(data) {
-  await saveJsonFile(REMINDERS_SENT_FILE, data);
+  await writeJsonFile(REMINDERS_SENT_FILE, data);
 }
 
 // Получить текущее время в формате HH:MM
@@ -446,8 +434,11 @@ async function sendScheduledReminders() {
 function startScheduler() {
   console.log('Starting recurring tasks scheduler...');
 
-  // Каждые 5 минут
-  setInterval(async () => {
+  let isRunning = false;
+
+  const schedulerTick = async () => {
+    if (isRunning) { console.log('[RecurringTasks] Previous run still active, skipping'); return; }
+    isRunning = true;
     try {
       const today = getToday();
       const state = await loadSchedulerState();
@@ -456,39 +447,28 @@ function startScheduler() {
       if (state.lastGenerationDate !== today) {
         await generateDailyTasks(today);
         state.lastGenerationDate = today;
-        await saveSchedulerState(state);
+        await writeJsonFile(SCHEDULER_STATE_FILE, state);
       }
 
       // Проверка expired каждые 5 минут
       await checkExpiredTasks();
       state.lastExpiredCheck = new Date().toISOString();
-      await saveSchedulerState(state);
+      await writeJsonFile(SCHEDULER_STATE_FILE, state);
 
       // Отправка напоминаний по расписанию
       await sendScheduledReminders();
-
     } catch (e) {
       console.error('Scheduler error:', e);
+    } finally {
+      isRunning = false;
     }
-  }, 5 * 60 * 1000); // 5 минут
+  };
 
-  // Первый запуск сразу
-  setTimeout(async () => {
-    try {
-      const today = getToday();
-      const state = await loadSchedulerState();
+  // Каждые 5 минут
+  setInterval(schedulerTick, 5 * 60 * 1000);
 
-      if (state.lastGenerationDate !== today) {
-        await generateDailyTasks(today);
-        state.lastGenerationDate = today;
-        await saveSchedulerState(state);
-      }
-      await checkExpiredTasks();
-      await sendScheduledReminders();
-    } catch (e) {
-      console.error('Initial scheduler run error:', e);
-    }
-  }, 1000);
+  // Первый запуск через 1 секунду
+  setTimeout(schedulerTick, 1000);
 }
 
 // ==================== SETUP FUNCTION ====================

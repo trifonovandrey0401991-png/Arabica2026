@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
@@ -545,6 +546,9 @@ function setupAttendanceAPI(app, {
           });
         }
 
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(filteredRecords, req.query, 'records'));
+        }
         return res.json({ success: true, records: filteredRecords });
       }
 

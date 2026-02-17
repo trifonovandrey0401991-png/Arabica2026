@@ -25,6 +25,7 @@ const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagi
 const { writeJsonFile } = require('./utils/async_fs');
 const dataCache = require('./utils/data_cache');
 const { maskPhone } = require('./utils/file_helpers');
+const { compressUpload } = require('./utils/image_compress');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 
@@ -627,7 +628,7 @@ app.get('/', async (req, res) => {
 });
 
 // Эндпоинт для загрузки фото
-app.post('/upload-photo', upload.single('file'), (req, res) => {
+app.post('/upload-photo', upload.single('file'), compressUpload, (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Файл не загружен' });
@@ -677,7 +678,7 @@ const uploadEmployeePhoto = multer({
 });
 
 // Эндпоинт для загрузки фото сотрудника
-app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), (req, res) => {
+app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), compressUpload, (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Файл не загружен' });
@@ -748,7 +749,7 @@ setupJobApplicationsAPI(app);
 const server = http.createServer(app);
 
 // Инициализируем WebSocket для чата
-setupChatWebSocket(server);
+const wss = setupChatWebSocket(server);
 
 // SCALABILITY: Async предзагрузка кэша админов + периодическое обновление
 preloadAdminCache().catch(e => console.error('AdminCache preload error:', e.message));
@@ -875,6 +876,13 @@ app.get('/health', async (req, res) => {
 // ============================================
 const gracefulShutdown = (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+
+  // Закрываем WebSocket сервер
+  if (wss) {
+    wss.close(() => {
+      console.log('✅ WebSocket server closed');
+    });
+  }
 
   // Остановить приём новых соединений
   server.close((err) => {

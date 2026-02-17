@@ -31,6 +31,7 @@ const typingStatus = new Map();
 // Интервал очистки неактивных соединений
 const CLEANUP_INTERVAL = 30000; // 30 сек
 const CONNECTION_TIMEOUT = 60000; // 60 сек без пинга = отключение
+const MAX_CONNECTIONS_PER_PHONE = 3; // Максимум соединений от одного телефона
 
 /**
  * Инициализация WebSocket сервера
@@ -89,7 +90,17 @@ function setupChatWebSocket(server) {
     if (!connections.has(normalizedPhone)) {
       connections.set(normalizedPhone, new Set());
     }
-    connections.get(normalizedPhone).add(ws);
+    const phoneSockets = connections.get(normalizedPhone);
+
+    // Лимит соединений на один телефон — закрываем самое старое
+    if (phoneSockets.size >= MAX_CONNECTIONS_PER_PHONE) {
+      const oldest = phoneSockets.values().next().value;
+      console.log(`⚠️ WebSocket: лимит ${MAX_CONNECTIONS_PER_PHONE} соединений для ${normalizedPhone}, закрываем старое`);
+      oldest.close(4004, 'Too many connections');
+      phoneSockets.delete(oldest);
+    }
+
+    phoneSockets.add(ws);
 
     // Обновляем онлайн статус
     onlineStatus.set(normalizedPhone, {

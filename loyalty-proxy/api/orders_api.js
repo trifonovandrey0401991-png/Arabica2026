@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const ordersModule = require('../modules/orders');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -56,6 +57,9 @@ function setupOrdersAPI(app) {
       if (req.query.shopAddress) filters.shopAddress = req.query.shopAddress;
 
       const orders = await ordersModule.getOrders(filters);
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(orders, req.query, 'orders'));
+      }
       res.json({ success: true, orders });
     } catch (err) {
       console.error('❌ Ошибка получения заказов:', err);

@@ -17,7 +17,8 @@ const {
 } = require('./product_questions_notifications');
 
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
-const { maskPhone } = require('../utils/file_helpers');
+const { fileExists, maskPhone } = require('../utils/file_helpers');
+const { compressUpload } = require('../utils/image_compress');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -25,15 +26,6 @@ const PRODUCT_QUESTIONS_DIR = path.join(DATA_DIR, 'product-questions');
 const PRODUCT_QUESTION_DIALOGS_DIR = path.join(DATA_DIR, 'product-question-dialogs');
 const PRODUCT_QUESTION_PHOTOS_DIR = path.join(DATA_DIR, 'product-question-photos');
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Initialize directories on module load
 (async () => {
@@ -1372,7 +1364,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== PRODUCT QUESTION PHOTOS =====
 
   if (uploadProductQuestionPhoto) {
-    app.post('/api/product-questions/upload-photo', uploadProductQuestionPhoto.single('photo'), async (req, res) => {
+    app.post('/api/product-questions/upload-photo', uploadProductQuestionPhoto.single('photo'), compressUpload, async (req, res) => {
       try {
         console.log('POST /api/product-questions/upload-photo');
 

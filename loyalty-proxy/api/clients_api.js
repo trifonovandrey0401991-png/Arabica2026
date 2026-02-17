@@ -10,7 +10,8 @@ const path = require('path');
 const { sendPushNotification, sendPushToPhone } = require('./report_notifications_api');
 const { isAdminPhone } = require('../utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
-const { maskPhone } = require('../utils/file_helpers');
+const { fileExists, maskPhone, sanitizePhone } = require('../utils/file_helpers');
+const { writeJsonFile, withLock } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -19,25 +20,6 @@ const CLIENT_DIALOGS_DIR = path.join(DATA_DIR, 'client-dialogs');
 const CLIENT_MESSAGES_DIR = path.join(DATA_DIR, 'client-messages');
 const CLIENT_MESSAGES_NETWORK_DIR = path.join(DATA_DIR, 'client-messages-network');
 const CLIENT_MESSAGES_MANAGEMENT_DIR = path.join(DATA_DIR, 'client-messages-management');
-
-/**
- * Sanitize phone — нормализация + защита от path traversal
- */
-function sanitizePhone(phone) {
-  if (!phone) return '';
-  // Убираем пробелы и +, затем оставляем только цифры
-  return phone.replace(/[^\d]/g, '');
-}
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Initialize directories on module load
 (async () => {
@@ -126,16 +108,17 @@ function setupClientsAPI(app) {
 
       const filePath = path.join(CLIENTS_DIR, `${phone}.json`);
 
-      let existing = {};
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        existing = JSON.parse(content);
-      }
-
-      const updated = { ...existing, ...client, phone };
-      updated.updatedAt = new Date().toISOString();
-
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      const updated = await withLock(filePath, async () => {
+        let existing = {};
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          existing = JSON.parse(content);
+        }
+        const merged = { ...existing, ...client, phone };
+        merged.updatedAt = new Date().toISOString();
+        await fsp.writeFile(filePath, JSON.stringify(merged, null, 2), 'utf8');
+        return merged;
+      });
       res.json({ success: true, client: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -200,16 +183,16 @@ function setupClientsAPI(app) {
       const sanitizedShop = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ]/g, '_');
       const filePath = path.join(clientDir, `${sanitizedShop}.json`);
 
-      let dialog = { phone, shopAddress, messages: [] };
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        dialog = JSON.parse(content);
-      }
-
-      message.timestamp = message.timestamp || new Date().toISOString();
-      dialog.messages.push(message);
-
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      await withLock(filePath, async () => {
+        let dialog = { phone, shopAddress, messages: [] };
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          dialog = JSON.parse(content);
+        }
+        message.timestamp = message.timestamp || new Date().toISOString();
+        dialog.messages.push(message);
+        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      });
       res.json({ success: true, message });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -264,12 +247,6 @@ function setupClientsAPI(app) {
 
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
 
-      let dialog = { phone, messages: [] };
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        dialog = JSON.parse(content);
-      }
-
       // Создаём полный объект сообщения
       const message = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -284,9 +261,15 @@ function setupClientsAPI(app) {
         isBroadcast: false
       };
 
-      dialog.messages.push(message);
-
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      await withLock(filePath, async () => {
+        let dialog = { phone, messages: [] };
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          dialog = JSON.parse(content);
+        }
+        dialog.messages.push(message);
+        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      });
       console.log(`Сообщение от клиента ${maskPhone(phone)} в общий чат сохранено`);
       res.json({ success: true, message });
     } catch (error) {
@@ -301,10 +284,12 @@ function setupClientsAPI(app) {
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const dialog = JSON.parse(content);
-        dialog.messages.forEach(m => { if (m.from === 'admin') m.readByClient = true; });
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await withLock(filePath, async () => {
+          const content = await fsp.readFile(filePath, 'utf8');
+          const dialog = JSON.parse(content);
+          dialog.messages.forEach(m => { if (m.from === 'admin') m.readByClient = true; });
+          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        });
       }
 
       res.json({ success: true });
@@ -319,10 +304,12 @@ function setupClientsAPI(app) {
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const dialog = JSON.parse(content);
-        dialog.messages.forEach(m => { if (m.from === 'client') m.readByAdmin = true; });
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await withLock(filePath, async () => {
+          const content = await fsp.readFile(filePath, 'utf8');
+          const dialog = JSON.parse(content);
+          dialog.messages.forEach(m => { if (m.from === 'client') m.readByAdmin = true; });
+          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        });
       }
 
       res.json({ success: true });
@@ -379,12 +366,6 @@ function setupClientsAPI(app) {
 
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
-      let dialog = { phone, messages: [] };
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        dialog = JSON.parse(content);
-      }
-
       // Создаём полный объект сообщения
       const message = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -398,9 +379,15 @@ function setupClientsAPI(app) {
         isReadByManager: false
       };
 
-      dialog.messages.push(message);
-
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      await withLock(filePath, async () => {
+        let dialog = { phone, messages: [] };
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          dialog = JSON.parse(content);
+        }
+        dialog.messages.push(message);
+        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      });
       console.log(`Сообщение руководству от клиента ${maskPhone(phone)} сохранено`);
 
       // Отправить push-уведомление админам
@@ -428,20 +415,22 @@ function setupClientsAPI(app) {
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const dialog = JSON.parse(content);
-        dialog.messages.forEach(m => {
-          if (m.senderType === 'manager') {
-            if (!msgType) {
-              m.isReadByClient = true;
-            } else if (msgType === 'broadcast' && m.isBroadcast) {
-              m.isReadByClient = true;
-            } else if (msgType === 'personal' && !m.isBroadcast) {
-              m.isReadByClient = true;
+        await withLock(filePath, async () => {
+          const content = await fsp.readFile(filePath, 'utf8');
+          const dialog = JSON.parse(content);
+          dialog.messages.forEach(m => {
+            if (m.senderType === 'manager') {
+              if (!msgType) {
+                m.isReadByClient = true;
+              } else if (msgType === 'broadcast' && m.isBroadcast) {
+                m.isReadByClient = true;
+              } else if (msgType === 'personal' && !m.isBroadcast) {
+                m.isReadByClient = true;
+              }
             }
-          }
+          });
+          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
         });
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       }
 
       res.json({ success: true });
@@ -456,10 +445,12 @@ function setupClientsAPI(app) {
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const dialog = JSON.parse(content);
-        dialog.messages.forEach(m => { if (m.senderType === 'client') m.isReadByManager = true; });
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await withLock(filePath, async () => {
+          const content = await fsp.readFile(filePath, 'utf8');
+          const dialog = JSON.parse(content);
+          dialog.messages.forEach(m => { if (m.senderType === 'client') m.isReadByManager = true; });
+          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        });
       }
 
       res.json({ success: true });
@@ -482,12 +473,6 @@ function setupClientsAPI(app) {
 
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
-      let dialog = { phone, messages: [] };
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        dialog = JSON.parse(content);
-      }
-
       // Создаём полный объект сообщения от руководства
       const message = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -500,9 +485,15 @@ function setupClientsAPI(app) {
         isReadByManager: true
       };
 
-      dialog.messages.push(message);
-
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      await withLock(filePath, async () => {
+        let dialog = { phone, messages: [] };
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          dialog = JSON.parse(content);
+        }
+        dialog.messages.push(message);
+        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      });
       console.log(`Сообщение от руководства клиенту ${maskPhone(phone)} сохранено (от админа: ${maskPhone(normalizedSenderPhone)})`);
 
       // Отправить push-уведомление клиенту
@@ -565,36 +556,40 @@ function setupClientsAPI(app) {
       const sanitizedShop = (shopAddress || 'default').replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ]/g, '_');
       const filePath = path.join(clientDir, `${sanitizedShop}.json`);
 
-      let dialog = { phone, shopAddress, messages: [] };
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        dialog = JSON.parse(content);
-      }
-
       message.timestamp = new Date().toISOString();
-      dialog.messages.push(message);
 
-      await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      // 1. Сохраняем в legacy-директорию с блокировкой
+      await withLock(filePath, async () => {
+        let dialog = { phone, shopAddress, messages: [] };
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          dialog = JSON.parse(content);
+        }
+        dialog.messages.push(message);
+        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+      });
 
       // 2. Дублируем в management-директорию (клиент видит в "Связь с руководством")
       const mgmtFilePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
-      let mgmtDialog = { phone, messages: [] };
-      if (await fileExists(mgmtFilePath)) {
-        try {
-          mgmtDialog = JSON.parse(await fsp.readFile(mgmtFilePath, 'utf8'));
-        } catch (e) { /* ignore parse errors */ }
-      }
-      mgmtDialog.messages.push({
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: message.text || '',
-        imageUrl: message.imageUrl || null,
-        timestamp: message.timestamp,
-        senderType: 'manager',
-        senderName: 'Руководство',
-        isReadByClient: false,
-        isReadByManager: true
+      await withLock(mgmtFilePath, async () => {
+        let mgmtDialog = { phone, messages: [] };
+        if (await fileExists(mgmtFilePath)) {
+          try {
+            mgmtDialog = JSON.parse(await fsp.readFile(mgmtFilePath, 'utf8'));
+          } catch (e) { /* ignore parse errors */ }
+        }
+        mgmtDialog.messages.push({
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          text: message.text || '',
+          imageUrl: message.imageUrl || null,
+          timestamp: message.timestamp,
+          senderType: 'manager',
+          senderName: 'Руководство',
+          isReadByClient: false,
+          isReadByManager: true
+        });
+        await fsp.writeFile(mgmtFilePath, JSON.stringify(mgmtDialog, null, 2), 'utf8');
       });
-      await fsp.writeFile(mgmtFilePath, JSON.stringify(mgmtDialog, null, 2), 'utf8');
 
       // 3. Отправляем push-уведомление клиенту
       try {
@@ -663,25 +658,27 @@ function setupClientsAPI(app) {
           if (!normalizedPhone) return false;
           const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${normalizedPhone}.json`);
 
-          let dialog = { phone: normalizedPhone, messages: [] };
-          if (await fileExists(filePath)) {
-            const content = await fsp.readFile(filePath, 'utf8');
-            dialog = JSON.parse(content);
-          }
+          await withLock(filePath, async () => {
+            let dialog = { phone: normalizedPhone, messages: [] };
+            if (await fileExists(filePath)) {
+              const content = await fsp.readFile(filePath, 'utf8');
+              dialog = JSON.parse(content);
+            }
 
-          dialog.messages.push({
-            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            text: msgText,
-            imageUrl: messageObj.imageUrl || null,
-            timestamp: new Date().toISOString(),
-            senderType: 'manager',
-            senderName: 'Руководство',
-            isReadByClient: false,
-            isReadByManager: true,
-            isBroadcast: true
+            dialog.messages.push({
+              id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              text: msgText,
+              imageUrl: messageObj.imageUrl || null,
+              timestamp: new Date().toISOString(),
+              senderType: 'manager',
+              senderName: 'Руководство',
+              isReadByClient: false,
+              isReadByManager: true,
+              isBroadcast: true
+            });
+
+            await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
           });
-
-          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
 
           // Push-уведомление каждому клиенту
           try {
@@ -788,14 +785,16 @@ function setupClientsAPI(app) {
         return res.status(404).json({ success: false, error: 'Клиент не найден' });
       }
 
-      const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
-      client.freeDrinksGiven = (client.freeDrinksGiven || 0) + count;
-      client.updatedAt = new Date().toISOString();
+      const result = await withLock(clientFile, async () => {
+        const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
+        client.freeDrinksGiven = (client.freeDrinksGiven || 0) + count;
+        client.updatedAt = new Date().toISOString();
+        await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
+        return { name: client.name, freeDrinksGiven: client.freeDrinksGiven };
+      });
 
-      await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
-
-      console.log(`🍹 Выдан бесплатный напиток клиенту ${client.name || maskPhone(phone)}. Всего: ${client.freeDrinksGiven}`);
-      res.json({ success: true, freeDrinksGiven: client.freeDrinksGiven });
+      console.log(`🍹 Выдан бесплатный напиток клиенту ${result.name || maskPhone(phone)}. Всего: ${result.freeDrinksGiven}`);
+      res.json({ success: true, freeDrinksGiven: result.freeDrinksGiven });
     } catch (error) {
       console.error('Ошибка обновления счётчика напитков:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -824,15 +823,17 @@ function setupClientsAPI(app) {
         return res.status(404).json({ success: false, error: 'Клиент не найден' });
       }
 
-      const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
-      const oldValue = client.freeDrinksGiven || 0;
-      client.freeDrinksGiven = parseInt(freeDrinksGiven);
-      client.updatedAt = new Date().toISOString();
+      const result = await withLock(clientFile, async () => {
+        const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
+        const oldValue = client.freeDrinksGiven || 0;
+        client.freeDrinksGiven = parseInt(freeDrinksGiven);
+        client.updatedAt = new Date().toISOString();
+        await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
+        return { oldValue, freeDrinksGiven: client.freeDrinksGiven };
+      });
 
-      await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
-
-      console.log(`🔄 Синхронизация freeDrinksGiven для ${maskPhone(phone)}: ${oldValue} → ${client.freeDrinksGiven}`);
-      res.json({ success: true, freeDrinksGiven: client.freeDrinksGiven });
+      console.log(`🔄 Синхронизация freeDrinksGiven для ${maskPhone(phone)}: ${result.oldValue} → ${result.freeDrinksGiven}`);
+      res.json({ success: true, freeDrinksGiven: result.freeDrinksGiven });
     } catch (error) {
       console.error('Ошибка синхронизации freeDrinksGiven:', error);
       res.status(500).json({ success: false, error: error.message });

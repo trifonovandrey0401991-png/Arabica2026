@@ -7,7 +7,10 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, sanitizeId } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const { invalidateShiftHandoverQuestions } = require('../utils/data_cache');
+const { compressUpload } = require('../utils/image_compress');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHIFT_HANDOVER_QUESTIONS_DIR = `${DATA_DIR}/shift-handover-questions`;
@@ -73,7 +76,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   app.get('/api/shift-handover-questions/:questionId', async (req, res) => {
     try {
       const { questionId } = req.params;
-      const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const sanitizedId = sanitizeId(questionId);
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
       if (!await fileExists(filePath)) {
@@ -105,7 +108,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
       console.log('POST /api/shift-handover-questions:', JSON.stringify(req.body).substring(0, 200));
 
       const questionId = req.body.id || `shift_handover_question_${Date.now()}`;
-      const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const sanitizedId = sanitizeId(questionId);
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
       const question = {
@@ -120,7 +123,8 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
         updatedAt: new Date().toISOString()
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(filePath, question);
+      invalidateShiftHandoverQuestions();
       console.log('Вопрос сдачи смены создан:', filePath);
 
       res.json({
@@ -140,7 +144,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   app.put('/api/shift-handover-questions/:questionId', async (req, res) => {
     try {
       const { questionId } = req.params;
-      const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const sanitizedId = sanitizeId(questionId);
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
       if (!await fileExists(filePath)) {
@@ -162,7 +166,8 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
       if (req.body.targetRole !== undefined) question.targetRole = req.body.targetRole;
       question.updatedAt = new Date().toISOString();
 
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(filePath, question);
+      invalidateShiftHandoverQuestions();
       console.log('Вопрос сдачи смены обновлен:', filePath);
 
       res.json({
@@ -180,7 +185,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
 
   // Загрузить эталонное фото для вопроса
   if (uploadShiftHandoverPhoto) {
-    app.post('/api/shift-handover-questions/:questionId/reference-photo', uploadShiftHandoverPhoto.single('photo'), async (req, res) => {
+    app.post('/api/shift-handover-questions/:questionId/reference-photo', uploadShiftHandoverPhoto.single('photo'), compressUpload, async (req, res) => {
       try {
         const { questionId } = req.params;
         const { shopAddress } = req.body;
@@ -203,7 +208,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
         console.log('Эталонное фото загружено:', req.file.filename, 'для магазина:', shopAddress);
 
         // Обновляем вопрос, добавляя URL эталонного фото
-        const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const sanitizedId = sanitizeId(questionId);
         const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
         if (await fileExists(filePath)) {
@@ -217,7 +222,8 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
           question.referencePhotos[shopAddress] = photoUrl;
           question.updatedAt = new Date().toISOString();
 
-          await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+          await writeJsonFile(filePath, question);
+          invalidateShiftHandoverQuestions();
           console.log('Эталонное фото добавлено в вопрос:', questionId);
         }
 
@@ -240,7 +246,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   app.delete('/api/shift-handover-questions/:questionId', async (req, res) => {
     try {
       const { questionId } = req.params;
-      const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const sanitizedId = sanitizeId(questionId);
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
       if (!await fileExists(filePath)) {
@@ -251,6 +257,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
       }
 
       await fsp.unlink(filePath);
+      invalidateShiftHandoverQuestions();
       console.log('Вопрос сдачи смены удален:', filePath);
 
       res.json({

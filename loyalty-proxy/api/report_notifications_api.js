@@ -14,7 +14,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
-const { maskPhone } = require('../utils/file_helpers');
+const { fileExists, maskPhone } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 // Директория хранения уведомлений
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -22,16 +23,6 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const NOTIFICATIONS_DIR = `${DATA_DIR}/report-notifications`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Создаём директорию если не существует
 (async () => {
@@ -58,10 +49,6 @@ async function loadJsonFile(filePath, defaultValue = []) {
   return defaultValue;
 }
 
-async function saveJsonFile(filePath, data) {
-  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-}
-
 function generateId() {
   return 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
@@ -75,7 +62,7 @@ async function loadNotifications() {
 // Сохранить все уведомления
 async function saveNotifications(notifications) {
   const filePath = path.join(NOTIFICATIONS_DIR, 'all.json');
-  await saveJsonFile(filePath, notifications);
+  await writeJsonFile(filePath, notifications);
 }
 
 // Получить FCM токены админов

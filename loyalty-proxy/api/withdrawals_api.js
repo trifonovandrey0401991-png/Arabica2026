@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
@@ -290,6 +291,9 @@ function setupWithdrawalsAPI(app) {
       // Сортировать по дате (новые первые)
       withdrawals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(withdrawals, req.query, 'withdrawals'));
+      }
       res.json({ success: true, withdrawals });
     } catch (err) {
       console.error('Ошибка получения выемок:', err);

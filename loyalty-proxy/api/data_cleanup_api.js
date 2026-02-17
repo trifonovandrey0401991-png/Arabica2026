@@ -7,17 +7,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { execSync } = require('child_process');
+const { fileExists } = require('../utils/file_helpers');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 
 // Категории данных, которые можно очищать
@@ -97,6 +88,14 @@ const CLEANUP_CATEGORIES = [
     id: 'recipe-photos',
     name: 'Фото рецептов',
     directory: `${DATA_DIR}/recipe-photos`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'chat-media',
+    name: 'Медиа чатов',
+    directory: `${DATA_DIR}/chat-media`,
     dateField: 'mtime',
     isDirectory: true,
     isPhotos: true
@@ -597,6 +596,7 @@ const RETENTION_DAYS = {
   'orders': 180,          // Заказы — 180 дней
   'reviews': 180,         // Отзывы — 180 дней
   'employee-registrations': 90, // Заявки — 90 дней
+  'chat-media': 90,       // Медиа чатов — 90 дней
 };
 
 // Очистка expired сессий

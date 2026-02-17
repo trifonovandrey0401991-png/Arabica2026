@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { invalidatePointsSettings } = require('../utils/data_cache');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -33,6 +34,12 @@ async function ensureDir() {
   } catch (e) {
     // Directory might already exist
   }
+}
+
+// Сохранить настройки и инвалидировать кэш
+async function saveSettings(filePath, data) {
+  await saveSettings(filePath, data);
+  invalidatePointsSettings();
 }
 
 // Default settings for test
@@ -372,7 +379,7 @@ function setupPointsSettingsAPI(app) {
       settings.maxPoints = parseFloat(maxPoints);
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(TEST_POINTS_FILE, settings);
+      await saveSettings(TEST_POINTS_FILE, settings);
 
       console.log('Test points settings saved:', settings);
 
@@ -495,7 +502,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(ATTENDANCE_POINTS_FILE, settings);
+      await saveSettings(ATTENDANCE_POINTS_FILE, settings);
 
       console.log('Attendance points settings saved:', settings);
 
@@ -596,7 +603,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(SHIFT_POINTS_FILE, settings);
+      await saveSettings(SHIFT_POINTS_FILE, settings);
 
       console.log('Shift points settings saved:', settings);
 
@@ -728,7 +735,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(RECOUNT_POINTS_FILE, settings);
+      await saveSettings(RECOUNT_POINTS_FILE, settings);
 
       console.log('Recount points settings saved:', settings);
 
@@ -855,7 +862,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(RKO_POINTS_FILE, settings);
+      await saveSettings(RKO_POINTS_FILE, settings);
 
       console.log('RKO points settings saved:', settings);
 
@@ -956,7 +963,7 @@ function setupPointsSettingsAPI(app) {
 
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(SHIFT_HANDOVER_POINTS_FILE, settings);
+      await saveSettings(SHIFT_HANDOVER_POINTS_FILE, settings);
 
       console.log('Shift handover points settings saved:', settings);
 
@@ -1067,7 +1074,7 @@ function setupPointsSettingsAPI(app) {
       settings.negativePoints = parseFloat(negativePoints);
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(REVIEWS_POINTS_FILE, settings);
+      await saveSettings(REVIEWS_POINTS_FILE, settings);
 
       console.log('Reviews points settings saved:', settings);
 
@@ -1155,7 +1162,7 @@ function setupPointsSettingsAPI(app) {
       settings.answerTimeoutMinutes = answerTimeoutMinutes !== undefined ? parseInt(answerTimeoutMinutes) : (settings.answerTimeoutMinutes || 30);
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(PRODUCT_SEARCH_POINTS_FILE, settings);
+      await saveSettings(PRODUCT_SEARCH_POINTS_FILE, settings);
 
       console.log('Product search points settings saved:', settings);
 
@@ -1235,7 +1242,7 @@ function setupPointsSettingsAPI(app) {
       settings.rejectedPoints = parseFloat(rejectedPoints);
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(ORDERS_POINTS_FILE, settings);
+      await saveSettings(ORDERS_POINTS_FILE, settings);
 
       console.log('Orders points settings saved:', settings);
 
@@ -1315,7 +1322,7 @@ function setupPointsSettingsAPI(app) {
       settings.notSubmittedPoints = parseFloat(notSubmittedPoints);
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(ENVELOPE_POINTS_FILE, settings);
+      await saveSettings(ENVELOPE_POINTS_FILE, settings);
 
       console.log('Envelope points settings saved:', settings);
 
@@ -1389,7 +1396,7 @@ function setupPointsSettingsAPI(app) {
       if (adminReviewTimeoutHours !== undefined) settings.adminReviewTimeoutHours = parseInt(adminReviewTimeoutHours);
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(COFFEE_MACHINE_POINTS_FILE, settings);
+      await saveSettings(COFFEE_MACHINE_POINTS_FILE, settings);
 
       console.log('Coffee machine points settings saved:', settings);
 
@@ -1439,7 +1446,7 @@ function setupPointsSettingsAPI(app) {
         settings.updatedAt = new Date().toISOString();
 
         // Save migrated settings
-        await writeJsonFile(MANAGER_POINTS_FILE, settings);
+        await saveSettings(MANAGER_POINTS_FILE, settings);
         console.log('Manager points settings migrated to new format');
       }
 
@@ -1520,7 +1527,7 @@ function setupPointsSettingsAPI(app) {
       };
       settings.updatedAt = new Date().toISOString();
 
-      await writeJsonFile(MANAGER_POINTS_FILE, settings);
+      await saveSettings(MANAGER_POINTS_FILE, settings);
 
       console.log('Manager points settings saved:', settings);
 

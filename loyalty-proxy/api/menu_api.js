@@ -7,6 +7,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const MENU_DIR = `${DATA_DIR}/menu`;
@@ -54,6 +55,9 @@ function setupMenuAPI(app) {
         return (a.name || '').localeCompare(b.name || '');
       });
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(items, req.query, 'items'));
+      }
       res.json({ success: true, items });
     } catch (error) {
       console.error('Ошибка получения меню:', error);

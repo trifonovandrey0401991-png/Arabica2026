@@ -24,6 +24,7 @@
     "node-telegram-bot-api": "^0.66.0",
     "uuid": "^9.0.1",
     "ws": "^8.16.0",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "sharp": "^0.33.2"
   }
 }

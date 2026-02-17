@@ -8,6 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sendPushNotification } = require('./report_notifications_api');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -40,20 +41,6 @@ async function loadJsonFile(filePath, defaultValue = null) {
   return defaultValue;
 }
 
-async function saveJsonFile(filePath, data) {
-  try {
-    const dir = path.dirname(filePath);
-    if (!(await fileExists(dir))) {
-      await fsp.mkdir(dir, { recursive: true });
-    }
-    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-    return true;
-  } catch (e) {
-    console.error('Error saving JSON file:', filePath, e.message);
-    return false;
-  }
-}
-
 // Получить настройки заказов
 async function getOrderSettings() {
   const settings = await loadJsonFile(ORDER_SETTINGS_FILE, DEFAULT_ORDER_SETTINGS);
@@ -62,7 +49,8 @@ async function getOrderSettings() {
 
 // Сохранить настройки заказов
 async function saveOrderSettings(settings) {
-  return await saveJsonFile(ORDER_SETTINGS_FILE, settings);
+  await writeJsonFile(ORDER_SETTINGS_FILE, settings);
+  return true;
 }
 
 // Определить тип смены по времени
@@ -190,15 +178,11 @@ async function savePenalties(penalties) {
   const yearMonth = now.toISOString().slice(0, 7);
   const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${yearMonth}.json`);
 
-  if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
-    await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
-  }
-
   let existingPenalties = await loadJsonFile(penaltiesFile, []);
   if (!Array.isArray(existingPenalties)) existingPenalties = [];
 
   existingPenalties = existingPenalties.concat(penalties);
-  await saveJsonFile(penaltiesFile, existingPenalties);
+  await writeJsonFile(penaltiesFile, existingPenalties);
 
   console.log(`Saved ${penalties.length} order penalties`);
 }
@@ -238,7 +222,7 @@ async function checkExpiredOrders() {
       // Меняем статус на unconfirmed
       order.status = 'unconfirmed';
       order.expiredAt = now.toISOString();
-      await saveJsonFile(filePath, order);
+      await writeJsonFile(filePath, order);
 
       // Push-уведомление админам о неподтверждённом заказе
       try {

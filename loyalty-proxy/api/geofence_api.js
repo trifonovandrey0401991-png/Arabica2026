@@ -7,7 +7,8 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { maskPhone } = require('../utils/file_helpers');
+const { fileExists, maskPhone } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 // Директории хранения данных
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -15,16 +16,6 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const GEOFENCE_SETTINGS_FILE = `${DATA_DIR}/geofence-settings.json`;
 const GEOFENCE_NOTIFICATIONS_DIR = `${DATA_DIR}/geofence-notifications`;
 const SHOPS_DIR = `${DATA_DIR}/shops`;
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Создаём директории если не существуют
 (async () => {
@@ -51,10 +42,6 @@ async function loadJsonFile(filePath, defaultValue = null) {
   return defaultValue;
 }
 
-async function saveJsonFile(filePath, data) {
-  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-}
-
 /**
  * Загрузить настройки геозоны
  */
@@ -77,7 +64,7 @@ async function loadGeofenceSettings() {
  * Сохранить настройки геозоны
  */
 async function saveGeofenceSettings(settings) {
-  await saveJsonFile(GEOFENCE_SETTINGS_FILE, settings);
+  await writeJsonFile(GEOFENCE_SETTINGS_FILE, settings);
 }
 
 /**
@@ -194,7 +181,7 @@ async function saveNotificationRecord(phone, shop, distance) {
       distance: Math.round(distance)
     });
 
-    await saveJsonFile(notificationFile, notifications);
+    await writeJsonFile(notificationFile, notifications);
     console.log(`📍 Геозона: записано уведомление для ${maskPhone(phone)} -> ${shop.address}`);
   } catch (e) {
     console.error('Ошибка сохранения записи уведомления:', e);

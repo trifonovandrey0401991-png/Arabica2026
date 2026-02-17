@@ -80,24 +80,39 @@ class BaseHttpService {
 
   // ==================== GET ====================
 
+  /// Лимит по умолчанию для списковых запросов.
+  /// 200 — максимум сервера. Для полноценной пагинации (limit=50 + "загрузить ещё") см. Phase 4.4.
+  static const String _defaultPageLimit = '200';
+
   /// Получить список элементов с сервера.
   ///
   /// [endpoint] - путь API (например, '/api/tasks')
   /// [fromJson] - функция десериализации элемента
   /// [listKey] - ключ массива в ответе (например, 'tasks')
   /// [queryParams] - опциональные query-параметры
+  /// [paginate] - добавлять дефолтную пагинацию (page=1&limit=200). По умолчанию true.
   /// [timeout] - таймаут запроса (по умолчанию 15 сек)
   static Future<List<T>> getList<T>({
     required String endpoint,
     required T Function(Map<String, dynamic>) fromJson,
     required String listKey,
     Map<String, String>? queryParams,
+    bool paginate = true,
     Duration? timeout,
   }) async {
     await _acquireSlot();
     try {
+      // Дефолтная пагинация: page=1, limit=200 (если не передано явно)
+      Map<String, String> mergedParams = {};
+      if (paginate) {
+        mergedParams['page'] = '1';
+        mergedParams['limit'] = _defaultPageLimit;
+      }
+      if (queryParams != null) {
+        mergedParams.addAll(queryParams); // caller overrides defaults
+      }
       final uri = Uri.parse('${ApiConstants.serverUrl}$endpoint')
-          .replace(queryParameters: queryParams);
+          .replace(queryParameters: mergedParams.isNotEmpty ? mergedParams : null);
 
       Logger.debug('📥 GET $endpoint');
 

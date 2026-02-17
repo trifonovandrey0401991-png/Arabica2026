@@ -4,11 +4,13 @@
  * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs').promises;
+const fsp = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
 const { sendPushNotification } = require('../api/report_notifications_api');
+const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile, withLock } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -22,15 +24,6 @@ const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const ORDERS_VIEWED_REJECTED_FILE = `${DATA_DIR}/orders-viewed-rejected.json`;
 const ORDERS_VIEWED_UNCONFIRMED_FILE = `${DATA_DIR}/orders-viewed-unconfirmed.json`;
 
-async function fileExists(filePath) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // =====================================================
 // ФУНКЦИИ ДЛЯ ОТСЛЕЖИВАНИЯ ПРОСМОТРОВ ЗАКАЗОВ
 // =====================================================
@@ -40,7 +33,7 @@ async function getLastViewedAt(type) {
   try {
     const file = type === 'rejected' ? ORDERS_VIEWED_REJECTED_FILE : ORDERS_VIEWED_UNCONFIRMED_FILE;
     if (await fileExists(file)) {
-      const content = await fs.readFile(file, 'utf8');
+      const content = await fsp.readFile(file, 'utf8');
       const data = JSON.parse(content);
       return data.lastViewedAt ? new Date(data.lastViewedAt) : null;
     }
@@ -55,9 +48,7 @@ async function getLastViewedAt(type) {
 async function saveLastViewedAt(type, date) {
   try {
     const file = type === 'rejected' ? ORDERS_VIEWED_REJECTED_FILE : ORDERS_VIEWED_UNCONFIRMED_FILE;
-    await fs.writeFile(file, JSON.stringify({
-      lastViewedAt: date.toISOString()
-    }, null, 2), 'utf8');
+    await writeJsonFile(file, { lastViewedAt: date.toISOString() });
     return true;
   } catch (error) {
     console.error('Error writing lastViewedAt for ' + type + ':', error);
@@ -70,13 +61,13 @@ async function countUnviewedOrders(status, lastViewedAt) {
   let count = 0;
 
   try {
-    const files = await fs.readdir(ORDERS_DIR);
+    const files = await fsp.readdir(ORDERS_DIR);
 
     for (const file of files) {
       if (!file.endsWith('.json') || file === 'order-counter.json') continue;
 
       try {
-        const content = await fs.readFile(path.join(ORDERS_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(ORDERS_DIR, file), 'utf8');
         const order = JSON.parse(content);
 
         if (order.status !== status) continue;
@@ -128,7 +119,7 @@ async function getNextOrderNumber() {
 
   while (attempts < maxAttempts) {
     try {
-      await fs.writeFile(lockFile, '', { flag: 'wx' });
+      await fsp.writeFile(lockFile, '', { flag: 'wx' });
       break;
     } catch {
       await new Promise(r => setTimeout(r, 100));
@@ -141,13 +132,13 @@ async function getNextOrderNumber() {
   }
 
   try {
-    const data = await fs.readFile(COUNTER_FILE, 'utf8');
+    const data = await fsp.readFile(COUNTER_FILE, 'utf8');
     const { counter } = JSON.parse(data);
     const nextCounter = counter + 1;
-    await fs.writeFile(COUNTER_FILE, JSON.stringify({ counter: nextCounter }, null, 2));
+    await fsp.writeFile(COUNTER_FILE, JSON.stringify({ counter: nextCounter }, null, 2));
     return nextCounter;
   } finally {
-    await fs.unlink(lockFile).catch(() => {});
+    await fsp.unlink(lockFile).catch(() => {});
   }
 }
 
@@ -173,7 +164,7 @@ async function createOrder(orderData) {
   };
 
   const orderFile = path.join(ORDERS_DIR, orderId + '.json');
-  await fs.writeFile(orderFile, JSON.stringify(order, null, 2));
+  await writeJsonFile(orderFile, order);
 
   await addOrderToDialog(order);
 
@@ -185,13 +176,13 @@ async function createOrder(orderData) {
 }
 
 async function getOrders(filters = {}) {
-  const files = await fs.readdir(ORDERS_DIR);
+  const files = await fsp.readdir(ORDERS_DIR);
   const orders = [];
 
   for (const file of files) {
     if (file.endsWith('.json') && file !== 'order-counter.json') {
       try {
-        const content = await fs.readFile(path.join(ORDERS_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(ORDERS_DIR, file), 'utf8');
         const order = JSON.parse(content);
 
         if (filters.clientPhone && order.clientPhone !== filters.clientPhone) continue;
@@ -216,18 +207,21 @@ async function updateOrderStatus(orderId, updates) {
     throw new Error('Заказ ' + orderId + ' не найден');
   }
 
-  const content = await fs.readFile(orderFile, 'utf8');
-  const order = JSON.parse(content);
+  const order = await withLock(orderFile, async () => {
+    const content = await fsp.readFile(orderFile, 'utf8');
+    const data = JSON.parse(content);
 
-  Object.assign(order, updates);
-  order.updatedAt = new Date().toISOString();
+    Object.assign(data, updates);
+    data.updatedAt = new Date().toISOString();
 
-  // Добавляем rejectedAt при отказе
-  if (updates.status === 'rejected') {
-    order.rejectedAt = new Date().toISOString();
-  }
+    // Добавляем rejectedAt при отказе
+    if (updates.status === 'rejected') {
+      data.rejectedAt = new Date().toISOString();
+    }
 
-  await fs.writeFile(orderFile, JSON.stringify(order, null, 2));
+    await fsp.writeFile(orderFile, JSON.stringify(data, null, 2));
+    return data;
+  });
 
   if (updates.status === 'accepted') {
     await sendOrderNotification(order, 'accepted');
@@ -270,7 +264,7 @@ async function sendOrderNotification(order, type) {
   }
 
   try {
-    const content = await fs.readFile(tokenFile, 'utf8');
+    const content = await fsp.readFile(tokenFile, 'utf8');
     const { token } = JSON.parse(content);
 
     let title, body;
@@ -311,14 +305,14 @@ async function sendNewOrderNotificationToAdmins(order) {
 
   try {
     // Получаем список всех сотрудников
-    const files = await fs.readdir(EMPLOYEES_DIR);
+    const files = await fsp.readdir(EMPLOYEES_DIR);
     let adminCount = 0;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
       try {
-        const content = await fs.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
         const employee = JSON.parse(content);
 
         // Проверяем, является ли сотрудник админом
@@ -332,7 +326,7 @@ async function sendNewOrderNotificationToAdmins(order) {
         const tokenFile = path.join(FCM_TOKENS_DIR, phone + '.json');
         if (!(await fileExists(tokenFile))) continue;
 
-        const tokenContent = await fs.readFile(tokenFile, 'utf8');
+        const tokenContent = await fsp.readFile(tokenFile, 'utf8');
         const { token } = JSON.parse(tokenContent);
 
         // Формируем уведомление
@@ -373,37 +367,39 @@ async function addOrderToDialog(order) {
   const dialogDir = path.join(DIALOGS_DIR, order.clientPhone);
   const dialogFile = path.join(dialogDir, encodeURIComponent(order.shopAddress) + '.json');
 
-  await fs.mkdir(dialogDir, { recursive: true });
+  await fsp.mkdir(dialogDir, { recursive: true });
 
-  let dialog = { shopAddress: order.shopAddress, messages: [], unreadCount: 0 };
+  await withLock(dialogFile, async () => {
+    let dialog = { shopAddress: order.shopAddress, messages: [], unreadCount: 0 };
 
-  if (await fileExists(dialogFile)) {
-    const content = await fs.readFile(dialogFile, 'utf8');
-    dialog = JSON.parse(content);
-  }
+    if (await fileExists(dialogFile)) {
+      const content = await fsp.readFile(dialogFile, 'utf8');
+      dialog = JSON.parse(content);
+    }
 
-  const message = {
-    id: uuidv4(),
-    type: 'order',
-    timestamp: order.createdAt,
-    senderType: 'client',
-    senderName: order.clientName,
-    shopAddress: order.shopAddress,
-    data: {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      items: order.items,
-      totalPrice: order.totalPrice,
-      comment: order.comment,
-      status: order.status
-    },
-    isRead: false
-  };
+    const message = {
+      id: uuidv4(),
+      type: 'order',
+      timestamp: order.createdAt,
+      senderType: 'client',
+      senderName: order.clientName,
+      shopAddress: order.shopAddress,
+      data: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        items: order.items,
+        totalPrice: order.totalPrice,
+        comment: order.comment,
+        status: order.status
+      },
+      isRead: false
+    };
 
-  dialog.messages.push(message);
-  dialog.lastMessageTime = message.timestamp;
+    dialog.messages.push(message);
+    dialog.lastMessageTime = message.timestamp;
 
-  await fs.writeFile(dialogFile, JSON.stringify(dialog, null, 2));
+    await fsp.writeFile(dialogFile, JSON.stringify(dialog, null, 2));
+  });
   console.log('✅ Заказ #' + order.orderNumber + ' добавлен в диалог с магазином ' + order.shopAddress);
 }
 
@@ -416,9 +412,6 @@ async function addResponseToDialog(order, responseType) {
     return;
   }
 
-  const content = await fs.readFile(dialogFile, 'utf8');
-  const dialog = JSON.parse(content);
-
   let text, employeeName;
   if (responseType === 'accepted') {
     text = 'Ваш заказ ' + order.orderNumber + ' принят в работу';
@@ -428,28 +421,33 @@ async function addResponseToDialog(order, responseType) {
     employeeName = order.rejectedBy || 'Сотрудник';
   }
 
-  const message = {
-    id: uuidv4(),
-    type: 'employee_response',
-    timestamp: new Date().toISOString(),
-    senderType: 'employee',
-    senderName: employeeName,
-    shopAddress: order.shopAddress,
-    data: {
-      text,
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      responseType: responseType === 'accepted' ? 'order_accepted' : 'order_rejected',
-      ...(responseType === 'rejected' && { rejectionReason: order.rejectionReason })
-    },
-    isRead: false
-  };
+  await withLock(dialogFile, async () => {
+    const content = await fsp.readFile(dialogFile, 'utf8');
+    const dialog = JSON.parse(content);
 
-  dialog.messages.push(message);
-  dialog.lastMessageTime = message.timestamp;
-  dialog.unreadCount += 1;
+    const message = {
+      id: uuidv4(),
+      type: 'employee_response',
+      timestamp: new Date().toISOString(),
+      senderType: 'employee',
+      senderName: employeeName,
+      shopAddress: order.shopAddress,
+      data: {
+        text,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        responseType: responseType === 'accepted' ? 'order_accepted' : 'order_rejected',
+        ...(responseType === 'rejected' && { rejectionReason: order.rejectionReason })
+      },
+      isRead: false
+    };
 
-  await fs.writeFile(dialogFile, JSON.stringify(dialog, null, 2));
+    dialog.messages.push(message);
+    dialog.lastMessageTime = message.timestamp;
+    dialog.unreadCount += 1;
+
+    await fsp.writeFile(dialogFile, JSON.stringify(dialog, null, 2));
+  });
   console.log('✅ Ответ сотрудника добавлен в диалог (заказ #' + order.orderNumber + ')');
 }
 

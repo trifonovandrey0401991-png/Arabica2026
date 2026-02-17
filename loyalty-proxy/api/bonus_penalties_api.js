@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const BONUS_PENALTIES_DIR = `${DATA_DIR}/bonus-penalties`;
@@ -69,6 +70,11 @@ function setupBonusPenaltiesAPI(app) {
         }
       });
 
+      if (isPaginationRequested(req.query)) {
+        const paginated = createPaginatedResponse(records, req.query, 'records');
+        paginated.total = total;
+        return res.json(paginated);
+      }
       res.json({ success: true, records, total });
     } catch (error) {
       console.error('❌ Ошибка получения премий/штрафов:', error);
