@@ -11,14 +11,65 @@ const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
+const db = require('../utils/db');
+const { getMoscowDateString } = require('../utils/moscow_time');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const USE_DB = process.env.USE_DB_ATTENDANCE === 'true';
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
 const SHOPS_DIR = `${DATA_DIR}/shops`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
 // Кэш отправленных GPS-уведомлений (phone_date -> { shopAddress, notifiedAt })
 const gpsNotificationCache = new Map();
+
+// ============================================
+// DB conversion helpers
+// ============================================
+
+function camelToDbAttendance(r) {
+  return {
+    id: r.id,
+    employee_name: r.employeeName || null,
+    employee_phone: r.employeePhone || null,
+    shop_address: r.shopAddress || null,
+    shop_name: r.shopName || null,
+    shift_type: r.shiftType || null,
+    status: r.status || 'confirmed',
+    timestamp: r.timestamp || null,
+    latitude: r.latitude != null ? r.latitude : null,
+    longitude: r.longitude != null ? r.longitude : null,
+    distance: r.distance != null ? r.distance : null,
+    is_on_time: r.isOnTime != null ? r.isOnTime : null,
+    late_minutes: r.lateMinutes != null ? r.lateMinutes : null,
+    marked_at: r.markedAt || r.confirmedAt || null,
+    deadline: r.deadline || null,
+    failed_at: r.failedAt || null,
+    created_at: r.createdAt || new Date().toISOString()
+  };
+}
+
+function dbAttendanceToCamel(row) {
+  return {
+    id: row.id,
+    employeeName: row.employee_name,
+    employeePhone: row.employee_phone,
+    shopAddress: row.shop_address,
+    shopName: row.shop_name,
+    shiftType: row.shift_type,
+    status: row.status,
+    timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : null,
+    latitude: row.latitude != null ? parseFloat(row.latitude) : null,
+    longitude: row.longitude != null ? parseFloat(row.longitude) : null,
+    distance: row.distance != null ? parseFloat(row.distance) : null,
+    isOnTime: row.is_on_time,
+    lateMinutes: row.late_minutes,
+    markedAt: row.marked_at ? new Date(row.marked_at).toISOString() : null,
+    deadline: row.deadline ? new Date(row.deadline).toISOString() : null,
+    failedAt: row.failed_at ? new Date(row.failed_at).toISOString() : null,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+  };
+}
 
 // ============================================
 // Вспомогательные функции
@@ -137,7 +188,9 @@ async function calculateLateMinutes(timestamp, shiftType, shopSettings) {
   if (!shopSettings || !shiftType) return 0;
 
   const time = new Date(timestamp);
-  const currentMinutes = time.getHours() * 60 + time.getMinutes();
+  // UTC+3 (Moscow timezone) — match checkShiftTime behavior
+  const moscowTime = new Date(time.getTime() + 3 * 60 * 60 * 1000);
+  const currentMinutes = moscowTime.getUTCHours() * 60 + moscowTime.getUTCMinutes();
 
   let shiftStart = null;
   if (shiftType === 'morning' && shopSettings.morningShiftStart) {
@@ -336,7 +389,15 @@ function setupAttendanceAPI(app, {
         createdAt: new Date().toISOString(),
       };
 
-      await fsp.writeFile(recordFile, JSON.stringify(recordData, null, 2), 'utf8');
+      await writeJsonFile(recordFile, recordData);
+      // DB dual-write
+      if (USE_DB) {
+        try {
+          await db.upsert('attendance', camelToDbAttendance({ ...recordData, id: sanitizedId }));
+        } catch (dbErr) {
+          console.error('DB attendance insert error:', dbErr.message);
+        }
+      }
       console.log('Отметка сохранена:', recordFile);
 
       // Удаляем pending отчёт после успешной отметки
@@ -423,7 +484,15 @@ function setupAttendanceAPI(app, {
       record.lateMinutes = lateMinutes;
       record.confirmedAt = new Date().toISOString();
 
-      await fsp.writeFile(recordFile, JSON.stringify(record, null, 2), 'utf8');
+      await writeJsonFile(recordFile, record);
+      // DB dual-write
+      if (USE_DB) {
+        try {
+          await db.upsert('attendance', camelToDbAttendance({ ...record, id: sanitizedId }));
+        } catch (dbErr) {
+          console.error('DB attendance update error:', dbErr.message);
+        }
+      }
 
       // Если опоздал - создаём штраф
       let penaltyCreated = false;
@@ -470,12 +539,25 @@ function setupAttendanceAPI(app, {
         return res.json({ success: true, hasAttendance: false });
       }
 
+      const todayStr = getMoscowDateString();
+
+      // DB path
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            `SELECT id FROM attendance WHERE employee_name = $1 AND timestamp::date = $2::date LIMIT 1`,
+            [employeeName, todayStr]
+          );
+          return res.json({ success: true, hasAttendance: result.rows.length > 0 });
+        } catch (dbErr) {
+          console.error('DB attendance check error:', dbErr.message);
+        }
+      }
+
+      // File path
       if (!await fileExists(ATTENDANCE_DIR)) {
         return res.json({ success: true, hasAttendance: false });
       }
-
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
       const files = (await fsp.readdir(ATTENDANCE_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
@@ -509,6 +591,41 @@ function setupAttendanceAPI(app, {
     try {
       console.log('GET /api/attendance:', req.query);
 
+      // DB path
+      if (USE_DB) {
+        try {
+          const conditions = [];
+          const params = [];
+          let paramIdx = 1;
+
+          if (req.query.employeeName) {
+            conditions.push(`employee_name ILIKE $${paramIdx++}`);
+            params.push(`%${req.query.employeeName}%`);
+          }
+          if (req.query.shopAddress) {
+            conditions.push(`shop_address ILIKE $${paramIdx++}`);
+            params.push(`%${req.query.shopAddress}%`);
+          }
+          if (req.query.date) {
+            conditions.push(`timestamp::date = $${paramIdx++}::date`);
+            params.push(req.query.date);
+          }
+
+          const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+          const sql = `SELECT * FROM attendance ${where} ORDER BY COALESCE(timestamp, created_at) DESC`;
+          const result = await db.query(sql, params);
+          const records = result.rows.map(dbAttendanceToCamel);
+
+          if (isPaginationRequested(req.query)) {
+            return res.json(createPaginatedResponse(records, req.query, 'records'));
+          }
+          return res.json({ success: true, records });
+        } catch (dbErr) {
+          console.error('DB attendance list error:', dbErr.message);
+        }
+      }
+
+      // File path
       const records = [];
 
       if (await fileExists(ATTENDANCE_DIR)) {
@@ -804,4 +921,4 @@ function setupAttendanceAPI(app, {
   console.log('✅ Attendance API initialized');
 }
 
-module.exports = { setupAttendanceAPI, loadShopSettings, checkShiftTime, calculateLateMinutes, createLatePenalty, createOnTimeBonus };
+module.exports = { setupAttendanceAPI, loadShopSettings, checkShiftTime, calculateLateMinutes, createLatePenalty, createOnTimeBonus, camelToDbAttendance, dbAttendanceToCamel };
