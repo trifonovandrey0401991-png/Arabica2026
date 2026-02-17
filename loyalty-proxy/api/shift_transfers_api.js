@@ -7,7 +7,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { isAdminPhone } = require('../utils/admin_cache');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -24,16 +25,6 @@ const {
   notifyOthersDeclined,
 } = require('./shift_transfers_notifications');
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // Helper functions
 async function loadShiftTransfers() {
   try {
@@ -49,7 +40,7 @@ async function loadShiftTransfers() {
 
 async function saveShiftTransfers(requests) {
   const data = { requests, updatedAt: new Date().toISOString() };
-  await fsp.writeFile(SHIFT_TRANSFERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  await writeJsonFile(SHIFT_TRANSFERS_FILE, data);
 }
 
 // Cleanup expired transfers (older than 30 days with pending status)
@@ -120,7 +111,7 @@ async function updateWorkSchedule(transfer, newEmployeeId, newEmployeeName) {
     scheduleData.entries = entries;
     scheduleData.updatedAt = new Date().toISOString();
 
-    await fsp.writeFile(scheduleFile, JSON.stringify(scheduleData, null, 2), 'utf8');
+    await writeJsonFile(scheduleFile, scheduleData);
     console.log(`[ShiftTransfer] Schedule updated: ${transfer.fromEmployeeName} → ${newEmployeeName}`);
     return true;
   } catch (e) {

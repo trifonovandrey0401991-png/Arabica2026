@@ -727,11 +727,11 @@ app.post('/api/fcm-tokens', async (req, res) => {
     }
 
     const tokenFile = path.join(tokenDir, `${normalizedPhone}.json`);
-    await fsp.writeFile(tokenFile, JSON.stringify({
+    await writeJsonFile(tokenFile, {
       phone: normalizedPhone,
       token,
       updatedAt: new Date().toISOString()
-    }, null, 2), 'utf8');
+    });
 
     console.log(`✅ FCM токен сохранен для ${normalizedPhone}`);
     res.json({ success: true });
