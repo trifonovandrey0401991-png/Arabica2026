@@ -50,8 +50,8 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     try {
       final results = await Future.wait([
         CoffeeMachineReportService.getReportsForCurrentUser(),
-        CoffeeMachineReportService.getPendingReports(),
-        CoffeeMachineReportService.getFailedReports(),
+        CoffeeMachineReportService.getPendingReportsForCurrentUser(),
+        CoffeeMachineReportService.getFailedReportsForCurrentUser(),
       ]);
 
       setState(() {

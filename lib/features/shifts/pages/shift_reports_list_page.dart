@@ -146,7 +146,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       }(),
       // 4. Просроченные отчёты
       () async {
-        try { expiredReports = await ShiftReportService.getExpiredReports(); }
+        try { expiredReports = await ShiftReportService.getExpiredReportsForCurrentUser(); }
         catch (e) { Logger.error('Ошибка загрузки просроченных отчётов', e); }
       }(),
       // 5. Локальные отчёты
@@ -156,7 +156,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       }(),
       // 6. Pending отчёты (ожидающие)
       () async {
-        try { pendingReports = await ShiftReportService.getPendingReports(); }
+        try { pendingReports = await ShiftReportService.getPendingReportsForCurrentUser(); }
         catch (e) { Logger.error('Ошибка загрузки pending отчётов', e); }
       }(),
     ]);

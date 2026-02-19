@@ -2,6 +2,7 @@ import '../models/envelope_report_model.dart';
 import '../models/pending_envelope_report_model.dart';
 import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import 'package:http/http.dart' as http;
@@ -147,6 +148,15 @@ class EnvelopeReportService {
     }
   }
 
+  /// Получить pending отчеты с фильтрацией по мультитенантности
+  static Future<List<PendingEnvelopeReport>> getPendingReportsForCurrentUser() async {
+    final reports = await getPendingReports();
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (r) => r.shopAddress,
+    );
+  }
+
   /// Получить failed отчеты (не сданные)
   static Future<List<PendingEnvelopeReport>> getFailedReports() async {
     Logger.debug('Загрузка failed отчетов...');
@@ -165,5 +175,14 @@ class EnvelopeReportService {
       Logger.error('Ошибка загрузки failed отчетов', e);
       return [];
     }
+  }
+
+  /// Получить failed отчеты с фильтрацией по мультитенантности
+  static Future<List<PendingEnvelopeReport>> getFailedReportsForCurrentUser() async {
+    final reports = await getFailedReports();
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (r) => r.shopAddress,
+    );
   }
 }

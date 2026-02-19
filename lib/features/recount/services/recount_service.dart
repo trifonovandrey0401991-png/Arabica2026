@@ -415,6 +415,9 @@ class RecountService {
   /// Получить просроченные отчёты пересчёта с сервера
   static Future<List<RecountReport>> getExpiredReports() => _base.getExpiredReports();
 
+  /// Получить просроченные отчёты с фильтрацией по мультитенантности
+  static Future<List<RecountReport>> getExpiredReportsForCurrentUser() => _base.getExpiredReportsForCurrentUser();
+
   /// Получить pivot-таблицу отчётов за указанную дату
   /// Возвращает таблицу: строки = товары, столбцы = магазины, значения = разница (факт - программа)
   static Future<RecountPivotTable> getPivotTableForDate(DateTime date) async {

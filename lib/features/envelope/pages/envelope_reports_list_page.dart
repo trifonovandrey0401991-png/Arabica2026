@@ -59,7 +59,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     setState(() => _isLoading = true);
     try {
       final reports = await EnvelopeReportService.getReportsForCurrentUser();
-      final pendingReports = await EnvelopeReportService.getPendingReports();
+      final pendingReports = await EnvelopeReportService.getPendingReportsForCurrentUser();
       // Сортируем по дате (новые сверху)
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       pendingReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));

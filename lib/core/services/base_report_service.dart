@@ -67,6 +67,15 @@ class BaseReportService<T> {
     );
   }
 
+  /// Получить просроченные отчёты с фильтрацией по мультитенантности
+  Future<List<T>> getExpiredReportsForCurrentUser() async {
+    final reports = await getExpiredReports();
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      getShopAddress,
+    );
+  }
+
   /// Получить отчёт по ID
   Future<T?> getReport(String id) async {
     Logger.debug('📥 Загрузка отчёта $reportType: $id');

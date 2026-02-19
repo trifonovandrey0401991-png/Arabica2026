@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/utils/logger.dart';
 import '../models/coffee_machine_report_model.dart';
 import '../models/pending_coffee_machine_report_model.dart';
@@ -132,6 +133,15 @@ class CoffeeMachineReportService {
     }
   }
 
+  /// Получить pending отчёты с фильтрацией по мультитенантности
+  static Future<List<PendingCoffeeMachineReport>> getPendingReportsForCurrentUser() async {
+    final reports = await getPendingReports();
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (r) => r.shopAddress,
+    );
+  }
+
   /// Получить failed отчёты (не сданные)
   static Future<List<PendingCoffeeMachineReport>> getFailedReports() async {
     Logger.debug('Загрузка failed отчётов кофемашин...');
@@ -152,10 +162,30 @@ class CoffeeMachineReportService {
     }
   }
 
+  /// Получить failed отчёты с фильтрацией по мультитенантности
+  static Future<List<PendingCoffeeMachineReport>> getFailedReportsForCurrentUser() async {
+    final reports = await getFailedReports();
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (r) => r.shopAddress,
+    );
+  }
+
   /// Получить количество неподтверждённых отчётов
   static Future<int> getUnconfirmedCount() async {
     try {
       final reports = await getReports(status: 'pending');
+      return reports.length;
+    } catch (e) {
+      Logger.error('Ошибка получения количества неподтверждённых', e);
+      return 0;
+    }
+  }
+
+  /// Получить количество неподтверждённых отчётов с фильтрацией по мультитенантности
+  static Future<int> getUnconfirmedCountForCurrentUser() async {
+    try {
+      final reports = await getReportsForCurrentUser(status: 'pending');
       return reports.length;
     } catch (e) {
       Logger.error('Ошибка получения количества неподтверждённых', e);

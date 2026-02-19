@@ -151,7 +151,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
     try {
       // Загружаем pending отчёты с сервера
-      final pendingReports = await PendingShiftHandoverService.getPendingReports();
+      final pendingReports = await PendingShiftHandoverService.getPendingReportsForCurrentUser();
       Logger.info('Получено pending отчётов: ${pendingReports.length}');
 
       for (final report in pendingReports) {
@@ -170,7 +170,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
     try {
       // Загружаем failed отчёты с сервера
-      final failedReports = await PendingShiftHandoverService.getFailedReports();
+      final failedReports = await PendingShiftHandoverService.getFailedReportsForCurrentUser();
       Logger.info('Получено failed отчётов: ${failedReports.length}');
 
       for (final report in failedReports) {
@@ -302,7 +302,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
     // Загружаем просроченные отчёты
     try {
-      final expiredReports = await ShiftHandoverReportService.getExpiredReports();
+      final expiredReports = await ShiftHandoverReportService.getExpiredReportsForCurrentUser();
       _expiredReports = expiredReports;
       Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
     } catch (e) {

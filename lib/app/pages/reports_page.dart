@@ -171,7 +171,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _loadEnvelopeCount() async {
     try {
-      final reports = await EnvelopeReportService.getReports();
+      final reports = await EnvelopeReportService.getReportsForCurrentUser();
       final unconfirmedCount = reports.where((r) => r.status != 'confirmed').length;
       if (mounted) setState(() => _envelopeUnconfirmedCount = unconfirmedCount);
     } catch (e) {
@@ -181,7 +181,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _loadCoffeeMachineCount() async {
     try {
-      final count = await CoffeeMachineReportService.getUnconfirmedCount();
+      final count = await CoffeeMachineReportService.getUnconfirmedCountForCurrentUser();
       if (mounted) setState(() => _coffeeMachineUnconfirmedCount = count);
     } catch (e) {
       Logger.error('Ошибка загрузки количества неподтверждённых отчётов кофемашин', e);

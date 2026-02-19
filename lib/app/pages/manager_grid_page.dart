@@ -124,7 +124,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
 
   Future<void> _loadEnvelopeCount() async {
     try {
-      final reports = await EnvelopeReportService.getReports();
+      final reports = await EnvelopeReportService.getReportsForCurrentUser();
       final count = reports.where((r) => r.status != 'confirmed').length;
       if (mounted) setState(() => _envelopeCount = count);
     } catch (e) { Logger.error('Ошибка загрузки счётчика конвертов', e); }
@@ -132,7 +132,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
 
   Future<void> _loadCoffeeMachineCount() async {
     try {
-      final count = await CoffeeMachineReportService.getUnconfirmedCount();
+      final count = await CoffeeMachineReportService.getUnconfirmedCountForCurrentUser();
       if (mounted) setState(() => _coffeeMachineCount = count);
     } catch (e) { Logger.error('Ошибка загрузки счётчика кофемашин', e); }
   }

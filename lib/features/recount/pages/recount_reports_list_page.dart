@@ -202,7 +202,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     // Загружаем просроченные отчёты
     try {
-      final expiredReports = await RecountService.getExpiredReports();
+      final expiredReports = await RecountService.getExpiredReportsForCurrentUser();
       _expiredReports = expiredReports;
       Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
     } catch (e) {

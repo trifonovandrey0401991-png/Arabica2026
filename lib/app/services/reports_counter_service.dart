@@ -136,7 +136,7 @@ class ReportsCounterService {
 
       // 12. Счётчик кофемашин (неподтверждённые)
       try {
-        final count = await CoffeeMachineReportService.getUnconfirmedCount();
+        final count = await CoffeeMachineReportService.getUnconfirmedCountForCurrentUser();
         total += count;
       } catch (e) {
         Logger.error('Ошибка загрузки счётчика кофемашин', e);

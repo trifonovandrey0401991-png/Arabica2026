@@ -108,6 +108,9 @@ class ShiftHandoverReportService {
   /// Получить просроченные отчеты сдачи смены с сервера
   static Future<List<ShiftHandoverReport>> getExpiredReports() => _base.getExpiredReports();
 
+  /// Получить просроченные отчеты с фильтрацией по мультитенантности
+  static Future<List<ShiftHandoverReport>> getExpiredReportsForCurrentUser() => _base.getExpiredReportsForCurrentUser();
+
   /// Удалить отчет с сервера
   static Future<bool> deleteReport(String reportId) => _base.deleteReport(reportId);
 }

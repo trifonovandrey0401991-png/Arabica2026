@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/shift_report_model.dart';
 import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
@@ -138,6 +139,9 @@ class ShiftReportService {
   /// Получить просроченные отчеты пересменки с сервера
   static Future<List<ShiftReport>> getExpiredReports() => _base.getExpiredReports();
 
+  /// Получить просроченные отчеты с фильтрацией по мультитенантности
+  static Future<List<ShiftReport>> getExpiredReportsForCurrentUser() => _base.getExpiredReportsForCurrentUser();
+
   /// Получить pending отчёты для текущего дня
   static Future<List<ShiftReport>> getPendingReports({
     String? shopAddress,
@@ -157,6 +161,21 @@ class ShiftReportService {
       fromJson: (json) => ShiftReport.fromJson(json),
       listKey: 'reports',
       queryParams: queryParams,
+    );
+  }
+
+  /// Получить pending отчёты с фильтрацией по мультитенантности
+  static Future<List<ShiftReport>> getPendingReportsForCurrentUser({
+    String? shopAddress,
+    String? shiftType,
+  }) async {
+    final reports = await getPendingReports(
+      shopAddress: shopAddress,
+      shiftType: shiftType,
+    );
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (r) => r.shopAddress,
     );
   }
 
