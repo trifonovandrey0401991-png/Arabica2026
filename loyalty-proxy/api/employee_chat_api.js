@@ -649,28 +649,62 @@ function setupEmployeeChatAPI(app) {
     try {
       const { chatId } = req.params;
       const { phone, limit = 50, before } = req.query;
-      console.log('GET /api/employee-chats/:chatId/messages:', chatId);
+      const parsedLimit = Math.min(parseInt(limit) || 50, 200);
+      console.log('GET /api/employee-chats/:chatId/messages:', chatId, 'limit:', parsedLimit, 'before:', before ? 'yes' : 'no');
 
+      // DB path: SQL-level pagination (не загружает ВСЕ сообщения)
+      if (USE_DB) {
+        try {
+          const chatExists = await db.findById('employee_chats', chatId);
+          if (!chatExists) {
+            return res.json({ success: true, messages: [], hasMore: false });
+          }
+
+          let query, params;
+          if (before) {
+            // Загрузить сообщения старше указанного timestamp
+            query = `SELECT * FROM chat_messages WHERE chat_id = $1 AND timestamp < $2
+                     ORDER BY timestamp DESC LIMIT $3`;
+            params = [chatId, before, parsedLimit + 1];
+          } else {
+            // Загрузить последние сообщения
+            query = `SELECT * FROM chat_messages WHERE chat_id = $1
+                     ORDER BY timestamp DESC LIMIT $2`;
+            params = [chatId, parsedLimit + 1];
+          }
+
+          const result = await db.query(query, params);
+          const hasMore = result.rows.length > parsedLimit;
+          const rows = hasMore ? result.rows.slice(0, parsedLimit) : result.rows;
+
+          // Reverse: DB возвращает DESC, клиенту нужен ASC (хронологический)
+          const messages = rows.reverse().map(dbMsgToCamel);
+
+          return res.json({ success: true, messages, hasMore });
+        } catch (dbErr) {
+          console.error('DB getMessages error:', dbErr.message);
+          // fallback to file
+        }
+      }
+
+      // JSON fallback (загружает всё, потом slice)
       let chat = await loadChat(chatId);
       if (!chat) {
-        return res.json({ success: true, messages: [] });
+        return res.json({ success: true, messages: [], hasMore: false });
       }
 
       chat = await cleanOldMessages(chat);
       let messages = chat.messages || [];
 
-      // Pagination
+      // Pagination by timestamp
       if (before) {
-        const idx = messages.findIndex(m => m.id === before);
-        if (idx > 0) {
-          messages = messages.slice(0, idx);
-        }
+        messages = messages.filter(m => new Date(m.timestamp) < new Date(before));
       }
 
-      // Limit
-      messages = messages.slice(-parseInt(limit));
+      const hasMore = messages.length > parsedLimit;
+      messages = messages.slice(-parsedLimit);
 
-      res.json({ success: true, messages });
+      res.json({ success: true, messages, hasMore });
     } catch (error) {
       console.error('Error getting messages:', error);
       res.status(500).json({ success: false, error: error.message });

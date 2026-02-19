@@ -41,6 +41,8 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   List<EmployeeChatMessage> _messages = [];
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
   Timer? _refreshTimer;
 
   // WebSocket
@@ -69,6 +71,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       vsync: this,
       duration: Duration(milliseconds: 1200),
     )..repeat();
+    _scrollController.addListener(_onScroll);
     _loadMessages();
     _startAutoRefresh();
     _setupWebSocket();
@@ -242,6 +245,57 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             ),
           );
         }
+      }
+    }
+  }
+
+  void _onScroll() {
+    // Подгрузка старых сообщений при прокрутке вверх
+    if (_scrollController.position.pixels <= 100 &&
+        _hasMore &&
+        !_isLoadingMore &&
+        !_isLoading) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_messages.isEmpty || !_hasMore || _isLoadingMore) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final oldestTimestamp = _messages.first.timestamp.toIso8601String();
+      final olderMessages = await EmployeeChatService.getMessages(
+        widget.chat.id,
+        phone: widget.userPhone,
+        limit: 50,
+        before: oldestTimestamp,
+      );
+
+      if (mounted) {
+        // Сохраняем позицию прокрутки
+        final prevMaxExtent = _scrollController.position.maxScrollExtent;
+
+        setState(() {
+          _messages.insertAll(0, olderMessages);
+          _hasMore = olderMessages.length >= 50;
+          _isLoadingMore = false;
+        });
+
+        // Восстанавливаем позицию: пользователь видит то же место
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            final newMaxExtent = _scrollController.position.maxScrollExtent;
+            _scrollController.jumpTo(
+              _scrollController.position.pixels + (newMaxExtent - prevMaxExtent),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
       }
     }
   }
@@ -785,16 +839,33 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                         : ListView.builder(
                             controller: _scrollController,
                             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                            itemCount: _messages.length,
+                            itemCount: _messages.length + (_isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
-                              final message = _messages[index];
+                              // Индикатор загрузки старых сообщений вверху
+                              if (_isLoadingMore && index == 0) {
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final msgIndex = _isLoadingMore ? index - 1 : index;
+                              final message = _messages[msgIndex];
                               final isMe = message.senderPhone == widget.userPhone;
 
                               bool showDate = false;
-                              if (index == 0) {
+                              if (msgIndex == 0) {
                                 showDate = true;
                               } else {
-                                final prevMessage = _messages[index - 1];
+                                final prevMessage = _messages[msgIndex - 1];
                                 final prevDate = DateTime(
                                   prevMessage.timestamp.year,
                                   prevMessage.timestamp.month,
