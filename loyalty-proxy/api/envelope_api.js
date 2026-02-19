@@ -14,6 +14,7 @@ const { isPaginationRequested, createPaginatedResponse } = require('../utils/pag
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const pushService = require('../utils/push_service');
 
 const USE_DB = process.env.USE_DB_ENVELOPE === 'true';
 
@@ -622,6 +623,20 @@ function setupEnvelopeAPI(app) {
         await writeJsonFile(filePath, report);
       }
       console.log('Отчет конверта подтверждён:', rawId);
+
+      // Пуш-уведомление сотруднику
+      const empPhone = report.employeePhone || report.phone;
+      if (empPhone) {
+        try {
+          const ratingText = rating ? ` Оценка: ${rating}` : '';
+          await pushService.sendPushToPhone(empPhone, 'Конверт подтверждён', `Ваш отчёт по конверту подтверждён.${ratingText}`, {
+            type: 'envelope_confirmed',
+            envelopeId: rawId
+          });
+        } catch (pushErr) {
+          console.error('Ошибка отправки пуша по конверту:', pushErr.message);
+        }
+      }
 
       res.json({ success: true, report });
     } catch (error) {
