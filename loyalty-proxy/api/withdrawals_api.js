@@ -21,7 +21,9 @@ const MAIN_CASH_DIR = `${DATA_DIR}/main_cash`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
-// Firebase Admin SDK
+const pushService = require('../utils/push_service');
+
+// Firebase Admin SDK (legacy, kept for backward compat)
 let admin = null;
 try {
   const firebaseConfig = require('../firebase-admin-config');
@@ -104,105 +106,30 @@ async function getFCMTokensForWithdrawalNotifications(phones) {
 // Отправить push-уведомления о выемке всем админам
 async function sendWithdrawalNotifications(withdrawal) {
   try {
-    // 1. Загрузить всех сотрудников
-    const employees = await loadAllEmployeesForWithdrawals();
-
-    // 2. Отфильтровать админов
-    const admins = employees.filter(e => e.isAdmin === true);
-
-    if (admins.length === 0) {
-      console.log('Нет админов для отправки уведомлений о выемке');
-      return;
-    }
-
-    // 3. Получить FCM токены админов
-    const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = await getFCMTokensForWithdrawalNotifications(adminPhones);
-
-    if (tokens.length === 0) {
-      console.log('Нет FCM токенов для админов');
-      return;
-    }
-
-    // 4. Отправить уведомление
-    const message = {
-      notification: {
-        title: `Выемка: ${withdrawal.shopAddress}`,
-        body: `${withdrawal.employeeName} сделал выемку на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()})`,
-      },
-      data: {
-        type: 'withdrawal',
-        withdrawalId: withdrawal.id,
-        shopAddress: withdrawal.shopAddress,
-      },
-    };
-
-    if (admin && admin.messaging) {
-      await admin.messaging().sendMulticast({
-        tokens: tokens,
-        ...message,
-      });
-    }
-
-    console.log(`Отправлено уведомление о выемке ${tokens.length} админам`);
+    const title = `Выемка: ${withdrawal.shopAddress}`;
+    const body = `${withdrawal.employeeName} сделал выемку на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()})`;
+    await pushService.sendPushToAllAdmins(title, body, {
+      type: 'withdrawal',
+      withdrawalId: withdrawal.id,
+      shopAddress: withdrawal.shopAddress,
+    }, 'withdrawals_channel');
   } catch (err) {
-    console.error('Ошибка отправки push-уведомлений о выемке:', err);
+    console.error('Ошибка отправки push-уведомлений о выемке:', err.message);
   }
 }
 
 // Отправить push-уведомления о подтверждении выемки
 async function sendWithdrawalConfirmationNotifications(withdrawal) {
   try {
-    // 1. Загрузить всех сотрудников
-    const employees = await loadAllEmployeesForWithdrawals();
-
-    // 2. Отфильтровать админов
-    const admins = employees.filter(e => e.isAdmin === true);
-
-    if (admins.length === 0) {
-      console.log("Нет админов для отправки уведомлений о подтверждении");
-      return;
-    }
-
-    // 3. Получить FCM токены админов
-    const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = await getFCMTokensForWithdrawalNotifications(adminPhones);
-
-    if (tokens.length === 0) {
-      console.log("Нет FCM токенов для админов");
-      return;
-    }
-
-    // 4. Отправить уведомление
-    const message = {
-      notification: {
-        title: `Выемка подтверждена: ${withdrawal.shopAddress}`,
-        body: `Выемка от ${withdrawal.employeeName} на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()}) подтверждена`,
-      },
-      data: {
-        type: "withdrawal_confirmed",
-        withdrawalId: withdrawal.id,
-        shopAddress: withdrawal.shopAddress,
-      },
-      android: {
-        priority: "high",
-        notification: {
-          sound: "default",
-          channelId: "withdrawals_channel",
-        },
-      },
-    };
-
-    if (admin && admin.messaging) {
-      await admin.messaging().sendMulticast({
-        tokens: tokens,
-        ...message,
-      });
-    }
-
-    console.log(`✅ Отправлено уведомление о подтверждении выемки ${tokens.length} админам`);
+    const title = `Выемка подтверждена: ${withdrawal.shopAddress}`;
+    const body = `Выемка от ${withdrawal.employeeName} на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()}) подтверждена`;
+    await pushService.sendPushToAllAdmins(title, body, {
+      type: 'withdrawal_confirmed',
+      withdrawalId: withdrawal.id,
+      shopAddress: withdrawal.shopAddress,
+    }, 'withdrawals_channel');
   } catch (err) {
-    console.error("❌ Ошибка отправки push-уведомлений о подтверждении:", err);
+    console.error('Ошибка отправки push-уведомлений о подтверждении:', err.message);
   }
 }
 
@@ -409,6 +336,7 @@ function setupWithdrawalsAPI(app) {
   app.patch('/api/withdrawals/:id/confirm', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
+      console.log('PATCH /api/withdrawals/:id/confirm', id);
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
       if (!await fileExists(filePath)) {
